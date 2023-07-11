@@ -1,0 +1,187 @@
+# Copyright 2023 The kauldron Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Small wrapper around `jax.random`."""
+
+from __future__ import annotations
+
+from collections.abc import Iterator
+import functools
+import hashlib
+import sys
+from typing import Any, TypeVar
+
+import jax
+import jax.random
+import numpy as np
+
+
+_FnT = TypeVar('_FnT')
+
+
+@jax.tree_util.register_pytree_node_class
+class PRNGKey:
+  """Small wrapper around `jax.random.PRNGKeyArray` to reduce boilerplate.
+
+  Usage:
+
+  ```
+  key = kd.random.PRNGKey(0)
+  key0, key1 = key.split()
+  x = key0.uniform()
+
+  x = jax.random.uniform(key)  # Jax API still works
+  ```
+  """
+
+  def __init__(self, seed_or_rng: int | jax.random.PRNGKeyArray = 0):
+    """Constructor."""
+    # First time, we mock jax for compatibility
+    _mock_jax()
+
+    # TODO(epot): Check that key is only used once ? (except on Colab)
+    # Fold-in should also not be called on the same value twice.
+
+    if isinstance(seed_or_rng, PRNGKey):
+      seed_or_rng = seed_or_rng.rng
+    elif not isinstance(seed_or_rng, (jax.Array, jax.random.PRNGKeyArray)):
+      seed_or_rng = jax.random.PRNGKey(seed_or_rng)
+
+    self.rng: jax.random.PRNGKeyArray = seed_or_rng
+
+  def __iter__(self) -> Iterator[PRNGKey]:
+    return (self._new(k) for k in iter(self.rng))
+
+  def __getitem__(self, slice_) -> PRNGKey:
+    return self._new(self.rng[slice_])
+
+  def split(self, n: int = 2) -> PRNGKey:
+    """Returns the next rng key."""
+    return self._new(jax.random.split(self, n))
+
+  def fold_in(self, data: int | str) -> PRNGKey:
+    """Folds in delta into the random state."""
+    if isinstance(data, str):
+      data = hashlib.sha1(data.encode('utf-8')).digest()
+      data = int.from_bytes(data[:4], byteorder='big')  # Truncate to uint32
+    return self._new(jax.random.fold_in(self, data))
+
+  def next(self) -> PRNGKey:
+    """Returns the next rng key (alias for `key.split(1)[0]`)."""
+    return self.split(1)[0]
+
+  def _new(self, key) -> PRNGKey:
+    return type(self)(key)
+
+  def __repr__(self):
+    return f'{type(self).__name__}({self.rng!r})'
+
+  def tree_flatten(self) -> tuple[list[jax.Array], dict[str, Any]]:
+    """`jax.tree_utils` support."""
+    return ([self.rng], {})
+
+  @classmethod
+  def tree_unflatten(
+      cls,
+      metadata: dict[str, Any],
+      array_field_values: list[jax.Array],
+  ) -> PRNGKey:
+    """`jax.tree_utils` support."""
+    del metadata
+    (array_field_values,) = array_field_values
+    # Support tree_map when the output is None or array normalization
+    # e.g.
+    # * `chex.assert_tree_all_close` normalize to `np.ndarray`
+    # * `jax.tree_util.tree_map(np.testing.assert_allclose)`
+    if array_field_values is None:
+      return None
+    elif isinstance(array_field_values, np.ndarray):
+      return array_field_values
+    else:
+      rng = cls(array_field_values)
+      return rng
+
+  def __array__(self) -> np.ndarray:
+    """Support np.array conversion `np.asarray(key)`."""
+    return np.asarray(self.rng)
+
+  ball = jax.random.ball
+  bernoulli = jax.random.bernoulli
+  beta = jax.random.beta
+  categorical = jax.random.categorical
+  cauchy = jax.random.cauchy
+  chisquare = jax.random.chisquare
+  choice = jax.random.choice
+  dirichlet = jax.random.dirichlet
+  double_sided_maxwell = jax.random.double_sided_maxwell
+  exponential = jax.random.exponential
+  f = jax.random.f
+  gamma = jax.random.gamma
+  generalized_normal = jax.random.generalized_normal
+  geometric = jax.random.geometric
+  gumbel = jax.random.gumbel
+  laplace = jax.random.laplace
+  logistic = jax.random.logistic
+  loggamma = jax.random.loggamma
+  laplace = jax.random.laplace
+  logistic = jax.random.logistic
+  maxwell = jax.random.maxwell
+  multivariate_normal = jax.random.multivariate_normal
+  normal = jax.random.normal
+  orthogonal = jax.random.orthogonal
+  pareto = jax.random.pareto
+  permutation = jax.random.permutation
+  poisson = jax.random.poisson
+  rademacher = jax.random.rademacher
+  randint = jax.random.randint
+  rayleigh = jax.random.rayleigh
+  rbg_key = jax.random.rbg_key
+  shuffle = jax.random.shuffle
+  t = jax.random.t
+  truncated_normal = jax.random.truncated_normal
+  uniform = jax.random.uniform
+  wald = jax.random.wald
+  weibull_min = jax.random.weibull_min
+
+
+@functools.cache
+def _mock_jax():
+  """Mock `jax.random` to support custom Key object."""
+  from jax._src import random  # pylint: disable=g-import-not-at-top
+  from flax.core import scope  # pylint: disable=g-import-not-at-top
+
+  random._check_prng_key = _normalize_jax_key(random._check_prng_key)  # pylint: disable=protected-access
+  scope._is_valid_rng = _normalize_jax_key(scope._is_valid_rng)  # pylint: disable=protected-access
+
+
+def _normalize_jax_key(fn: _FnT) -> _FnT:
+  """Mock `jax.random` to support custom Key object."""
+
+  # Support Colab reload
+  if hasattr(fn, '__original_fn__'):
+    fn = fn.__original_fn__
+
+  # Save the original function (to support reload)
+  fn.__original_fn__ = fn
+
+  @functools.wraps(fn)
+  def new_fn(key, *args, **kwargs):
+    scope = sys.modules.get('flax.core.scope')
+    if isinstance(key, PRNGKey):
+      key = key.rng
+    elif scope is not None and isinstance(key, scope.LazyRng):
+      key = key.as_jax_rng()
+    return fn(key, *args, **kwargs)
+
+  return new_fn

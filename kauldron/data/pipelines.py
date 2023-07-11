@@ -1,0 +1,135 @@
+# Copyright 2023 The kauldron Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Data pipelines."""
+
+import dataclasses
+from typing import Any, Mapping, Optional
+
+from etils import edc
+from grain._src.tensorflow import transforms
+import grain.tensorflow as grain
+import jax
+from kauldron.data.loaders import base as base_data_loader
+from kauldron.typing import PRNGKeyLike  # pylint: disable=g-importing-member
+import tensorflow as tf
+import tensorflow_datasets as tfds
+
+BatchFn = grain.TfBatchFn
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True, eq=True)
+class TFDataPipeline:
+  """Basic tf.data pipeline.
+
+  Attributes:
+    loader: A data loader that produces a `tf.data.Dataset`. The dataset should
+      be shuffled (if needed) but unbatched.
+    transformations: A list of transformations to apply to the dataset. Each
+      transformation should be either a `grain.MapTransform` or a
+      `grain.RandomMapTransform`.
+    batch_size: Global batch size (has to be divisible by number of global
+      devices). If specified, then the batch_fn is set to be
+      `grain.TfBatch(batch_size=batch_size//num_hosts, drop_remainder=True)`
+      Mutually exclusive with `batch_fn` argument.
+    batch_fn: A batching function. Note that this transformation has to produce
+      batches for individual devices, so it has to use a per-host (not global)
+      batch size.
+    tf_data_options: An optional tf.data.Options instance to be applied to the
+      dataset.
+    reshape_for_devices: If True (default) then the per-host batch dimension of
+      the dataset elements are reshaped from `(host_batch_size, ...)` to
+      `(num_local_devices, host_batch_size/num_local_devices, ...)`.
+    prefetch_size: Number of batches to prefetch for this dataset. Defaults to
+      AUTOTUNE.
+  """
+
+  loader: base_data_loader.DataLoader
+  transformations: grain.Transformations
+  batch_size: Optional[int] = None
+  batch_fn: Optional[BatchFn] = None
+  tf_data_options: Optional[tf.data.Options] = None
+  reshape_for_devices: bool = True
+  prefetch_size: Optional[int] = tf.data.AUTOTUNE
+
+  def __post_init__(self):
+    num_hosts = jax.host_count()
+    num_devices = jax.device_count()
+    if self.batch_size is not None:
+      if self.batch_fn is not None:
+        raise ValueError("batch_size and batch_fn are mutually exclusive.")
+      if self.batch_size % num_devices != 0:
+        raise ValueError(
+            "batch_size must be divisible by num_devices."
+            f" {self.batch_size=} {num_devices=}"
+        )
+      host_batch_size = self.batch_size // num_hosts
+
+      object.__setattr__(
+          self,
+          "batch_fn",
+          grain.TfBatch(batch_size=host_batch_size, drop_remainder=True),
+      )
+    else:
+      if self.batch_fn is None:
+        raise ValueError("Must specify either batch_size or batch_fn.")
+
+  def __call__(self, seed: Optional[PRNGKeyLike] = None) -> tf.data.Dataset:
+    ds = self.loader(seed=seed)
+    transformations = []
+    transformations.extend(self.transformations)
+    transformations.append(self.batch_fn)
+    if self.reshape_for_devices:
+      # TODO(epot): Should raise more explicit error message if bash size
+      # is not divisible by the number of devices.
+      transformations.append(ReshapeForLocalDevices())
+    ds = transforms.apply_transformations(ds, transformations, strict=True)
+
+    if self.prefetch_size:
+      ds = ds.prefetch(self.prefetch_size)
+
+    dataset_options = tf.data.Options()
+    dataset_options.experimental_optimization.map_parallelization = True
+    dataset_options.threading.private_threadpool_size = 48
+    dataset_options.threading.max_intra_op_parallelism = 1
+    if self.tf_data_options is not None:
+      dataset_options = dataset_options.merge(self.tf_data_options)
+    ds = ds.with_options(dataset_options)
+
+    # drop grain meta features
+    ds = ds.map(_drop_grain_meta_features)
+    return tfds.as_numpy(ds)
+
+  __repr__ = edc.repr
+
+
+def _drop_grain_meta_features(features: Mapping[str, Any]) -> Mapping[str, Any]:
+  return {k: v for k, v in features.items() if k not in grain.META_FEATURES}
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True, eq=True)
+class ReshapeForLocalDevices(grain.MapTransform):
+  """Reshape elements from [B, ...] -> [N, B // N, ...] with N = jax devices."""
+
+  def map(self, features):
+    def _reshape(x):
+      n = jax.local_device_count()
+      if isinstance(x, tf.Tensor):
+        x_shape = tf.shape(x)
+        new_shape = tf.concat([[n, x_shape[0] // n], x_shape[1:]], axis=0)
+        return tf.reshape(x, new_shape)
+      elif x is None:
+        return None
+
+    return jax.tree_util.tree_map(_reshape, features)
