@@ -20,11 +20,14 @@ import dataclasses
 from typing import Any, Dict, Iterable, Mapping, Optional, Sequence
 
 import einops
+from etils import epy
 import flax.core
 import grain.tensorflow as grain
 from kauldron.typing import Key, TfArray, TfFloat, TfInt, TfUInt8, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import tensorflow as tf
-import tensorflow_models as tfm
+
+with epy.lazy_imports():
+  import tensorflow_models as tfm  # pylint: disable=g-import-not-at-top
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)

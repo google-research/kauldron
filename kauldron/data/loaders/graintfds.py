@@ -32,7 +32,9 @@ class GrainTfds(base.DataLoader):
   # grain.TfdsDataSource parameters
   name: str
   split: str = "train"
-  data_dir: epath.PathLike = tfds.core.constants.ARRAY_RECORD_DATA_DIR
+  data_dir: epath.PathLike = (
+      tfds.core.constants.DATA_DIR
+  )
   decoders: Optional[Mapping[str, Any]] = None
   cache: bool = False
 

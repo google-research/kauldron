@@ -19,10 +19,13 @@ import dataclasses
 from typing import Optional, Sequence
 
 from clu import metrics as clu_metrics
+from etils import epy
 import flax.struct
-from grand_vision.eval.metrics import clustering as gv_clustering
 from kauldron.metrics import base
 from kauldron.typing import Float, Integer, Key, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+
+with epy.lazy_imports():
+  from grand_vision.eval.metrics import clustering as gv_clustering  # pylint: disable=g-import-not-at-top
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
