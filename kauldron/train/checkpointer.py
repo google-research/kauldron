@@ -34,6 +34,8 @@ class Checkpointer:
   save_interval_steps: int
   max_to_keep: Optional[int] = None  # Keep all.
 
+  fast: bool = True
+
   @functools.cached_property
   def _ckpt_mgr(self) -> orbax.checkpoint_manager.CheckpointManager:
     """Returns checkpoint manager instance (initialized and cached)."""
@@ -45,7 +47,11 @@ class Checkpointer:
         # step_format_fixed_length=9,
         create=True,
     )
-    ckpt_mgr = orbax.CheckpointManager(
+    if self.fast:
+      manager_cls = FastCheckpointManager
+    else:
+      manager_cls = orbax.CheckpointManager
+    ckpt_mgr = manager_cls(
         epath.Path(self.workdir) / "checkpoints",
         orbax.Checkpointer(orbax.PyTreeCheckpointHandler()),
         options=mgr_options,
@@ -120,3 +126,42 @@ class Checkpointer:
   @property
   def all_steps(self) -> Sequence[int]:
     return self._ckpt_mgr.all_steps()
+
+
+class FastCheckpointManager(orbax.CheckpointManager):
+  """Wrapper around Checkpointmanager that speeds up loading."""
+
+  def all_steps(self, read: bool = False) -> Sequence[int]:
+    """Returns all steps tracked by the manager.
+
+    Args:
+      read: If True, forces a read directly from the storage location.
+        Otherwise, a cached result can be returned.
+
+    Returns:
+      A sequence of steps (integers)
+    """
+    if read:
+      return _checkpoint_steps(self.directory)
+    return [ckpt.step for ckpt in self._checkpoints]
+
+
+def _checkpoint_steps(checkpoint_dir: epath.PathLike) -> list[int]:
+  """Returns a list of all steps for which a checkpoint exists in dir."""
+  # Speeds up the original implementation by skipping the exists() and
+  # is_directory() checks which trigger a CNS read for each checkpoint.
+  checkpoint_dir = epath.Path(checkpoint_dir)
+
+  def get_step_for_dir(step_dir: epath.Path) -> int:
+    name = step_dir.name
+    if orbax.utils.TMP_DIR_SUFFIX in name:
+      return -1
+    if name.isdigit():
+      return int(name)
+    _, _, suffix = name.rpartition("_")
+    if suffix.isdigit():
+      return int(suffix)
+    return -1  # silently ignore directory/file
+
+  steps = [get_step_for_dir(step_dir) for step_dir in checkpoint_dir.iterdir()]
+  return [step for step in steps if step >= 0]
