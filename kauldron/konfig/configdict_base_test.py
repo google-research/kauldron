@@ -31,7 +31,6 @@ def test_cycles():
   cfg.c1 = cfg.get_ref('c0')
   cfg.cycle = cfg
 
-  print(cfg)
   assert repr(cfg) == epy.dedent("""
     &id003 ConfigDict(
         a0=&id001 'abc',
