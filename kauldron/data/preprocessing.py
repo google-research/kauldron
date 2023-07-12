@@ -506,6 +506,8 @@ class RandAugment(grain.RandomMapTransform):
   """Applies the RandAugment policy to images.
 
   RandAugment is from the paper https://arxiv.org/abs/1909.13719.
+  See here for details:
+  https://github.com/tensorflow/models/tree/HEAD/tensorflow_models/official/vision/ops/augment.py;l=2331
 
   Attributes:
     num_layers: The number of augmentation transformations to apply sequentially

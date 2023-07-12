@@ -99,6 +99,8 @@ class TFDataPipeline:
     if self.prefetch_size:
       ds = ds.prefetch(self.prefetch_size)
 
+    # Default data options (can be overwritten using tf_data_options) obtained
+    # from https://github.com/google/CommonLoopUtils/tree/HEAD/clu/deterministic_data.py
     dataset_options = tf.data.Options()
     dataset_options.experimental_optimization.map_parallelization = True
     dataset_options.threading.private_threadpool_size = 48

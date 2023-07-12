@@ -25,6 +25,8 @@ from typing import Optional
 from etils import epath
 from kauldron import konfig
 
+from unittest import mock as _mock ; xmanager_api = _mock.Mock()
+
 
 @dataclasses.dataclass
 class RunConfig:

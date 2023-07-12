@@ -98,6 +98,9 @@ def _is_hint_annotated_with(hint: _TypeForm, annotated_token: _Token) -> bool:
   return type_visitor.visit(hint).token_present
 
 
+# TODO(epot): Should try to unify with:
+# * https://github.com/google-research/dataclass_array/tree/HEAD/dataclass_array/type_parsing.py
+# * https://github.com/google/etils/tree/HEAD/etils/enp/type_parsing.py
 class _TypeVisitor:
   """Traverse the tree of typing annotations.
 

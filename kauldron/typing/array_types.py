@@ -25,6 +25,7 @@ import numpy as np
 import tensorflow as tf
 
 
+# Inspired by https://github.com/google/etils/tree/HEAD/etils/enp/array_types/typing.py
 class ArrayAliasMeta(type):
   """Metaclass to dynamically create array aliases.
 

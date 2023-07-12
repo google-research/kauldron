@@ -179,6 +179,7 @@ class ArraySpecMatch:
     # This is necessary because the dtype checking cannot be called separately
     # of __isinstance__ which may modify the memo stack.
     # See jaxtyping._array_types._MetaAbstractArray.__instancecheck__
+    # https://github.com/google/jaxtyping/tree/HEAD/jaxtyping/_array_types.py;l=141
     if self.array_spec.dtypes is jaxtyping._array_types._any_dtype:  # pylint: disable=protected-access
       return True
 
