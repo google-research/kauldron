@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-import datetime
 import functools
 import json
 from typing import Any, Optional, Sequence, Tuple
@@ -64,33 +63,16 @@ def train(
   """
   tf.config.experimental.set_visible_devices([], "GPU")
 
-  cfg = konfig.resolve(raw_cfg)
-
-  if status.on_xmanager:
-    if cfg.workdir == epath.Path():
-      raise ValueError("--workdir must be set when running on XManager.")
-
-    # Add Flatboards
-    if status.is_lead_host:
-      dashboard_factories = cfg.flatboards
-      if not dashboard_factories:
-        dashboard_factories = get_default_dashboards(cfg)
-      flatboard.add_flatboard_artifacts(dashboard_factories)
-
-  # Because `cfg` is mutated, but not `raw_cfg`, the exported json config
-  # might not match the actual one. This might be an issue if trying to
-  # restore the config.
-  elif cfg.workdir == epath.Path():
-    # Unless explicitly set, local runs will reset the workdir
-    # on each run.
-    cfg = cfg.replace(
-        workdir=epath.Path("/tmp/kauldron")
-        / datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    )
-
   status.log("Initializing ...")
-  logging.info("Creating workdir: %s", cfg.workdir)
-  cfg.workdir.mkdir(parents=True, exist_ok=True)
+  cfg = konfig.resolve(raw_cfg)
+  ensure_workdir(cfg.workdir)
+
+  if status.on_xmanager and status.is_lead_host:
+    # Add Flatboards
+    dashboard_factories = cfg.flatboards
+    if not dashboard_factories:
+      dashboard_factories = get_default_dashboards(cfg)
+    flatboard.add_flatboard_artifacts(dashboard_factories)
 
   hooks = []
   if status.on_xmanager and status.is_lead_host:
@@ -421,3 +403,13 @@ def get_default_dashboards(config):
           collections=["train"],
       ),
   }
+
+
+def ensure_workdir(workdir: epath.PathLike):
+  """Ensure workdir is set and exists."""
+  workdir = epath.Path(workdir) if workdir else epath.Path()
+  if workdir == epath.Path():
+    raise ValueError("--workdir must be set when running on XManager.")
+
+  logging.info("Creating workdir: %s", workdir)
+  workdir.mkdir(parents=True, exist_ok=True)
