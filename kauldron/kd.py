@@ -42,3 +42,10 @@ konfig.register_aliases(
         'kauldron.kd': 'kd',
     }
 )
+
+# TODO(epot): This could be optional for the top-level module
+# Automated documentation info
+# See: https://github.com/conchylicultor/sphinx-apitree
+__apitree__ = dict(
+    is_package=True,
+)

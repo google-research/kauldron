@@ -14,7 +14,36 @@ classifiers = [
 keywords = []
 
 # pip dependencies of the project
-dependencies = []
+
+# pip dependencies of the project
+dependencies = [
+    "absl-py",
+    "clu",
+    "einops",
+    "etils[edc,enp,epath,epy,etree]",
+    "flax",
+    # "grain",  # TODO(epot)
+    "jax",
+    "jaxtyping",
+    "lark",
+    "mediapy",
+    "ml_collections",
+    "numpy",
+    "numpy",
+    "optax",
+    "orbax",
+    "regex",
+    "scikit-learn",
+    "tensorflow",
+    "tensorflow_datasets",
+    "tqdm",
+    "typeguard",
+    "typing_extensions",
+    # lazy deps (should ideally remove those)
+    # "grand_vision",
+    # jax3d
+    # "tf-models-official",
+]
 
 # This is set automatically by flit using `kauldron.__version__`
 dynamic = ["version"]
@@ -32,6 +61,11 @@ dev = [
     "pytest-xdist",
     "pylint>=2.6.0",
     "pyink",
+]
+# Installed through `pip install .[docs]`
+docs = [
+    # Install `apitree` with all extensions (sphinx, theme,...)
+    "sphinx-apitree[ext]",
 ]
 
 [tool.pyink]
