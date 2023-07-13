@@ -210,17 +210,31 @@ def add_flatboard_artifacts(dashboard_factories: dict[str, DashboardFactory]):
     dashboard = factory()
     if dashboard:
       data_sources |= _collect_datatables(dashboard)
-      xp.create_artifact(
-          xmanager_api.ArtifactType.ARTIFACT_TYPE_FLATBOARD_URL,
-          dashboard.save_url(
+      create_artifact_only_if_missing(
+          xp=xp,
+          artifact_type=xmanager_api.ArtifactType.ARTIFACT_TYPE_FLATBOARD_URL,
+          artifact=dashboard.save_url(
               reader_permissions=fb.FlatboardDashboardPermissions.EVERYONE
           ).split("/revisions/")[0],
-          name,
+          description=name,
       )
   # add artifacts for the datatables
   for data_source in data_sources:
-    xp.create_artifact(
+    create_artifact_only_if_missing(
+        xp=xp,
         artifact_type=xmanager_api.ArtifactType.ARTIFACT_TYPE_STORAGE2_BIGTABLE,
         artifact=data_source,
         description=data_source.rpartition("/")[-1],
     )
+
+
+def create_artifact_only_if_missing(xp, artifact_type, description, artifact):
+  for old_artifact in xp.get_artifacts(artifact_types=[artifact_type]):
+    if old_artifact.description == description:
+      return old_artifact  # Already exists, no need to create it.
+
+  return xp.create_artifact(
+      artifact_type=artifact_type,
+      artifact=artifact,
+      description=description,
+  )

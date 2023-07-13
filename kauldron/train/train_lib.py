@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import functools
-import json
 from typing import Any, Optional, Sequence, Tuple
 
 from absl import logging
@@ -63,22 +62,17 @@ def train(
   """
   tf.config.experimental.set_visible_devices([], "GPU")
 
-  status.log("Initializing ...")
+  status.log("Configuring ...")
   cfg = konfig.resolve(raw_cfg)
   ensure_workdir(cfg.workdir)
 
-  if status.on_xmanager and status.is_lead_host:
-    # Add Flatboards
-    dashboard_factories = cfg.flatboards
-    if not dashboard_factories:
-      dashboard_factories = get_default_dashboards(cfg)
-    flatboard.add_flatboard_artifacts(dashboard_factories)
-
   hooks = []
   if status.on_xmanager and status.is_lead_host:
-    hooks.append(
-        periodic_actions.Profile(num_profile_steps=5, logdir=cfg.workdir)
-    )
+    add_flatboards(cfg)
+    hooks.extend([
+        periodic_actions.Profile(num_profile_steps=5, logdir=cfg.workdir),
+        periodic_actions.ReportProgress(num_train_steps=cfg.num_train_steps),
+    ])
 
   writer = metric_writers.create_default_writer(
       cfg.workdir,
@@ -86,10 +80,8 @@ def train(
       write_to_xm_measurements=False,
       collection="train",
   )
-  writer.write_hparams(json.loads(raw_cfg.to_json()))  # pytype: disable=attribute-error
 
-  logging.info("Seed: %d", cfg.seed)
-
+  status.log("Initializing ...")
   train_iter = cfg.train_ds(seed=cfg.seed)
   trainstep = train_step.TrainStep(
       optimizer=cfg.optimizer,
@@ -123,11 +115,9 @@ def train(
       global_batch_size=cfg.train_ds.batch_size,
   )
 
-  logging.info("Starting training loop at step %d.", initial_step)
-
+  status.log(f"Starting training loop at step {initial_step}")
   # NOTE: DO *NOT* CHANGE THE ORDER OF OPERATIONS IN THIS TRAINING LOOP!
   aux = None
-  total_loss = None  # NOTE: Temporary fix until total_loss computation is fixed
   for i, batch in utils.enum_iter(
       train_iter,
       init_step=initial_step,
@@ -172,7 +162,7 @@ def train(
       # NOTE: ensure that evaluation metrics are computed from the OLD model
       # state *before* backprop gradients are applied.
       if status.is_lead_host:
-        total_loss = write_summaries(
+        write_summaries(
             writer=writer,
             step=i,
             aux=aux,
@@ -185,8 +175,7 @@ def train(
     for h in hooks:
       h(i)
 
-  # TODO(klausg) not actually final loss. Just the last loss that was returned.
-  status.log(f"Done. Final loss={total_loss} (last loss that was returned)")
+  sync()
   # Returning the final state is convenient for interactive training in colab
   return flax.jax_utils.unreplicate(state_repl), flax.jax_utils.unreplicate(aux)
 
@@ -227,7 +216,6 @@ def write_summaries(
           loss_values | metric_values | schedule_values | performance_stats
       ),
   )
-  status.log(f"Step {step}: loss_total={total_loss}")
 
   if log_summaries:
     # other summaries  # TODO(klausg): unify with metrics
@@ -244,13 +232,7 @@ def write_summaries(
             f"Image summary `{name}` is empty array of shape {image.shape}."
         )
     writer.write_images(step=step, images=image_summaries)
-  return total_loss
-
-
-def _format_path(path, prefix: Optional[str] = None):
-  str_parts = [prefix] if prefix else []
-  str_parts.extend([core.paths.jax_key_entry_to_str(p) for p in path])
-  return "/".join(str_parts)
+    writer.flush()
 
 
 def _compute_metric(metric: metrics.Metric, state: Any):
@@ -302,6 +284,11 @@ def compute_and_flatten_summaries(
     values = jax.tree_util.tree_map(compute_fn, summarizers)
   else:
     values = jax.tree_util.tree_map(compute_fn, summarizers, states)
+
+  def _format_path(path, prefix: Optional[str] = None):
+    str_parts = [prefix] if prefix else []
+    str_parts.extend([core.paths.jax_key_entry_to_str(p) for p in path])
+    return "/".join(str_parts)
 
   flat_values, _ = jax.tree_util.tree_flatten_with_path(values)
   flat_results = {
@@ -413,3 +400,21 @@ def ensure_workdir(workdir: epath.PathLike):
 
   logging.info("Creating workdir: %s", workdir)
   workdir.mkdir(parents=True, exist_ok=True)
+
+
+def add_flatboards(cfg):
+  """Add flatboards based on cfg.flatboards or default flatboards."""
+  dashboard_factories = cfg.flatboards
+  if not dashboard_factories:
+    dashboard_factories = get_default_dashboards(cfg)
+  flatboard.add_flatboard_artifacts(dashboard_factories)
+
+
+def sync():
+  """Syncs hosts and empties async computation queue."""
+
+  def _sync(x):
+    return jax.lax.psum(x, "i")
+
+  x = jnp.ones([jax.local_device_count()])
+  return jax.pmap(_sync, "i")(x).block_until_ready()
