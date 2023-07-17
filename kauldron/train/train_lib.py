@@ -312,15 +312,18 @@ def tree_flatten_with_slash_path(config_dict) -> dict[str, Any]:
 
 def get_loss_y_keys(config) -> Sequence[str]:
   """Get a list of loss-keys for a given config."""
-  loss_names = {"total"} | {
-      k for k in tree_flatten_with_slash_path(config.train_losses)
-  }
-  # add evaluator losses
+  # train losses
+  loss_names = {k for k in tree_flatten_with_slash_path(config.train_losses)}
+  # evaluator losses
   for evaluator in config.eval.flatten():
     # TODO(epot): Cleaner way to support metrics for custom evaluator
     if not hasattr(evaluator, "losses"):
       continue
     loss_names |= {k for k in tree_flatten_with_slash_path(evaluator.losses)}
+
+  # If more than one loss, add the total loss
+  if len(loss_names) > 1:
+    loss_names = {"total"} | loss_names
   return [f"losses/{l.replace('.', '/')}" for l in loss_names]
 
 
