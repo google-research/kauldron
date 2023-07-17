@@ -32,11 +32,29 @@ class _Status:
   def is_lead_host(self) -> bool:
     return jax.process_index() == 0
 
+  @functools.cached_property
+  def wu(self) -> xmanager_api.WorkUnit:
+    if not self.on_xmanager:
+      raise RuntimeError("Not running on Xmanager.")
+
+    return xmanager_api.XManagerApi().get_current_work_unit()
+
+  @functools.cached_property
+  def wid(self) -> int:
+    if not self.on_xmanager:
+      raise RuntimeError("Not running on Xmanager.")
+    return self.wu.id
+
+  @functools.cached_property
+  def xid(self) -> int:
+    if not self.on_xmanager:
+      raise RuntimeError("Not running on Xmanager.")
+    return self.wu.experiment_id
+
   def log(self, msg: str) -> None:
     """Log a message (from lead host)."""
     if self.on_xmanager and self.is_lead_host:
-      xm_wu = xmanager_api.XManagerApi().get_current_work_unit()
-      xm_wu.set_notes(msg)
+      self.wu.set_notes(msg)
     else:
       print(msg)  # Colab or local
 
