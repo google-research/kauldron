@@ -24,6 +24,8 @@ from etils import epath
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 from kauldron.typing import Array, Float, Scalar  # pylint: disable=g-multiple-import
 
+from unittest import mock as _mock ; xmanager_api = _mock.Mock()
+
 
 class KDMetricWriter(metric_writers.MetricWriter):
   """Writes summaries to logs, tf_summaries and datatables.
@@ -51,19 +53,33 @@ class KDMetricWriter(metric_writers.MetricWriter):
     else:
       self.scalar_writer = metric_writers.AsyncWriter(
           metric_writers.DatatableWriter(
-              datatable_name=f"/datatable/xid/{status.xid}/{collection}",
+              datatable_name=self.scalar_datatable_name,
               keys=[("wid", status.wid)],
           ),
       )
       self.array_writer = metric_writers.AsyncWriter(
           metric_writers.DatatableWriter(
-              datatable_name=f"/datatable/xid/{status.xid}/arrays",
-              keys=[("wid", status.wid), ("collection", collection)],
+              datatable_name=self.array_datatable_name,
+              keys=[("wid", status.wid)],
           ),
       )
       self.tf_summary_writer = metric_writers.SummaryWriter(
           logdir=str(self.workdir / collection)
       )
+
+    self.add_artifacts()
+
+  @property
+  def scalar_datatable_name(self) -> str:
+    if not status.on_xmanager:
+      raise RuntimeError("Not on XManager.")
+    return f"/datatable/xid/{status.xid}/{self.collection}"
+
+  @property
+  def array_datatable_name(self) -> str:
+    if not status.on_xmanager:
+      raise RuntimeError("Not on XManager.")
+    return f"/datatable/xid/{status.xid}/{self.collection}_arrays"
 
   def write_summaries(
       self,
@@ -122,6 +138,21 @@ class KDMetricWriter(metric_writers.MetricWriter):
   def write_element_spec(self, step: int, element_spec):
     texts = {"element_spec": f"```python\n{element_spec!s}\n```"}
     self.write_texts(step, texts)
+
+  def add_artifacts(self):
+    if not (status.on_xmanager and status.is_lead_host and status.wid == 1):
+      return  # only add artifacts from lead host of first work unit on XM
+
+    status.xp.create_artifact(
+        artifact_type=xmanager_api.ArtifactType.ARTIFACT_TYPE_STORAGE2_BIGTABLE,
+        artifact=self.array_datatable_name,
+        description=f"Arrays and images datatable ({self.collection})",
+    )
+    status.xp.create_artifact(
+        artifact_type=xmanager_api.ArtifactType.ARTIFACT_TYPE_STORAGE2_BIGTABLE,
+        artifact=self.scalar_datatable_name,
+        description=f"Scalars datatable ({self.collection})",
+    )
 
   def flush(self):
     self.scalar_writer.flush()

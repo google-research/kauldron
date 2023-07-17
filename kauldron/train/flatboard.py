@@ -218,14 +218,6 @@ def add_flatboard_artifacts(dashboard_factories: dict[str, DashboardFactory]):
           ).split("/revisions/")[0],
           description=name,
       )
-  # add artifacts for the datatables
-  for data_source in data_sources:
-    create_artifact_only_if_missing(
-        xp=xp,
-        artifact_type=xmanager_api.ArtifactType.ARTIFACT_TYPE_STORAGE2_BIGTABLE,
-        artifact=data_source,
-        description=data_source.rpartition("/")[-1],
-    )
 
 
 def create_artifact_only_if_missing(xp, artifact_type, description, artifact):

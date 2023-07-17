@@ -33,6 +33,13 @@ class _Status:
     return jax.process_index() == 0
 
   @functools.cached_property
+  def xp(self) -> xmanager_api.Experiment:
+    if not self.on_xmanager:
+      raise RuntimeError("Not running on Xmanager.")
+
+    return xmanager_api.XManagerApi().get_current_experiment()
+
+  @functools.cached_property
   def wu(self) -> xmanager_api.WorkUnit:
     if not self.on_xmanager:
       raise RuntimeError("Not running on Xmanager.")
