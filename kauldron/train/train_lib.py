@@ -65,10 +65,10 @@ def train(
   status.log("Configuring ...")
   cfg = konfig.resolve(raw_cfg)
   ensure_workdir(cfg.workdir)
+  add_flatboards(cfg)
 
   hooks = []
   if status.on_xmanager and status.is_lead_host:
-    add_flatboards(cfg)
     hooks.extend([
         periodic_actions.Profile(num_profile_steps=5, logdir=cfg.workdir),
         periodic_actions.ReportProgress(num_train_steps=cfg.num_train_steps),
@@ -404,6 +404,8 @@ def ensure_workdir(workdir: epath.PathLike):
 
 def add_flatboards(cfg):
   """Add flatboards based on cfg.flatboards or default flatboards."""
+  if not status.on_xmanager or not status.is_lead_host or status.wid != 1:
+    return  # only add flatboards once per experiment
   dashboard_factories = cfg.flatboards
   if not dashboard_factories:
     dashboard_factories = get_default_dashboards(cfg)
