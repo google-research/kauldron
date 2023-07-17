@@ -26,13 +26,16 @@ from kauldron.typing.array_types import (  # pylint: disable=g-multiple-import
     Float32,
     Int,
     Integer,
+    Scalar,
+    ScalarFloat,
+    ScalarInt,
     TfArray,
     TfFloat,
     TfFloat32,
     TfInt,
     TfUInt8,
-    UInt8,
     UInt32,
+    UInt8,
 )
 from kauldron.typing.shape_spec import Memo, Shape  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.typing.type_check import TypeCheckError, typechecked  # pylint: disable=g-multiple-import,g-importing-member

@@ -22,16 +22,15 @@ import functools
 import itertools
 from typing import Any, Optional, TypeVar
 
-from clu import metric_writers
 import jax
 from kauldron import data
 from kauldron import losses as losses_lib
 from kauldron import metrics as metrics_lib
 from kauldron import summaries as summaries_lib
 from kauldron.train import config_lib
+from kauldron.train import metric_writer
 from kauldron.train import train_lib
 from kauldron.train import train_step
-from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 from kauldron.utils import config_util
 from kauldron.utils import utils
 import tensorflow as tf
@@ -181,13 +180,10 @@ class SingleEvaluator(EvaluatorBase):
     )
 
   @functools.cached_property
-  def writer(self) -> metric_writers.MetricWriter:
+  def writer(self) -> metric_writer.KDMetricWriter:
     """Metric writer."""
-    return metric_writers.create_default_writer(
-        self.base_cfg.workdir,
-        just_logging=not status.is_lead_host,
-        write_to_xm_measurements=False,
-        collection=self.name,
+    return metric_writer.KDMetricWriter(
+        workdir=self.base_cfg.workdir, collection=self.name
     )
 
   def flatten(self) -> list[EvaluatorBase]:

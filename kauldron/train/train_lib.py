@@ -20,7 +20,6 @@ import functools
 from typing import Any, Optional, Sequence, Tuple
 
 from absl import logging
-from clu import metric_writers
 from clu import periodic_actions
 from etils import epath
 import flax
@@ -32,6 +31,7 @@ from kauldron import metrics
 from kauldron import summaries
 from kauldron.train import config_lib
 from kauldron.train import flatboard
+from kauldron.train import metric_writer
 from kauldron.train import timer as timer_module
 from kauldron.train import train_step
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
@@ -73,13 +73,7 @@ def train(
         periodic_actions.Profile(num_profile_steps=5, logdir=cfg.workdir),
         periodic_actions.ReportProgress(num_train_steps=cfg.num_train_steps),
     ])
-
-  writer = metric_writers.create_default_writer(
-      cfg.workdir,
-      just_logging=not status.is_lead_host,
-      write_to_xm_measurements=False,
-      collection="train",
-  )
+  writer = metric_writer.KDMetricWriter(workdir=cfg.workdir, collection="train")
 
   status.log("Initializing ...")
   train_iter = cfg.train_ds(seed=cfg.seed)

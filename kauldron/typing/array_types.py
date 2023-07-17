@@ -70,6 +70,10 @@ UInt8 = ArrayAliasMeta("UInt8", jaxtyping.UInt8)
 UInt32 = ArrayAliasMeta("UInt32", jaxtyping.UInt32)
 Integer = ArrayAliasMeta("Integer", jaxtyping.Integer)
 
+Scalar = Array[""]
+ScalarFloat = Float[""]
+ScalarInt = Integer[""]
+
 TfArray = ArrayAliasMeta("TfArray", jaxtyping.Shaped, array_types=(tf.Tensor,))
 TfFloat = ArrayAliasMeta("TfFloat", jaxtyping.Float, array_types=(tf.Tensor,))
 TfFloat32 = ArrayAliasMeta(
