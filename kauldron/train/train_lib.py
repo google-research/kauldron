@@ -94,13 +94,17 @@ def train(
   ckptr = cfg.checkpointer
   state = ckptr.restore(state, noop_if_missing=True)
   latest_step = ckptr.latest_step
+  initial_step = 0 if not latest_step else latest_step
+
+  writer.write_config(initial_step, raw_cfg)
+  writer.write_param_overview(initial_step, state.params)
+  writer.write_element_spec(initial_step, train_iter.element_spec)
 
   state_repl = flax.jax_utils.replicate(state)
   rng_with_device_id = jax.pmap(jax.random.fold_in)(
       state_repl.rng, jnp.arange(jax.local_device_count())
   )
   state_repl = state_repl.replace(rng=rng_with_device_id)
-  initial_step = 0 if not latest_step else latest_step
 
   timer = timer_module.PerformanceTimer(
       initial_step_num=initial_step,
