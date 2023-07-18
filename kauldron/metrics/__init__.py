@@ -21,5 +21,6 @@ from kauldron.metrics.classification import RocAuc
 from kauldron.metrics.clustering import Ari
 from kauldron.metrics.image import LpipsVgg
 from kauldron.metrics.image import Psnr
+from kauldron.metrics.stats import Norm
 from kauldron.metrics.stats import Std
 # pylint: enable=g-importing-member

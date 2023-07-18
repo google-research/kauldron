@@ -64,6 +64,10 @@ def get_config():
       "recon": kd.losses.L2(preds="preds.image", targets="batch.image"),
   }
 
+  cfg.train_metrics = {
+      "latent_norm": kd.metrics.Norm(tensor="interms.encoder.__call__[0]")
+  }
+
   cfg.train_summaries = {
       "gt": kd.summaries.ShowImages(images="batch.image", num_images=5),
       "recon": kd.summaries.ShowImages(images="preds.image", num_images=5),
