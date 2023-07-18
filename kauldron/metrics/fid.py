@@ -12,15 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for metrics/image."""
-
-from jax import numpy as jnp
-from kauldron.metrics import image
-
-
-def test_lpips_vgg():
-  img_a = jnp.zeros([2, 32, 32, 3], jnp.float32)
-  img_b = jnp.ones([2, 32, 32, 3], jnp.float32)
-  lpips_vgg = image.LpipsVgg(pred="pred", target="target", mask="mask")
-  state = lpips_vgg.get_state(pred=img_a, target=img_b, mask=None)
-  unused_result = lpips_vgg.compute(state)
+"""Fréchet Inception Distance (FID) metric."""

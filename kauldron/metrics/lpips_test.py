@@ -12,17 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Metrics."""
-# pylint: disable=g-importing-member
-from kauldron.metrics.base import Metric
-from kauldron.metrics.base import State
-from kauldron.metrics.classification import Accuracy
-from kauldron.metrics.classification import RocAuc
-from kauldron.metrics.clustering import Ari
-from kauldron.metrics.fid import Fid
-from kauldron.metrics.image import Psnr
-from kauldron.metrics.image import Ssim
-from kauldron.metrics.lpips import LpipsVgg
-from kauldron.metrics.stats import Norm
-from kauldron.metrics.stats import Std
-# pylint: enable=g-importing-member
+"""Tests for LPIPS metric."""
+
+from jax import numpy as jnp
+from kauldron.metrics import lpips
+
+
+def test_lpips_vgg():
+  img_a = jnp.zeros([2, 32, 32, 3], jnp.float32)
+  img_b = jnp.ones([2, 32, 32, 3], jnp.float32)
+  lpips_vgg = lpips.LpipsVgg(pred="pred", target="target", mask="mask")
+  state = lpips_vgg.get_state(pred=img_a, target=img_b, mask=None)
+  unused_result = lpips_vgg.compute(state)

@@ -12,21 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Metrics for image evaluation."""
+"""Simple metrics for image evaluation."""
 
 from __future__ import annotations
 
 import dataclasses
-import functools
 from typing import Optional
 
 from clu import metrics as clu_metrics
-from etils import epath
 import flax
-from flax import linen as nn
 import flax.struct
 import jax
 from jax import numpy as jnp
+import jax.scipy as jsp
 from kauldron.metrics import base
 from kauldron.typing import Float, Key, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
@@ -65,104 +63,91 @@ class Psnr(base.Metric):
     return self.State.from_model_output(values=values, mask=mask)
 
 
-# Should be private, but changing the name of the class breaks ckpt loading...
-class VggBlock(nn.Module):
-  """Implementation of a block within the VGG network."""
+# https://github.com/google-research/google-research/blob/abe03104c849ca228af386d785027809d7976a8c/jaxnerf/nerf/utils.py#L278
+def _compute_ssim(
+    img0: Float["*b h w c"],
+    img1: Float["*b h w c"],
+    max_val: float,
+    filter_size: int,
+    filter_sigma: float,
+    k1: float,
+    k2: float,
+) -> Float["*b 1"]:
+  """Computes SSIM from two images.
 
-  num_features: int
-  num_layers: int
+  This function was modeled after tf.image.ssim, and should produce comparable
+  output.
 
-  @nn.compact
-  def __call__(self, x):
-    for _ in range(self.num_layers):
-      x = nn.Conv(
-          features=self.num_features, kernel_size=(3, 3), padding="SAME"
-      )(x)
-      x = jax.nn.relu(x)
-    return x
+  Args:
+    img0: array. An image of size [..., width, height, num_channels].
+    img1: array. An image of size [..., width, height, num_channels].
+    max_val: float > 0. The maximum magnitude that `img0` or `img1` can have.
+    filter_size: int >= 1. Window size.
+    filter_sigma: float > 0. The bandwidth of the Gaussian used for filtering.
+    k1: float > 0. One of the SSIM dampening parameters.
+    k2: float > 0. One of the SSIM dampening parameters.
 
+  Returns:
+    Each image's mean SSIM.
+  """
+  # Construct a 1D Gaussian blur filter.
+  hw = filter_size // 2
+  shift = (2 * hw - filter_size + 1) / 2
+  f_i = ((jnp.arange(filter_size) - hw + shift) / filter_sigma) ** 2
+  filt = jnp.exp(-0.5 * f_i)
+  filt /= jnp.sum(filt)
 
-# Should be private, but changing the name of the class breaks ckpt loading...
-class VggNet(nn.Module):
-  """Implementation of the VGG network which returns some partial results."""
+  # Blur in x and y (faster than the 2D convolution).
+  filt_fn1 = lambda z: jsp.signal.convolve2d(z, filt[:, None], mode="valid")
+  filt_fn2 = lambda z: jsp.signal.convolve2d(z, filt[None, :], mode="valid")
 
-  @nn.compact
-  def __call__(self, x):
-    assert x.shape[-2] >= 16, str(x.shape)
-    assert x.shape[-3] >= 16, str(x.shape)
-    outputs = []
-    for num_features, num_layers in ((64, 2), (128, 2), (256, 3), (512, 3)):
-      x = VggBlock(num_features=num_features, num_layers=num_layers)(x)
-      outputs.append(x)
-      x = nn.max_pool(x, window_shape=(2, 2), strides=(2, 2))
-    outputs.append(VggBlock(num_features=512, num_layers=3)(x))
-    return tuple(outputs)
+  # Vmap the blurs to the tensor size, and then compose them.
+  num_dims = len(img0.shape)
+  map_axes = tuple(list(range(num_dims - 3)) + [num_dims - 1])
+  for d in map_axes:
+    filt_fn1 = jax.vmap(filt_fn1, in_axes=d, out_axes=d)
+    filt_fn2 = jax.vmap(filt_fn2, in_axes=d, out_axes=d)
+  filt_fn = lambda z: filt_fn1(filt_fn2(z))
 
+  mu0 = filt_fn(img0)
+  mu1 = filt_fn(img1)
+  mu00 = mu0 * mu0
+  mu11 = mu1 * mu1
+  mu01 = mu0 * mu1
+  sigma00 = filt_fn(img0**2) - mu00
+  sigma11 = filt_fn(img1**2) - mu11
+  sigma01 = filt_fn(img0 * img1) - mu01
 
-class _LpipsVgg(nn.Module):
-  """Computes the LPIPS VGG score."""
+  # Clip the variances and covariances to valid values.
+  # Variance must be non-negative:
+  sigma00 = jnp.maximum(0.0, sigma00)
+  sigma11 = jnp.maximum(0.0, sigma11)
+  sigma01 = jnp.sign(sigma01) * jnp.minimum(
+      jnp.sqrt(sigma00 * sigma11), jnp.abs(sigma01)
+  )
 
-  @staticmethod
-  def read_params(params):
-    path = epath.Path(
-        "/memfile/lpips_vgg_weights_memfile/lpips_vgg_weights.bin"
-    )
-    return flax.serialization.from_bytes(params, path.read_bytes())
-
-  @nn.compact
-  def __call__(self, images_1, images_2, epsilon: float = 1e-5):
-    """Compute the loss between inputs[0] and inputs[1].
-
-    Both images must have height & width of at least 16 pixels.
-
-    Args:
-      images_1: A [h, w, 3] float array, assumed to range between 0 and 1.
-      images_2: A [h, w, 3] float array, assumed to range between 0 and 1.
-      epsilon: Used for numerical stability to avoid NaNs.
-
-    Returns:
-      A scalar containing the computed loss between images_1 & images_2.
-    """
-    # Note that these normalization values include a shift from from 0->1 to
-    # -1->1 in the shift and scale.
-    shift = (1.0 + jnp.array([-0.030, -0.088, -0.188])) / 2.0
-    scale = jnp.array([0.458, 0.448, 0.450]) / 2.0
-    combined = (jnp.stack((images_1, images_2)) - shift) / scale
-
-    outputs = VggNet()(combined)
-    out = 0.0
-    for output in outputs:
-      var = jnp.sum(
-          jnp.square(output), axis=-1, keepdims=True, dtype=jnp.float32
-      )
-      normalization_scale = jax.lax.rsqrt(var + epsilon)
-      feature_outputs = output * normalization_scale
-      squared_diff = jnp.square(feature_outputs[1] - feature_outputs[0])
-      res = nn.Conv(
-          features=1,
-          kernel_size=(1, 1),
-          padding="SAME",
-          use_bias=False,
-      )(squared_diff[jnp.newaxis])
-      # The mean over all pixels is set to float32 to avoid precision issues.
-      out += jnp.mean(res, axis=(-3, -2, -1), dtype=jnp.float32)
-    return out
-
-
-@functools.cache
-def _get_vgg_model():
-  return _LpipsVgg()
+  c1 = (k1 * max_val) ** 2
+  c2 = (k2 * max_val) ** 2
+  numer = (2 * mu01 + c1) * (2 * sigma01 + c2)
+  denom = (mu00 + mu11 + c1) * (sigma00 + sigma11 + c2)
+  ssim_map = numer / denom
+  ssim = jnp.mean(ssim_map, list(range(num_dims - 3, num_dims)))
+  return ssim
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
-class LpipsVgg(base.Metric):
-  """VGG LPIPS.
-
-  """
+class Ssim(base.Metric):
+  """Structural similarity (SSIM)."""
 
   pred: Key
   target: Key
   mask: Optional[Key] = None
+
+  max_val: float = 1
+  filter_size: int = 11
+  filter_sigma: float = 1.5
+  k1: float = 0.01
+  k2: float = 0.03
 
   @flax.struct.dataclass
   class State(clu_metrics.Average):
@@ -174,12 +159,14 @@ class LpipsVgg(base.Metric):
       pred: Float["*b h w c"],
       target: Float["*b h w c"],
       mask: Optional[Float["*b 1"]],
-  ) -> LpipsVgg.State:
-    vgg_model = _get_vgg_model()
-    vgg_params = _LpipsVgg.read_params(
-        vgg_model.init(
-            jax.random.PRNGKey(0), jnp.ones((32, 32, 3)), jnp.ones((32, 32, 3))
-        )
+  ) -> Ssim.State:
+    values = _compute_ssim(
+        pred,
+        target,
+        self.max_val,
+        self.filter_size,
+        self.filter_sigma,
+        self.k1,
+        self.k2,
     )
-    values = vgg_model.apply(vgg_params, pred, target)
     return self.State.from_model_output(values=values, mask=mask)
