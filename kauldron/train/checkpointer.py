@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import dataclasses
+import datetime
 import functools
 from typing import Optional, Sequence
 
@@ -32,7 +33,9 @@ class Checkpointer:
   workdir: str | epath.Path
 
   save_interval_steps: int
-  max_to_keep: Optional[int] = None  # Keep all.
+  max_to_keep: Optional[int] = 3
+  keep_time_interval: Optional[datetime.timedelta] = None
+  keep_period: Optional[int] = None
 
   fast: bool = True
 
@@ -42,6 +45,8 @@ class Checkpointer:
     mgr_options = orbax.CheckpointManagerOptions(
         save_interval_steps=self.save_interval_steps,
         max_to_keep=self.max_to_keep,
+        keep_time_interval=self.keep_time_interval,
+        keep_period=self.keep_period,
         step_prefix="ckpt",
         # TODO(msajjadi): Re-enable this once we've figured it out.
         # step_format_fixed_length=9,
