@@ -41,16 +41,18 @@ class KDMetricWriter(metric_writers.MetricWriter):
   def __init__(self, workdir: epath.PathLike, collection: str):
     self.workdir = epath.Path(workdir)
     self.collection = collection
-    self.just_logging = not status.on_xmanager or not status.is_lead_host
     self.log_writer = metric_writers.AsyncWriter(
         metric_writers.LoggingWriter(collection)
     )
     noop = metric_writers.MultiWriter([])
-    if self.just_logging:
-      self.scalar_writer = noop
-      self.array_writer = noop
-      self.tf_summary_writer = noop
+    if status.is_lead_host:
+      self.tf_summary_writer = metric_writers.SummaryWriter(
+          logdir=str(self.workdir / collection)
+      )
     else:
+      self.tf_summary_writer = noop
+
+    if status.on_xmanager and status.is_lead_host:
       self.scalar_writer = metric_writers.AsyncWriter(
           metric_writers.DatatableWriter(
               datatable_name=self.scalar_datatable_name,
@@ -63,9 +65,9 @@ class KDMetricWriter(metric_writers.MetricWriter):
               keys=[("wid", status.wid)],
           ),
       )
-      self.tf_summary_writer = metric_writers.SummaryWriter(
-          logdir=str(self.workdir / collection)
-      )
+    else:
+      self.scalar_writer = noop
+      self.array_writer = noop
 
     self.add_artifacts()
 
