@@ -16,6 +16,8 @@
 # pylint: disable=g-importing-member
 from kauldron.metrics.base import Metric
 from kauldron.metrics.base import State
+from kauldron.metrics.base import TreeMap
+from kauldron.metrics.base import TreeReduce
 from kauldron.metrics.classification import Accuracy
 from kauldron.metrics.classification import RocAuc
 from kauldron.metrics.clustering import Ari

@@ -230,7 +230,7 @@ def write_summaries(
             f"Image summary `{name}` is empty array of shape {image.shape}."
         )
     writer.write_images(step=step, images=image_summaries)
-    writer.flush()
+  writer.flush()
 
 
 def _compute_metric(metric: metrics.Metric, state: Any):
