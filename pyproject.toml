@@ -51,6 +51,8 @@ dynamic = ["version"]
 [project.urls]
 homepage = "https://github.com/google-research/kauldron"
 repository = "https://github.com/google-research/kauldron"
+documentation = "https://kauldron.readthedocs.io"
+
 # Other: `documentation`, `changelog`
 
 [project.optional-dependencies]
