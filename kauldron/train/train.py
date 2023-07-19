@@ -18,9 +18,13 @@ r"""Training binary.
 
 from __future__ import annotations
 
+import contextlib
+
 from absl import app
+from absl import flags
 import jax
 from kauldron.train import train_lib
+from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 from ml_collections import config_flags
 
 _CONFIG = config_flags.DEFINE_config_file(
@@ -30,7 +34,6 @@ _CONFIG = config_flags.DEFINE_config_file(
 
 def main(_):
   train_lib.train(_CONFIG.value)
-
 
 if __name__ == "__main__":
   # Adds jax flags to the program.
