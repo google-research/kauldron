@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import abc
 import dataclasses
 import datetime
 import functools
@@ -27,8 +28,54 @@ import jax
 import orbax.checkpoint as orbax
 
 
+class BaseCheckpointer(abc.ABC):
+  """Basic checkpointing interface."""
+
+  @abc.abstractmethod
+  def restore(
+      self,
+      initial_state,
+      step: int = -1,
+      *,
+      noop_if_missing: bool = False,
+  ):
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def should_save(self, step: int) -> bool:
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def save_state(
+      self,
+      state,
+      step: int,
+      *,
+      force: bool = False,
+  ) -> bool:
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def maybe_save_state(
+      self,
+      state,
+      step: int,
+      *,
+      force: bool = False,
+  ) -> bool:
+    raise NotImplementedError()
+
+  @property
+  def latest_step(self) -> Optional[int]:
+    return None
+
+  @property
+  def all_steps(self) -> Sequence[int]:
+    return []
+
+
 @dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
-class Checkpointer:
+class Checkpointer(BaseCheckpointer):
   """Basic Orbax Checkpointmanager."""
   workdir: str | epath.Path
 
@@ -131,6 +178,27 @@ class Checkpointer:
   @property
   def all_steps(self) -> Sequence[int]:
     return self._ckpt_mgr.all_steps()
+
+
+@dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
+class NoopCheckpointer(BaseCheckpointer):
+  """Does nothing."""
+
+  def restore(
+      self, initial_state, step: int = -1, *, noop_if_missing: bool = False
+  ):
+    return initial_state
+
+  def should_save(self, step: int) -> bool:
+    return False
+
+  def save_state(self, state, step: int, *, force: bool = False) -> bool:
+    return False
+
+  def maybe_save_state(self, state, step: int, *, force: bool = False) -> bool:
+    if force:
+      raise ValueError("NooCheckpointer cannot be forced to save.")
+    return False
 
 
 class FastCheckpointManager(orbax.CheckpointManager):
