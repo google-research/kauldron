@@ -368,29 +368,41 @@ def get_data_collections(config: Any) -> list[str]:
 
 
 def get_default_dashboards(config):
+  """Return the default set of Flatboard dashboards for given config."""
   data_collections = get_data_collections(config)
-  return {
-      "losses": flatboard.DefaultDashboard(
-          title="{xid}: Losses",
-          y_keys=get_loss_y_keys(config),
-          collections=data_collections,
-      ),
-      "metrics": flatboard.DefaultDashboard(
-          title="{xid}: Metrics",
-          y_keys=get_metric_y_keys(config),
-          collections=data_collections,
-      ),
-      "schedules": flatboard.DefaultDashboard(
-          title="{xid}: Schedules",
-          y_keys=get_schedule_y_keys(config),
-          collections=["train"],
-      ),
-      "perf_stats": flatboard.DefaultDashboard(
-          title="{xid}: Performance Statistics",
-          y_keys=get_perf_stat_y_keys(),
-          collections=["train"],
-      ),
-  }
+  dashboards = {}
+  # losses
+  y_keys = get_loss_y_keys(config)
+  if y_keys:
+    dashboards["losses"] = flatboard.DefaultDashboard(
+        title="{xid}: Losses", y_keys=y_keys, collections=data_collections
+    )
+
+  # metric
+  y_keys = get_metric_y_keys(config)
+  if y_keys:
+    dashboards["metrics"] = flatboard.DefaultDashboard(
+        title="{xid}: Metrics", y_keys=y_keys, collections=data_collections
+    )
+
+  # schedules
+  y_keys = get_schedule_y_keys(config)
+  if y_keys:
+    dashboards["schedules"] = flatboard.DefaultDashboard(
+        title="{xid}: Schedules",
+        y_keys=y_keys,
+        collections=["train"],
+    )
+
+  # perf_stats
+  y_keys = get_perf_stat_y_keys()
+  if y_keys:
+    dashboards["perf_stats"] = flatboard.DefaultDashboard(
+        title="{xid}: Performance Statistics",
+        y_keys=y_keys,
+        collections=["train"],
+    )
+  return dashboards
 
 
 def ensure_workdir(workdir: epath.PathLike):

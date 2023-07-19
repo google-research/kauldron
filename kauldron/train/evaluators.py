@@ -111,6 +111,7 @@ class SingleEvaluator(EvaluatorBase):
     # Eventually copy the metrics from the train config
     if hasattr(self, 'base_cfg'):
       for name in ['losses', 'metrics', 'summaries']:
+        # TODO(klausg): filter out metrics / summaries that access grads/updates
         if getattr(self, name) is _REUSE_TRAIN:
           object.__setattr__(
               self, name, getattr(self.base_cfg, f'train_{name}')
