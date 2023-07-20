@@ -122,7 +122,7 @@ class Loss(metrics.Metric, abc.ABC):
 
   step: Key = "step"
   mask: Optional[Key] = None
-  weight: float | Schedule = 1.0
+  weight: int | float | Schedule = 1.0
 
   State: ClassVar[type[AllReduceMean]] = (  # pylint: disable=invalid-name
       AllReduceMean
@@ -211,8 +211,8 @@ class Loss(metrics.Metric, abc.ABC):
     Returns:
       The weight of this loss term for the total loss (for the given step).
     """
-    if isinstance(self.weight, float):
-      return jnp.array(self.weight)
+    if isinstance(self.weight, (float, int)):
+      return jnp.array(self.weight, dtype=jnp.float32)
     else:
       if step is None:
         raise ValueError("Weight is a schedule, so step is required.")
