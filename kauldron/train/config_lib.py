@@ -60,7 +60,9 @@ class Config(config_util.BaseConfig):
       default_factory=flax.core.FrozenDict
   )
   optimizer: optax.GradientTransformation
-  checkpointer: checkpointer_lib.Checkpointer
+  checkpointer: checkpointer_lib.BaseCheckpointer = dataclasses.field(
+      default_factory=checkpointer_lib.NoopCheckpointer
+  )
 
   eval: evaluators.EvaluatorBase = dataclasses.field(
       default_factory=evaluators.NoopEvaluator
