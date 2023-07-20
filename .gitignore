@@ -1,3 +1,7 @@
+# Ignore generated docs
+docs/_build
+docs/api
+
 # Compiled python modules.
 *.pyc
 
