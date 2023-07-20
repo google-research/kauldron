@@ -32,7 +32,7 @@ apitree.make_project(
         alias='kd',
     ),
     includes_paths={
-        'kauldron/konfig/README.md': 'konfig.md',
+        'kauldron/konfig/docs/demo.ipynb': 'konfig.ipynb',
         'kauldron/klinen/README.md': 'klinen.md',
     },
     globals=globals(),
