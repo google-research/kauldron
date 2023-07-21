@@ -238,9 +238,10 @@ class MultiEvaluator(EvaluatorBase):
   def __post_init__(self):
     # Propagate the cfg to the children
     if hasattr(self, 'base_cfg'):
-      self.children = [
+      children = [
           dataclasses.replace(c, base_cfg=self.base_cfg) for c in self.children
       ]
+      object.__setattr__(self, 'children', children)
 
   def maybe_eval(self, *, step: int, state: train_step.TrainState):
     for evaluator in self.children:
