@@ -32,9 +32,9 @@ def resolve_kwargs(
   Args:
     keyed_obj: An instance of a class with fields annotated as Key.
     context: Any object from which the values are retrieved.
-    func: Optionally pass a function to be called with the kwargs. This
-      restricts the gathered kwargs to the arguments of that function and treats
-      arguments with default parameters as optional.
+    func: Optionally pass a function to be called with the kwargs. This adds
+      some extra checking to ensure the call function signature matches the
+      provided keys.
 
   Returns:
     A dict mapping Key names to values from context corresponding to the paths
@@ -51,21 +51,33 @@ def resolve_kwargs(
   }
 
   if func is not None:
-    # If a function is passed then only resolve values for its arguments
-    # (unless it accepts a **kwargs parameter)
+    # If a function is passed (and doesn't accept **kwargs), then ensure that
+    # it has a parameter for each key, and that the parameter for each optional
+    # key also specifies a default value
     parameters = inspect.signature(func).parameters
     has_var_kwargs = any(
         p.kind == inspect.Parameter.VAR_KEYWORD for p in parameters.values()
     )
     if not has_var_kwargs:
-      key_paths = {k: v for k, v in key_paths.items() if k in parameters}
-    # treat arguments with defaults as optional
-    args_with_default = {
-        name
-        for name, param in parameters.items()
-        if param.default != inspect.Parameter.empty
-    }
-    optional_keys |= args_with_default
+      missing_params = {k for k in key_paths if k not in parameters}
+      if missing_params:
+        raise TypeError(
+            f"Function {func.__name__} is missing parameters for key(s) "
+            f"{missing_params}. Expected {key_paths.keys()} but got "
+            f"{parameters}."
+        )
+      args_with_default = {
+          name
+          for name, param in parameters.items()
+          if param.default != inspect.Parameter.empty
+      }
+      missing_default = {k for k in optional_keys if k not in args_with_default}
+      if missing_default:
+        raise TypeError(
+            f"Key(s) {missing_default!r} are marked as optional, so the "
+            f"corresponding argument in {func.__name__} has to specify "
+            "default value."
+        )
 
   return get_values_from_context(context, key_paths, optional_keys)
 
