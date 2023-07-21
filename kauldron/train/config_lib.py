@@ -17,12 +17,12 @@
 from collections.abc import Mapping
 import dataclasses
 from typing import Optional
-
 from etils import edc
 from etils import epath
 import flax
 from flax import linen as nn
 from kauldron import data
+from kauldron import konfig
 from kauldron import losses
 from kauldron import metrics
 from kauldron import summaries
@@ -39,7 +39,7 @@ class Config(config_util.BaseConfig):
 
   seed: int
   # usually set by the launcher
-  workdir: edc.AutoCast[epath.Path] = epath.Path()
+  workdir: edc.AutoCast[epath.Path] = konfig.placeholder(str)
 
   # TODO(epot): Replace by non-TF generic protocol
   train_ds: data.TFDataPipeline
