@@ -78,6 +78,7 @@ class ShowImages(ImageSummary):
   )
   width: Optional[int] = None
   height: Optional[int] = None
+  in_vrange: Optional[tuple[float, float]] = None
 
   def gather_kwargs(self, context: Any) -> dict[str, Images]:
     # optimize gather_kwargs to only return num_images many images
@@ -100,6 +101,10 @@ class ShowImages(ImageSummary):
     # flatten batch dimensions
     images = einops.rearrange(images, "... h w c -> (...) h w c")
     images = images[: self.num_images]
+    # maybe rescale
+    if self.in_vrange is not None:
+      vmin, vmax = self.in_vrange
+      images = np.clip((images - vmin) / (vmax - vmin), 0.0, 1.0)
     # convert to float
     images = media.to_type(images, np.float32)
     # maybe resize
