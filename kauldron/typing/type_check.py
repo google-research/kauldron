@@ -25,9 +25,7 @@ import types
 from typing import Any, Type, Union
 
 from etils import enp
-from jax._src.dtypes import (
-    is_opaque_dtype as _deprecated_is_opaque_dtype,  # pylint: disable=g-importing-member
-)
+import jax
 import jaxtyping
 from kauldron.typing import shape_spec
 import typeguard
@@ -306,9 +304,16 @@ def custom_array_type_union_checker(
   )
 
 
+def _is_jax_extended_dtype(dtype: Any) -> bool:
+  if hasattr(jax.dtypes, "extended"):  # jax>=0.4.14
+    return jax.numpy.issubdtype(dtype, jax.dtypes.extended)  # type: ignore[module-attr]
+  else:  # jax<=0.4.13
+    return jax.core.is_opaque_dtype(dtype)  # type: ignore[module-attr]
+
+
 def get_dtype_str(value) -> str:
   """Get value dtype as a string for any array (np, jnp, tf, torch)."""
-  if _deprecated_is_opaque_dtype(value.dtype):
+  if _is_jax_extended_dtype(value.dtype):
     return str(value.dtype)
   elif hasattr(value.dtype, "type") and hasattr(value.dtype.type, "__name__"):
     # JAX, numpy
