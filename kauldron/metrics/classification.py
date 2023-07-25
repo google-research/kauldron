@@ -45,7 +45,7 @@ class Accuracy(base.Metric):
       self,
       logits: Float["*b n"],
       labels: Int["*b 1"],
-      mask: Optional[Float["*b 1"]],
+      mask: Optional[Float["*b 1"]] = None,
   ) -> Accuracy.State:
     correct = logits.argmax(axis=-1, keepdims=True) == labels
     return self.State.from_model_output(values=correct, mask=mask)
@@ -70,7 +70,7 @@ class RocAuc(base.Metric):
       self,
       logits: Float["*b n"],
       labels: Int["*b 1"],
-      mask: Optional[Float["*b 1"]],
+      mask: Optional[Float["*b 1"]] = None,
   ) -> RocAuc.State:
     # simply collect the given values
     mask = jnp.ones_like(labels) if mask is None else mask

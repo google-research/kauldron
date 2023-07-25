@@ -138,7 +138,7 @@ class LpipsVgg(base.Metric):
       self,
       pred: Float["*b h w c"],
       target: Float["*b h w c"],
-      mask: Optional[Float["*b 1"]],
+      mask: Optional[Float["*b 1"]] = None,
   ) -> LpipsVgg.State:
     vgg_model = _get_vgg_model()
     vgg_params = _LpipsVgg.read_params(

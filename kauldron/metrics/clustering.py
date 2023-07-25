@@ -61,7 +61,7 @@ class Ari(base.Metric):
       self,
       predictions: Integer["*b t h w 1"],
       labels: Integer["*b t h w 1"],
-      mask: Optional[Float["*b 1"]],
+      mask: Optional[Float["*b 1"]] = None,
   ) -> Ari.State:
     # TODO(svansteenkiste): support non video inputs.
     # TODO(svansteenkiste): Support video padding mask.

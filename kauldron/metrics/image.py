@@ -57,7 +57,7 @@ class Psnr(base.Metric):
       self,
       pred: Float["*b h w c"],
       target: Float["*b h w c"],
-      mask: Optional[Float["*b 1"]],
+      mask: Optional[Float["*b 1"]] = None,
   ) -> Psnr.State:
     values = _psnr(a=pred, b=target, dynamic_range=self.dynamic_range)
     return self.State.from_model_output(values=values, mask=mask)
@@ -158,7 +158,7 @@ class Ssim(base.Metric):
       self,
       pred: Float["*b h w c"],
       target: Float["*b h w c"],
-      mask: Optional[Float["*b 1"]],
+      mask: Optional[Float["*b 1"]] = None,
   ) -> Ssim.State:
     values = _compute_ssim(
         pred,
