@@ -32,7 +32,7 @@ dependencies = [
     "numpy",
     "numpy",
     "optax",
-    "orbax",
+    "orbax-checkpoint",
     "regex",
     "scikit-learn",
     "tensorflow",
