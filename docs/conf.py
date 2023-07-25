@@ -50,9 +50,9 @@ _mocked_grain.RandomMapTransform = _MockedTransform
 
 
 # Early failure if kauldron cannot be imported
-from kauldron import kd  # pylint: disable=g-import-not-at-top
-
-del kd
+# Read-the-doc install kauldron not in `-e` edit mode, so should only import
+# kauldron after `apitree` import kauldron from the right path.
+# from kauldron import kd  # pylint: disable=g-import-not-at-top
 
 
 apitree.make_project(
