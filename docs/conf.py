@@ -22,8 +22,38 @@ pip install -e .[docs]
 sphinx-build -b html docs/ docs/_build
 ```
 """
+import sys
+from unittest import mock
 
 import apitree
+
+
+# TODO(epot): Delete once `grain` can be imported
+sys.modules['grain'] = mock.MagicMock()
+sys.modules['grain._src'] = mock.MagicMock()
+sys.modules['grain._src.core'] = mock.MagicMock()
+sys.modules['grain._src.core.constants'] = mock.MagicMock()
+sys.modules['grain._src.tensorflow'] = mock.MagicMock()
+sys.modules['grain._src.tensorflow.transforms'] = mock.MagicMock()
+sys.modules['grain.tensorflow'] = mock.MagicMock()
+
+import grain.tensorflow as _mocked_grain  # pylint: disable=g-import-not-at-top
+
+
+class _MockedTransform:
+  pass
+
+
+# Required for inheritance `class MyTransform(grain.MapTransform)`
+_mocked_grain.MapTransform = _MockedTransform
+_mocked_grain.RandomMapTransform = _MockedTransform
+
+
+# Early failure if kauldron cannot be imported
+from kauldron import kd  # pylint: disable=g-import-not-at-top
+
+del kd
+
 
 apitree.make_project(
     modules=apitree.ModuleInfo(

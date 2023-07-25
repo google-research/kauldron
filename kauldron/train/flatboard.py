@@ -22,6 +22,7 @@ from typing import Any, Optional, Sequence
 
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 
+from unittest import mock as _mock
 xmanager_api = _mock.Mock()
 fb = _mock.Mock()
 

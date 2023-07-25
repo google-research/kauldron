@@ -18,6 +18,7 @@ keywords = []
 # pip dependencies of the project
 dependencies = [
     "absl-py",
+    "altair",
     "clu",
     "einops",
     "etils[edc,enp,epath,epy,etree]",

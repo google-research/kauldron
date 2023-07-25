@@ -20,6 +20,8 @@ from absl import logging
 from etils import epy
 import jax
 
+from unittest import mock as _mock ; xmanager_api = _mock.Mock()
+
 
 class _Status:
   """Job context."""

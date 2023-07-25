@@ -21,7 +21,6 @@ from kauldron.metrics.base import TreeReduce
 from kauldron.metrics.classification import Accuracy
 from kauldron.metrics.classification import RocAuc
 from kauldron.metrics.clustering import Ari
-from kauldron.metrics.fid import Fid
 from kauldron.metrics.image import Psnr
 from kauldron.metrics.image import Ssim
 from kauldron.metrics.lpips import LpipsVgg
