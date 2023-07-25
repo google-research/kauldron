@@ -22,6 +22,7 @@ import hashlib
 import sys
 from typing import Any, TypeVar
 
+from etils.epy import _internal
 import jax
 import jax.random
 import numpy as np
@@ -168,12 +169,9 @@ def _mock_jax():
 def _normalize_jax_key(fn: _FnT) -> _FnT:
   """Mock `jax.random` to support custom Key object."""
 
-  # Support Colab reload
-  if hasattr(fn, '__original_fn__'):
-    fn = fn.__original_fn__
+  fn = _internal.unwrap_on_reload(fn)  # pylint: disable=protected-access
 
-  # Save the original function (to support reload)
-  fn.__original_fn__ = fn
+  # Support Colab reload
 
   @functools.wraps(fn)
   def new_fn(key, *args, **kwargs):

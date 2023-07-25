@@ -86,7 +86,7 @@ def recursive_replace(
   self_parent = Future()
 
   # Cache the modules shared across fields.
-  # Note: This does not support cicles (module.child is module)
+  # Note: This does not support circles (`module.child is module`)
   cache: dict[int, module_lib.Module] = {}
 
   # TODO(epot): Could have more optimized implementation (skip non-module
