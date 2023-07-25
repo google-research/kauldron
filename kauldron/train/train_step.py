@@ -29,6 +29,7 @@ from kauldron import metrics as kd_metrics
 from kauldron import summaries as kd_summaries
 import kauldron.data.utils as data_utils
 from kauldron.typing import ElementSpec, Float, PRNGKey, PyTree  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.utils import train_property  # pylint: disable=unused-import
 import optax
 
 _Params = PyTree[Float["..."]]
@@ -181,13 +182,25 @@ class ModelWithAux:
     )
     context = core.Context(step=0, batch=mock_batch)
     args, kwargs = data_utils.get_model_inputs(self.model, context)
-    params = self.model.init(init_rng, *args, method=model_method, **kwargs)[
-        "params"
-    ]
+    params = self.model.init(
+        init_rng,
+        *args,
+        method=model_method,
+        is_training=True,
+        **kwargs,
+    )["params"]
     params = flax.core.unfreeze(params)
     return params
 
-  def forward(self, params, batch, rngs, step) -> tuple[float, core.Context]:
+  def forward(
+      self,
+      params,
+      *,
+      batch,
+      rngs,
+      step,
+      is_training,
+  ) -> tuple[float, core.Context]:
     """Forward pass of the model including losses."""
     context = core.Context(step=step, batch=batch, params=params)
     args, kwargs = data_utils.get_model_inputs(self.model, context)
@@ -196,6 +209,7 @@ class ModelWithAux:
         *args,
         rngs=rngs,
         capture_intermediates=True,  # TODO(klausg): check if need a filter here
+        is_training=is_training,
         **kwargs,
     )
     context = context.replace(
@@ -310,7 +324,13 @@ class TrainStep:
     # NOTE: ensure that evaluation metrics are computed from the OLD model state
     # *before* backprop gradients are applied.
     grad_fn = jax.grad(self.model_with_aux.forward, argnums=0, has_aux=True)
-    grads, context = grad_fn(state.params, batch, state.rng_streams, state.step)
+    grads, context = grad_fn(
+        state.params,
+        batch=batch,
+        rngs=state.rng_streams,
+        step=state.step,
+        is_training=True,
+    )
     grads = jax.lax.pmean(grads, axis_name="batch")
     updates, new_opt_state = self.optimizer.update(
         grads, state.opt_state, state.params
