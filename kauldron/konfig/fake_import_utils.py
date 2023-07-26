@@ -20,7 +20,9 @@ import builtins
 import contextlib
 import dataclasses
 import functools
-from typing import Optional, Iterator
+import inspect
+from typing import Iterator, Optional
+import unittest.mock
 
 from kauldron.konfig import configdict_proxy
 
@@ -45,6 +47,63 @@ def imports() -> Iterator[None]:
     None
   """
   with _fake_imports(proxy_cls=configdict_proxy.ConfigDictProxyObject):
+    yield
+
+
+@contextlib.contextmanager
+def mock_modules(*module_names: str):
+  """Contextmanager which replaces list of modules with ConfigDictProxyObjects.
+
+  Meant for updating configs in an interactive environments where
+  `with konfig.imports()` would be inconvenient, because the modules in
+  question should remain usable and not be globally replaced by
+  ConfigDictProxyObjects.
+
+  Example:
+  ```
+  from kauldron import kd
+
+  cfg = ...  # import or construct a konfig.ConfigDict instance
+
+  with kd.konfig.mock_modules("kd", "nn"):
+    cfg.losses["l1"] = kd.losses.L1(preds="preds.image", targets="batch.image")
+    # cfg.losses["l1"] is a konfig.ConfigDict rather than a kd.losses.L1
+
+  l1 = kd.losses.L1(preds="preds.image", targets="batch.image")
+  # l1 is still a kd.losses.L1 instance
+  ```
+
+  Args:
+    *module_names: names of already imported modules to be replaced with
+      ConfigDictProxyObjects inside the context. Should be the name of the
+      module as used in the globals() (rather than the full name of the module).
+      E.g. should be `np` instead of `numpy` if using `import numpy as np`.
+
+  Yields:
+    None
+  """
+  try:
+    # If using Notebook/Colab get the globals from there
+    import IPython  # pylint: disable=g-import-not-at-top
+    global_ns = IPython.get_ipython().kernel.shell.user_ns
+  except (ImportError, NameError, AttributeError):
+    # otherwise use the globals of the frame of the caller
+    # (two steps up because of the contextlib decorator)
+    global_ns = inspect.stack()[2].frame.f_globals
+
+  with contextlib.ExitStack() as stack:
+    for name in module_names:
+      local_name = f'__main__.{name}'
+      module_name = global_ns.get(name).__name__
+      stack.enter_context(
+          unittest.mock.patch(
+              local_name,
+              configdict_proxy.fake_import_utils._fake_import(  # pylint: disable=protected-access
+                  name=module_name,
+                  proxy_cls=configdict_proxy.ConfigDictProxyObject,
+              ),
+          )
+      )
     yield
 
 

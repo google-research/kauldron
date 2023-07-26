@@ -42,6 +42,7 @@ from kauldron.konfig.configdict_base import ConfigDict
 from kauldron.konfig.configdict_base import register_aliases
 from kauldron.konfig.configdict_proxy import resolve
 from kauldron.konfig.fake_import_utils import imports
+from kauldron.konfig.fake_import_utils import mock_modules
 from kauldron.konfig.ref_utils import ref_copy
 from kauldron.konfig.ref_utils import ref_fn
 from kauldron.konfig.ref_utils import WithRef
