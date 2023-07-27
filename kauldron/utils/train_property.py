@@ -28,7 +28,7 @@ _FnT = TypeVar('_FnT')
 
 
 @edc.dataclass
-@dataclasses.dataclass
+@dataclasses.dataclass(unsafe_hash=True, eq=True)
 class _Context:
   is_training: edc.ContextVar[bool | None] = None
 
@@ -79,26 +79,40 @@ def train_property() -> bool:
   Returns:
     The `is_training` property
   """
-  return property(_is_training)  # pytype: disable=bad-return-type
+  return _TrainProperty()  # pytype: disable=bad-return-type
 
 
-def _is_training(self) -> bool:
+class _TrainProperty:
   """`is_training` property."""
-  del self
 
-  # TODO(epot): Should mock `__hash__`, to depend on
-  # `model.is_training` value, so it trigger a re-compilation. This could be
-  # done by adding a `field(init=False)` to the `__dataclass_fields__`.
-  # Otherwise, `model.__call__()` could be cached as well as the `.is_training`
-  # value if `@jax.jit` is used somewhere in the model.
+  def __set_name__(self, owner, name):
+    if name != 'is_training':
+      raise ValueError(
+          'For consistency, the `train_property()` should be named'
+          f' `is_training`. Got: `{name}`'
+      )
+    # Unexpected, need to modify `annotations` & cie before
+    if dataclasses.is_dataclass(owner):
+      raise ValueError(f'{owner} is already a dataclass. Please contact epot@')
 
-  is_training = _context.is_training
-  if is_training is None:
-    raise ValueError(
-        'Calling `model.is_training`, yet `is_training=` kwargs was not set in '
-        '`.init` / `.apply`'
-    )
-  return is_training
+    # Add a property, so `__hash__`, depend on `model.is_training` value, so it
+    # trigger a re-compilation when `model` is an argument of `@jax.jit`.
+    # Otherwise, `model.__call__()` could be cached as well as the
+    # `.is_training` value if `@jax.jit` is used somewhere in the model.
+    owner._kd_is_training = _context
+    owner.__annotations__['_kd_is_training'] = type(_context)
+
+  def __get__(self, obj, objtype=None):
+    if obj is None:  # `A.is_training`
+      return self
+
+    is_training = _context.is_training
+    if is_training is None:
+      raise ValueError(
+          'Calling `model.is_training`, yet `is_training=` kwargs was not set'
+          ' in `.init` / `.apply`'
+      )
+    return is_training
 
 
 @functools.cache

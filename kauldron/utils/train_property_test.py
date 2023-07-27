@@ -14,10 +14,7 @@
 
 """."""
 
-import functools
-
 from flax import linen as nn
-import jax
 import jax.numpy as jnp
 from kauldron.utils import train_property
 import pytest
@@ -50,21 +47,21 @@ def test_model():
   assert len(vals) == 3
 
 
-@pytest.mark.skip(reason='Unhashable `self`')
-def test_model_fail():
-  class MyModelFail(nn.Module):
-    is_training = train_property.train_property()
+def test_model_hash():
+  model = MyModel()
 
-    @nn.compact
-    @functools.partial(jax.jit, static_argnames=['self'])
-    def __call__(self, x):
-      if self.is_training:
-        return (x, x)
-      else:
-        return (x, x, x)
+  default_model = hash(model)
+  assert default_model == hash(model)
 
-  model = MyModelFail()
-  x = jnp.zeros((3,))
+  with train_property._set_training(True):
+    train_model = hash(model)
+    assert train_model == hash(model)
 
-  with pytest.raises(ValueError, match='called inside `@jax.jit`'):
-    _ = model.init({}, x, is_training=True)
+  with train_property._set_training(False):
+    eval_model = hash(model)
+    assert eval_model == hash(model)
+
+  assert eval_model != train_model
+  assert eval_model != default_model
+  assert train_model != default_model
+  assert default_model == hash(model)
