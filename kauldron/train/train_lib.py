@@ -290,8 +290,7 @@ def compute_and_flatten_summaries(
 
   flat_values, _ = jax.tree_util.tree_flatten_with_path(values)
   flat_results = {
-      _format_path(path, prefix=prefix): float(value)
-      for path, value in flat_values
+      _format_path(path, prefix=prefix): value for path, value in flat_values
   }
   return flat_results
 

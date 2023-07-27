@@ -33,6 +33,7 @@ from kauldron import train
 from kauldron import typing
 from kauldron.core import get_by_path
 from kauldron.core import tree_flatten_with_path
+from kauldron.utils import inspect
 from kauldron.utils import plotting
 from kauldron.utils import xmanager as xm
 

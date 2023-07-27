@@ -252,7 +252,10 @@ class _DefaultVisitor(_Visitor):
     return None
 
   def _repr(self, obj: object) -> str:
-    return repr(obj)
+    if obj == ...:
+      return '...'
+    else:
+      return repr(obj)
 
 
 @dataclasses.dataclass
