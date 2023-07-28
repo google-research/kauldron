@@ -68,12 +68,12 @@ def train_property() -> bool:
       return x
   ```
 
-  The `is_training` property has to be set at the top level `.init()` or
+  The `is_training` property value has to be set at the top level `.init()` or
   `.apply()` call and will be propagated to all children.
 
   ```python
   model = MyModule()
-  model.init(..., is_training=True)
+  model.init(..., is_training_property=True)
   ```
 
   Returns:
@@ -82,40 +82,38 @@ def train_property() -> bool:
   return property(_is_training)  # pytype: disable=bad-return-type
 
 
-def _is_training(self) -> bool:
+def _is_training(self: nn.Module) -> bool:
   """`is_training` property."""
-  del self
-
-  # TODO(epot): Should mock `__hash__`, to depend on
-  # `model.is_training` value, so it trigger a re-compilation. This could be
-  # done by adding a `field(init=False)` to the `__dataclass_fields__`.
-  # Otherwise, `model.__call__()` could be cached as well as the `.is_training`
-  # value if `@jax.jit` is used somewhere in the model.
+  if self.scope is None:
+    raise ValueError(
+        '`is_training` property can only be called from within `.init` /'
+        ' `.apply`.'
+    )
 
   is_training = _context.is_training
   if is_training is None:
     raise ValueError(
-        'Calling `model.is_training`, yet `is_training=` kwargs was not set in '
-        '`.init` / `.apply`'
+        'Calling `self.is_training` property, yet `is_training_property=` '
+        'kwargs was not set in `.init` / `.apply`'
     )
   return is_training
 
 
 @functools.cache
-def _mock_flax_to_add_training_kwargs() -> None:
+def _mock_flax_to_add_is_training_kwargs() -> None:
   """Add the `is_training=` kwargs to the `.init` / `.apply`."""
-  nn.Module.init = _add_training_kwargs(nn.Module.init)
-  nn.Module.apply = _add_training_kwargs(nn.Module.apply)
+  nn.Module.init = _add_is_training_kwargs(nn.Module.init)
+  nn.Module.apply = _add_is_training_kwargs(nn.Module.apply)
 
 
-def _add_training_kwargs(fn: _FnT) -> _FnT:
+def _add_is_training_kwargs(fn: _FnT) -> _FnT:
   """Add the `is_training=` kwargs to `fn`."""
   fn = _internal.unwrap_on_reload(fn)  # pylint: disable=protected-access
 
   @functools.wraps(fn)
-  def decorated(*args, is_training: bool | None = None, **kwargs):  # pylint: disable=redefined-outer-name
-    if is_training is not None:
-      cm = _set_training(is_training)
+  def decorated(*args, is_training_property: bool | None = None, **kwargs):  # pylint: disable=redefined-outer-name
+    if is_training_property is not None:
+      cm = _set_training(is_training_property)
     else:
       cm = contextlib.nullcontext()
     with cm:
@@ -124,4 +122,4 @@ def _add_training_kwargs(fn: _FnT) -> _FnT:
   return decorated
 
 
-_mock_flax_to_add_training_kwargs()
+_mock_flax_to_add_is_training_kwargs()

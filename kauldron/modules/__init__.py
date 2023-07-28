@@ -14,6 +14,15 @@
 
 """Collection of nn.Modules to build neural networks."""
 
-# pylint: disable=g-importing-member
+# pylint: disable=g-importing-member,g-bad-import-order
+
+# Do not sort imports
+# fmt: skip-import-sorting
 
 from kauldron.klinen.module import Module
+from kauldron.utils.train_property import train_property
+
+# Modules
+
+from kauldron.modules.misc import Dropout
+from kauldron.modules.misc import Identity
