@@ -16,38 +16,41 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-import functools
 import inspect
 from typing import Any, Optional
 
-from etils import ecolab
 from etils import enp
+from etils import epy
 from etils import etree
-import flax.linen as nn
+from flax import linen as nn
 import jax
 from kauldron import core
+from kauldron import data
 from kauldron import konfig
 from kauldron import train
 from kauldron.data import utils as data_utils
+from kauldron.utils import pd_utils
 import ml_collections
 import numpy as np
 import pandas as pd
 
 
-def get_source_link(cls) -> str:
+def _get_source_link(cls) -> str:
   path = inspect.getfile(cls)
   lineno = inspect.getsourcelines(cls)[1]
   return f"file://{path}#l={lineno}"
 
 
-def convert_to_array_spec(x: Any) -> Any:
-  if hasattr(x, "shape") and hasattr(x, "dtype"):
+def _convert_to_array_spec(x: Any) -> Any:
+  if enp.ArraySpec.is_array(x):
+    return enp.ArraySpec.from_array(x)
+  elif isinstance(x, nn.summary._ArrayRepresentation):  # pylint: disable=protected-access
     return enp.ArraySpec(x.shape, x.dtype)
   else:
     return x
 
 
-def format_module_config(cfg: Optional[Any]) -> str:
+def _format_module_config(cfg: Optional[Any]) -> str:
   """Return html span with emoji and tooltip containing abbreviated config."""
   if not cfg:
     return ""
@@ -56,19 +59,16 @@ def format_module_config(cfg: Optional[Any]) -> str:
     if isinstance(c, ml_collections.ConfigDict):
       qn = getattr(c, "__qualname__")
       if qn is not None:
-        # return kd.konfig.configdict_base._normalize_qualname(qn) +"(...)"
-        return konfig.configdict_base.ConfigDict({"__qualname__": qn, 0: ...})
+        return konfig.ConfigDict({"__qualname__": qn, 0: ...})
       else:
         return c
     return c
 
-  cfg_abbrev = konfig.configdict_base.ConfigDict(
-      {k: _abbrev(v) for k, v in cfg.items()}
-  )
+  cfg_abbrev = konfig.ConfigDict({k: _abbrev(v) for k, v in cfg.items()})
   return f'<span title="{cfg_abbrev}">📄</span>'
 
 
-def format_module_path(path: tuple[str, ...]) -> str:
+def _format_module_path(path: tuple[str, ...]) -> str:
   if len(path) > 1:
     prefix = f'<span style="color: gray">{".".join(path[:-1])}.</span>'
     return prefix + path[-1]
@@ -76,21 +76,21 @@ def format_module_path(path: tuple[str, ...]) -> str:
     return ".".join(path)
 
 
-def format_module(module_type: type[Any]) -> str:
+def _format_module(module_type: type[Any]) -> str:
   module_name = module_type.__name__
   module_path = f"{module_type.__module__}.{module_name}"
-  module_src = get_source_link(module_type)
+  module_src = _get_source_link(module_type)
   return f'<a href="{module_src}" title="{module_path}">{module_name}</a>'
 
 
-def format_annotation(annotation: Any) -> str:
+def _format_annotation(annotation: Any) -> str:
   if annotations is None:
     return ""
   else:
     return str(annotation).removeprefix("typing.")
 
 
-def get_args(
+def _get_args(
     module_type: type[Any],
     method_name: str,
     inputs: dict[str, Any],
@@ -99,48 +99,50 @@ def get_args(
   method = getattr(module_type, method_name)
   sig = inspect.signature(method)
   if not isinstance(inputs, dict):
-    ba = sig.bind("self", convert_to_array_spec(inputs))
+    ba = sig.bind("self", _convert_to_array_spec(inputs))
   else:
-    ba = sig.bind("self", **jax.tree_map(convert_to_array_spec, inputs))
+    ba = sig.bind("self", **jax.tree_map(_convert_to_array_spec, inputs))
   args = ba.arguments
   del args["self"]
 
   input_ann = {
-      k: format_annotation(method.__annotations__.get(k)) for k in args
+      k: _format_annotation(method.__annotations__.get(k)) for k in args
   }
-  return_ann = format_annotation(sig.return_annotation)
+  return_ann = _format_annotation(sig.return_annotation)
 
   return args, input_ann, return_ann
 
 
-def format_inputs(args, input_ann) -> str:
+def _format_inputs(args, input_ann) -> str:
   return "<br>".join(
       f'<span title="{k}: {input_ann[k]}"><b>{k}</b>: {args[k]}</span>'
       for k in args
   )
 
 
-def format_outputs(outputs, return_ann) -> str:
+def _format_outputs(outputs, return_ann) -> str:
   if not isinstance(outputs, dict):
-    return f'<span title="{return_ann}">{convert_to_array_spec(outputs)}</span>'
+    return (
+        f'<span title="{return_ann}">{_convert_to_array_spec(outputs)}</span>'
+    )
   else:
-    outputs = jax.tree_map(convert_to_array_spec, outputs)
+    outputs = jax.tree_map(_convert_to_array_spec, outputs)
     flat_tree = core.tree_flatten_with_path(outputs)
     outputs = "<br>".join(f"<b>{k}</b>: {v}" for k, v in flat_tree.items())
     outputs = f'<span title="{return_ann}">{outputs}</span>'
   return outputs
 
 
-def format_param_shapes(module_variables) -> str:
+def _format_param_shapes(module_variables) -> str:
   params = module_variables.get("params", {})
   if not params:
     return ""
-  tree = jax.tree_map(convert_to_array_spec, params)
+  tree = jax.tree_map(_convert_to_array_spec, params)
   flat_tree = core.tree_flatten_with_path(tree)
   return "<br>".join(f"<b>{k}</b>: {v}" for k, v in flat_tree.items())
 
 
-def get_num_params(module_variables) -> int:
+def _get_num_params(module_variables) -> int:
   params = module_variables.get("params", {})
 
   def add_num_params(x, y) -> int:
@@ -149,34 +151,34 @@ def get_num_params(module_variables) -> int:
   return jax.tree_util.tree_reduce(add_num_params, params, initializer=0)
 
 
-def get_styled_df(table, model_config):
+def _get_styled_df(table, model_config: konfig.ConfigDict) -> pd.DataFrame:
   """Return a styled pd.DataFrame for the model-overview table in colab."""
   df_rows = []
   for row in table:
-    args, input_ann, return_ann = get_args(
+    args, input_ann, return_ann = _get_args(
         row.module_type, row.method, row.inputs
     )
     m_config = core.get_by_path(model_config, ".".join(row.path))
     df_rows.append({
-        "Cfg": format_module_config(m_config),
-        "Path": format_module_path(row.path),
-        "Module": format_module(row.module_type),
-        "Inputs": format_inputs(args, input_ann),
-        "Outputs": format_outputs(row.outputs, return_ann),
-        "Parameter Shapes": format_param_shapes(row.module_variables),
-        "Num Params": get_num_params(row.module_variables),
+        "Cfg": _format_module_config(m_config),
+        "Path": _format_module_path(row.path),
+        "Module": _format_module(row.module_type),
+        "Inputs": _format_inputs(args, input_ann),
+        "Outputs": _format_outputs(row.outputs, return_ann),
+        "Parameter Shapes": _format_param_shapes(row.module_variables),
+        "Num Params": _get_num_params(row.module_variables),
     })
 
-  df = pd.DataFrame(df_rows)
-  df_styled = df.style.set_properties(**{"text-align": "left"})
-  df_styled.set_table_styles(
+  df = pd_utils.StyledDataFrame(df_rows)
+  df.current_style.set_properties(**{"text-align": "left"})
+  df.current_style.set_table_styles(
       [dict(selector="th", props=[("text-align", "left")])]
   )
-  df_styled.format({"Num Params": "{:,}"})
-  return df, df_styled
+  df.current_style.format({"Num Params": "{:,}"})
+  return df
 
 
-def get_summary_table(model, ds):
+def _get_summary_table(model, ds):
   m_batch = data_utils.mock_batch_from_elem_spec(ds.element_spec)
   model_args, model_kwargs = data_utils.get_model_inputs(
       model, {"batch": m_batch, "step": 0}
@@ -190,19 +192,10 @@ def get_summary_table(model, ds):
   return table
 
 
-@functools.cache
-def is_notebook() -> bool:
-  try:
-    import IPython  # pylint: disable=g-import-not-at-top
-
-    ipython = IPython.get_ipython()
-    return ipython is not None
-  except (ImportError, NameError, AttributeError):
-    return False
-
-
 def json_spec_like(obj) -> Any:
   """Convert `etree.spec_like` output to json and displays it in colab form."""
+  from etils import ecolab  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+
   spec = etree.spec_like(obj)
 
   def _to_json(spec):
@@ -212,13 +205,13 @@ def json_spec_like(obj) -> Any:
       return [_to_json(v) for v in spec]
     elif isinstance(spec, tuple):
       return tuple(_to_json(v) for v in spec)
-    elif isinstance(spec, (int, bool, type(None))):
+    elif isinstance(spec, (int, float, bool, type(None))):
       return spec
     else:
       return str(spec)
 
   json_spec = _to_json(spec)
-  if is_notebook():
+  if epy.is_notebook():
     ecolab.json(json_spec)
   return json_spec
 
@@ -242,7 +235,11 @@ def eval_context_shape(model, losses, metrics, summaries, elem_spec):
   return loss, context
 
 
-def get_colab_model_overview(model, train_ds, model_config):
-  table = get_summary_table(model, train_ds)
-  _, df_styled = get_styled_df(table, model_config)
-  return df_styled
+def get_colab_model_overview(
+    model: nn.Module,
+    train_ds: data.TFDataPipeline,
+    model_config: konfig.ConfigDict,
+) -> pd.DataFrame:
+  """Return `pd.DataFrame` for displaying the model params, inputs,..."""
+  table = _get_summary_table(model, train_ds)
+  return _get_styled_df(table, model_config)
