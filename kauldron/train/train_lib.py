@@ -41,7 +41,7 @@ import tensorflow as tf
 
 
 def train(
-    raw_cfg: config_lib.Config,
+    raw_cfg: config_lib.Config, stop_after_steps: Optional[int] = None
 ) -> Tuple[train_step.TrainState, train_step.Auxiliaries]:
   """Main train method.
 
@@ -56,6 +56,9 @@ def train(
 
   Args:
     raw_cfg: Config
+    stop_after_steps: Optionally stop already after running this many steps
+      instead of continuing until `config.num_train_steps` is reached. Useful
+      for only running a few steps in colab without modifying the config.
 
   Returns:
     Final model state
@@ -114,15 +117,17 @@ def train(
   )
 
   status.log(f"Starting training loop at step {initial_step}")
-  # NOTE: DO *NOT* CHANGE THE ORDER OF OPERATIONS IN THIS TRAINING LOOP!
+  # NOTE: DO *NOT* CHANGE THE ORDER OF OPERATIONS IN THE TRAINING LOOP!
+  total_steps = cfg.num_train_steps + 1
+  if stop_after_steps is not None:
+    total_steps = min(total_steps, initial_step + stop_after_steps)
   aux = None
   for i, batch in utils.enum_iter(
       train_iter,
       init_step=initial_step,
-      total_steps=cfg.num_train_steps + 1,
+      total_steps=total_steps,
       desc="train",
   ):
-
     with timer.exclude_from_step_stats():
       if ckptr.should_save(i):
         state = flax.jax_utils.unreplicate(state_repl)
