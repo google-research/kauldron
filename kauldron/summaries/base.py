@@ -25,6 +25,7 @@ import einops
 from etils import epy
 import flax
 import jax
+import jax.numpy as jnp
 from kauldron import core
 from kauldron.typing import Float, Integer, Key, Shape, UInt8, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import mediapy as media
@@ -79,6 +80,7 @@ class ShowImages(ImageSummary):
   width: Optional[int] = None
   height: Optional[int] = None
   in_vrange: Optional[tuple[float, float]] = None
+  convert_to_float: bool = False
 
   def gather_kwargs(self, context: Any) -> dict[str, Images]:
     # optimize gather_kwargs to only return num_images many images
@@ -86,6 +88,8 @@ class ShowImages(ImageSummary):
     images = kwargs["images"]
     if self.rearrange:
       images = einops.rearrange(images, self.rearrange, **self.rearrange_kwargs)
+    if self.convert_to_float:
+      images = images.astype(jnp.float32)
     if not isinstance(images, Float["n h w #3"]):
       raise ValueError(f"Bad shape or dtype: {images.shape} {images.dtype}")
 
@@ -104,9 +108,11 @@ class ShowImages(ImageSummary):
     # maybe rescale
     if self.in_vrange is not None:
       vmin, vmax = self.in_vrange
-      images = np.clip((images - vmin) / (vmax - vmin), 0.0, 1.0)
+      images = (images - vmin) / (vmax - vmin)
     # convert to float
     images = media.to_type(images, np.float32)
+    # always clip to avoid display problems in TB and Datatables
+    images = np.clip(images, 0.0, 1.0)
     # maybe resize
     if (self.width, self.height) != (None, None):
       shape = _get_height_width(self.width, self.height, Shape("h w"))
