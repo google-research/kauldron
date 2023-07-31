@@ -72,7 +72,7 @@ class TrainState:
     }
 
   @property
-  def rng_streams(self) -> dict[str, PRNGKey]:
+  def train_rngs(self) -> dict[str, PRNGKey]:
     return {
         "state_init": self.make_rng("state_init"),
         "dropout": self.make_rng("dropout"),
@@ -327,7 +327,7 @@ class TrainStep:
     grads, context = grad_fn(
         state.params,
         batch=batch,
-        rngs=state.rng_streams,
+        rngs=state.train_rngs,
         step=state.step,
         is_training=True,
     )
