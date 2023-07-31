@@ -46,7 +46,12 @@ class PRNGKey:
   ```
   """
 
-  def __init__(self, seed_or_rng: int | jax.random.PRNGKeyArray = 0):
+  def __init__(
+      self,
+      seed_or_rng: int | jax.random.PRNGKeyArray = 0,
+      *,
+      _allow_seed_array: bool = True,  # Internal variable
+  ):
     """Constructor."""
     # First time, we mock jax for compatibility
     _mock_jax()
@@ -56,6 +61,13 @@ class PRNGKey:
 
     if isinstance(seed_or_rng, PRNGKey):
       seed_or_rng = seed_or_rng.rng
+    elif (
+        _allow_seed_array
+        and isinstance(seed_or_rng, jax.Array)
+        and seed_or_rng.shape == ()  # pylint: disable=g-explicit-bool-comparison
+    ):
+      # `kd_random.PRNGKey(jnp.asarray(0))` is a valid seed.
+      seed_or_rng = jax.random.PRNGKey(seed_or_rng)
     elif not isinstance(seed_or_rng, (jax.Array, jax.random.PRNGKeyArray)):
       seed_or_rng = jax.random.PRNGKey(seed_or_rng)
 
@@ -74,8 +86,7 @@ class PRNGKey:
   def fold_in(self, data: int | str) -> PRNGKey:
     """Folds in delta into the random state."""
     if isinstance(data, str):
-      data = hashlib.sha1(data.encode('utf-8')).digest()
-      data = int.from_bytes(data[:4], byteorder='big')  # Truncate to uint32
+      data = _hash(data)
     return self._new(jax.random.fold_in(self, data))
 
   def next(self) -> PRNGKey:
@@ -83,7 +94,7 @@ class PRNGKey:
     return self.split(1)[0]
 
   def _new(self, key) -> PRNGKey:
-    return type(self)(key)
+    return type(self)(key, _allow_seed_array=False)
 
   def __repr__(self):
     return f'{type(self).__name__}({self.rng!r})'
@@ -154,6 +165,14 @@ class PRNGKey:
   uniform = jax.random.uniform
   wald = jax.random.wald
   weibull_min = jax.random.weibull_min
+
+
+@functools.lru_cache(maxsize=1_000)
+def _hash(data: str) -> int:
+  """Deterministic hash."""
+  data = hashlib.sha1(data.encode('utf-8')).digest()
+  data = int.from_bytes(data[:4], byteorder='big')  # Truncate to uint32
+  return data
 
 
 @functools.cache

@@ -43,6 +43,14 @@ def test_jit():
   assert isinstance(out, jax.Array)
   assert isinstance(out_key, random.PRNGKey)
 
+  @jax.jit
+  def fn_with_seed(seed: int):
+    key = random.PRNGKey(seed)  # Array as seed works
+    return key.fold_in('dropout')
+
+  out_key = fn_with_seed(0)
+  assert isinstance(out_key, random.PRNGKey)
+
 
 def test_flax():
   class MLP(nn.Module):
