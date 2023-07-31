@@ -13,10 +13,12 @@
 # limitations under the License.
 
 """Miscellaneous Modules."""
+
 from __future__ import annotations
 
 from flax import linen as nn
-from kauldron.typing import Array
+from kauldron.typing import Array, PRNGKey  # pylint: disable=g-multiple-import
+from kauldron.utils import train_property
 
 
 class Identity(nn.Module):
@@ -26,5 +28,26 @@ class Identity(nn.Module):
   """
 
   @nn.compact
-  def __call__(self, inputs: Array["..."], *args, **kwargs) -> Array:
+  def __call__(self, inputs: Array['...'], *args, **kwargs) -> Array:
     return inputs
+
+
+class Dropout(nn.Dropout):
+  """Wrapper around `nn.Dropout` but using `kd.nn.train_property`."""
+
+  is_training = train_property.train_property()
+
+  def __post_init__(self):
+    super().__post_init__()
+    if self.deterministic is not None:
+      raise ValueError(
+          '`kd.nn.Dropout` should not use `deterministic`. Instead the '
+          'training mode is set through `is_training_property`. See '
+          '`kd.nn.train_property`.'
+      )
+
+  @nn.compact
+  def __call__(  # pytype: disable=signature-mismatch
+      self, inputs: Array['*d'], *, rng: PRNGKey | None = None
+  ) -> Array['*d']:
+    return super().__call__(inputs, deterministic=self.is_training, rng=rng)

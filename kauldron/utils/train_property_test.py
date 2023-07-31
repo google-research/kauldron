@@ -14,10 +14,7 @@
 
 """."""
 
-import functools
-
 from flax import linen as nn
-import jax
 import jax.numpy as jnp
 from kauldron.utils import train_property
 import pytest
@@ -38,33 +35,20 @@ def test_model():
   model = MyModel()
   x = jnp.zeros((3,))
 
-  with pytest.raises(ValueError, match='`is_training=` kwargs was not set'):
+  with pytest.raises(
+      ValueError, match='`is_training` property can only be called'
+  ):
+    _ = model.is_training
+
+  with pytest.raises(
+      ValueError, match='`is_training_property=` kwargs was not set'
+  ):
     model.init({}, x)
 
-  params = model.init({}, x, is_training=True)
+  params = model.init({}, x, is_training_property=True)
 
-  vals = model.apply(params, x, is_training=True)
+  vals = model.apply(params, x, is_training_property=True)
   assert len(vals) == 2
 
-  vals = model.apply(params, x, is_training=False)
+  vals = model.apply(params, x, is_training_property=False)
   assert len(vals) == 3
-
-
-@pytest.mark.skip(reason='Unhashable `self`')
-def test_model_fail():
-  class MyModelFail(nn.Module):
-    is_training = train_property.train_property()
-
-    @nn.compact
-    @functools.partial(jax.jit, static_argnames=['self'])
-    def __call__(self, x):
-      if self.is_training:
-        return (x, x)
-      else:
-        return (x, x, x)
-
-  model = MyModelFail()
-  x = jnp.zeros((3,))
-
-  with pytest.raises(ValueError, match='called inside `@jax.jit`'):
-    _ = model.init({}, x, is_training=True)

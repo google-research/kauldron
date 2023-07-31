@@ -186,7 +186,7 @@ class ModelWithAux:
         init_rng,
         *args,
         method=model_method,
-        is_training=True,
+        is_training_property=True,
         **kwargs,
     )["params"]
     params = flax.core.unfreeze(params)
@@ -209,7 +209,7 @@ class ModelWithAux:
         *args,
         rngs=rngs,
         capture_intermediates=True,  # TODO(klausg): check if need a filter here
-        is_training=is_training,
+        is_training_property=is_training,
         **kwargs,
     )
     context = context.replace(
