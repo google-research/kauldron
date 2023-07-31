@@ -205,7 +205,7 @@ def _pstep(
   _, ctx = model_with_aux.forward(
       params=state.params,
       batch=batch,
-      rngs=state.rng_streams,  # TODO(epot): Explicit stream for evals
+      rngs=state.train_rngs,  # TODO(epot): Explicit stream for evals
       step=state.step,  # Step is train step, NOT eval
       is_training=False,
   )
