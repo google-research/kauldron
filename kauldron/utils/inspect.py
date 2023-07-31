@@ -222,7 +222,7 @@ def eval_context_shape(model, losses, metrics, summaries, elem_spec):
   mwa = train.train_step.ModelWithAux(
       model=model, losses=losses, metrics=metrics, summaries=summaries
   )
-  params = jax.eval_shape(mwa.init, init_rng=m_rngs, elem_spec=elem_spec)
+  params = jax.eval_shape(mwa.init, init_rngs=m_rngs, elem_spec=elem_spec)
   m_batch = data_utils.mock_batch_from_elem_spec(elem_spec)
   loss, context = jax.eval_shape(
       mwa.forward,

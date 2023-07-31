@@ -26,86 +26,84 @@ import jax
 from kauldron import core
 from kauldron import losses as kd_losses
 from kauldron import metrics as kd_metrics
+from kauldron import random as kd_random
 from kauldron import summaries as kd_summaries
 import kauldron.data.utils as data_utils
-from kauldron.typing import ElementSpec, Float, PRNGKey, PyTree  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.train import rngs_lib
+from kauldron.typing import ElementSpec, Float, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import train_property  # pylint: disable=unused-import
 import optax
 
+_Rngs = dict[str, kd_random.PRNGKey]
 _Params = PyTree[Float["..."]]
 
 
+@jax.tree_util.register_pytree_node_class
 @dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
 class TrainState:
   """Data structure for checkpointing the model."""
 
   step: int
-  rng: PRNGKey
+  root_rng: kd_random.PRNGKey
 
   params: Optional[_Params]
   opt_state: Optional[PyTree[Float["..."]]]
 
   training_time_hours: float
 
-  def next(self, new_params=None, new_opt_state=None):
+  def next(self, new_params=None, new_opt_state=None) -> TrainState:
     step = self.step + 1
     new_params = new_params or self.params
     new_opt_state = new_opt_state or self.opt_state
-    new_rng = jax.random.fold_in(self.rng, step)
-    return TrainState(
+    return self.replace(
+        step=step,
         params=new_params,
         opt_state=new_opt_state,
-        step=step,
-        rng=new_rng,
-        training_time_hours=self.training_time_hours,
     )
 
   @property
-  def init_rng(self) -> dict[str, PRNGKey]:
+  def init_rngs(self) -> _Rngs:
     return {
-        # Fold a prime number instead of string to ensure the same
-        # params rng on all hosts
-        "params": jax.random.fold_in(self.rng, 9931),
-        "state_init": self.make_rng("state_init"),
-        "dropout": self.make_rng("dropout"),
-        "default": self.make_rng("default"),
+        r.name: r.make(self.root_rng, step=0) for r in rngs_lib.RNGS if r.init
     }
 
   @property
-  def train_rngs(self) -> dict[str, PRNGKey]:
+  def train_rngs(self) -> _Rngs:
     return {
-        "state_init": self.make_rng("state_init"),
-        "dropout": self.make_rng("dropout"),
-        "default": self.make_rng("default"),
+        r.name: r.make(self.root_rng, step=self.step)
+        for r in rngs_lib.RNGS
+        if r.train
     }
 
-  def make_rng(self, name: str, per_step: bool = True) -> PRNGKey:
-    rng = jax.random.fold_in(self.rng, hash(name))
-    if per_step:
-      rng = jax.random.fold_in(rng, self.step)
-    return rng
+  def eval_rngs(self, step: int) -> _Rngs:
+    rngs = {
+        r.name: r.make(self.root_rng, step=step)
+        for r in rngs_lib.RNGS
+        if r.eval
+    }
+    # Fold-in a key, so `eval` and `train` are different, even for the
+    # same step
+    rngs = {n: r.fold_in("eval") for n, r in rngs.items()}
+    return rngs
 
-  def _tree_flatten(self):
+  # TODO(epot): Could factor this to some util
+  # TODO(epot): Current implementation is fragile (do not support `init=False`,
+  # `field(metadata={'static': True})`)
+  def tree_flatten(self):
     children = (
-        self.step,
-        self.rng,
-        self.params,
-        self.opt_state,
-        self.training_time_hours,
+        getattr(self, f.name) for f in dataclasses.fields(self)
     )  # arrays / dynamic values
     aux_data = {}  # static values
     return (children, aux_data)
 
   @classmethod
-  def _tree_unflatten(cls, aux_data, children):
-    del aux_data
-    step, rng, params, opt_state, training_time_hours = children
-    return cls(
-        step=step,
-        rng=rng,
-        params=params,
-        opt_state=opt_state,
-        training_time_hours=training_time_hours,
+  def tree_unflatten(cls, aux_data, children):
+    assert not aux_data
+    return cls(  # pytype: disable=missing-parameter
+        **{
+            f.name: c
+            for f, c in zip(dataclasses.fields(cls), children, strict=True)
+        }
     )
 
   def replace(self, **changes: Any) -> TrainState:
@@ -155,12 +153,6 @@ def _reduce_states(
   }
 
 
-# register TrainState as a pytree node
-jax.tree_util.register_pytree_node(
-    TrainState, TrainState._tree_flatten, TrainState._tree_unflatten  # pylint: disable=protected-access
-)
-
-
 @dataclasses.dataclass(kw_only=True, eq=True, frozen=True)
 class ModelWithAux:
   """Wrapper around model which also compute the summaries and metrics."""
@@ -175,7 +167,10 @@ class ModelWithAux:
   )
 
   def init(  # pylint:disable=missing-function-docstring
-      self, init_rng, elem_spec: ElementSpec, model_method: Optional[str] = None
+      self,
+      init_rngs: _Rngs,
+      elem_spec: ElementSpec,
+      model_method: Optional[str] = None,
   ) -> _Params:
     mock_batch = data_utils.mock_batch_from_elem_spec(
         elem_spec, drop_device_axis=True
@@ -183,7 +178,7 @@ class ModelWithAux:
     context = core.Context(step=0, batch=mock_batch)
     args, kwargs = data_utils.get_model_inputs(self.model, context)
     params = self.model.init(
-        init_rng,
+        init_rngs,
         *args,
         method=model_method,
         is_training_property=True,
@@ -197,7 +192,7 @@ class ModelWithAux:
       params,
       *,
       batch,
-      rngs,
+      rngs: _Rngs,
       step,
       is_training,
   ) -> tuple[float, core.Context]:
@@ -279,13 +274,13 @@ class TrainStep:
     """Initialize the model and return the initial TrainState."""
     state = TrainState(
         step=0,
-        rng=jax.random.PRNGKey(seed),
+        root_rng=kd_random.PRNGKey(seed),
         params=None,
         opt_state=None,
         training_time_hours=0.0,
     )
     params = self.model_with_aux.init(
-        state.init_rng, elem_spec, model_method=model_method
+        state.init_rngs, elem_spec, model_method=model_method
     )
     opt_state = self.optimizer.init(params)
     return state.replace(params=params, opt_state=opt_state)

@@ -20,12 +20,14 @@ import abc
 import dataclasses
 import datetime
 import functools
-from typing import Optional, Sequence
+from typing import Optional, Sequence, TypeVar
 
 from etils import epath
 from flax.training import orbax_utils
 import jax
 import orbax.checkpoint as orbax
+
+_T = TypeVar("_T")
 
 
 class BaseCheckpointer(abc.ABC):
@@ -34,11 +36,11 @@ class BaseCheckpointer(abc.ABC):
   @abc.abstractmethod
   def restore(
       self,
-      initial_state,
+      initial_state: _T,
       step: int = -1,
       *,
       noop_if_missing: bool = False,
-  ):
+  ) -> _T:
     raise NotImplementedError()
 
   @abc.abstractmethod

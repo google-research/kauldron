@@ -104,10 +104,6 @@ def train(
   writer.write_element_spec(initial_step, train_iter.element_spec)
 
   state_repl = flax.jax_utils.replicate(state)
-  rng_with_device_id = jax.pmap(jax.random.fold_in)(
-      state_repl.rng, jnp.arange(jax.local_device_count())
-  )
-  state_repl = state_repl.replace(rng=rng_with_device_id)
 
   timer = timer_module.PerformanceTimer(
       initial_step_num=initial_step,

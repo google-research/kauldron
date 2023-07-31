@@ -131,18 +131,17 @@ class SingleEvaluator(EvaluatorBase):
       self, state: train_step.TrainState, step: int
   ) -> train_step.Auxiliaries:
     """Run one full evaluation."""
-    # TODO(epot): Switch model to eval
-
     ds = self.ds_iter
 
     merged_aux = None
-    for _, batch in utils.enum_iter(
+    for eval_step, batch in utils.enum_iter(
         ds,
         total_steps=self.num_batches,
         desc='eval',
     ):
       aux = _pstep(
           self.model_with_aux,
+          eval_step,
           state,
           batch,
       )
@@ -194,10 +193,11 @@ class SingleEvaluator(EvaluatorBase):
 @functools.partial(
     jax.pmap,
     axis_name='batch',
-    static_broadcasted_argnums=(0,),
+    static_broadcasted_argnums=(0, 1),
 )
 def _pstep(
     model_with_aux: train_step.ModelWithAux,
+    eval_step: int,
     state: train_step.TrainState,
     batch,
 ) -> train_step.Auxiliaries:
@@ -205,7 +205,7 @@ def _pstep(
   _, ctx = model_with_aux.forward(
       params=state.params,
       batch=batch,
-      rngs=state.train_rngs,  # TODO(epot): Explicit stream for evals
+      rngs=state.eval_rngs(eval_step),
       step=state.step,  # Step is train step, NOT eval
       is_training=False,
   )

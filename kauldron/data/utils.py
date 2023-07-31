@@ -25,13 +25,6 @@ from kauldron.typing import Array, ArraySpec, ElementSpec, PyTree  # pylint: dis
 import numpy as np
 
 
-def get_init_rngs(rng=None, streams=('params', 'state_init', 'dropout')):
-  if rng is None:
-    rng = jax.random.PRNGKey(0)
-  rngs = jax.random.split(rng, num=len(streams))
-  return dict(zip(streams, rngs))
-
-
 def array_spec_to_jnp_empty(spec: ArraySpec, batch_dim: int = 17) -> jax.Array:
   """Convert a tf.data.TensorSpec element_spec to a jnp.empty array.
 
