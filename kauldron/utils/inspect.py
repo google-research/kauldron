@@ -46,6 +46,8 @@ def _convert_to_array_spec(x: Any) -> Any:
     return enp.ArraySpec.from_array(x)
   elif isinstance(x, nn.summary._ArrayRepresentation):  # pylint: disable=protected-access
     return enp.ArraySpec(x.shape, x.dtype)
+  elif isinstance(x, nn.summary._ObjectRepresentation):  # pylint: disable=protected-access
+    return x.obj
   else:
     return x
 
@@ -74,6 +76,11 @@ def _format_module_path(path: tuple[str, ...]) -> str:
     return prefix + path[-1]
   else:
     return ".".join(path)
+
+
+def _nbsp(s):
+  """Return a repr of s with all spaces replaced by non-breaking ones."""
+  return repr(s).replace(" ", "\xa0")
 
 
 def _format_module(module_type: type[Any]) -> str:
@@ -115,20 +122,24 @@ def _get_args(
 
 def _format_inputs(args, input_ann) -> str:
   return "<br>".join(
-      f'<span title="{k}: {input_ann[k]}"><b>{k}</b>: {args[k]}</span>'
+      f'<span title="{k}: {input_ann[k]}"><b>{k}</b>: {_nbsp(args[k])}</span>'
       for k in args
   )
 
 
 def _format_outputs(outputs, return_ann) -> str:
+  """Return a html output string for the outputs of a module."""
   if not isinstance(outputs, dict):
     return (
-        f'<span title="{return_ann}">{_convert_to_array_spec(outputs)}</span>'
+        "<span"
+        f' title="{return_ann}">{_nbsp(_convert_to_array_spec(outputs))}</span>'
     )
   else:
     outputs = jax.tree_map(_convert_to_array_spec, outputs)
     flat_tree = core.tree_flatten_with_path(outputs)
-    outputs = "<br>".join(f"<b>{k}</b>: {v}" for k, v in flat_tree.items())
+    outputs = "<br>".join(
+        f"<b>{k}</b>: {_nbsp(v)}" for k, v in flat_tree.items()
+    )
     outputs = f'<span title="{return_ann}">{outputs}</span>'
   return outputs
 
@@ -139,7 +150,7 @@ def _format_param_shapes(module_variables) -> str:
     return ""
   tree = jax.tree_map(_convert_to_array_spec, params)
   flat_tree = core.tree_flatten_with_path(tree)
-  return "<br>".join(f"<b>{k}</b>: {v}" for k, v in flat_tree.items())
+  return "<br>".join(f"<b>{k}</b>: {_nbsp(v)}" for k, v in flat_tree.items())
 
 
 def _get_num_params(module_variables) -> int:
@@ -148,7 +159,17 @@ def _get_num_params(module_variables) -> int:
   def add_num_params(x, y) -> int:
     return x + np.prod(y.shape)
 
-  return jax.tree_util.tree_reduce(add_num_params, params, initializer=0)
+  num_params = jax.tree_util.tree_reduce(add_num_params, params, initializer=0)
+  return num_params
+
+
+def _get_cumulative_params(path: tuple[str, ...], table) -> int:
+  path = ".".join(path)
+  return sum(
+      _get_num_params(row.module_variables)
+      for row in table
+      if ".".join(row.path).startswith(path)
+  )
 
 
 def _get_styled_df(table, model_config: konfig.ConfigDict) -> pd.DataFrame:
@@ -166,7 +187,8 @@ def _get_styled_df(table, model_config: konfig.ConfigDict) -> pd.DataFrame:
         "Inputs": _format_inputs(args, input_ann),
         "Outputs": _format_outputs(row.outputs, return_ann),
         "Parameter Shapes": _format_param_shapes(row.module_variables),
-        "Num Params": _get_num_params(row.module_variables),
+        "Own Params": _get_num_params(row.module_variables),
+        "Total Params": _get_cumulative_params(row.path, table),
     })
 
   df = pd_utils.StyledDataFrame(df_rows)
@@ -174,11 +196,29 @@ def _get_styled_df(table, model_config: konfig.ConfigDict) -> pd.DataFrame:
   df.current_style.set_table_styles(
       [dict(selector="th", props=[("text-align", "left")])]
   )
-  df.current_style.format({"Num Params": "{:,}"})
+  df.current_style.format({
+      "Own Params": lambda x: f"{x:,}" if x else "",
+      "Total Params": lambda x: f"{x:,}" if x else "",
+  })
+  # Set alternating row backgrounds to semi-transparent grey
+  df.current_style.set_table_styles([
+      {
+          "selector": "tbody tr:nth-child(even)",
+          "props": [("background-color", "#8884")],
+      },
+      {
+          "selector": "tbody tr:hover",
+          "props": [("background-color", "#44f4")],
+      },
+  ])
+
   return df
 
 
-def _get_summary_table(model, ds):
+def _get_summary_table(
+    model: nn.Module, ds: data.TFDataPipeline
+) -> nn.summary.Table:
+  """Return model overview as a `nn.summary.Table`."""
   m_batch = data_utils.mock_batch_from_elem_spec(ds.element_spec)
   model_args, model_kwargs = data_utils.get_model_inputs(
       model, {"batch": m_batch, "step": 0}
@@ -187,7 +227,9 @@ def _get_summary_table(model, ds):
       model, depth=None, show_repeated=False
   )
   table = table_fn(
-      {"params": jax.random.PRNGKey(0)}, *model_args, **model_kwargs
+      {"params": jax.random.PRNGKey(0), "default": jax.random.PRNGKey(0)},
+      *model_args,
+      **model_kwargs,
   )
   return table
 
