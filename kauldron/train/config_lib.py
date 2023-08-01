@@ -29,15 +29,39 @@ from kauldron import summaries
 from kauldron.train import checkpointer as checkpointer_lib
 from kauldron.train import evaluators
 from kauldron.train import flatboard
+from kauldron.train import rngs_lib
 from kauldron.utils import config_util
 from kauldron.utils import xmanager
 import optax
 
 
 class Config(config_util.BaseConfig):
-  """Base config class."""
+  """Base config class.
 
-  seed: int
+  Attributes:
+    seed: Seed for all rngs
+    workdir: Root dir of the experiment (usually set by XManager)
+    train_ds: Dataset used in training
+    model: Flax linen module
+    rng_streams: Flax rng streams to use **in addition** of the default
+      (`params`, `dropout`, `default`). If any of `params`, `dropout`, `default`
+      is set here, it will overwrite the default value.
+    num_train_steps: Number of training steps. If `None`, train on the full
+      dataset for the number of epoch specified in `train_ds`
+    log_metrics_every: x
+    log_summaries_every: x
+    train_losses: x
+    train_metrics: x
+    train_summaries: x
+    schedules: x
+    optimizer: x
+    checkpointer: x
+    eval:
+    flatboards:
+    run: XManager runtime parameters (e.g. which target is the config using)
+  """
+
+  seed: int = 0
   # usually set by the launcher
   workdir: edc.AutoCast[epath.Path] = epath.Path()
 
@@ -64,6 +88,10 @@ class Config(config_util.BaseConfig):
       default_factory=checkpointer_lib.NoopCheckpointer
   )
 
+  rng_streams: rngs_lib.RngStreams = dataclasses.field(
+      default_factory=rngs_lib.RngStreams
+  )
+
   eval: evaluators.EvaluatorBase = dataclasses.field(
       default_factory=evaluators.NoopEvaluator
   )
@@ -77,6 +105,14 @@ class Config(config_util.BaseConfig):
   )
 
   def __post_init__(self):
+    # Eventually propagate the seed from the root config
+    # Set rngs before eval, as the rngs is used in eval.
+    if self.rng_streams.seed is None:
+      object.__setattr__(
+          self,
+          'rng_streams',
+          dataclasses.replace(self.rng_streams, seed=self.seed),
+      )
     object.__setattr__(
         self, 'eval', dataclasses.replace(self.eval, base_cfg=self)
     )

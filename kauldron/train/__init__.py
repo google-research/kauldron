@@ -19,6 +19,8 @@ from kauldron.train.config_lib import Config
 from kauldron.train.evaluators import MultiEvaluator
 from kauldron.train.evaluators import NoopEvaluator
 from kauldron.train.evaluators import SingleEvaluator
+from kauldron.train.rngs_lib import RngStream
+from kauldron.train.rngs_lib import RngStreams
 from kauldron.train.train_lib import train
 from kauldron.train.train_step import TrainState
 from kauldron.train.train_step import TrainStep

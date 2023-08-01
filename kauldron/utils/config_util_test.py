@@ -22,7 +22,7 @@ from kauldron import kd
 def test_config():
   cfg = kd.train.Config(unknown_field='aaa')
   assert cfg.unknown_field == 'aaa'
-  assert not hasattr(cfg, 'seed')
+  assert not hasattr(cfg, 'model')
   cfg = cfg.replace(seed=1)
   assert cfg.seed == 1
   assert cfg.train_losses == {}  # pylint: disable=g-explicit-bool-comparison

@@ -22,6 +22,7 @@ import functools
 import itertools
 from typing import Any, Optional, TypeVar
 
+import flax
 import jax
 from kauldron import data
 from kauldron import losses as losses_lib
@@ -29,6 +30,7 @@ from kauldron import metrics as metrics_lib
 from kauldron import summaries as summaries_lib
 from kauldron.train import config_lib
 from kauldron.train import metric_writer
+from kauldron.train import rngs_lib
 from kauldron.train import train_lib
 from kauldron.train import train_step
 from kauldron.utils import config_util
@@ -106,16 +108,26 @@ class SingleEvaluator(EvaluatorBase):
   losses: dict[str, losses_lib.Loss] = _REUSE_TRAIN
   metrics: dict[str, metrics_lib.Metric] = _REUSE_TRAIN
   summaries: dict[str, summaries_lib.Summary] = _REUSE_TRAIN
+  rng_streams: rngs_lib.RngStreams = _REUSE_TRAIN
 
   def __post_init__(self):
     # Eventually copy the metrics from the train config
     if hasattr(self, 'base_cfg'):
-      for name in ['losses', 'metrics', 'summaries']:
+      for name, base_name in [
+          ('losses', 'train_losses'),
+          ('metrics', 'train_metrics'),
+          ('summaries', 'train_summaries'),
+          ('rng_streams', 'rng_streams'),
+      ]:
         # TODO(klausg): filter out metrics / summaries that access grads/updates
         if getattr(self, name) is _REUSE_TRAIN:
-          object.__setattr__(
-              self, name, getattr(self.base_cfg, f'train_{name}')
-          )
+          object.__setattr__(self, name, getattr(self.base_cfg, base_name))
+      if self.base_cfg.rng_streams is not self.rng_streams:
+        raise ValueError(
+            'RngStreams should be the same in eval / train. To use a stream in'
+            ' eval, set `eval=True` in the `RngStream`.\n'
+            f'Got: {self.base_cfg.rng_streams} != {self.rng_streams}'
+        )
 
   def maybe_eval(
       self, *, step: int, state: train_step.TrainState
@@ -139,8 +151,10 @@ class SingleEvaluator(EvaluatorBase):
         total_steps=self.num_batches,
         desc='eval',
     ):
+      eval_step = flax.jax_utils.replicate(eval_step)
       aux = _pstep(
           self.model_with_aux,
+          self.rng_streams,
           eval_step,
           state,
           batch,
@@ -197,6 +211,7 @@ class SingleEvaluator(EvaluatorBase):
 )
 def _pstep(
     model_with_aux: train_step.ModelWithAux,
+    rng_streams: rngs_lib.RngStreams,
     eval_step: int,
     state: train_step.TrainState,
     batch,
@@ -205,7 +220,7 @@ def _pstep(
   _, ctx = model_with_aux.forward(
       params=state.params,
       batch=batch,
-      rngs=state.eval_rngs(eval_step),
+      rngs=rng_streams.eval_rngs(eval_step),
       step=state.step,  # Step is train step, NOT eval
       is_training=False,
   )
