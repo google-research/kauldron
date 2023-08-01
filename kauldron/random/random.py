@@ -53,8 +53,6 @@ class PRNGKey:
       _allow_seed_array: bool = True,  # Internal variable
   ):
     """Constructor."""
-    # First time, we mock jax for compatibility
-    _mock_jax()
 
     # TODO(epot): Check that key is only used once ? (except on Colab)
     # Fold-in should also not be called on the same value twice.
@@ -202,3 +200,6 @@ def _normalize_jax_key(fn: _FnT) -> _FnT:
     return fn(key, *args, **kwargs)
 
   return new_fn
+
+# We mock jax for compatibility
+_mock_jax()
