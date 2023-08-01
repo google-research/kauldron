@@ -1,20 +1,11 @@
-<!-- mdformat off(myst not supported) -->
-
 ```{include} ../README.md
 ```
-
-
-<!--
-
-TODO(epot): Include colabs as docs ?
-Like: https://visu3d.readthedocs.io/en/latest/intro.html
-
--->
 
 ```{toctree}
 :hidden:
 :caption: Guides
 
+eval
 konfig
 klinen
 ```
@@ -32,3 +23,10 @@ GitHub <https://github.com/google-research/kauldron>
 
 api/kd/index
 ```
+
+<!--
+
+TODO(epot): Include colabs as docs ?
+Like: https://visu3d.readthedocs.io/en/latest/intro.html
+
+-->
