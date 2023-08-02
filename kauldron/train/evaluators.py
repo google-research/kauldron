@@ -220,7 +220,9 @@ def _pstep(
   _, ctx = model_with_aux.forward(
       params=state.params,
       batch=batch,
-      rngs=rng_streams.eval_rngs(eval_step),
+      rngs=rng_streams.eval_rngs(
+          eval_step, device_id=jax.lax.axis_index('batch')
+      ),
       step=state.step,  # Step is train step, NOT eval
       is_training=False,
   )
