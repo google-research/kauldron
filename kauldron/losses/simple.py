@@ -91,5 +91,7 @@ class SigmoidBinaryCrossEntropy(base.Loss):
   labels: Key = "batch.label"
 
   @typechecked
-  def get_values(self, logits: Float["*a"], labels: Float["*a"]) -> Float["*a"]:
+  def get_values(
+      self, logits: Float["*a n"], labels: Int["*a n"]
+  ) -> Float["*a 1"]:
     return optax.sigmoid_binary_cross_entropy(logits, labels)
