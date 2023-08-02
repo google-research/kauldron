@@ -81,15 +81,14 @@ def train(
   status.log("Initializing ...")
   train_iter = cfg.train_ds(seed=cfg.seed)
   trainstep = train_step.TrainStep(
+      rng_streams=cfg.rng_streams,
       optimizer=cfg.optimizer,
       model=cfg.model,
       losses=cfg.train_losses,
       metrics=cfg.train_metrics,
       summaries=cfg.train_summaries,
   )
-  state = trainstep.init(
-      flax.core.freeze(train_iter.element_spec), seed=cfg.seed
-  )
+  state = trainstep.init(flax.core.freeze(train_iter.element_spec))
 
   evaluator = cfg.eval
 

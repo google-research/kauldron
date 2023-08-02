@@ -26,7 +26,6 @@ import jax
 from kauldron import core
 from kauldron import losses as kd_losses
 from kauldron import metrics as kd_metrics
-from kauldron import random as kd_random
 from kauldron import summaries as kd_summaries
 import kauldron.data.utils as data_utils
 from kauldron.train import rngs_lib
@@ -34,7 +33,6 @@ from kauldron.typing import ElementSpec, Float, PyTree  # pylint: disable=g-mult
 from kauldron.utils import train_property  # pylint: disable=unused-import
 import optax
 
-_Rngs = dict[str, kd_random.PRNGKey]
 _Params = PyTree[Float["..."]]
 
 
@@ -44,7 +42,6 @@ class TrainState:
   """Data structure for checkpointing the model."""
 
   step: int
-  root_rng: kd_random.PRNGKey
 
   params: Optional[_Params]
   opt_state: Optional[PyTree[Float["..."]]]
@@ -60,31 +57,6 @@ class TrainState:
         params=new_params,
         opt_state=new_opt_state,
     )
-
-  @property
-  def init_rngs(self) -> _Rngs:
-    return {
-        r.name: r.make(self.root_rng, step=0) for r in rngs_lib.RNGS if r.init
-    }
-
-  @property
-  def train_rngs(self) -> _Rngs:
-    return {
-        r.name: r.make(self.root_rng, step=self.step)
-        for r in rngs_lib.RNGS
-        if r.train
-    }
-
-  def eval_rngs(self, step: int) -> _Rngs:
-    rngs = {
-        r.name: r.make(self.root_rng, step=step)
-        for r in rngs_lib.RNGS
-        if r.eval
-    }
-    # Fold-in a key, so `eval` and `train` are different, even for the
-    # same step
-    rngs = {n: r.fold_in("eval") for n, r in rngs.items()}
-    return rngs
 
   # TODO(epot): Could factor this to some util
   # TODO(epot): Current implementation is fragile (do not support `init=False`,
@@ -168,7 +140,7 @@ class ModelWithAux:
 
   def init(  # pylint:disable=missing-function-docstring
       self,
-      init_rngs: _Rngs,
+      init_rngs: rngs_lib.Rngs,
       elem_spec: ElementSpec,
       model_method: Optional[str] = None,
   ) -> _Params:
@@ -192,7 +164,7 @@ class ModelWithAux:
       params,
       *,
       batch,
-      rngs: _Rngs,
+      rngs: rngs_lib.Rngs,
       step,
       is_training,
   ) -> tuple[float, core.Context]:
@@ -252,35 +224,36 @@ class TrainStep:
 
   model_with_aux: ModelWithAux
   optimizer: optax.GradientTransformation
+  rng_streams: rngs_lib.RngStreams
 
   def __init__(
       self,
       *,
       optimizer: optax.GradientTransformation,
+      rng_streams: rngs_lib.RngStreams,
       **model_with_aux_kwargs: Any,
   ):
     object.__setattr__(
         self, "model_with_aux", ModelWithAux(**model_with_aux_kwargs)  # pytype: disable=missing-parameter  # pylint: disable=missing-kwoa
     )
     object.__setattr__(self, "optimizer", optimizer)
+    object.__setattr__(self, "rng_streams", rng_streams)
 
-  @functools.partial(jax.jit, backend="cpu", static_argnums=(0, 1, 3))
+  @functools.partial(jax.jit, backend="cpu", static_argnums=(0, 1, 2))
   def init(
       self,
       elem_spec: ElementSpec,
-      seed: int,
       model_method: Optional[str] = None,
   ) -> TrainState:
     """Initialize the model and return the initial TrainState."""
     state = TrainState(
         step=0,
-        root_rng=kd_random.PRNGKey(seed),
         params=None,
         opt_state=None,
         training_time_hours=0.0,
     )
     params = self.model_with_aux.init(
-        state.init_rngs, elem_spec, model_method=model_method
+        self.rng_streams.init_rngs(), elem_spec, model_method=model_method
     )
     opt_state = self.optimizer.init(params)
     return state.replace(params=params, opt_state=opt_state)
@@ -322,7 +295,7 @@ class TrainStep:
     grads, context = grad_fn(
         state.params,
         batch=batch,
-        rngs=state.train_rngs,
+        rngs=self.rng_streams.train_rngs(state.step),
         step=state.step,
         is_training=True,
     )
