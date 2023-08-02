@@ -206,7 +206,7 @@ class SingleEvaluator(EvaluatorBase):
 
 @functools.partial(
     jax.pmap,
-    axis_name='batch',
+    axis_name='device',
     static_broadcasted_argnums=(0, 1),
 )
 def _pstep(
@@ -221,7 +221,7 @@ def _pstep(
       params=state.params,
       batch=batch,
       rngs=rng_streams.eval_rngs(
-          eval_step, device_id=jax.lax.axis_index('batch')
+          eval_step, device_id=jax.lax.axis_index('device')
       ),
       step=state.step,  # Step is train step, NOT eval
       is_training=False,

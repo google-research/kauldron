@@ -276,7 +276,7 @@ class TrainStep:
 
   @functools.partial(
       jax.pmap,
-      axis_name="batch",
+      axis_name="device",
       static_broadcasted_argnums=(0, 3, 4, 5),
       donate_argnums=(1,),
   )
@@ -296,12 +296,12 @@ class TrainStep:
         state.params,
         batch=batch,
         rngs=self.rng_streams.train_rngs(
-            state.step, device_id=jax.lax.axis_index("batch")
+            state.step, device_id=jax.lax.axis_index("device")
         ),
         step=state.step,
         is_training=True,
     )
-    grads = jax.lax.pmean(grads, axis_name="batch")
+    grads = jax.lax.pmean(grads, axis_name="device")
     updates, new_opt_state = self.optimizer.update(
         grads, state.opt_state, state.params
     )

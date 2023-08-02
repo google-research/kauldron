@@ -68,7 +68,7 @@ class RngStream:
       rng: The root rng, common to all processes
       step: Current model step
       device_id: Indicate be the device / axis id inside `pmap` (e.g.
-        `jax.lax.axis_index('batch')`)
+        `jax.lax.axis_index('device')`)
       key: Additional string (e.g. `train`, `init`,...) to fold in
 
     Returns:
@@ -175,7 +175,7 @@ class RngStreams:
     Args:
       step: Current train/eval step
       device_id: Indicate be the device / axis id inside `pmap` (e.g.
-        `jax.lax.axis_index('batch')`)
+        `jax.lax.axis_index('device')`)
 
     Returns:
       rngs: The `dict[<stream name>, kd.random.PRNGKey]`
@@ -198,7 +198,7 @@ class RngStreams:
     Args:
       step: Current train/eval step
       device_id: Indicate be the device / axis id inside `pmap` (e.g.
-        `jax.lax.axis_index('batch')`)
+        `jax.lax.axis_index('device')`)
 
     Returns:
       rngs: The `dict[<stream name>, kd.random.PRNGKey]`
