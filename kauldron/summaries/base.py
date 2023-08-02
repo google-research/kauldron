@@ -81,6 +81,7 @@ class ShowImages(ImageSummary):
   height: Optional[int] = None
   in_vrange: Optional[tuple[float, float]] = None
   convert_to_float: bool = False
+  cmap: str | None = None
 
   def gather_kwargs(self, context: Any) -> dict[str, Images]:
     # optimize gather_kwargs to only return num_images many images
@@ -101,7 +102,7 @@ class ShowImages(ImageSummary):
     return {"images": images}
 
   @typechecked
-  def get_images(self, images: Images) -> Float["n _h _w c"]:
+  def get_images(self, images: Images) -> Float["n _h _w _c"]:
     # flatten batch dimensions
     images = einops.rearrange(images, "... h w c -> (...) h w c")
     images = images[: self.num_images]
@@ -111,6 +112,15 @@ class ShowImages(ImageSummary):
       images = (images - vmin) / (vmax - vmin)
     # convert to float
     images = media.to_type(images, np.float32)
+
+    if self.cmap is not None:
+      if not isinstance(images, Float["n h w 1"]):
+        raise ValueError(
+            "Colormap only supported for single channel inputs (got"
+            f" {images.shape})"
+        )
+      images = media.to_rgb(images[..., 0], cmap=self.cmap)
+
     # always clip to avoid display problems in TB and Datatables
     images = np.clip(images, 0.0, 1.0)
     # maybe resize
