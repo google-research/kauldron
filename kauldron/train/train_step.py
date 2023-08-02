@@ -295,7 +295,9 @@ class TrainStep:
     grads, context = grad_fn(
         state.params,
         batch=batch,
-        rngs=self.rng_streams.train_rngs(state.step),
+        rngs=self.rng_streams.train_rngs(
+            state.step, device_id=jax.lax.axis_index("batch")
+        ),
         step=state.step,
         is_training=True,
     )
