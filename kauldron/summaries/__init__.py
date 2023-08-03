@@ -15,6 +15,7 @@
 """Summaries."""
 # pylint: disable=g-importing-member
 from kauldron.summaries.base import ImageSummary
+from kauldron.summaries.base import PerImageChannelPCA
 from kauldron.summaries.base import ShowImages
 from kauldron.summaries.base import ShowSegmentations
 from kauldron.summaries.base import Summary
