@@ -16,8 +16,7 @@
 
 from __future__ import annotations
 
-import abc
-import dataclasses
+# import abc
 import functools
 import itertools
 from typing import Any, Optional, TypeVar
@@ -42,7 +41,9 @@ _SelfT = TypeVar('_SelfT')
 _REUSE_TRAIN: Any = object()
 
 
-class EvaluatorBase(config_util.BaseConfig, abc.ABC):
+class EvaluatorBase(
+    config_util.BaseConfig, config_util.UpdateFromRootCfg  # , abc.ABC
+):
   """Evaluator interface.
 
   Usage:
@@ -60,14 +61,12 @@ class EvaluatorBase(config_util.BaseConfig, abc.ABC):
     base_cfg: Train config from which model, checkpoint,... are reused
   """
 
-  base_cfg: config_lib.Config
-
-  @abc.abstractmethod
+  # @abc.abstractmethod
   def maybe_eval(self, *, step: int, state: train_step.TrainState):
     """Eventually evaluate the train state."""
     raise NotImplementedError
 
-  @abc.abstractmethod
+  # @abc.abstractmethod
   def flatten(self) -> list[EvaluatorBase]:
     """Iterate over the evaluator nodes."""
     raise NotImplementedError
@@ -105,29 +104,17 @@ class SingleEvaluator(EvaluatorBase):
   run_every: int
   num_batches: Optional[int]
   ds: data.TFDataPipeline
-  losses: dict[str, losses_lib.Loss] = _REUSE_TRAIN
-  metrics: dict[str, metrics_lib.Metric] = _REUSE_TRAIN
-  summaries: dict[str, summaries_lib.Summary] = _REUSE_TRAIN
-  rng_streams: rngs_lib.RngStreams = _REUSE_TRAIN
+  losses: dict[str, losses_lib.Loss] = config_util.ROOT_CFG_REF.train_losses
+  metrics: dict[str, metrics_lib.Metric] = (
+      config_util.ROOT_CFG_REF.train_metrics
+  )
+  summaries: dict[str, summaries_lib.Summary] = (
+      config_util.ROOT_CFG_REF.train_summaries
+  )
 
-  def __post_init__(self):
-    # Eventually copy the metrics from the train config
-    if hasattr(self, 'base_cfg'):
-      for name, base_name in [
-          ('losses', 'train_losses'),
-          ('metrics', 'train_metrics'),
-          ('summaries', 'train_summaries'),
-          ('rng_streams', 'rng_streams'),
-      ]:
-        # TODO(klausg): filter out metrics / summaries that access grads/updates
-        if getattr(self, name) is _REUSE_TRAIN:
-          object.__setattr__(self, name, getattr(self.base_cfg, base_name))
-      if self.base_cfg.rng_streams is not self.rng_streams:
-        raise ValueError(
-            'RngStreams should be the same in eval / train. To use a stream in'
-            ' eval, set `eval=True` in the `RngStream`.\n'
-            f'Got: {self.base_cfg.rng_streams} != {self.rng_streams}'
-        )
+  base_cfg: config_lib.Config = config_util.ROOT_CFG_REF
+
+  # TODO(klausg): filter out metrics / summaries that access grads/updates
 
   def maybe_eval(
       self, *, step: int, state: train_step.TrainState
@@ -154,7 +141,7 @@ class SingleEvaluator(EvaluatorBase):
       eval_step = flax.jax_utils.replicate(eval_step)
       aux = _pstep(
           self.model_with_aux,
-          self.rng_streams,
+          self.base_cfg.rng_streams,
           eval_step,
           state,
           batch,
@@ -253,13 +240,11 @@ class MultiEvaluator(EvaluatorBase):
 
   children: list[EvaluatorBase]
 
-  def __post_init__(self):
-    # Propagate the cfg to the children
-    if hasattr(self, 'base_cfg'):
-      children = [
-          dataclasses.replace(c, base_cfg=self.base_cfg) for c in self.children
-      ]
-      object.__setattr__(self, 'children', children)
+  def update_from_root_cfg(self: _SelfT, root_cfg: config_lib.Config) -> _SelfT:
+    """See base class."""
+    return self.replace(
+        children=[c.update_from_root_cfg(root_cfg) for c in self.children]
+    )
 
   def maybe_eval(self, *, step: int, state: train_step.TrainState):
     for evaluator in self.children:

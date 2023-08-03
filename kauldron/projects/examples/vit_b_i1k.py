@@ -111,7 +111,6 @@ def get_config():
 
   # Checkpointer
   cfg.checkpointer = kd.train.Checkpointer(
-      workdir=cfg.ref.workdir,
       save_interval_steps=1000,
       max_to_keep=1,
   )

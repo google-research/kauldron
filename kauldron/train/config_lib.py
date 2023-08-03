@@ -105,14 +105,12 @@ class Config(config_util.BaseConfig):
   )
 
   def __post_init__(self):
-    # Eventually propagate the seed from the root config
-    # Set rngs before eval, as the rngs is used in eval.
-    if self.rng_streams.seed is None:
-      object.__setattr__(
-          self,
-          'rng_streams',
-          dataclasses.replace(self.rng_streams, seed=self.seed),
-      )
+    # Some config object values are lazy-initialized from the root config.
+    # See `UpdateFromRootCfg` for details
     object.__setattr__(
-        self, 'eval', dataclasses.replace(self.eval, base_cfg=self)
+        self, 'rng_streams', self.rng_streams.update_from_root_cfg(self)
+    )
+    object.__setattr__(self, 'eval', self.eval.update_from_root_cfg(self))
+    object.__setattr__(
+        self, 'checkpointer', self.checkpointer.update_from_root_cfg(self)
     )

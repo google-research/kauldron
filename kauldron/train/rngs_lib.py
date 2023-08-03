@@ -22,6 +22,7 @@ import functools
 
 import jax
 from kauldron import random as kd_random
+from kauldron.utils import config_util
 
 Rngs = dict[str, kd_random.PRNGKey]
 
@@ -110,7 +111,7 @@ _DEFAULT_STREAMS = [
 
 
 @dataclasses.dataclass(frozen=True, eq=True)
-class RngStreams:
+class RngStreams(config_util.UpdateFromRootCfg):
   """Manager of rng streams.
 
   Generate the `rngs` dict to pass to `model.init` / `model.apply`.
@@ -130,7 +131,7 @@ class RngStreams:
   )
 
   _: dataclasses.KW_ONLY
-  seed: int | None = None
+  seed: int = config_util.ROOT_CFG_REF.seed
 
   @functools.cached_property
   def streams(self) -> dict[str, RngStream]:

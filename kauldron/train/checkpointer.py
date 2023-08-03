@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-import abc
+# import abc
 import dataclasses
 import datetime
 import functools
@@ -25,15 +25,17 @@ from typing import Optional, Sequence, TypeVar
 from etils import epath
 from flax.training import orbax_utils
 import jax
+from kauldron.utils import config_util
 import orbax.checkpoint as orbax
 
 _T = TypeVar("_T")
 
 
-class BaseCheckpointer(abc.ABC):
+# TODO(epot): Why `abc` fail ?
+class BaseCheckpointer(config_util.UpdateFromRootCfg):  # , abc.ABC):
   """Basic checkpointing interface."""
 
-  @abc.abstractmethod
+  # @abc.abstractmethod
   def restore(
       self,
       initial_state: _T,
@@ -43,11 +45,11 @@ class BaseCheckpointer(abc.ABC):
   ) -> _T:
     raise NotImplementedError()
 
-  @abc.abstractmethod
+  # @abc.abstractmethod
   def should_save(self, step: int) -> bool:
     raise NotImplementedError()
 
-  @abc.abstractmethod
+  # @abc.abstractmethod
   def save_state(
       self,
       state,
@@ -57,7 +59,7 @@ class BaseCheckpointer(abc.ABC):
   ) -> bool:
     raise NotImplementedError()
 
-  @abc.abstractmethod
+  # @abc.abstractmethod
   def maybe_save_state(
       self,
       state,
@@ -79,7 +81,7 @@ class BaseCheckpointer(abc.ABC):
 @dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
 class Checkpointer(BaseCheckpointer):
   """Basic Orbax Checkpointmanager."""
-  workdir: str | epath.Path
+  workdir: str | epath.Path = config_util.ROOT_CFG_REF.workdir
 
   save_interval_steps: int
   max_to_keep: Optional[int] = 3
