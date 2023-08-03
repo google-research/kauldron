@@ -33,6 +33,8 @@ _jit_method = functools.partial(jax.jit, static_argnames=['self'])
 class RngStream:
   """Info on one `rng` stream.
 
+  See doc at https://kauldron.rtfd.io/en/latest/eval.html#rng-streams
+
   Attributes:
     name: Stream name
     init: Whether the rng is used in `model.init`
@@ -113,6 +115,8 @@ _DEFAULT_STREAMS = [
 @dataclasses.dataclass(frozen=True, eq=True)
 class RngStreams(config_util.UpdateFromRootCfg):
   """Manager of rng streams.
+
+  See doc at https://kauldron.rtfd.io/en/latest/eval.html#rng-streams
 
   Generate the `rngs` dict to pass to `model.init` / `model.apply`.
 
