@@ -108,7 +108,9 @@ class Checkpointer(BaseCheckpointer):
       manager_cls = ocp.CheckpointManager
     ckpt_mgr = manager_cls(
         epath.Path(self.workdir) / "checkpoints",
-        ocp.Checkpointer(ocp.PyTreeCheckpointHandler()),
+        # Use OCDBT for faster performance (see
+        # https://orbax.readthedocs.io/en/latest/optimized_checkpointing.html)
+        ocp.Checkpointer(ocp.PyTreeCheckpointHandler(use_ocdbt=True)),
         options=mgr_options,
     )
     return ckpt_mgr
