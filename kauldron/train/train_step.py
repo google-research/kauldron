@@ -239,8 +239,17 @@ class TrainStep:
     object.__setattr__(self, "optimizer", optimizer)
     object.__setattr__(self, "rng_streams", rng_streams)
 
-  @functools.partial(jax.jit, backend="cpu", static_argnums=(0, 1, 2))
   def init(
+      self,
+      elem_spec: ElementSpec,
+      *,
+      model_method: Optional[str] = None,
+  ) -> TrainState:
+    """Initialize the model and return the initial TrainState."""
+    return self._init(flax.core.freeze(elem_spec), model_method)
+
+  @functools.partial(jax.jit, backend="cpu", static_argnums=(0, 1, 2))
+  def _init(
       self,
       elem_spec: ElementSpec,
       model_method: Optional[str] = None,

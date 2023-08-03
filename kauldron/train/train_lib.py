@@ -88,7 +88,7 @@ def train(
       metrics=cfg.train_metrics,
       summaries=cfg.train_summaries,
   )
-  state = trainstep.init(flax.core.freeze(train_iter.element_spec))
+  state = trainstep.init(train_iter.element_spec)
 
   evaluator = cfg.eval
 
