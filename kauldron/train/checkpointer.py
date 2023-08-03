@@ -26,7 +26,7 @@ from etils import epath
 from flax.training import orbax_utils
 import jax
 from kauldron.utils import config_util
-import orbax.checkpoint as orbax
+import orbax.checkpoint as ocp
 
 _T = TypeVar("_T")
 
@@ -91,9 +91,9 @@ class Checkpointer(BaseCheckpointer):
   fast: bool = True
 
   @functools.cached_property
-  def _ckpt_mgr(self) -> orbax.checkpoint_manager.CheckpointManager:
+  def _ckpt_mgr(self) -> ocp.checkpoint_manager.CheckpointManager:
     """Returns checkpoint manager instance (initialized and cached)."""
-    mgr_options = orbax.CheckpointManagerOptions(
+    mgr_options = ocp.CheckpointManagerOptions(
         save_interval_steps=self.save_interval_steps,
         max_to_keep=self.max_to_keep,
         keep_time_interval=self.keep_time_interval,
@@ -106,10 +106,10 @@ class Checkpointer(BaseCheckpointer):
     if self.fast:
       manager_cls = FastCheckpointManager
     else:
-      manager_cls = orbax.CheckpointManager
+      manager_cls = ocp.CheckpointManager
     ckpt_mgr = manager_cls(
         epath.Path(self.workdir) / "checkpoints",
-        orbax.Checkpointer(orbax.PyTreeCheckpointHandler()),
+        ocp.Checkpointer(ocp.PyTreeCheckpointHandler()),
         options=mgr_options,
     )
     return ckpt_mgr
@@ -205,7 +205,7 @@ class NoopCheckpointer(BaseCheckpointer):
     return False
 
 
-class FastCheckpointManager(orbax.CheckpointManager):
+class FastCheckpointManager(ocp.CheckpointManager):
   """Wrapper around Checkpointmanager that speeds up loading."""
 
   def all_steps(self, read: bool = False) -> Sequence[int]:
@@ -231,7 +231,7 @@ def _checkpoint_steps(checkpoint_dir: epath.PathLike) -> list[int]:
 
   def get_step_for_dir(step_dir: epath.Path) -> int:
     name = step_dir.name
-    if orbax.utils.TMP_DIR_SUFFIX in name:
+    if ocp.utils.TMP_DIR_SUFFIX in name:
       return -1
     if name.isdigit():
       return int(name)
