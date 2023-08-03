@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-# import abc
+import abc
 import dataclasses
 import datetime
 import functools
@@ -31,11 +31,10 @@ import orbax.checkpoint as ocp
 _T = TypeVar("_T")
 
 
-# TODO(epot): Why `abc` fail ?
-class BaseCheckpointer(config_util.UpdateFromRootCfg):  # , abc.ABC):
+class BaseCheckpointer(config_util.UpdateFromRootCfg, abc.ABC):
   """Basic checkpointing interface."""
 
-  # @abc.abstractmethod
+  @abc.abstractmethod
   def restore(
       self,
       initial_state: _T,
@@ -45,11 +44,11 @@ class BaseCheckpointer(config_util.UpdateFromRootCfg):  # , abc.ABC):
   ) -> _T:
     raise NotImplementedError()
 
-  # @abc.abstractmethod
+  @abc.abstractmethod
   def should_save(self, step: int) -> bool:
     raise NotImplementedError()
 
-  # @abc.abstractmethod
+  @abc.abstractmethod
   def save_state(
       self,
       state,
@@ -59,7 +58,7 @@ class BaseCheckpointer(config_util.UpdateFromRootCfg):  # , abc.ABC):
   ) -> bool:
     raise NotImplementedError()
 
-  # @abc.abstractmethod
+  @abc.abstractmethod
   def maybe_save_state(
       self,
       state,

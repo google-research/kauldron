@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-# import abc
+import abc
 import functools
 import itertools
 from typing import Any, Optional, TypeVar
@@ -42,7 +42,7 @@ _REUSE_TRAIN: Any = object()
 
 
 class EvaluatorBase(
-    config_util.BaseConfig, config_util.UpdateFromRootCfg  # , abc.ABC
+    config_util.BaseConfig, config_util.UpdateFromRootCfg, abc.ABC
 ):
   """Evaluator interface.
 
@@ -61,12 +61,12 @@ class EvaluatorBase(
     base_cfg: Train config from which model, checkpoint,... are reused
   """
 
-  # @abc.abstractmethod
+  @abc.abstractmethod
   def maybe_eval(self, *, step: int, state: train_step.TrainState):
     """Eventually evaluate the train state."""
     raise NotImplementedError
 
-  # @abc.abstractmethod
+  @abc.abstractmethod
   def flatten(self) -> list[EvaluatorBase]:
     """Iterate over the evaluator nodes."""
     raise NotImplementedError
