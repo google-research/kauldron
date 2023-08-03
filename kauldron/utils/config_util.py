@@ -168,8 +168,17 @@ class UpdateFromRootCfg:
 
   ```python
   @dataclasses.dataclass
-  class MyConfig:
+  class MyObject:
     workdir: epath.Path = ROOT_CFG_REF.workdir
+
+
+  root_cfg = kd.train.Config(workdir='/path/to/dir')
+
+  obj = MyObject()  # Workdir not set yet
+
+  # Copy the `workdir` from `root_cfg`
+  obj = obj.update_from_root_cfg(root_cfg)
+  assert obj.workdir == root_cfg.work_dir
   ```
 
   Attributes:
