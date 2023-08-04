@@ -101,7 +101,7 @@ def train(
   writer.write_param_overview(initial_step, state.params)
   writer.write_element_spec(initial_step, cfg.train_ds.element_spec)
 
-  state_repl = flax.jax_utils.replicate(state)
+  state_repl = state.replicate()
 
   timer = timer_module.PerformanceTimer(
       initial_step_num=initial_step,
@@ -124,7 +124,7 @@ def train(
   ):
     with timer.exclude_from_step_stats():
       if ckptr.should_save(i):
-        state = flax.jax_utils.unreplicate(state_repl)
+        state = state_repl.unreplicate()
         # Take the time after executing the last training step so that the
         # times logged and stored with the ckecpoint match.
         state = state.replace(
@@ -174,7 +174,7 @@ def train(
 
   sync()
   # Returning the final state is convenient for interactive training in colab
-  return flax.jax_utils.unreplicate(state_repl), flax.jax_utils.unreplicate(aux)
+  return state_repl.unreplicate(), flax.jax_utils.unreplicate(aux)
 
 
 def write_summaries(

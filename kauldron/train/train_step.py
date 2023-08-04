@@ -81,6 +81,14 @@ class TrainState:
   def replace(self, **changes: Any) -> TrainState:
     return dataclasses.replace(self, **changes)
 
+  def replicate(self) -> TrainState:
+    """Alias for `flax.jax_utils.replicate`."""
+    return flax.jax_utils.replicate(self)
+
+  def unreplicate(self) -> TrainState:
+    """Alias for `flax.jax_utils.unreplicate`."""
+    return flax.jax_utils.unreplicate(self)
+
 
 @flax.struct.dataclass
 class Auxiliaries:
