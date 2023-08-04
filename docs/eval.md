@@ -60,7 +60,7 @@ params = model.init(..., is_training_property=True)
 y = model.apply(..., is_training_property=False)  # Eval
 ```
 
-## Customize randomness
+## Rng streams
 
 By default, the following `rng` streams are created:
 
@@ -81,4 +81,23 @@ cfg.rng_streams = kd.train.RngStreams([
     # Add a custom stream (by default only on `train`)
     kd.train.RngStream('my_custom_stream'),
 ])
+```
+
+To get the `{'dropout': rng, ...}` values, call the `rng_streams.train_rngs()`,
+`.eval_rngs()` or `.init_rngs()`.
+
+By default, the train and eval rngs require the `device` index from `@pmap`, so
+each replicated computation uses a different rng.
+
+```python
+params = model.init(rng_streams.init_rngs(), ...)
+
+@functools.partial(jax.pmap, axis_name='device')
+def forward(step, params, batch):
+  # Create the rng for `step` Y and `device_id` X
+  rngs = rng_streams.train_rngs(
+      step=step,
+      device_id=jax.lax.axis_index('device'),
+  )
+  return model.apply(params, batch, rngs=rngs)
 ```
