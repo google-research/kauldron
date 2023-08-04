@@ -29,6 +29,8 @@ if typing.TYPE_CHECKING:
 
 _SelfT = TypeVar('_SelfT')
 
+# TODO(epot): Remove `BaseConfig` ?
+
 
 @dataclasses.dataclass(frozen=True)
 class BaseConfig(konfig.WithRef):
@@ -43,13 +45,12 @@ class BaseConfig(konfig.WithRef):
     schedule: dict[str, int] = dataclasses.field(default_factory=dict)
   ```
 
-  Fields can be assigned:
+  Fields can be assigned in the `get_config()`:
 
   * In constructor: `Config(x=1)`
   * As attribute: `config.x = 1`
 
   Arbitrary fields can be defined (not just the ones defined as dataclass field)
-  ```
   """
 
   if not typing.TYPE_CHECKING:

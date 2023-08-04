@@ -30,6 +30,7 @@ from kauldron import summaries as kd_summaries
 import kauldron.data.utils as data_utils
 from kauldron.train import rngs_lib
 from kauldron.typing import ElementSpec, Float, PyTree  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.utils import config_util
 from kauldron.utils import train_property  # pylint: disable=unused-import
 import optax
 
@@ -134,16 +135,16 @@ def _reduce_states(
 
 
 @dataclasses.dataclass(kw_only=True, eq=True, frozen=True)
-class ModelWithAux:
+class ModelWithAux(config_util.UpdateFromRootCfg):
   """Wrapper around model which also compute the summaries and metrics."""
 
-  model: nn.Module
-  losses: Mapping[str, kd_losses.Loss]
-  metrics: Mapping[str, kd_metrics.Metric] = dataclasses.field(
-      default_factory=flax.core.FrozenDict
+  model: nn.Module = config_util.ROOT_CFG_REF.model
+  losses: Mapping[str, kd_losses.Loss] = config_util.ROOT_CFG_REF.train_losses
+  metrics: Mapping[str, kd_metrics.Metric] = (
+      config_util.ROOT_CFG_REF.train_metrics
   )
-  summaries: Mapping[str, kd_summaries.Summary] = dataclasses.field(
-      default_factory=flax.core.FrozenDict
+  summaries: Mapping[str, kd_summaries.Summary] = (
+      config_util.ROOT_CFG_REF.train_summaries
   )
 
   def init(  # pylint:disable=missing-function-docstring
@@ -152,6 +153,7 @@ class ModelWithAux:
       elem_spec: ElementSpec,
       model_method: Optional[str] = None,
   ) -> _Params:
+    self._assert_root_cfg_resolved()
     mock_batch = data_utils.mock_batch_from_elem_spec(
         elem_spec, drop_device_axis=True
     )
@@ -227,25 +229,20 @@ class ModelWithAux:
 
 
 @dataclasses.dataclass(kw_only=True, eq=True, frozen=True)
-class TrainStep:
+class _TrainStep(config_util.UpdateFromRootCfg):
   """Training Step."""
 
-  model_with_aux: ModelWithAux
-  optimizer: optax.GradientTransformation
-  rng_streams: rngs_lib.RngStreams
+  model_with_aux: ModelWithAux = dataclasses.field(default_factory=ModelWithAux)
+  optimizer: optax.GradientTransformation = config_util.ROOT_CFG_REF.optimizer
+  rng_streams: rngs_lib.RngStreams = config_util.ROOT_CFG_REF.rng_streams
 
-  def __init__(
-      self,
-      *,
-      optimizer: optax.GradientTransformation,
-      rng_streams: rngs_lib.RngStreams,
-      **model_with_aux_kwargs: Any,
-  ):
-    object.__setattr__(
-        self, "model_with_aux", ModelWithAux(**model_with_aux_kwargs)  # pytype: disable=missing-parameter  # pylint: disable=missing-kwoa
+  def update_from_root_cfg(self, root_cfg) -> _TrainStep:
+    new_self = super().update_from_root_cfg(root_cfg)
+    new_self = dataclasses.replace(
+        new_self,
+        model_with_aux=self.model_with_aux.update_from_root_cfg(root_cfg),
     )
-    object.__setattr__(self, "optimizer", optimizer)
-    object.__setattr__(self, "rng_streams", rng_streams)
+    return new_self
 
   def init(
       self,
@@ -254,6 +251,7 @@ class TrainStep:
       model_method: Optional[str] = None,
   ) -> TrainState:
     """Initialize the model and return the initial TrainState."""
+    self._assert_root_cfg_resolved()
     return self._init(flax.core.freeze(elem_spec), model_method)
 
   @functools.partial(jax.jit, backend="cpu", static_argnums=(0, 1, 2))
@@ -335,3 +333,24 @@ class TrainStep:
     )
 
     return next_state, aux
+
+
+class TrainStep(_TrainStep):
+  """Training Step."""
+
+  # TODO(epot): Delete once users have migrated
+
+  def __init__(self, **kwargs):
+    model_kwarg_names = {f.name for f in dataclasses.fields(ModelWithAux)}
+    model_kwargs = {}
+    for k in list(kwargs):
+      if k in model_kwarg_names:
+        model_kwargs[k] = kwargs.pop(k)
+    if model_kwargs:
+      print(
+          f"Creating `TrainStep` with {list(model_kwargs)} is DEPRECATED ! "
+          "Instead, `cfg.trainstep` can be called directly"
+      )
+      super().__init__(model_with_aux=ModelWithAux(**model_kwargs), **kwargs)
+    else:
+      super().__init__(**kwargs)

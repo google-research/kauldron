@@ -14,6 +14,8 @@
 
 """Config."""
 
+from __future__ import annotations
+
 from collections.abc import Mapping
 import dataclasses
 from typing import Optional
@@ -30,9 +32,13 @@ from kauldron.train import checkpointer as checkpointer_lib
 from kauldron.train import evaluators
 from kauldron.train import flatboard
 from kauldron.train import rngs_lib
+from kauldron.train import train_step
 from kauldron.utils import config_util
 from kauldron.utils import xmanager
 import optax
+
+
+# TODO(epot): Rename: Experiment, Plan, Main, Root, Trainer ?
 
 
 class Config(config_util.BaseConfig):
@@ -56,8 +62,10 @@ class Config(config_util.BaseConfig):
     schedules: x
     optimizer: x
     checkpointer: x
-    eval:
-    flatboards:
+    eval: Evaluator to use (e.g. `kd.train.SingleEvaluator`)
+    flatboards: x
+    trainstep: Training loop step. Do not set this field unless you need a
+      custom training step.
     run: XManager runtime parameters (e.g. which target is the config using)
   """
 
@@ -99,6 +107,10 @@ class Config(config_util.BaseConfig):
       default_factory=flax.core.FrozenDict
   )
 
+  trainstep: train_step.TrainStep = dataclasses.field(
+      default_factory=train_step.TrainStep
+  )
+
   # XManager parameters
   run: xmanager.RunConfig = dataclasses.field(
       default_factory=xmanager.RunConfig
@@ -112,8 +124,14 @@ class Config(config_util.BaseConfig):
         'rng_streams',
         'eval',
         'checkpointer',
+        'trainstep',
     ):
       if hasattr(self, attr_name):
         object.__setattr__(
             self, attr_name, getattr(self, attr_name).update_from_root_cfg(self)
         )
+
+  # Do not use property to make it explicit this is recomputed each time
+  def init_state(self) -> train_step.TrainState:
+    """Create the state: `cfg.trainstep.init(cfg.train_ds.element_spec)`."""
+    return self.trainstep.init(self.train_ds.element_spec)

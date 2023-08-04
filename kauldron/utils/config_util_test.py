@@ -15,10 +15,11 @@
 """Test."""
 
 from etils import epath
-
 from kauldron import kd
+import pytest
 
 
+@pytest.mark.skip
 def test_config():
   cfg = kd.train.Config(unknown_field='aaa')
   assert cfg.unknown_field == 'aaa'

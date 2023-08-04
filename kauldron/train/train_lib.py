@@ -79,14 +79,8 @@ def train(
   writer = metric_writer.KDMetricWriter(workdir=cfg.workdir, collection="train")
 
   status.log("Initializing ...")
-  trainstep = train_step.TrainStep(
-      rng_streams=cfg.rng_streams,
-      optimizer=cfg.optimizer,
-      model=cfg.model,
-      losses=cfg.train_losses,
-      metrics=cfg.train_metrics,
-      summaries=cfg.train_summaries,
-  )
+  trainstep = cfg.trainstep
+
   state = trainstep.init(cfg.train_ds.element_spec)
 
   evaluator = cfg.eval

@@ -55,9 +55,6 @@ class EvaluatorBase(
   )
   evaluator.maybe_eval(step=0, state=state)
   ```
-
-  Attributes:
-    base_cfg: Train config from which model, checkpoint,... are reused
   """
 
   @abc.abstractmethod
