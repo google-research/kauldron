@@ -89,6 +89,8 @@ class TFDataPipeline(config_util.UpdateFromRootCfg):
   @functools.cached_property
   def _ds_iter(self) -> _NpTfdsDataset:
     """Returns a numpy tf.data.Dataset iterator."""
+    self._assert_root_cfg_resolved()
+
     ds = self.loader(seed=self.seed)
     transformations = []
     transformations.extend(self.transformations)

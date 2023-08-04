@@ -136,6 +136,8 @@ class SingleEvaluator(EvaluatorBase):
       self, state: train_step.TrainState, step: int
   ) -> train_step.Auxiliaries:
     """Run one full evaluation."""
+    self._assert_root_cfg_resolved()
+
     merged_aux = None
     for eval_step, batch in utils.enum_iter(
         self.ds,

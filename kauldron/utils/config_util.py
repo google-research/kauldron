@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import dataclasses
+import functools
 import typing
 from typing import Any, TypeVar
 
@@ -209,3 +210,22 @@ class UpdateFromRootCfg:
       return self
     else:
       return dataclasses.replace(self, **fields_to_replace)
+
+  def _assert_root_cfg_resolved(self) -> None:
+    """Raise an error if one attribute is still a `ROOT_CFG_REF`."""
+    return self._assert_root_cfg_resolved_value
+
+  @functools.cached_property
+  def _assert_root_cfg_resolved_value(self) -> None:
+    for f in dataclasses.fields(self):
+      if not isinstance(f.default, _FakeRootCfg):
+        continue
+      value = getattr(self, f.name)
+      if isinstance(value, _FakeRootCfg):
+        raise ValueError(
+            f'{type(self).__qualname__}.{f.name} is an unresolved'
+            f' `ROOT_CFG_REF` value ({value}).\nTo resolve the value, either'
+            f' explicitly set `{f.name}` in `__init__`, or call'
+            ' `obj.update_from_root_cfg(root_cfg)` to copy the value from the'
+            ' root `kd.train.Config` object.'
+        )

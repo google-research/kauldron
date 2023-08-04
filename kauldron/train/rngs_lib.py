@@ -152,6 +152,8 @@ class RngStreams(config_util.UpdateFromRootCfg):
   @_jit_method
   def root_rng(self) -> kd_random.PRNGKey:
     """Base root rng from which others are derived."""
+    self._assert_root_cfg_resolved()
+
     if self.seed is None:
       raise ValueError('RngStreams.seed should be set.')
     return kd_random.PRNGKey(self.seed)
