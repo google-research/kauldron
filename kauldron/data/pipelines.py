@@ -15,22 +15,29 @@
 """Data pipelines."""
 
 import dataclasses
-from typing import Any, Mapping, Optional
+import functools
+from typing import Any, Mapping, Optional, TypeAlias
 
 from etils import edc
+from etils import enp
 from grain._src.tensorflow import transforms
 import grain.tensorflow as grain
 import jax
 from kauldron.data.loaders import base as base_data_loader
-from kauldron.typing import PRNGKeyLike  # pylint: disable=g-importing-member
+from kauldron.typing import PRNGKeyLike, PyTree  # pylint: disable=g-importing-member,g-multiple-import
+from kauldron.utils import config_util
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
 BatchFn = grain.TfBatchFn
 
+# Output of `tfds.as_numpy`
+_NpTfdsDataset: TypeAlias = Any
+_NpArray: TypeAlias = Any
+
 
 @dataclasses.dataclass(frozen=True, kw_only=True, eq=True)
-class TFDataPipeline:
+class TFDataPipeline(config_util.UpdateFromRootCfg):
   """Basic tf.data pipeline.
 
   Attributes:
@@ -53,40 +60,36 @@ class TFDataPipeline:
       `(num_local_devices, host_batch_size/num_local_devices, ...)`.
     prefetch_size: Number of batches to prefetch for this dataset. Defaults to
       AUTOTUNE.
+    seed: Optional seed. By default reuse the global seed.
   """
 
   loader: base_data_loader.DataLoader
   transformations: grain.Transformations
+  # TODO(epot): Users should also be able to specify drop_reminder or mask
   batch_size: Optional[int] = None
-  batch_fn: Optional[BatchFn] = None
   tf_data_options: Optional[tf.data.Options] = None
   reshape_for_devices: bool = True
   prefetch_size: Optional[int] = tf.data.AUTOTUNE
 
-  def __post_init__(self):
+  seed: Optional[PRNGKeyLike] = config_util.ROOT_CFG_REF.seed
+
+  @functools.cached_property
+  def batch_fn(self) -> BatchFn:
+    """Batch transformaton."""
     num_hosts = jax.host_count()
     num_devices = jax.device_count()
-    if self.batch_size is not None:
-      if self.batch_fn is not None:
-        raise ValueError("batch_size and batch_fn are mutually exclusive.")
-      if self.batch_size % num_devices != 0:
-        raise ValueError(
-            "batch_size must be divisible by num_devices."
-            f" {self.batch_size=} {num_devices=}"
-        )
-      host_batch_size = self.batch_size // num_hosts
-
-      object.__setattr__(
-          self,
-          "batch_fn",
-          grain.TfBatch(batch_size=host_batch_size, drop_remainder=True),
+    if self.batch_size % num_devices != 0:
+      raise ValueError(
+          "batch_size must be divisible by num_devices."
+          f" {self.batch_size=} {num_devices=}"
       )
-    else:
-      if self.batch_fn is None:
-        raise ValueError("Must specify either batch_size or batch_fn.")
+    host_batch_size = self.batch_size // num_hosts
+    return grain.TfBatch(batch_size=host_batch_size, drop_remainder=True)
 
-  def __call__(self, seed: Optional[PRNGKeyLike] = None) -> tf.data.Dataset:
-    ds = self.loader(seed=seed)
+  @functools.cached_property
+  def _ds_iter(self) -> _NpTfdsDataset:
+    """Returns a numpy tf.data.Dataset iterator."""
+    ds = self.loader(seed=self.seed)
     transformations = []
     transformations.extend(self.transformations)
     transformations.append(self.batch_fn)
@@ -112,6 +115,23 @@ class TFDataPipeline:
     # drop grain meta features
     ds = ds.map(_drop_grain_meta_features)
     return tfds.as_numpy(ds)
+
+  def __iter__(self) -> PyTree[_NpArray]:
+    """Iterate over the dataset elements."""
+    return iter(self._ds_iter)
+
+  @property
+  def element_spec(self) -> PyTree[enp.ArraySpec]:
+    """Returns the element specs of the dataset."""
+    return self._ds_iter.element_spec
+
+  def __call__(self, seed=None) -> _NpTfdsDataset:
+    print(
+        "Calling `cfg.train_ds(seed=)` is DEPRECATED. Instead `cfg.train_ds`"
+        " can be iterated directly: `for batch in cfg.train_ds:`"
+    )
+    new_ds = dataclasses.replace(self, seed=seed)
+    return new_ds._ds_iter
 
   __repr__ = edc.repr
 

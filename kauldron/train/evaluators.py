@@ -34,7 +34,6 @@ from kauldron.train import train_lib
 from kauldron.train import train_step
 from kauldron.utils import config_util
 from kauldron.utils import utils
-import tensorflow as tf
 
 _SelfT = TypeVar('_SelfT')
 
@@ -116,6 +115,13 @@ class SingleEvaluator(EvaluatorBase):
 
   # TODO(klausg): filter out metrics / summaries that access grads/updates
 
+  def update_from_root_cfg(self: _SelfT, root_cfg: config_lib.Config) -> _SelfT:
+    """See base class."""
+    new_self = super().update_from_root_cfg(root_cfg)
+    return new_self.replace(
+        ds=self.ds.update_from_root_cfg(root_cfg),
+    )
+
   def maybe_eval(
       self, *, step: int, state: train_step.TrainState
   ) -> train_step.Auxiliaries | None:
@@ -130,11 +136,9 @@ class SingleEvaluator(EvaluatorBase):
       self, state: train_step.TrainState, step: int
   ) -> train_step.Auxiliaries:
     """Run one full evaluation."""
-    ds = self.ds_iter
-
     merged_aux = None
     for eval_step, batch in utils.enum_iter(
-        ds,
+        self.ds,
         total_steps=self.num_batches,
         desc='eval',
     ):
@@ -162,13 +166,6 @@ class SingleEvaluator(EvaluatorBase):
         log_summaries=True,
     )
     return merged_aux
-
-  @functools.cached_property
-  def ds_iter(self) -> tf.data.Dataset:
-    """Creates a new dataset reusable iterable."""
-    # TODO(epot): Allow custom seed / hash seed ?
-    test_iter = self.ds(seed=self.base_cfg.seed)
-    return test_iter
 
   @functools.cached_property
   def model_with_aux(self) -> train_step.ModelWithAux:

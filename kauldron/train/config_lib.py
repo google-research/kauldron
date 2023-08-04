@@ -107,10 +107,13 @@ class Config(config_util.BaseConfig):
   def __post_init__(self):
     # Some config object values are lazy-initialized from the root config.
     # See `UpdateFromRootCfg` for details
-    object.__setattr__(
-        self, 'rng_streams', self.rng_streams.update_from_root_cfg(self)
-    )
-    object.__setattr__(self, 'eval', self.eval.update_from_root_cfg(self))
-    object.__setattr__(
-        self, 'checkpointer', self.checkpointer.update_from_root_cfg(self)
-    )
+    for attr_name in (
+        'train_ds',
+        'rng_streams',
+        'eval',
+        'checkpointer',
+    ):
+      if hasattr(self, attr_name):
+        object.__setattr__(
+            self, attr_name, getattr(self, attr_name).update_from_root_cfg(self)
+        )

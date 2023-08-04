@@ -79,7 +79,6 @@ def train(
   writer = metric_writer.KDMetricWriter(workdir=cfg.workdir, collection="train")
 
   status.log("Initializing ...")
-  train_iter = cfg.train_ds(seed=cfg.seed)
   trainstep = train_step.TrainStep(
       rng_streams=cfg.rng_streams,
       optimizer=cfg.optimizer,
@@ -88,7 +87,7 @@ def train(
       metrics=cfg.train_metrics,
       summaries=cfg.train_summaries,
   )
-  state = trainstep.init(train_iter.element_spec)
+  state = trainstep.init(cfg.train_ds.element_spec)
 
   evaluator = cfg.eval
 
@@ -100,7 +99,7 @@ def train(
 
   writer.write_config(initial_step, raw_cfg)
   writer.write_param_overview(initial_step, state.params)
-  writer.write_element_spec(initial_step, train_iter.element_spec)
+  writer.write_element_spec(initial_step, cfg.train_ds.element_spec)
 
   state_repl = flax.jax_utils.replicate(state)
 
@@ -118,7 +117,7 @@ def train(
     total_steps = min(total_steps, initial_step + stop_after_steps)
   aux = None
   for i, batch in utils.enum_iter(
-      train_iter,
+      cfg.train_ds,
       init_step=initial_step,
       total_steps=total_steps,
       desc="train",
