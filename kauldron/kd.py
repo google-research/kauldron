@@ -22,6 +22,7 @@ from kauldron import kd
 # pylint: disable=unused-import,g-importing-member
 
 # Namespaces
+from kauldron import checkpoints as ckpts
 from kauldron import data
 from kauldron import konfig
 from kauldron import losses
