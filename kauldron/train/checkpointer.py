@@ -23,12 +23,16 @@ import functools
 from typing import Optional, Sequence, TypeVar
 
 from etils import epath
-from flax.training import orbax_utils
-import jax
+from kauldron.checkpoints import partial_loader
+from kauldron.checkpoints import pytree_checkpoint
 from kauldron.utils import config_util
 import orbax.checkpoint as ocp
 
 _T = TypeVar("_T")
+
+# TODO(epot): Move to checkpoints/
+
+CHECKPOINT_FOLDER_NAME = "checkpoints"
 
 
 class BaseCheckpointer(config_util.UpdateFromRootCfg, abc.ABC):
@@ -37,7 +41,7 @@ class BaseCheckpointer(config_util.UpdateFromRootCfg, abc.ABC):
   @abc.abstractmethod
   def restore(
       self,
-      initial_state: _T,
+      initial_state: _T | None = None,
       step: int = -1,
       *,
       noop_if_missing: bool = False,
@@ -79,7 +83,19 @@ class BaseCheckpointer(config_util.UpdateFromRootCfg, abc.ABC):
 
 @dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
 class Checkpointer(BaseCheckpointer):
-  """Basic Orbax Checkpointmanager."""
+  """Wrapper around Orbax CheckpointManager.
+
+  Attributes:
+    workdir: Root directory of the task
+    save_interval_steps: See `ocp.CheckpointManagerOptions`
+    max_to_keep: See `ocp.CheckpointManagerOptions`
+    keep_time_interval: See `ocp.CheckpointManagerOptions`
+    keep_period: See `ocp.CheckpointManagerOptions`
+    fallback_loader: If the checkpoint do not exists, `.restore()` will use this
+      loader to update the init state. Allow to load weights from a pre-trained
+      model.
+    fast: (internal) Activate some optimizations
+  """
   workdir: str | epath.Path = config_util.ROOT_CFG_REF.workdir
 
   save_interval_steps: int
@@ -87,10 +103,12 @@ class Checkpointer(BaseCheckpointer):
   keep_time_interval: Optional[datetime.timedelta] = None
   keep_period: Optional[int] = None
 
+  fallback_loader: Optional[partial_loader.PartialLoader] = None
+
   fast: bool = True
 
   @functools.cached_property
-  def _ckpt_mgr(self) -> ocp.checkpoint_manager.CheckpointManager:
+  def _ckpt_mgr(self) -> ocp.CheckpointManager:
     """Returns checkpoint manager instance (initialized and cached)."""
     mgr_options = ocp.CheckpointManagerOptions(
         save_interval_steps=self.save_interval_steps,
@@ -101,46 +119,42 @@ class Checkpointer(BaseCheckpointer):
         # TODO(msajjadi): Re-enable this once we've figured it out.
         # step_format_fixed_length=9,
         create=True,
+        # TODO(epot): Add `best_fn` to allow `ckpt_mngr.best_step()`
     )
     if self.fast:
       manager_cls = FastCheckpointManager
     else:
       manager_cls = ocp.CheckpointManager
     ckpt_mgr = manager_cls(
-        epath.Path(self.workdir) / "checkpoints",
-        # Use OCDBT for faster performance (see
-        # https://orbax.readthedocs.io/en/latest/optimized_checkpointing.html)
-        ocp.Checkpointer(ocp.PyTreeCheckpointHandler(use_ocdbt=True)),
+        epath.Path(self.workdir) / CHECKPOINT_FOLDER_NAME,
+        pytree_checkpoint.PyTreeCheckpointer(),
         options=mgr_options,
     )
     return ckpt_mgr
 
   def restore(
       self,
-      initial_state,
+      initial_state: _T | None = None,
       step: int = -1,
       *,
       noop_if_missing: bool = False,
-  ):
+  ) -> _T:
     """Restore state."""
     state = initial_state
     if self._ckpt_mgr.latest_step() is not None:
-      step = self._ckpt_mgr.latest_step() if step == -1 else step
-      assert (
-          step in self._ckpt_mgr.all_steps()
-      ), f"No checkpoint is available for step {step}"
+      step = self._absolute_step(step)
 
-      target, structure = jax.tree_util.tree_flatten(initial_state)
-      restore_args = orbax_utils.restore_args_from_target(target)
-      state = self._ckpt_mgr.restore(
-          step,
-          items=target,
-          restore_kwargs={"restore_args": restore_args},
-      )
-      state = jax.tree_util.tree_unflatten(structure, state)
+      state = self._ckpt_mgr.restore(step, items=initial_state)
+    elif self.fallback_loader is not None:  # No checkpoint
+      if state is None:
+        raise ValueError(
+            "Cannot initialize the checkpoint. Fallback checkpoint loading"
+            " require the initial state."
+        )
+      state = self.fallback_loader.transform(state)
     elif not noop_if_missing:  # No checkpoint
-      raise ValueError(
-          "Could not restore checkpoint. Use `noop_if_missing=True`"
+      raise FileNotFoundError(
+          f"Not checkpoint found in {self.workdir}. Use `noop_if_missing=True`"
           " to default to initial state."
       )
     return state
@@ -156,12 +170,7 @@ class Checkpointer(BaseCheckpointer):
       force: bool = False,
   ) -> bool:
     """Save state."""
-
-    target = jax.tree_util.tree_leaves(state)
-    save_args = orbax_utils.save_args_from_target(target)
-    return self._ckpt_mgr.save(
-        step, target, save_kwargs={"save_args": save_args}, force=force
-    )
+    return self._ckpt_mgr.save(step, state, force=force)
 
   def maybe_save_state(
       self,
@@ -184,14 +193,34 @@ class Checkpointer(BaseCheckpointer):
   def all_steps(self) -> Sequence[int]:
     return self._ckpt_mgr.all_steps()
 
+  def _absolute_step(self, step: int) -> int:
+    """Convert `-1` into the last step."""
+    step = self._ckpt_mgr.latest_step() if step == -1 else step
+    if step not in self._ckpt_mgr.all_steps():
+      raise ValueError(f"No checkpoint is available for step {step}")
+    return step  # pytype: disable=bad-return-type
+
+  def _path_for_step(self, step: int) -> epath.Path:
+    """Returns the directory associated with the step."""
+    step = self._absolute_step(step)
+    return (
+        self._ckpt_mgr._get_save_directory(  # pylint: disable=protected-access
+            step,
+            directory=self._ckpt_mgr.directory,
+        )
+        / ocp.checkpoint_manager.DEFAULT_ITEM_NAME
+    )
+
 
 @dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
 class NoopCheckpointer(BaseCheckpointer):
   """Does nothing."""
 
   def restore(
-      self, initial_state, step: int = -1, *, noop_if_missing: bool = False
+      self, initial_state=None, step: int = -1, *, noop_if_missing: bool = False
   ):
+    if initial_state is None:
+      raise ValueError("`NooCheckpointer.restore` require the state arg.")
     return initial_state
 
   def should_save(self, step: int) -> bool:

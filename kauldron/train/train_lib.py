@@ -278,7 +278,7 @@ def compute_and_flatten_summaries(
 
   def _format_path(path, prefix: Optional[str] = None):
     str_parts = [prefix] if prefix else []
-    str_parts.extend([core.paths.jax_key_entry_to_str(p) for p in path])
+    str_parts.extend([core.paths.jax_key_entry_to_str(p) for p in path])  # pylint: disable=no-value-for-parameter
     return "/".join(str_parts)
 
   flat_values, _ = jax.tree_util.tree_flatten_with_path(values)
