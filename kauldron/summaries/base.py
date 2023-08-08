@@ -27,7 +27,7 @@ import flax
 import jax
 import jax.numpy as jnp
 from kauldron import core
-from kauldron.typing import Float, Integer, Key, Shape, UInt8, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Bool, Float, Integer, Key, Shape, UInt8, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import mediapy as media
 import numpy as np
 import sklearn.decomposition
@@ -37,6 +37,7 @@ with epy.lazy_imports():
 
 
 Images = Float["*b h w c"] | UInt8["*b h w c"]
+Masks = Bool["*b h w 1"]
 Segmentations = Integer["*b h w 1"] | Float["*b h w k"]
 
 
@@ -72,6 +73,7 @@ class ShowImages(ImageSummary):
   """Show a set of images with optional reshaping and resizing."""
 
   images: Key
+  masks: Optional[Key] = None
 
   num_images: int
   rearrange: Optional[str] = None
@@ -83,11 +85,13 @@ class ShowImages(ImageSummary):
   in_vrange: Optional[tuple[float, float]] = None
   convert_to_float: bool = False
   cmap: str | None = None
+  mask_color: float | tuple[float, float, float] = 0.5
 
-  def gather_kwargs(self, context: Any) -> dict[str, Images]:
+  def gather_kwargs(self, context: Any) -> dict[str, Images | Masks]:
     # optimize gather_kwargs to only return num_images many images
     kwargs = core.resolve_kwargs(self, context)
     images = kwargs["images"]
+    masks = kwargs.get("masks", None)
     if self.rearrange:
       images = einops.rearrange(images, self.rearrange, **self.rearrange_kwargs)
     if self.convert_to_float:
@@ -99,14 +103,22 @@ class ShowImages(ImageSummary):
         self.num_images / jax.local_device_count()
     )
     images = images[:num_images_per_device]
+    if masks is not None:
+      if not isinstance(masks, Bool["n h w 1"]):
+        raise ValueError(
+            f"Bad mask shape or dtype: {masks.shape} {masks.dtype}"
+        )
+      masks = masks[:num_images_per_device]
 
-    return {"images": images}
+    return {"images": images, "masks": masks}
 
   @typechecked
-  def get_images(self, images: Images) -> Float["n _h _w _c"]:
+  def get_images(
+      self, images: Images, masks: Optional[Masks] = None
+  ) -> Float["n _h _w _c"]:
     # flatten batch dimensions
     images = einops.rearrange(images, "... h w c -> (...) h w c")
-    images = images[: self.num_images]
+    images = np.array(images[: self.num_images])
     # maybe rescale
     if self.in_vrange is not None:
       vmin, vmax = self.in_vrange
@@ -121,6 +133,11 @@ class ShowImages(ImageSummary):
             f" {images.shape})"
         )
       images = media.to_rgb(images[..., 0], cmap=self.cmap)
+
+    if masks is not None:
+      masks = einops.rearrange(masks, "... h w c -> (...) h w c")
+      masks = np.array(masks[: self.num_images, :, :, 0])
+      images[masks] = self.mask_color
 
     # always clip to avoid display problems in TB and Datatables
     images = np.clip(images, 0.0, 1.0)
