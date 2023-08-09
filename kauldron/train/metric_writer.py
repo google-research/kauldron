@@ -23,6 +23,7 @@ from clu import parameter_overview
 from etils import epath
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 from kauldron.typing import Array, Float, Scalar  # pylint: disable=g-multiple-import
+import numpy as np
 
 from unittest import mock as _mock ; xmanager_api = _mock.Mock()
 
@@ -98,8 +99,15 @@ class KDMetricWriter(metric_writers.MetricWriter):
     self.tf_summary_writer.write_scalars(step, scalars)
 
   def write_images(self, step: int, images: Mapping[str, Array["N H W C"]]):
-    self.array_writer.write_images(step, images)
-    self.tf_summary_writer.write_images(step, images)
+    images_uint8 = {}
+    for key, image in images.items():
+      if isinstance(image, Float["N H W C"]):
+        # DatatableUI autoscales float images, so convert to uint8
+        image = np.array(np.clip(image * 255.0, 0.0, 255.0), dtype=np.uint8)
+      images_uint8[key] = image
+
+    self.array_writer.write_images(step, images_uint8)
+    self.tf_summary_writer.write_images(step, images_uint8)
 
   def write_histograms(
       self,
