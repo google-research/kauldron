@@ -173,7 +173,7 @@ def train(
 
 def write_summaries(
     *,
-    writer,
+    writer: metric_writer.KDMetricWriter,
     step,
     aux: train_step.Auxiliaries,
     schedules,
@@ -209,7 +209,7 @@ def write_summaries(
   )
 
   if log_summaries:
-    # other summaries  # TODO(klausg): unify with metrics
+    # image summaries  # TODO(klausg): unify with metrics
     image_summaries = {
         name: summary.get_images(**aux.summary_kwargs[name])
         for name, summary in model_with_aux.summaries.items()
@@ -223,6 +223,27 @@ def write_summaries(
             f"Image summary `{name}` is empty array of shape {image.shape}."
         )
     writer.write_images(step=step, images=image_summaries)
+
+    # histograms
+    hist_summaries = {
+        name: summary.get_tensor(**aux.summary_kwargs[name])
+        for name, summary in model_with_aux.summaries.items()
+        if isinstance(summary, summaries.HistogramSummary)
+    }
+    for name, (_, tensor) in hist_summaries.items():
+      if tensor.size == 0:
+        raise ValueError(
+            f"Histogram summary `{name}` is empty array of shape"
+            f" {tensor.shape}."
+        )
+    writer.write_histograms(
+        step=step,
+        arrays={k: tensor for k, (_, tensor) in hist_summaries.items()},
+        num_buckets={
+            k: n_buckets for k, (n_buckets, _) in hist_summaries.items()
+        },
+    )
+
   writer.flush()
 
 

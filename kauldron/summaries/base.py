@@ -27,7 +27,7 @@ import flax
 import jax
 import jax.numpy as jnp
 from kauldron import core
-from kauldron.typing import Bool, Float, Integer, Key, Shape, UInt8, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Array, Bool, Float, Integer, Key, Shape, UInt8, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import mediapy as media
 import numpy as np
 import sklearn.decomposition
@@ -66,6 +66,17 @@ class ImageSummary(Summary, abc.ABC):
         )
       kwargs = core.resolve_kwargs(self, context, func=self.get_images)
     return self.get_images(**kwargs)
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class HistogramSummary(Summary):
+  """Basic histogram summary."""
+
+  tensor: Key
+  num_buckets: int = 30
+
+  def get_tensor(self, tensor: Array["..."]) -> tuple[int, Array["n"]]:
+    return self.num_buckets, tensor.flatten()
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
