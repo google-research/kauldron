@@ -22,7 +22,8 @@ import flax
 from kauldron.core import paths
 
 
-class Context(flax.struct.PyTreeNode):
+@flax.struct.dataclass
+class Context:
   """Namespace for retrieving information with path-based keys.
 
   Attributes:
