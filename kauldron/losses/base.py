@@ -35,8 +35,8 @@ Schedule = Callable[[int], float]
 class AllReduceMean(clu_metrics.Metric):
   """Default state for aggregating losses (tracks a scalar mean value)."""
 
-  value: jnp.array
-  count: jnp.array
+  value: jnp.ndarray
+  count: jnp.ndarray
 
   @classmethod
   def empty(cls) -> AllReduceMean:
@@ -45,8 +45,8 @@ class AllReduceMean(clu_metrics.Metric):
   @classmethod
   def from_values(
       cls,
-      values: jnp.array,
-      mask: jnp.array | None = None,
+      values: jnp.ndarray,
+      mask: jnp.ndarray | None = None,
       weight: float = 1.0,
   ) -> AllReduceMean:
     if mask is None:
