@@ -175,8 +175,8 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
       *,
       batch,
       rngs: rngs_lib.Rngs,
-      step,
-      is_training,
+      step: int,
+      is_training: bool,
   ) -> tuple[float, core.Context]:
     """Forward pass of the model including losses."""
     context = core.Context(step=step, batch=batch, params=params)

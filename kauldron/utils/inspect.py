@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+import functools
 import inspect
 from typing import Any, Optional
 
@@ -229,6 +230,7 @@ def _get_summary_table(
   table = table_fn(
       {"params": jax.random.PRNGKey(0), "default": jax.random.PRNGKey(0)},
       *model_args,
+      is_training_property=True,
       **model_kwargs,
   )
   return table
@@ -267,12 +269,11 @@ def eval_context_shape(model, losses, metrics, summaries, elem_spec):
   params = jax.eval_shape(mwa.init, init_rngs=m_rngs, elem_spec=elem_spec)
   m_batch = data_utils.mock_batch_from_elem_spec(elem_spec)
   loss, context = jax.eval_shape(
-      mwa.forward,
+      functools.partial(mwa.forward, is_training=True),
       params=params,
       batch=m_batch,
       rngs=m_rngs,
       step=0,
-      is_training=True,
   )
   return loss, context
 
