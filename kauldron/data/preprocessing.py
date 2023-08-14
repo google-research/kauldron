@@ -263,12 +263,9 @@ class RandomCrop(ElementWiseRandomTransform):
 
   @typechecked
   def random_map_element(self, element: TfArray["..."], seed) -> TfArray["..."]:
-    # resolve dynamic portions of self.shape
     shape = tf.shape(element)
-    target_shape = tf.constant(  # convert None to -1
-        [-1 if s is None else s for s in self.shape], dtype=tf.int32
-    )
-    target_shape = tf.where(target_shape >= 0, target_shape, shape)
+    # resolve dynamic portions of self.shape to a static target_shape
+    target_shape = _get_target_shape(element, self.shape)
     # compute the range of the offset for the tf.slice
     offset_range = shape - target_shape
     clipped_offset_range = tf.clip_by_value(offset_range, 1, tf.int32.max)
@@ -278,6 +275,20 @@ class RandomCrop(ElementWiseRandomTransform):
     )
     offset = tf.where(offset_range > 0, rand_int % clipped_offset_range, 0)
     return tf.slice(element, offset, target_shape)  # crop
+
+
+def _get_target_shape(t: tf.Tensor, target_shape):
+  """Resolve the `dynamic` portions of `target_shape`."""
+  finale_shape = []
+  dynamic_shape = tf.shape(t)
+  for i, (static_dim, target_dim) in enumerate(zip(t.shape, target_shape)):
+    if target_dim is not None:
+      finale_shape.append(target_dim)
+    elif static_dim is not None:
+      finale_shape.append(static_dim)
+    else:
+      finale_shape.append(dynamic_shape[i])
+  return finale_shape
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
