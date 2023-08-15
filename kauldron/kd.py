@@ -19,9 +19,18 @@ from kauldron import kd
 ```
 """
 
-# pylint: disable=unused-import,g-importing-member
+# pylint: disable=unused-import,g-importing-member,g-import-not-at-top
+
+import sys
+
+pytest = sys.modules.get('pytest')
+if pytest:
+  # Inside tests, rewrite `assert` statement for better debug messages
+  pytest.register_assert_rewrite('kauldron.utils.assert_utils')
+del pytest, sys
 
 # Namespaces
+from kauldron import checkpoints as ckpts
 from kauldron import data
 from kauldron import konfig
 from kauldron import losses

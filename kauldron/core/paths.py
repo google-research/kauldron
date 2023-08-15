@@ -19,6 +19,8 @@ import ast
 import collections
 from typing import Any, Optional, Union, overload
 
+from etils import epy
+from etils.etree import jax as etree  # pylint: disable=g-importing-member
 import jax.tree_util
 from kauldron.typing import PyTree  # pylint: disable=g-importing-member
 import lark
@@ -100,7 +102,14 @@ class Path(collections.abc.Sequence):
     return cls(*(_jax_key_entry_to_kd_path_element(p) for p in jax_path))
 
   # TODO(klausg): docstring, annotations and better name
-  def get_from(self, context, default=None):
+  def get_from(
+      self,
+      context,
+      *,
+      default=...,
+      err_spec: bool = False,
+  ):
+    """Extract the object from the path."""
     result = context
     for part in self.parts:
       try:
@@ -109,6 +118,18 @@ class Path(collections.abc.Sequence):
         if hasattr(result, part):
           result = getattr(result, part)
         else:
+          if default is ...:
+            # If this fail, allow to have better error message (display the
+            # structure)
+            if err_spec:
+              struct = etree.spec_like(context)
+              struct = f"\nContext structure: {epy.pretty_repr(struct)}"
+            else:
+              struct = ""
+            raise KeyError(
+                f"Could not find path: {self} in {type(context)}."
+                f" {type(result)} has no attributes/key {part}.{struct}"
+            ) from None
           return default
     return result
 

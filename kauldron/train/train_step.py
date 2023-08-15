@@ -37,10 +37,10 @@ import optax
 _Params = PyTree[Float["..."]]
 
 
-@jax.tree_util.register_pytree_node_class
-@dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
+@flax.struct.dataclass
 class TrainState:
   """Data structure for checkpointing the model."""
+  _: dataclasses.KW_ONLY
 
   step: int
 
@@ -57,26 +57,6 @@ class TrainState:
         step=step,
         params=new_params,
         opt_state=new_opt_state,
-    )
-
-  # TODO(epot): Could factor this to some util
-  # TODO(epot): Current implementation is fragile (do not support `init=False`,
-  # `field(metadata={'static': True})`)
-  def tree_flatten(self):
-    children = (
-        getattr(self, f.name) for f in dataclasses.fields(self)
-    )  # arrays / dynamic values
-    aux_data = {}  # static values
-    return (children, aux_data)
-
-  @classmethod
-  def tree_unflatten(cls, aux_data, children):
-    assert not aux_data
-    return cls(  # pytype: disable=missing-parameter
-        **{
-            f.name: c
-            for f, c in zip(dataclasses.fields(cls), children, strict=True)
-        }
     )
 
   def replace(self, **changes: Any) -> TrainState:

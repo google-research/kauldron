@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import abc
+import dataclasses
 import functools
 import itertools
 from typing import Any, Optional, TypeVar
@@ -108,7 +109,9 @@ class SingleEvaluator(EvaluatorBase):
       config_util.ROOT_CFG_REF.train_summaries
   )
 
-  base_cfg: config_lib.Config = config_util.ROOT_CFG_REF
+  base_cfg: config_lib.Config = dataclasses.field(
+      default=config_util.ROOT_CFG_REF, repr=False
+  )
 
   # TODO(klausg): filter out metrics / summaries that access grads/updates
 
