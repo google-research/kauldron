@@ -22,4 +22,3 @@ from kauldron.checkpoints.partial_loader import AbstractPartialLoader
 from kauldron.checkpoints.partial_loader import CkptSource
 from kauldron.checkpoints.partial_loader import KauldronSource
 from kauldron.checkpoints.partial_loader import PartialLoader
-from kauldron.checkpoints.pytree_checkpoint import PyTreeCheckpointer

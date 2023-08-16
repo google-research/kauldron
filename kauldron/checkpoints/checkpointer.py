@@ -23,10 +23,8 @@ import functools
 from typing import Any, Optional, Sequence, TypeVar
 
 from etils import epath
-from flax.training import orbax_utils
 import jax
 from kauldron.checkpoints import partial_loader
-from kauldron.checkpoints import pytree_checkpoint
 from kauldron.utils import config_util
 import orbax.checkpoint as ocp
 
@@ -130,7 +128,7 @@ class Checkpointer(BaseCheckpointer):
       manager_cls = ocp.CheckpointManager
     ckpt_mgr = manager_cls(
         epath.Path(self.workdir) / CHECKPOINT_FOLDER_NAME,
-        pytree_checkpoint.PyTreeCheckpointer(),
+        ocp.StandardCheckpointer(),
         options=mgr_options,
     )
     return ckpt_mgr
@@ -141,18 +139,14 @@ class Checkpointer(BaseCheckpointer):
       step: int = -1,
       *,
       noop_if_missing: bool = False,
-      restore_kwargs: Optional[dict[str, Any]] = None,
   ) -> _T:
     """Restore state."""
-    restore_kwargs = restore_kwargs or {}
 
     state = initial_state
     if self._ckpt_mgr.latest_step() is not None:
       step = self._absolute_step(step)
 
-      state = self._ckpt_mgr.restore(
-          step, items=initial_state, restore_kwargs=restore_kwargs
-      )
+      state = self._ckpt_mgr.restore(step, initial_state)
     elif self.partial_initializer is not None:  # No checkpoint
       if state is None:
         raise ValueError(
@@ -178,11 +172,8 @@ class Checkpointer(BaseCheckpointer):
       force: bool = False,
   ) -> bool:
     """Save state."""
-    save_args = orbax_utils.save_args_from_target(state)
     with jax.transfer_guard("allow"):
-      return self._ckpt_mgr.save(
-          step, state, save_kwargs={"save_args": save_args}, force=force
-      )
+      return self._ckpt_mgr.save(step, state, force=force)
 
   def maybe_save_state(
       self,
