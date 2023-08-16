@@ -15,7 +15,6 @@
 """Train."""
 
 # pylint: disable=g-importing-member
-from kauldron.train.checkpointer import Checkpointer
 from kauldron.train.config_lib import Config
 from kauldron.train.evaluators import MultiEvaluator
 from kauldron.train.evaluators import NoopEvaluator

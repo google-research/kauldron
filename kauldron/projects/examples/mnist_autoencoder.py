@@ -85,7 +85,7 @@ def get_config():
   cfg.optimizer = optax.adam(learning_rate=0.003)
 
   # Checkpointer
-  cfg.checkpointer = kd.train.Checkpointer(
+  cfg.checkpointer = kd.ckpts.Checkpointer(
       save_interval_steps=500,
   )
 

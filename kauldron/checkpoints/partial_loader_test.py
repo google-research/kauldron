@@ -84,7 +84,7 @@ def _make_chpt(
       new_to_old=new_to_old,
   )
 
-  ckpt = kd.train.Checkpointer(  # pytype: disable=wrong-arg-types
+  ckpt = kd.ckpts.Checkpointer(  # pytype: disable=wrong-arg-types
       workdir=new_cfg.workdir,
       save_interval_steps=1,
       partial_initializer=loader,

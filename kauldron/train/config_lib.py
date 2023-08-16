@@ -29,7 +29,7 @@ from kauldron import konfig
 from kauldron import losses
 from kauldron import metrics
 from kauldron import summaries
-from kauldron.train import checkpointer as checkpointer_lib
+from kauldron.checkpoints import checkpointer as checkpointer_lib
 from kauldron.train import evaluators
 from kauldron.train import flatboard
 from kauldron.train import rngs_lib

@@ -26,8 +26,8 @@ from etils import epy
 from etils.etree import jax as etree  # pylint: disable=g-importing-member
 from flax.training import orbax_utils
 import jax
+from kauldron.checkpoints import checkpointer
 from kauldron.core import paths as path_utils
-from kauldron.train import checkpointer
 import orbax.checkpoint as ocp
 
 _T = TypeVar('_T')
@@ -51,7 +51,7 @@ class PartialLoader:
   Usage:
 
   ```python
-  checkpoint = kd.train.Checkpoint(
+  checkpoint = kd.ckpt.Checkpointer(
       partial_initializer=kd.ckpts.PartialLoader(
           source=kd.ckpts.KauldronSource('/path/to/original/work_unit/'),
           # Mapping params from <original state> -> <new state>
