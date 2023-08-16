@@ -54,6 +54,10 @@ class Config(config_util.BaseConfig):
       is set here, it will overwrite the default value.
     num_train_steps: Number of training steps. If `None`, train on the full
       dataset for the number of epoch specified in `train_ds`
+    stop_after_steps: Optionally stop already after running this many steps. If
+      set, overwrite `num_train_steps`. Allow to debug on Colab without
+      modifying the learning rate schedules and other values that depend on
+      `num_train_steps`.
     log_metrics_every: x
     log_summaries_every: x
     train_losses: x
@@ -77,6 +81,7 @@ class Config(config_util.BaseConfig):
   train_ds: data.TFDataPipeline
   model: nn.Module
   num_train_steps: Optional[int] = None
+  stop_after_steps: Optional[int] = None
   log_metrics_every: int = 100
   log_summaries_every: int = 1000
   train_losses: Mapping[str, losses.Loss] = dataclasses.field(
