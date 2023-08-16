@@ -5,7 +5,9 @@
 :hidden:
 :caption: Guides
 
+train
 eval
+checkpoint
 konfig
 klinen
 ```
