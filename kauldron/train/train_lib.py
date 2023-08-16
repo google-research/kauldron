@@ -43,27 +43,22 @@ import tensorflow as tf
 def train(
     raw_cfg: config_lib.Config,
 ) -> Tuple[train_step.TrainState, train_step.Auxiliaries]:
-  """Main train method.
-
-  Usage:
-
-  ```python
-  raw_cfg = kd.train.Config(
-      ...
+  """DEPRECATED. Use `cfg.train()` instead."""
+  print(
+      "Calling `kd.train.train(cfg)` is deprecated. You can call `cfg.train()`"
+      " directly."
   )
-  kd.train.train(raw_cfg)
-  ```
+  cfg = konfig.resolve(raw_cfg)
+  return cfg.train()
 
-  Args:
-    raw_cfg: Config
 
-  Returns:
-    Final model state
-  """
+def train_impl(
+    cfg: config_lib.Config,
+) -> Tuple[train_step.TrainState, train_step.Auxiliaries]:
+  """Implements of `Config.train`."""
   tf.config.experimental.set_visible_devices([], "GPU")
 
   status.log("Configuring ...")
-  cfg = konfig.resolve(raw_cfg)
   ensure_workdir(cfg.workdir)
   add_flatboards(cfg)
 
@@ -88,7 +83,7 @@ def train(
   latest_step = ckptr.latest_step
   initial_step = 0 if not latest_step else latest_step
 
-  writer.write_config(initial_step, raw_cfg)
+  writer.write_config(initial_step, cfg.raw_cfg)
   writer.write_param_overview(initial_step, state.params)
   writer.write_element_spec(initial_step, cfg.train_ds.element_spec)
 

@@ -138,7 +138,7 @@ class KDMetricWriter(metric_writers.MetricWriter):
     self.tf_summary_writer.write_hparams(hparams)
 
   def write_config(self, step: int, config):
-    texts = {"config": f"```python\n{config!s}\n```"}
+    texts = {"config": f"```python\n{config!r}\n```"}
     self.write_texts(step, texts)
 
   def write_param_overview(self, step: int, params):

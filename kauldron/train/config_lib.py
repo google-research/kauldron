@@ -33,6 +33,7 @@ from kauldron.train import checkpointer as checkpointer_lib
 from kauldron.train import evaluators
 from kauldron.train import flatboard
 from kauldron.train import rngs_lib
+from kauldron.train import train_lib
 from kauldron.train import train_step
 from kauldron.utils import config_util
 from kauldron.utils import xmanager
@@ -72,8 +73,8 @@ class Config(config_util.BaseConfig):
     trainstep: Training loop step. Do not set this field unless you need a
       custom training step.
     run: XManager runtime parameters (e.g. which target is the config using)
-    raw_cfg: Original config from which this `Trainer` was created.
-      Automatically set during `konfig.resolve()`
+    raw_cfg: Original config from which this `Config` was created. Automatically
+      set during `konfig.resolve()`
   """
 
   seed: int = 0
@@ -153,3 +154,21 @@ class Config(config_util.BaseConfig):
   def init_state(self) -> train_step.TrainState:
     """Create the state: `cfg.trainstep.init(cfg.train_ds.element_spec)`."""
     return self.trainstep.init(self.train_ds.element_spec)
+
+  def train(self) -> tuple[train_step.TrainState, train_step.Auxiliaries]:
+    """Main method that train/evaluate the object.
+
+    Similar to:
+
+    ```python
+    state = trainer.init_state().replicate()
+
+    for batch in trainer.train_ds:
+      batch = trainer.trainstep.step(batch, state)
+    ```
+
+    Returns:
+      Final model state
+      Auxiliaries
+    """
+    return train_lib.train_impl(self)

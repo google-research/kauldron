@@ -37,6 +37,8 @@ def test_end2end(tmp_path: epath.Path):
   cfg.num_train_steps = 1
   cfg.workdir = os.fspath(tmp_path)
 
+  cfg = kd.konfig.resolve(cfg)
+
   # Launch train
   with tfds.testing.mock_data():
-    kd.train.train(cfg)
+    cfg.train()

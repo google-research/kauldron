@@ -23,6 +23,8 @@ import contextlib
 from absl import app
 from absl import flags
 import jax
+from kauldron import konfig
+from kauldron.train import config_lib
 from kauldron.train import train_lib
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 from ml_collections import config_flags

@@ -117,11 +117,14 @@ class _FakeRootCfg:
   name: str = 'cfg'
 
   def __getattr__(self, name: str) -> Any:
-    if name == '__isabstractmethod__':
+    if name.startswith('_'):
+      # Internal / magic methods should raise error as it creates various
+      # issues:
       # Raise `AttributeError` when `abc.ABC` check for
       # `hasattr(cls, '__isabstractmethod__')`
       # Context: https://github.com/python/cpython/issues/107580
-      super().__getattribute__('__isabstractmethod__')
+      # `inspect.unwrap()` check for `__wrapped__`
+      return super().__getattribute__('__isabstractmethod__')
     return _FakeRootCfg(parent=self, name=name)
 
   @classmethod
