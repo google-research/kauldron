@@ -23,7 +23,6 @@ from etils import epy
 import flax
 import flax.linen as nn
 import jax
-from kauldron import core
 from kauldron import losses as kd_losses
 from kauldron import metrics as kd_metrics
 from kauldron import summaries as kd_summaries
@@ -31,6 +30,7 @@ import kauldron.data.utils as data_utils
 from kauldron.train import rngs_lib
 from kauldron.typing import ElementSpec, Float, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import config_util
+from kauldron.utils import core
 from kauldron.utils import train_property  # pylint: disable=unused-import
 import optax
 

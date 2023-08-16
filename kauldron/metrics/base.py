@@ -22,8 +22,8 @@ from typing import Any, Mapping
 from clu import metrics as clu_metrics
 import flax
 import jax
-from kauldron import core
 from kauldron.typing import Float, Key, PyTree  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.utils import core
 
 State = clu_metrics.Metric
 

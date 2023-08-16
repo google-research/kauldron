@@ -19,7 +19,7 @@ from __future__ import annotations
 import dataclasses
 from typing import Any
 import flax
-from kauldron.core import paths
+from kauldron.utils import paths
 
 
 @flax.struct.dataclass

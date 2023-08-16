@@ -17,8 +17,8 @@ from __future__ import annotations
 
 import altair as alt
 import jax
-from kauldron.core import paths
 from kauldron.typing import PyTree, Schedule  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.utils import paths
 import ml_collections
 import numpy as np
 import pandas as pd

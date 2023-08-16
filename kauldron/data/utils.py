@@ -20,8 +20,8 @@ import flax.linen as nn
 import jax
 import jax.numpy as jnp
 import jax.tree_util
-from kauldron import core
 from kauldron.typing import Array, ArraySpec, ElementSpec, PyTree  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.utils import core
 import numpy as np
 
 

@@ -23,9 +23,9 @@ from clu import metrics as clu_metrics
 import flax
 import jax
 from jax import numpy as jnp
-from kauldron import core
 from kauldron import metrics
 from kauldron.typing import Array, Float, Key, PyTree  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.utils import core
 
 
 Schedule = Callable[[int], float]

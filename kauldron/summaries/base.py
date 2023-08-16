@@ -26,8 +26,8 @@ from etils import epy
 import flax
 import jax
 import jax.numpy as jnp
-from kauldron import core
 from kauldron.typing import Array, Bool, Float, Integer, Key, Shape, UInt8, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.utils import core
 import mediapy as media
 import numpy as np
 import sklearn.decomposition

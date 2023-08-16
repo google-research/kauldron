@@ -18,7 +18,7 @@ from typing import Any
 import flax.struct
 import hypothesis
 import hypothesis.strategies as st
-from kauldron.core import paths
+from kauldron.utils import paths
 import regex
 
 

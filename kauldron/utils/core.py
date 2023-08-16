@@ -13,11 +13,12 @@
 # limitations under the License.
 
 """Core classes and abstractions used in Kauldron."""
-# pylint: disable=g-importing-member
-from kauldron.core.annotate import is_key_annotated
-from kauldron.core.annotate import resolve_kwargs
-from kauldron.core.context import Context
-from kauldron.core.paths import get_by_path
-from kauldron.core.paths import Path
-from kauldron.core.paths import tree_flatten_with_path
-# pylint: disable=g-importing-member
+
+# pylint: disable=g-importing-member,unused-import
+
+from kauldron.utils.annotate import is_key_annotated
+from kauldron.utils.annotate import resolve_kwargs
+from kauldron.utils.context import Context
+from kauldron.utils.paths import get_by_path
+from kauldron.utils.paths import Path
+from kauldron.utils.paths import tree_flatten_with_path

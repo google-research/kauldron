@@ -27,7 +27,7 @@ from etils.etree import jax as etree  # pylint: disable=g-importing-member
 from flax.training import orbax_utils
 import jax
 from kauldron.checkpoints import checkpointer
-from kauldron.core import paths as path_utils
+from kauldron.utils import paths as path_utils
 import orbax.checkpoint as ocp
 
 _T = TypeVar('_T')

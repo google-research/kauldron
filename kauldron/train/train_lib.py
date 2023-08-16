@@ -25,7 +25,6 @@ from etils import epath
 import flax
 import jax
 import jax.numpy as jnp
-from kauldron import core
 from kauldron import konfig
 from kauldron import metrics
 from kauldron import summaries
@@ -35,6 +34,8 @@ from kauldron.train import metric_writer
 from kauldron.train import timer as timer_module
 from kauldron.train import train_step
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
+from kauldron.utils import core
+from kauldron.utils import paths as paths_lib
 from kauldron.utils import utils
 import ml_collections
 import tensorflow as tf
@@ -291,7 +292,7 @@ def compute_and_flatten_summaries(
 
   def _format_path(path, prefix: Optional[str] = None):
     str_parts = [prefix] if prefix else []
-    str_parts.extend([core.paths.jax_key_entry_to_str(p) for p in path])  # pylint: disable=no-value-for-parameter
+    str_parts.extend([paths_lib.jax_key_entry_to_str(p) for p in path])  # pylint: disable=no-value-for-parameter
     return "/".join(str_parts)
 
   flat_values, _ = jax.tree_util.tree_flatten_with_path(values)

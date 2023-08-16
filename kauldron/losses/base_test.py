@@ -16,9 +16,9 @@
 import dataclasses
 
 import jax.numpy as jnp
-from kauldron import core
 from kauldron.losses import base
 from kauldron.typing import Key  # pylint: disable=g-importing-member
+from kauldron.utils import core
 import numpy as np
 
 

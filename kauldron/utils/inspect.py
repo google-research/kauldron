@@ -25,11 +25,11 @@ from etils import epy
 from etils import etree
 from flax import linen as nn
 import jax
-from kauldron import core
 from kauldron import data
 from kauldron import konfig
 from kauldron import train
 from kauldron.data import utils as data_utils
+from kauldron.utils import core
 from kauldron.utils import pd_utils
 import ml_collections
 import numpy as np

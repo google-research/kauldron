@@ -17,10 +17,10 @@ from __future__ import annotations
 
 import difflib
 import inspect
-from typing import Any, Optional, Callable
+from typing import Any, Callable, Optional
 
-from kauldron.core import paths
 import kauldron.typing as ktyping
+from kauldron.utils import paths
 from kauldron.utils import type_utils
 
 
