@@ -118,7 +118,7 @@ class TreeState(clu_metrics.Metric):
     )
     return type(self)(tree=reduced_tree)
 
-  def compute(self) -> PyTree[Any]:
+  def compute(self) -> PyTree[Any]:  # pytype: disable=signature-mismatch  # jnp-array
     """Calls compute for all metric states in tree."""
     return jax.tree_map(
         lambda x: x.compute(), self.tree, is_leaf=_is_metric_state
