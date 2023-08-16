@@ -189,7 +189,11 @@ class _ConstructorResolver(_ConfigDictVisitor):
         for k, v in kwargs.items()
     }
     args = [kwargs.pop(str(i)) for i in range(num_args(kwargs))]
-    return constructor(*args, **kwargs)
+    obj = constructor(*args, **kwargs)
+    # Allow the object to save the config it is comming from.
+    if hasattr(type(obj), '__post_konfig_resolve__'):
+      obj.__post_konfig_resolve__(value)
+    return obj
 
 
 def _import_constructor(qualname_str: str) -> Callable[..., Any]:

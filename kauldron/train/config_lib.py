@@ -25,6 +25,7 @@ from etils import epath
 import flax
 from flax import linen as nn
 from kauldron import data
+from kauldron import konfig
 from kauldron import losses
 from kauldron import metrics
 from kauldron import summaries
@@ -38,7 +39,7 @@ from kauldron.utils import xmanager
 import optax
 
 
-# TODO(epot): Rename: Experiment, Plan, Main, Root, Trainer ?
+# TODO(epot): Rename: Experiment, Plan, Main, Root, Trainer, Train ?
 
 
 class Config(config_util.BaseConfig):
@@ -71,6 +72,8 @@ class Config(config_util.BaseConfig):
     trainstep: Training loop step. Do not set this field unless you need a
       custom training step.
     run: XManager runtime parameters (e.g. which target is the config using)
+    raw_cfg: Original config from which this `Trainer` was created.
+      Automatically set during `konfig.resolve()`
   """
 
   seed: int = 0
@@ -121,6 +124,10 @@ class Config(config_util.BaseConfig):
       default_factory=xmanager.RunConfig
   )
 
+  raw_cfg: Optional[konfig.ConfigDict] = dataclasses.field(
+      default=None, repr=False
+  )
+
   def __post_init__(self):
     # Some config object values are lazy-initialized from the root config.
     # See `UpdateFromRootCfg` for details
@@ -135,6 +142,12 @@ class Config(config_util.BaseConfig):
         object.__setattr__(
             self, attr_name, getattr(self, attr_name).update_from_root_cfg(self)
         )
+
+  def __post_konfig_resolve__(self, cfg: konfig.ConfigDict) -> None:
+    """Bind the raw config to kd. Called during `kd.konfig.resolve()`."""
+    # TODO(epot): Should freeze and deep-copy the config, but let's do this
+    # after fiddle migration.
+    object.__setattr__(self, 'raw_cfg', cfg)
 
   # Do not use property to make it explicit this is recomputed each time
   def init_state(self) -> train_step.TrainState:
