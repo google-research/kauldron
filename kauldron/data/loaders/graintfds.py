@@ -25,7 +25,7 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 
 
-@dataclasses.dataclass(repr=False)
+@dataclasses.dataclass
 class GrainTfds(base.DataLoader):
   """Basic Grain TFDS dataset loader (without transformations)."""
 

@@ -61,46 +61,25 @@ class BaseConfig(konfig.WithRef):
           frozen=True,
           eq=True,
           kw_only=True,
-          init=False,
       )(cls)
       cls = edc.dataclass(cls)  # pylint: disable=self-cls-assignment
 
-  def __init__(self, **kwargs: Any):
-    values = dict(kwargs)
-    for f in dataclasses.fields(self):
-      if f.name in values:  # Field explicitly passed
-        continue
-      elif f.default is not dataclasses.MISSING:
-        values[f.name] = f.default
-      elif f.default_factory is not dataclasses.MISSING:
-        values[f.name] = f.default_factory()
-    for k, v in values.items():
-      object.__setattr__(self, k, v)
+  else:
+    # For type checking, `__init__` don't require all arguments
+    def __init__(self, **kwargs: Any):
+      pass
 
-    if hasattr(self, '__post_init__'):
-      self.__post_init__()
-
-  def __repr__(self) -> str:
-    return repr(konfig.ConfigDict(self._field_values))
+  # TODO(epot): `__repr__` could track objects appearing multiple times in the
+  # tree.
+  # TODO(epot): pretty_repr should recurse inside `FrozenDict` (custom type)
 
   def _repr_html_(self) -> str:
-    return konfig.ConfigDict(self._field_values)._repr_html_()  # pylint: disable=protected-access
+    from etils import ecolab  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+
+    return ecolab.highlight_html(repr(self))
 
   def replace(self: _SelfT, **changes: Any) -> _SelfT:
-    return type(self)(**self._field_values | changes)  # pylint: disable=protected-access
-
-  if typing.TYPE_CHECKING:
-
-    def __getattr__(self, name: str) -> Any:
-      super().__getattribute__(name)
-
-  @property
-  def _field_values(self) -> dict[str, Any]:
-    new_values = dict(self.__dict__)
-    for f in dataclasses.fields(self):  # Descriptors are not in `__dict__`
-      if hasattr(self, f.name):
-        new_values[f.name] = getattr(self, f.name)
-    return new_values
+    return dataclasses.replace(self, **changes)  # pylint: disable=protected-access
 
 
 @dataclasses.dataclass(frozen=True)

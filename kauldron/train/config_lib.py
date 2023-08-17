@@ -50,6 +50,7 @@ class Config(config_util.BaseConfig):
     seed: Seed for all rngs
     workdir: Root dir of the experiment (usually set by XManager)
     train_ds: Dataset used in training
+    eval_ds: Dataset used in eval (see https://kauldron.rtfd.io/en/latest/eval.html to activate eval)
     model: Flax linen module
     rng_streams: Flax rng streams to use **in addition** of the default
       (`params`, `dropout`, `default`). If any of `params`, `dropout`, `default`
@@ -83,6 +84,7 @@ class Config(config_util.BaseConfig):
 
   # TODO(epot): Replace by non-TF generic protocol
   train_ds: data.TFDataPipeline
+  eval_ds: data.TFDataPipeline = None
   model: nn.Module
   num_train_steps: Optional[int] = None
   stop_after_steps: Optional[int] = None
@@ -117,7 +119,7 @@ class Config(config_util.BaseConfig):
   )
 
   trainstep: train_step.TrainStep = dataclasses.field(
-      default_factory=train_step.TrainStep
+      default_factory=train_step.TrainStep, repr=False
   )
 
   # XManager parameters

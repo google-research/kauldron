@@ -100,7 +100,7 @@ class SingleEvaluator(EvaluatorBase):
   name: str = 'eval'
   run_every: int
   num_batches: Optional[int]
-  ds: data.TFDataPipeline
+  ds: data.TFDataPipeline = config_util.ROOT_CFG_REF.eval_ds
   losses: dict[str, losses_lib.Loss] = config_util.ROOT_CFG_REF.train_losses
   metrics: dict[str, metrics_lib.Metric] = (
       config_util.ROOT_CFG_REF.train_metrics
@@ -114,6 +114,13 @@ class SingleEvaluator(EvaluatorBase):
   )
 
   # TODO(klausg): filter out metrics / summaries that access grads/updates
+
+  def __post_init__(self):
+    if self.ds is None:
+      raise ValueError(
+          'Eval dataset missing (`SingleEvaluator.ds is None`). Please set it'
+          ' either in `kd.train.Config.eval_ds` or in `SingleEvaluator.ds`.'
+      )
 
   def update_from_root_cfg(self: _SelfT, root_cfg: config_lib.Config) -> _SelfT:
     """See base class."""

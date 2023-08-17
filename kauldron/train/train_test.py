@@ -31,8 +31,10 @@ def test_end2end(tmp_path: epath.Path):
   # So instead uses TFDS loader + mock_data for now.
   cfg.train_ds.loader.__qualname__ = 'kauldron.data.loaders.Tfds'
   cfg.train_ds.batch_size = 2
-  cfg.eval.ds.loader.__qualname__ = 'kauldron.data.loaders.Tfds'
-  cfg.eval.ds.batch_size = 1
+  cfg.eval.ds.loader.__qualname__ = (  # pytype: disable=attribute-error
+      'kauldron.data.loaders.Tfds'
+  )
+  cfg.eval.ds.batch_size = 1  # pytype: disable=attribute-error
   cfg.model.encoder.features = 3
   cfg.num_train_steps = 1
   cfg.workdir = os.fspath(tmp_path)
