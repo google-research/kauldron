@@ -175,13 +175,25 @@ def create_dashboard(
     A fb.Dashboard instance with one plot for each metric.
   """
   title = title.format(xid=xp.id, experiment_name=xp.name)
+
+  # if doing a facet over collections, then:
+  # - we need to set the collections argument for each datagroup. In that case
+  #   we also rename "train" to " train" as a hack to ensure that it is
+  #   displayed first.
+  # - we do not add any name to the data group to keep the labels short
+  #   (e.g. "lr=0.1" instead of "train, lr=0.1")
+  coll_facet = "collection" in facets
+  if coll_facet:
+    coll_set = {c: " train" if c == "train" else c for c in collections}
+  else:
+    coll_set = {}
   data_groups = [
       fb.DataGroup(  # pylint: disable=g-complex-comprehension
-          name=coll,
+          name="" if coll_facet else coll,
           queries=[
               fb.DataQuery(
                   query=f"/datatable/xid/{xp.id}/{coll}",
-                  set={"collection": coll} if "collection" in facets else {},
+                  set=coll_set[coll],
               )
           ],
       )
