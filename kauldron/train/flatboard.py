@@ -18,8 +18,9 @@ from __future__ import annotations
 
 import abc
 import dataclasses
-from typing import Any, Optional, Sequence
+from typing import Any, Hashable, Optional, Sequence
 
+import flax
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 
 from unittest import mock as _mock
@@ -118,7 +119,7 @@ def get_sweep_info(xp: xmanager_api.Experiment) -> dict[str, set[Any]]:
   # merge them by keys into a single tree with a list of possible values
   all_override_keys = {k for wup in wu_params for k in wup}  # pylint: disable=g-complex-comprehension
   zipped_sweep_values = {
-      k: [params[k] for params in wu_params if k in params]
+      k: [_freeze(params[k]) for params in wu_params if k in params]
       for k in all_override_keys
   }
   # filter out simple overrides (non-sweep keys), which are characterized by:
@@ -129,6 +130,21 @@ def get_sweep_info(xp: xmanager_api.Experiment) -> dict[str, set[Any]]:
       if len(v) < num_work_units or len(set(v)) > 1
   }
   return filtered_sweep_set
+
+
+def _freeze(v: Any) -> Hashable:
+  # convert values to frozen so they become hashable
+  match v:
+    case list() as l:
+      return tuple(l)
+    case dict() as d:
+      return flax.core.FrozenDict(d)
+    case set() as s:
+      return frozenset(s)
+    case int() | float() | bool() | bytes() | None as basic:
+      return basic
+    case _ as other:
+      return str(other)
 
 
 # TODO(klausg) make individual plots configurable from the config
