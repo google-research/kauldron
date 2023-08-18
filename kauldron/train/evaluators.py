@@ -115,18 +115,16 @@ class SingleEvaluator(EvaluatorBase):
 
   # TODO(klausg): filter out metrics / summaries that access grads/updates
 
-  def __post_init__(self):
-    if self.ds is None:
+  def update_from_root_cfg(self: _SelfT, root_cfg: config_lib.Config) -> _SelfT:
+    """See base class."""
+    new_self = super().update_from_root_cfg(root_cfg)
+    if new_self.ds is None:
       raise ValueError(
           'Eval dataset missing (`SingleEvaluator.ds is None`). Please set it'
           ' either in `kd.train.Config.eval_ds` or in `SingleEvaluator.ds`.'
       )
-
-  def update_from_root_cfg(self: _SelfT, root_cfg: config_lib.Config) -> _SelfT:
-    """See base class."""
-    new_self = super().update_from_root_cfg(root_cfg)
     return new_self.replace(
-        ds=self.ds.update_from_root_cfg(root_cfg),
+        ds=new_self.ds.update_from_root_cfg(root_cfg),
     )
 
   def maybe_eval(

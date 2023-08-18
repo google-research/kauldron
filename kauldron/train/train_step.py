@@ -220,7 +220,7 @@ class _TrainStep(config_util.UpdateFromRootCfg):
     new_self = super().update_from_root_cfg(root_cfg)
     new_self = dataclasses.replace(
         new_self,
-        model_with_aux=self.model_with_aux.update_from_root_cfg(root_cfg),
+        model_with_aux=new_self.model_with_aux.update_from_root_cfg(root_cfg),
     )
     return new_self
 
