@@ -23,6 +23,7 @@ import functools
 from typing import Any, Optional, Sequence, TypeVar
 
 from etils import epath
+from flax.training import orbax_utils
 from kauldron.checkpoints import partial_loader
 from kauldron.checkpoints import pytree_checkpoint
 from kauldron.utils import config_util
@@ -176,7 +177,10 @@ class Checkpointer(BaseCheckpointer):
       force: bool = False,
   ) -> bool:
     """Save state."""
-    return self._ckpt_mgr.save(step, state, force=force)
+    save_args = orbax_utils.save_args_from_target(state)
+    return self._ckpt_mgr.save(
+        step, state, save_kwargs={"save_args": save_args}, force=force
+    )
 
   def maybe_save_state(
       self,

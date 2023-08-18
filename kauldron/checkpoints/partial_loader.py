@@ -109,8 +109,11 @@ class PartialLoader:
       to_state_inner = to_path.get_from(to_state, err_spec=True)
       from_state_inner = from_path.get_from(from_state, err_spec=True)
 
-      to_specs = etree.spec_like(to_state_inner)
-      from_specs = etree.spec_like(from_state_inner)
+      # TODO(epot): Restore once flax `save_args_from_target` are removed.
+      to_specs = jax.tree_map(lambda x: ..., to_state_inner)
+      from_specs = jax.tree_map(lambda x: ..., from_state_inner)
+      # to_specs = etree.spec_like(to_state_inner)
+      # from_specs = etree.spec_like(from_state_inner)
 
       if from_specs != to_specs:
         raise ValueError(
