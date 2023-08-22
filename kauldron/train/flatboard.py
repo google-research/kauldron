@@ -193,7 +193,7 @@ def create_dashboard(
           queries=[
               fb.DataQuery(
                   query=f"/datatable/xid/{xp.id}/{coll}",
-                  set=coll_set[coll],
+                  set=coll_set[coll] if coll_facet else {},
               )
           ],
       )
