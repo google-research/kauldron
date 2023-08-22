@@ -57,7 +57,7 @@ class PartialLoader:
           # Mapping params from <original state> -> <new state>
           new_to_old={
               # '<new_path>':            '<source_path>'
-              'params.decoder.layers_0': 'params.endoder',
+              'params/decoder/layers_0': 'params/encoder',
           },
       )
   )
