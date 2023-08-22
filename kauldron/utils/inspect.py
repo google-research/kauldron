@@ -98,20 +98,56 @@ def _format_annotation(annotation: Any) -> str:
     return str(annotation).removeprefix("typing.")
 
 
+def undo_process_input(inputs):
+  # need to undo the `flax.linen.summary.process_inputs` function:
+  # Note that contains some uncertainty, so we yield all different possibilities
+  # in descending order of specificity. That way we can try to bind them to
+  # the function signature and see what sticks.
+  match inputs:
+    case dict(kwargs):
+      # single dictionary: could have come either from kwargs
+      yield (), kwargs
+      # or single (dict-type) positional argument
+      yield (inputs,), {}
+    case (*args, dict(kwargs)):
+      # this form could have either come from *args, **kwargs
+      yield args, kwargs
+      # or from just args where the last arg happened to be a dict
+      yield inputs, {}
+      # or from single (tuple-typed) positional argument
+      yield (inputs,), {}
+    case tuple(args):
+      # either came from *args (and no kwargs)
+      yield args, {}
+      # or from a single (tuple-typed) positional arg
+      yield (inputs,), {}
+    case _:
+      # this can only come from single positional arg
+      yield (inputs,), {}
+
+
 def _get_args(
     module_type: type[Any],
     method_name: str,
-    inputs: dict[str, Any],
+    inputs: Mapping[str, Any] | tuple[Any, ...] | Any,
 ) -> tuple[dict[str, Any], dict[str, str], str]:
   """Return inputs bound to method arguments along with annotations."""
   method = getattr(module_type, method_name)
   sig = inspect.signature(method)
-  if not isinstance(inputs, dict):
-    ba = sig.bind("self", _convert_to_array_spec(inputs))
+
+  inputs = jax.tree_map(_convert_to_array_spec, inputs)
+  for args, kwargs in undo_process_input(inputs):
+    try:
+      ba = sig.bind("self", *args, **kwargs)
+      args = ba.arguments
+      del args["self"]
+      break
+    except TypeError:
+      pass  # try the next interpretation
   else:
-    ba = sig.bind("self", **jax.tree_map(_convert_to_array_spec, inputs))
-  args = ba.arguments
-  del args["self"]
+    print(f"Error: Failed to bind inputs to {method_name} of {module_type}.")
+    print("Inputs:", inputs)
+    args = {"ERROR": "Failed to bind inputs"}
 
   input_ann = {
       k: _format_annotation(method.__annotations__.get(k)) for k in args
@@ -128,21 +164,32 @@ def _format_inputs(args, input_ann) -> str:
   )
 
 
+def _format_as_bullet_points(items):
+  bps = "\n".join([f"<li>{s}</li>" for s in items])
+  return "<ul>" + bps + "</ul>"
+
+
+def _format_as_numbered_list(items):
+  numlist = "\n".join([f"<li>{s}</li>" for s in items])
+  return "<ol>" + numlist + "</ol>"
+
+
+def _format_nested_args(args):
+  if isinstance(args, dict):
+    return _format_as_bullet_points(
+        [f"<b>{k}</b>: {_format_nested_args(v)}" for k, v in args.items()]
+    )
+  elif isinstance(args, tuple):
+    return _format_as_numbered_list([_format_nested_args(v) for v in args])
+  elif isinstance(args, set):
+    return _format_as_bullet_points([_format_nested_args(v) for v in args])
+  else:
+    return _nbsp(_convert_to_array_spec(args))
+
+
 def _format_outputs(outputs, return_ann) -> str:
   """Return a html output string for the outputs of a module."""
-  if not isinstance(outputs, dict):
-    return (
-        "<span"
-        f' title="{return_ann}">{_nbsp(_convert_to_array_spec(outputs))}</span>'
-    )
-  else:
-    outputs = jax.tree_map(_convert_to_array_spec, outputs)
-    flat_tree = core.tree_flatten_with_path(outputs)
-    outputs = "<br>".join(
-        f"<b>{k}</b>: {_nbsp(v)}" for k, v in flat_tree.items()
-    )
-    outputs = f'<span title="{return_ann}">{outputs}</span>'
-  return outputs
+  return f'<span title="{return_ann}">{_format_nested_args(outputs)}</span>'
 
 
 def _format_param_shapes(module_variables) -> str:
@@ -166,10 +213,15 @@ def _get_num_params(module_variables) -> int:
 
 def _get_cumulative_params(path: tuple[str, ...], table) -> int:
   path = ".".join(path)
+
+  def is_part_of_path(row_path) -> bool:
+    str_path = ".".join(row_path)
+    return str_path == path or str_path.startswith(path + ".")
+
   return sum(
       _get_num_params(row.module_variables)
       for row in table
-      if ".".join(row.path).startswith(path)
+      if is_part_of_path(row.path)
   )
 
 
