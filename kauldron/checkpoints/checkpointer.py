@@ -105,7 +105,7 @@ class Checkpointer(BaseCheckpointer):
   keep_time_interval: Optional[datetime.timedelta] = None
   keep_period: Optional[int] = None
 
-  partial_initializer: Optional[partial_loader.PartialLoader] = None
+  partial_initializer: Optional[partial_loader.AbstractPartialLoader] = None
 
   fast: bool = True
 

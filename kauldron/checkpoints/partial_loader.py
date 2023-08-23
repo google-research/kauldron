@@ -42,8 +42,17 @@ class _NOT_RESTORED:  # pylint: disable=invalid-name
 _NOT_RESTORED = _NOT_RESTORED()
 
 
+class AbstractPartialLoader(abc.ABC):
+  """Abstract class for partial checkpoint loaders."""
+
+  @abc.abstractmethod
+  def transform(self, state: _T) -> _T:
+    """Transform the state by updating it with pre-trained values."""
+    raise NotImplementedError
+
+
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class PartialLoader:
+class PartialLoader(AbstractPartialLoader):
   """Specify where to load the weights to initialize a model.
 
   Allow to use pretrained weights from another model.
