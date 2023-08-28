@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 import dataclasses
-from typing import Optional
+from typing import Any, Optional
 
 from etils import edc
 from etils import epath
@@ -49,6 +49,7 @@ class Config(config_util.BaseConfig):
   Attributes:
     seed: Seed for all rngs
     workdir: Root dir of the experiment (usually set by XManager)
+    aux: Dictionary of arbitrary values to be referenced elsewhere
     train_ds: Dataset used in training
     eval_ds: Dataset used in eval (see https://kauldron.rtfd.io/en/latest/eval.html to activate eval)
     model: Flax linen module
@@ -81,7 +82,9 @@ class Config(config_util.BaseConfig):
   seed: int = 0
   # usually set by the launcher
   workdir: edc.AutoCast[epath.Path] = epath.Path()
-
+  aux: Mapping[str, Any] = dataclasses.field(
+      default_factory=flax.core.FrozenDict
+  )
   # TODO(epot): Replace by non-TF generic protocol
   train_ds: data.TFDataPipeline
   eval_ds: data.TFDataPipeline = None
