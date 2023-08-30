@@ -49,7 +49,6 @@ class Config(config_util.BaseConfig):
   Attributes:
     seed: Seed for all rngs
     workdir: Root dir of the experiment (usually set by XManager)
-    aux: Dictionary of arbitrary values to be referenced elsewhere
     train_ds: Dataset used in training
     eval_ds: Dataset used in eval (see https://kauldron.rtfd.io/en/latest/eval.html to activate eval)
     model: Flax linen module
@@ -72,6 +71,8 @@ class Config(config_util.BaseConfig):
     checkpointer: x
     eval: Evaluator to use (e.g. `kd.train.SingleEvaluator`)
     flatboards: x
+    aux: Arbitrary additional values (e.g. can be set once and referenced
+      elsewhere `cfg.model.num_layer = cfg.ref.aux.num_layers`)
     trainstep: Training loop step. Do not set this field unless you need a
       custom training step.
     run: XManager runtime parameters (e.g. which target is the config using)
@@ -82,9 +83,6 @@ class Config(config_util.BaseConfig):
   seed: int = 0
   # usually set by the launcher
   workdir: edc.AutoCast[epath.Path] = epath.Path()
-  aux: Mapping[str, Any] = dataclasses.field(
-      default_factory=flax.core.FrozenDict
-  )
   # TODO(epot): Replace by non-TF generic protocol
   train_ds: data.TFDataPipeline
   eval_ds: data.TFDataPipeline = None
@@ -118,6 +116,10 @@ class Config(config_util.BaseConfig):
       default_factory=evaluators.NoopEvaluator
   )
   flatboards: Mapping[str, flatboard.DashboardFactory] = dataclasses.field(
+      default_factory=flax.core.FrozenDict
+  )
+
+  aux: Mapping[str, Any] = dataclasses.field(
       default_factory=flax.core.FrozenDict
   )
 

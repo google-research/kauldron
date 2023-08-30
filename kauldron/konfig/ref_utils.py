@@ -21,7 +21,6 @@ import operator
 import typing
 from typing import Any, Callable, ParamSpec, TypeVar
 
-from etils import epy
 from kauldron.konfig import configdict_base
 import ml_collections
 
@@ -65,7 +64,6 @@ class WithRef:
     )
 
 
-@epy.frozen
 class _FieldReference(ml_collections.FieldReference):
   """Similar to ml_collections.FieldReference, but supports more control flow.
 
@@ -91,6 +89,16 @@ class _FieldReference(ml_collections.FieldReference):
 
   # TODO(epot): `FieldReference` has some risk of colision (e.g. `.get()`
   # resolve)
+
+  def __setattr__(self, name: str, value: Any):
+    if name.startswith('_'):
+      super().__setattr__(name, value)
+    else:
+      # Could eventually add support for `__setattr__`, but not clear how
+      # this would work when trying to read the attribute afterward.
+      raise AttributeError(
+          f'FieldReference do not support setting attribute ({name}).'
+      )
 
   def __getattr__(self, name: str) -> _FieldReference:
     return self._apply_op(operator.attrgetter(name), new_type=object)
