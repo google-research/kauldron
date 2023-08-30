@@ -32,6 +32,7 @@ _AnnotatedType = Any  # Like `TypeForm[Annoted[_T]]`
 
 _Token = object
 
+_FnT = TypeVar('_FnT')
 _SelfT = TypeVar('_SelfT')
 
 
@@ -167,7 +168,31 @@ class _AnnotatedCheckVisitor(_TypeVisitor):
       self.token_present = True
 
 
+# This could be removed in Python 3.11
+# Required because: https://github.com/python/cpython/issues/88962
+def _remove_kw_only(fn: _FnT) -> _FnT:
+  """Remove '_: dataclasses.KW_ONLY' from annotations."""
+
+  @functools.wraps(fn)
+  def decorated(cls):
+    old_annotations = cls.__annotations__
+
+    if '_' in old_annotations:
+      new_annotations = dict(old_annotations)
+      new_annotations.pop('_')
+    else:
+      new_annotations = old_annotations
+    try:
+      cls.__annotations__ = new_annotations
+      return fn(cls)
+    finally:
+      cls.__annotations__ = old_annotations
+
+  return decorated
+
+
 @functools.cache
+@_remove_kw_only
 def _get_type_hints(cls) -> dict[str, _TypeForm]:
   """Wrapper around `typing.get_type_hints` with better error message."""
   try:

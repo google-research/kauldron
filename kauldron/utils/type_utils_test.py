@@ -14,6 +14,7 @@
 
 """Tests."""
 
+import dataclasses
 from typing import Annotated, Optional, TypeVar
 
 from kauldron.utils import type_utils
@@ -29,6 +30,7 @@ _KeyB = Annotated[_T, _token_b]  # pytype: disable=invalid-typevar
 
 class A:
   x0: Annotated[int, _token_a, _token_b]
+  _: dataclasses.KW_ONLY
   x: _KeyA[_KeyB[int]]  # pytype: disable=unsupported-operands
   y: _KeyA[float]  # pytype: disable=unsupported-operands
   z: _KeyA[int]  # pytype: disable=unsupported-operands
