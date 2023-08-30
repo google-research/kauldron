@@ -50,4 +50,4 @@ class Dropout(nn.Dropout):
   def __call__(  # pytype: disable=signature-mismatch
       self, inputs: Array['*d'], *, rng: PRNGKey | None = None
   ) -> Array['*d']:
-    return super().__call__(inputs, deterministic=self.is_training, rng=rng)
+    return super().__call__(inputs, deterministic=not self.is_training, rng=rng)
