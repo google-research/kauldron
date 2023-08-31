@@ -23,7 +23,6 @@ If you only need to run the training loop:
 
 ```python
 state = cfg.init_state()
-state = state.replicate()
 
 for batch in cfg.train_ds:
   state, aux = cfg.trainstep.step(state, batch)

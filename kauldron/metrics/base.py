@@ -113,10 +113,10 @@ class TreeState(clu_metrics.Metric):
 
   def reduce(self) -> TreeState:
     """Reduces all metric states in the tree (merge along first dimension)."""
-    reduced_tree = jax.tree_map(
-        lambda x: x.reduce(), self.tree, is_leaf=_is_metric_state
+    raise RuntimeError(
+        "Reduce should not be required with `jax.Array` automated"
+        " parallelisation."
     )
-    return type(self)(tree=reduced_tree)
 
   def compute(self) -> PyTree[Any]:  # pytype: disable=signature-mismatch  # jnp-array
     """Calls compute for all metric states in tree."""

@@ -22,7 +22,6 @@ import functools
 import itertools
 from typing import Any, Optional, TypeVar
 
-import flax
 import jax
 from kauldron import data
 from kauldron import losses as losses_lib
@@ -34,7 +33,9 @@ from kauldron.train import rngs_lib
 from kauldron.train import train_lib
 from kauldron.train import train_step
 from kauldron.utils import config_util
+from kauldron.utils import jax_utils
 from kauldron.utils import utils
+from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 
 _SelfT = TypeVar('_SelfT')
 
@@ -149,13 +150,13 @@ class SingleEvaluator(EvaluatorBase):
         total_steps=self.num_batches,
         desc='eval',
     ):
-      eval_step = flax.jax_utils.replicate(eval_step)
-      aux = _pstep(
-          self.model_with_aux,
-          self.base_cfg.rng_streams,
-          eval_step,
-          state,
-          batch,
+      eval_step = jax.device_put(eval_step, sharding.REPLICATED)
+      aux = _step(
+          model_with_aux=self.model_with_aux,
+          rng_streams=self.base_cfg.rng_streams,
+          eval_step=eval_step,
+          state=state,
+          batch=batch,
       )
       # Merge/accumulate all states
       if merged_aux is None:
@@ -195,12 +196,17 @@ class SingleEvaluator(EvaluatorBase):
     return [self]
 
 
-@functools.partial(
-    jax.pmap,
-    axis_name='device',
-    static_broadcasted_argnums=(0, 1),
+@jax_utils.jit(
+    static_argnames=('model_with_aux', 'rng_streams'),
+    in_shardings=lambda: dict(  # pylint: disable=g-long-lambda
+        eval_step=sharding.REPLICATED,
+        state=sharding.REPLICATED,
+        batch=sharding.SHARDED,
+    ),
+    out_shardings=lambda: sharding.REPLICATED,
 )
-def _pstep(
+def _step(
+    *,
     model_with_aux: train_step.ModelWithAux,
     rng_streams: rngs_lib.RngStreams,
     eval_step: int,
@@ -211,9 +217,7 @@ def _pstep(
   _, ctx = model_with_aux.forward(
       params=state.params,
       batch=batch,
-      rngs=rng_streams.eval_rngs(
-          eval_step, device_id=jax.lax.axis_index('device')
-      ),
+      rngs=rng_streams.eval_rngs(eval_step),
       step=state.step,  # Step is train step, NOT eval
       is_training=False,
   )
