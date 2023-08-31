@@ -27,6 +27,7 @@ from flax import linen as nn
 import jax
 from kauldron import data
 from kauldron import konfig
+from kauldron import random as kd_random
 from kauldron import train
 from kauldron.data import utils as data_utils
 from kauldron.utils import core
@@ -269,7 +270,9 @@ def _get_styled_df(table, model_config: konfig.ConfigDict) -> pd.DataFrame:
 
 
 def _get_summary_table(
-    model: nn.Module, ds: data.TFDataPipeline
+    model: nn.Module,
+    ds: data.TFDataPipeline,
+    rngs: dict[str, kd_random.PRNGKey],
 ) -> nn.summary.Table:
   """Return model overview as a `nn.summary.Table`."""
   m_batch = data_utils.mock_batch_from_elem_spec(ds.element_spec)
@@ -279,8 +282,9 @@ def _get_summary_table(
   table_fn = nn.summary._get_module_table(  # pylint: disable=protected-access
       model, depth=None, show_repeated=False
   )
+
   table = table_fn(
-      {"params": jax.random.PRNGKey(0), "default": jax.random.PRNGKey(0)},
+      rngs,
       *model_args,
       is_training_property=True,
       **model_kwargs,
@@ -312,19 +316,18 @@ def json_spec_like(obj) -> Any:
   return json_spec
 
 
-def eval_context_shape(model, losses, metrics, summaries, elem_spec):
+def eval_context_shape(model, losses, metrics, summaries, elem_spec, rngs):
   """Shape evaluate the model (fast) and return the shapes of the context."""
-  m_rngs = {"default": jax.random.PRNGKey(0), "params": jax.random.PRNGKey(0)}
   mwa = train.train_step.ModelWithAux(
       model=model, losses=losses, metrics=metrics, summaries=summaries
   )
-  params = jax.eval_shape(mwa.init, init_rngs=m_rngs, elem_spec=elem_spec)
+  params = jax.eval_shape(mwa.init, init_rngs=rngs, elem_spec=elem_spec)
   m_batch = data_utils.mock_batch_from_elem_spec(elem_spec)
   loss, context = jax.eval_shape(
       functools.partial(mwa.forward, is_training=True),
       params=params,
       batch=m_batch,
-      rngs=m_rngs,
+      rngs=rngs,
       step=0,
   )
   return loss, context
@@ -334,7 +337,8 @@ def get_colab_model_overview(
     model: nn.Module,
     train_ds: data.TFDataPipeline,
     model_config: konfig.ConfigDict,
+    rngs: dict[str, kd_random.PRNGKey],
 ) -> pd.DataFrame:
   """Return `pd.DataFrame` for displaying the model params, inputs,..."""
-  table = _get_summary_table(model, train_ds)
+  table = _get_summary_table(model, train_ds, rngs)
   return _get_styled_df(table, model_config)
