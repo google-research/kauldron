@@ -193,7 +193,7 @@ def create_dashboard(
           queries=[
               fb.DataQuery(
                   query=f"/datatable/xid/{xp.id}/{coll}",
-                  set=coll_set[coll] if coll_facet else {},
+                  set={"collection": coll_set[coll]} if coll_facet else {},
               )
           ],
       )
@@ -234,11 +234,10 @@ def _collect_datatables(dashboard: fb.Dashboard) -> set[str]:
 def add_flatboard_artifacts(dashboard_factories: dict[str, DashboardFactory]):
   """Add flatboard artifacts and corresponding datatable artifacts to XM."""
   xp = xmanager_api.XManagerApi().get_current_experiment()
-  data_sources = set()
+
   for name, factory in dashboard_factories.items():
     dashboard = factory()
     if dashboard:
-      data_sources |= _collect_datatables(dashboard)
       create_artifact_only_if_missing(
           xp=xp,
           artifact_type=xmanager_api.ArtifactType.ARTIFACT_TYPE_FLATBOARD_URL,

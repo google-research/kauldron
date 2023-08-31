@@ -69,7 +69,7 @@ def get_config():
       "accuracy": kd.metrics.Accuracy(),
       "roc_auc": kd.metrics.RocAuc(),
       "final_attention_std": kd.metrics.Std(
-          values="interms.encoder.layer_11.MHDPA.attention.__call__[0]"
+          values="interms.encoder.layer_11.MHDPA.attention[0]"
       ),
   }
 
