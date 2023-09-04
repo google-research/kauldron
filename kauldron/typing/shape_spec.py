@@ -47,9 +47,16 @@ else:
     ```
     """
 
-    def __new__(cls, spec_str: str) -> tuple[int, ...]:
+    def __new__(cls, spec_str: str, **kwargs) -> tuple[int, ...]:
       spec = parse_shape_spec(spec_str)
       memo = Memo.from_current_context()
+      memo.single.update({k: v for k, v in kwargs.items() if "*" not in k})
+      memo.variadic.update(
+          {k: v for k, v in kwargs.items() if "*" in k and "#" not in k}
+      )
+      memo.variadic_broadcast.update(
+          {k: v for k, v in kwargs.items() if "*" in k and "#" in k}
+      )
       return spec.evaluate(memo)
 
 
