@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Data Utils."""
+
 from __future__ import annotations
 
 from etils.etree import jax as etree  # pylint: disable=g-importing-member
@@ -47,20 +48,12 @@ def array_spec_to_jnp_empty(spec: ArraySpec, batch_dim: int = 17) -> jax.Array:
     return jnp.empty(spec.shape, dtype)
 
 
-def drop_first_axis(arr: Array['d ...']) -> Array['...']:
-  """Drop the first axis of a given array. Used for model.init()."""
-  return arr[0]
-
-
-def mock_batch_from_elem_spec(
-    elem_spec: ElementSpec, drop_device_axis: bool = True
-) -> PyTree[jax.Array]:
+def mock_batch_from_elem_spec(elem_spec: ElementSpec) -> PyTree[jax.Array]:
   """Create a mock batch from the element_spec of a data iterator."""
   elem_spec = etree.spec_like(elem_spec)
   mock_batch = jax.tree_util.tree_map(array_spec_to_jnp_empty, elem_spec)
-  if drop_device_axis:
-    mock_batch = jax.tree_util.tree_map(drop_first_axis, mock_batch)
   return mock_batch
+
 
 Args = tuple[PyTree[jax.Array], ...]
 Kwargs = dict[str, jax.Array]

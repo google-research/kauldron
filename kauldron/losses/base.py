@@ -100,9 +100,6 @@ class Loss(metrics.Metric, abc.ABC):
     loss_state = loss.get_state_from_context(ctx)        # from context
     loss_state = loss.get_state(logits=..., labels=...)  # directly
 
-    # This e.g. allows correctly aggregating state across devices and steps:
-    loss_state.reduce()  # average over devices
-
     value = loss.compute(loss_state)
     ```
 
