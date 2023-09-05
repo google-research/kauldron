@@ -23,6 +23,7 @@ from etils import enp
 from grain._src.tensorflow import transforms
 import grain.tensorflow as grain
 import jax
+from kauldron.data import data_utils
 from kauldron.data.loaders import base as base_data_loader
 from kauldron.typing import PRNGKeyLike, PyTree  # pylint: disable=g-importing-member,g-multiple-import
 from kauldron.utils import config_util
@@ -87,7 +88,7 @@ class TFDataPipeline(config_util.UpdateFromRootCfg):
     return grain.TfBatch(batch_size=host_batch_size, drop_remainder=True)
 
   @functools.cached_property
-  def _ds_iter(self) -> _NpTfdsDataset:
+  def _ds_iter(self) -> data_utils.IterableDataset:
     """Returns a numpy tf.data.Dataset iterator."""
     self._assert_root_cfg_resolved()
 
@@ -116,7 +117,9 @@ class TFDataPipeline(config_util.UpdateFromRootCfg):
 
     # drop grain meta features
     ds = ds.map(_drop_grain_meta_features)
-    return tfds.as_numpy(ds)
+    ds = tfds.as_numpy(ds)
+    ds = data_utils.IterableDataset(ds)
+    return ds
 
   def __iter__(self) -> PyTree[_NpArray]:
     """Iterate over the dataset elements."""
@@ -126,14 +129,6 @@ class TFDataPipeline(config_util.UpdateFromRootCfg):
   def element_spec(self) -> PyTree[enp.ArraySpec]:
     """Returns the element specs of the dataset."""
     return self._ds_iter.element_spec
-
-  def __call__(self, seed=None) -> _NpTfdsDataset:
-    print(
-        "Calling `cfg.train_ds(seed=)` is DEPRECATED. Instead `cfg.train_ds`"
-        " can be iterated directly: `for batch in cfg.train_ds:`"
-    )
-    new_ds = dataclasses.replace(self, seed=seed)
-    return new_ds._ds_iter
 
   __repr__ = edc.repr
 

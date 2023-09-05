@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Data Utils."""
+
 from __future__ import annotations
 
 from etils.etree import jax as etree  # pylint: disable=g-importing-member
