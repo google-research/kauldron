@@ -19,7 +19,6 @@ import dataclasses
 import functools
 from typing import Optional
 
-from clu import metrics as clu_metrics
 from etils import epath
 import flax
 from flax import linen as nn
@@ -27,6 +26,7 @@ import flax.struct
 import jax
 from jax import numpy as jnp
 from kauldron.metrics import base
+from kauldron.metrics import base_state
 from kauldron.typing import Float, Key, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 
@@ -130,7 +130,7 @@ class LpipsVgg(base.Metric):
   mask: Optional[Key] = None
 
   @flax.struct.dataclass
-  class State(clu_metrics.Average):
+  class State(base_state.AverageState):
     pass
 
   @typechecked
@@ -147,4 +147,4 @@ class LpipsVgg(base.Metric):
         )
     )
     values = vgg_model.apply(vgg_params, pred, target)
-    return self.State.from_model_output(values=values, mask=mask)
+    return self.State.from_values(values=values, mask=mask)
