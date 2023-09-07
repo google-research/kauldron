@@ -26,6 +26,37 @@ from kauldron.typing import Bool, Float, Key, typechecked  # pylint: disable=g-m
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class SingleDimension(base.Metric):
+  """Returns a single chosen dimension of the .
+
+  Attributes:
+    tensor: Key for the tensor to compute the norm over.
+    mask: Ignored.
+    index: Dimension to index (from the last axis).
+  """
+
+  tensor: Key
+  mask: Optional[Key] = None
+
+  index: int = 0
+
+  @flax.struct.dataclass
+  class State(clu_metrics.Average):
+    pass
+
+  @typechecked
+  def get_state(
+      self,
+      tensor: Float["*any"],
+      mask: Optional[Bool["*#any"]] = None,
+  ) -> SingleDimension.State:
+    if mask is not None:
+      raise NotImplementedError('Masks are not supported.')
+    value = tensor[..., self.index]
+    return self.State.from_model_output(values=value, mask=mask)
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class Norm(base.Metric):
   """Wraps jnp.linalg.norm to compute the average norm for given tensors.
 
