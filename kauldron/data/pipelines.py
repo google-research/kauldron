@@ -107,13 +107,16 @@ class TFDataPipeline(config_util.UpdateFromRootCfg):
 
     # Default data options (can be overwritten using tf_data_options) obtained
     # from https://github.com/google/CommonLoopUtils/tree/HEAD/clu/deterministic_data.py
-    dataset_options = tf.data.Options()
-    dataset_options.experimental_optimization.map_parallelization = True
-    dataset_options.threading.private_threadpool_size = 48
-    dataset_options.threading.max_intra_op_parallelism = 1
+    ds_options = tf.data.Options()
+    ds_options.experimental_optimization.map_parallelization = True
+    ds_options.threading.private_threadpool_size = 48
+    ds_options.threading.max_intra_op_parallelism = 1
+    # Start fetching the data as soon as the `tf.data` pipeline is created
+    # (instead of in the first `next(iter(ds))` call) to speed up start time.
+    ds_options.experimental_warm_start = True
     if self.tf_data_options is not None:
-      dataset_options = dataset_options.merge(self.tf_data_options)
-    ds = ds.with_options(dataset_options)
+      ds_options = ds_options.merge(self.tf_data_options)
+    ds = ds.with_options(ds_options)
 
     # drop grain meta features
     ds = ds.map(_drop_grain_meta_features)
