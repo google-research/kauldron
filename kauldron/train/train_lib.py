@@ -46,8 +46,8 @@ def train(
 ) -> Tuple[train_step.TrainState, train_step.Auxiliaries]:
   """DEPRECATED. Use `cfg.train()` instead."""
   print(
-      "Calling `kd.train.train(cfg)` is deprecated. You can call `cfg.train()`"
-      " directly."
+      "***DEPRECATED***: Calling `kd.train.train(cfg)` is deprecated. You can"
+      " call `cfg.train()` directly."
   )
   cfg = konfig.resolve(raw_cfg)
   return cfg.train()
@@ -76,15 +76,14 @@ def train_impl(
 
   state = trainstep.init(cfg.train_ds.element_spec)
 
-  evaluator = cfg.eval
-
   # Initialize CheckpointManager and attempt to restore.
   ckptr = cfg.checkpointer
   state = ckptr.restore(state, noop_if_missing=True)
   latest_step = ckptr.latest_step
   initial_step = 0 if not latest_step else latest_step
 
-  writer.write_config(initial_step, cfg.raw_cfg)
+  if initial_step == 0:
+    writer.write_config(cfg.raw_cfg)
   writer.write_param_overview(initial_step, state.params)
   writer.write_element_spec(initial_step, cfg.train_ds.element_spec)
 
@@ -119,7 +118,7 @@ def train_impl(
         )
         ckptr.save_state(state, i)
 
-      evaluator.maybe_eval(
+      cfg.eval.maybe_eval(
           step=i,
           state=state_repl,
       )

@@ -21,6 +21,7 @@ from typing import Any, Mapping
 from clu import metric_writers
 from clu import parameter_overview
 from etils import epath
+from kauldron import konfig
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 from kauldron.typing import Array, Float, Scalar  # pylint: disable=g-multiple-import
 import numpy as np
@@ -137,9 +138,13 @@ class KDMetricWriter(metric_writers.MetricWriter):
     self.log_writer.write_hparams(hparams)
     self.tf_summary_writer.write_hparams(hparams)
 
-  def write_config(self, step: int, config):
+  def write_config(self, config: konfig.ConfigDict) -> None:
+    # Save the raw config (for easy re-loading)
+    config_path = self.workdir / "config.json"
+    config_path.write_text(config.to_json())
+
     texts = {"config": f"```python\n{config!r}\n```"}
-    self.write_texts(step, texts)
+    self.write_texts(0, texts)
 
   def write_param_overview(self, step: int, params):
     texts = {"parameters": get_markdown_param_table(params)}
