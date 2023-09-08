@@ -20,7 +20,6 @@ from collections.abc import Iterator
 import contextlib
 import dataclasses
 import functools
-import json
 from typing import Optional
 
 from etils import epath
@@ -64,21 +63,11 @@ class Experiment:
   """
 
   exp: xmanager_api.Experiment
-  _: dataclasses.KW_ONLY
-  wid: int
 
   @classmethod
-  def from_xid(cls, xid: int, wid: int) -> Experiment:
-    """Factory from an xid.
-
-    Args:
-      xid: Experiment id
-      wid: Work unit id
-
-    Returns:
-      The experiment object
-    """
-    return cls(_client().get_experiment(xid), wid=wid)
+  def from_xid(cls, xid: int) -> Experiment:
+    """Factory from an xid."""
+    return cls(_client().get_experiment(xid))
 
   @contextlib.contextmanager
   def adhoc(self) -> Iterator[None]:
@@ -109,9 +98,7 @@ class Experiment:
   @functools.cached_property
   def config(self) -> konfig.ConfigDict:
     """Unresolved `ConfigDict`."""
-    # Use a constant rather than hardcoding `config.json`
-    config_path = self.root_dir / str(self.wid) / 'config.json'
-    config = json.loads(config_path.read_text())
+    config = self.exp.parameter_configuration['config']
     config = _json_list_to_tuple(config)
     return konfig.ConfigDict(config)
 
@@ -121,12 +108,12 @@ class Experiment:
     return konfig.resolve(self.config)
 
 
-def _json_list_to_tuple(json_value):
+def _json_list_to_tuple(json):
   """Normalize the `json` to use `tuple` rather than `list`."""
-  match json_value:
+  match json:
     case dict():
-      return {k: _json_list_to_tuple(v) for k, v in json_value.items()}
+      return {k: _json_list_to_tuple(v) for k, v in json.items()}
     case list():
-      return tuple(_json_list_to_tuple(v) for v in json_value)
+      return tuple(_json_list_to_tuple(v) for v in json)
     case _:
-      return json_value
+      return json
