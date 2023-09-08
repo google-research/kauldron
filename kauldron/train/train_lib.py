@@ -37,8 +37,19 @@ from kauldron.train.status_utils import status  # pylint: disable=g-importing-me
 from kauldron.utils import core
 from kauldron.utils import paths as paths_lib
 from kauldron.utils import utils
+from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 import ml_collections
 import tensorflow as tf
+
+# Jax config options
+# Required for the `jax.Array` parallelization
+jax.config.update("jax_threefry_partitionable", True)
+
+# Prevent implicit device transfer
+# Doc at: https://jax.readthedocs.io/en/latest/transfer_guard.html
+# This can be locally changed with `with jax.transfer_guard('allow'):`
+# TODO(epot): Activate this after https://github.com/google/jax/issues/16002
+# jax.config.update("jax_transfer_guard", "disallow")
 
 
 def train(
@@ -55,7 +66,7 @@ def train(
 
 def train_impl(
     cfg: config_lib.Config,
-) -> Tuple[train_step.TrainState, train_step.Auxiliaries]:
+) -> Tuple[train_step.TrainState, Optional[train_step.Auxiliaries]]:
   """Implements of `Config.train`."""
   tf.config.experimental.set_visible_devices([], "GPU")
 
@@ -87,8 +98,6 @@ def train_impl(
   writer.write_param_overview(initial_step, state.params)
   writer.write_element_spec(initial_step, cfg.train_ds.element_spec)
 
-  state_repl = state.replicate()
-
   timer = timer_module.PerformanceTimer(
       initial_step_num=initial_step,
       initial_training_time_hours=float(state.training_time_hours),
@@ -110,27 +119,28 @@ def train_impl(
   ):
     with timer.exclude_from_step_stats():
       if ckptr.should_save(i):
-        state = state_repl.unreplicate()
         # Take the time after executing the last training step so that the
         # times logged and stored with the ckecpoint match.
         state = state.replace(
-            training_time_hours=timer.total_training_time_hours
+            training_time_hours=sharding.device_put_v2(
+                timer.total_training_time_hours, sharding.REPLICATED
+            )
         )
         ckptr.save_state(state, i)
 
       cfg.eval.maybe_eval(
           step=i,
-          state=state_repl,
+          state=state,
       )
 
     log_summaries = i % cfg.log_summaries_every == 0
     log_metrics = i % cfg.log_metrics_every == 0
     if not log_summaries and not log_metrics:
-      state_repl, aux = trainstep.step(state_repl, batch)  # pylint: disable=unused-variable
+      state, aux = trainstep.step(state, batch)  # pylint: disable=unused-variable
       timer.finish_step()
     else:
-      state_repl, aux = trainstep.step(
-          state_repl,
+      state, aux = trainstep.step(
+          state,
           batch,
           return_losses=True,
           return_metrics=log_metrics,
@@ -160,7 +170,7 @@ def train_impl(
 
   sync()
   # Returning the final state is convenient for interactive training in colab
-  return state_repl.unreplicate(), flax.jax_utils.unreplicate(aux)
+  return state, aux
 
 
 def write_summaries(
@@ -178,7 +188,8 @@ def write_summaries(
   loss_values = compute_and_flatten_summaries(
       model_with_aux.losses, states=aux.loss_states, prefix="losses"
   )
-  total_loss = sum(loss_values.values())
+  with jax.spmd_mode("allow_all"):  # Multi-process communication
+    total_loss = jnp.sum(jnp.asarray(list(loss_values.values())))
   loss_values["losses/total"] = total_loss
 
   # train metrics
@@ -241,7 +252,9 @@ def write_summaries(
 
 def _compute_metric(metric: metrics.Metric, state: Any):
   """Compute the value of a metric for a given state and return the result."""
-  return metric.compute(state.reduce())
+  # Accept cross-process computation (clu metrics cannot be jitted)
+  with jax.spmd_mode("allow_all"):
+    return metric.compute(state)
 
 
 def _compute_schedule(sched, step: int):

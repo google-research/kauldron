@@ -16,7 +16,6 @@
 from __future__ import annotations
 
 import dataclasses
-import functools
 from typing import Any, Mapping, Optional
 
 from etils import epy
@@ -31,7 +30,9 @@ from kauldron.train import rngs_lib
 from kauldron.typing import ElementSpec, Float, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import config_util
 from kauldron.utils import core
+from kauldron.utils import jax_utils
 from kauldron.utils import train_property  # pylint: disable=unused-import
+from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 import optax
 
 _Params = PyTree[Float["..."]]
@@ -40,6 +41,7 @@ _Params = PyTree[Float["..."]]
 @flax.struct.dataclass
 class TrainState:
   """Data structure for checkpointing the model."""
+
   _: dataclasses.KW_ONLY
 
   step: int
@@ -61,14 +63,6 @@ class TrainState:
 
   def replace(self, **changes: Any) -> TrainState:
     return dataclasses.replace(self, **changes)
-
-  def replicate(self) -> TrainState:
-    """Alias for `flax.jax_utils.replicate`."""
-    return flax.jax_utils.replicate(self)
-
-  def unreplicate(self) -> TrainState:
-    """Alias for `flax.jax_utils.unreplicate`."""
-    return flax.jax_utils.unreplicate(self)
 
 
 @flax.struct.dataclass
@@ -134,9 +128,7 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
       model_method: Optional[str] = None,
   ) -> _Params:
     self._assert_root_cfg_resolved()
-    mock_batch = data_utils.mock_batch_from_elem_spec(
-        elem_spec, drop_device_axis=True
-    )
+    mock_batch = data_utils.mock_batch_from_elem_spec(elem_spec)
     context = core.Context(step=0, batch=mock_batch)
     args, kwargs = data_utils.get_model_inputs(self.model, context)
     params = self.model.init(
@@ -234,25 +226,41 @@ class _TrainStep(config_util.UpdateFromRootCfg):
     self._assert_root_cfg_resolved()
     return self._init(flax.core.freeze(elem_spec), model_method)
 
-  @functools.partial(jax.jit, backend="cpu", static_argnums=(0, 1, 2))
+  @jax_utils.jit(
+      out_shardings=lambda: sharding.REPLICATED,
+      static_argnames=("self", "elem_spec", "model_method"),
+  )
   def _init(
       self,
       elem_spec: ElementSpec,
       model_method: Optional[str] = None,
   ) -> TrainState:
     """Initialize the model and return the initial TrainState."""
-    state = TrainState(
-        step=0,
-        params=None,
-        opt_state=None,
-        training_time_hours=0.0,
-    )
     params = self.model_with_aux.init(
         self.rng_streams.init_rngs(), elem_spec, model_method=model_method
     )
     opt_state = self.optimizer.init(params)
-    return state.replace(params=params, opt_state=opt_state)
+    return TrainState(
+        step=0,
+        params=params,
+        opt_state=opt_state,
+        training_time_hours=0.0,
+    )
 
+  @jax_utils.jit(
+      static_argnames=(
+          "self",
+          "return_losses",
+          "return_metrics",
+          "return_summaries",
+      ),
+      donate_argnames=("state",),
+      in_shardings=lambda: dict(  # pylint: disable=g-long-lambda
+          state=sharding.REPLICATED,
+          batch=sharding.SHARDED,
+      ),
+      out_shardings=lambda: sharding.REPLICATED,
+  )
   def step(
       self,
       state: TrainState,
@@ -263,40 +271,16 @@ class _TrainStep(config_util.UpdateFromRootCfg):
       return_summaries: bool = False,
   ) -> tuple[TrainState, Auxiliaries]:
     """Training step: forward, losses, gradients, update, and metrics."""
-    # This is an empty wrapper function around the pmapped _step to allow
-    # passing arguments with keywords (pmap doesn't support static kwargs).
-    return self._step(
-        state, batch, return_losses, return_metrics, return_summaries
-    )
-
-  @functools.partial(
-      jax.pmap,
-      axis_name="device",
-      static_broadcasted_argnums=(0, 3, 4, 5),
-      donate_argnums=(1,),
-  )
-  def _step(
-      self,
-      state: TrainState,
-      batch: PyTree[Any],
-      return_losses: bool = False,
-      return_metrics: bool = False,
-      return_summaries: bool = False,
-  ) -> tuple[TrainState, dict[str, Any]]:
-    """Pmapped step."""
     # NOTE: ensure that evaluation metrics are computed from the OLD model state
     # *before* backprop gradients are applied.
     grad_fn = jax.grad(self.model_with_aux.forward, argnums=0, has_aux=True)
     grads, context = grad_fn(
         state.params,
         batch=batch,
-        rngs=self.rng_streams.train_rngs(
-            state.step, device_id=jax.lax.axis_index("device")
-        ),
+        rngs=self.rng_streams.train_rngs(state.step),
         step=state.step,
         is_training=True,
     )
-    grads = jax.lax.pmean(grads, axis_name="device")
     updates, new_opt_state = self.optimizer.update(
         grads, state.opt_state, state.params
     )
