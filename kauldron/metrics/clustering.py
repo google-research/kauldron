@@ -18,10 +18,10 @@ from __future__ import annotations
 import dataclasses
 from typing import Optional, Sequence
 
-from clu import metrics as clu_metrics
 from etils import epy
 import flax.struct
 from kauldron.metrics import base
+from kauldron.metrics import base_state
 from kauldron.typing import Float, Integer, Key, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 with epy.lazy_imports():
@@ -53,7 +53,7 @@ class Ari(base.Metric):
   mask: Optional[Key] = None
 
   @flax.struct.dataclass
-  class State(clu_metrics.Average):
+  class State(base_state.AverageState):
     pass
 
   @typechecked
@@ -72,4 +72,4 @@ class Ari(base.Metric):
         num_instances_pred=self.num_instances_pred,
         ignored_ids=self.ignored_ids,
     )
-    return self.State.from_model_output(values=values, mask=mask)
+    return self.State.from_values(values=values, mask=mask)

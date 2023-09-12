@@ -92,12 +92,8 @@ each replicated computation uses a different rng.
 ```python
 params = model.init(rng_streams.init_rngs(), ...)
 
-@functools.partial(jax.pmap, axis_name='device')
+@jax.jit
 def forward(step, params, batch):
-  # Create the rng for `step` Y and `device_id` X
-  rngs = rng_streams.train_rngs(
-      step=step,
-      device_id=jax.lax.axis_index('device'),
-  )
+  rngs = rng_streams.train_rngs(step)  # Create the rng for current `step`
   return model.apply(params, batch, rngs=rngs)
 ```
