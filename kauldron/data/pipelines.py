@@ -77,7 +77,7 @@ class TFDataPipeline(config_util.UpdateFromRootCfg):
   @functools.cached_property
   def batch_fn(self) -> BatchFn:
     """Batch transformaton."""
-    num_hosts = jax.host_count()
+    num_hosts = jax.process_count()
     num_devices = jax.device_count()
     if self.batch_size % num_devices != 0:
       raise ValueError(
