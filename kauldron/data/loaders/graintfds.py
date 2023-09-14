@@ -19,8 +19,9 @@ from typing import Any, Mapping, Optional
 from etils import epath
 import grain.tensorflow as grain
 import jax
+from kauldron import random
 from kauldron.data.loaders import base
-from kauldron.typing import PRNGKeyLike, PRNGKey  # pylint: disable=g-multiple-import
+from kauldron.typing import PRNGKeyLike  # pylint: disable=g-multiple-import,g-importing-member
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
@@ -59,15 +60,17 @@ class GrainTfds(base.DataLoader):
       raise ValueError("Shuffling requires a random seed.")
 
     if seed is not None:
-      rng = seed if isinstance(seed, PRNGKey) else jax.random.PRNGKey(seed)
-      rng = jax.random.fold_in(
-          rng, jax.process_index()
-      )  # Derive RNG for this host.
+      with jax.transfer_guard("allow"):
+        rng = random.PRNGKey(seed)
+        rng = rng.fold_in(jax.process_index())  # Derive RNG for this host.
+        seed = int(rng.bits())
+    else:
+      seed = None
 
     sampler = grain.TfDefaultIndexSampler(
         num_records=len(source),
         shuffle=self.shuffle,
-        seed=rng,
+        seed=seed,
         shard_options=self.shard_options,
         num_epochs=self.num_epochs,
     )

@@ -129,6 +129,7 @@ class PRNGKey:
   ball = jax.random.ball
   bernoulli = jax.random.bernoulli
   beta = jax.random.beta
+  bits = jax.random.bits
   categorical = jax.random.categorical
   cauchy = jax.random.cauchy
   chisquare = jax.random.chisquare
