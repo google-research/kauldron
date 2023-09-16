@@ -24,12 +24,14 @@ from kauldron.data.preprocessing import ElementWiseTransform
 from kauldron.data.preprocessing import HStack
 from kauldron.data.preprocessing import InceptionCrop
 from kauldron.data.preprocessing import OneHot
+from kauldron.data.preprocessing import PadFirstDimensionToFixedSize
 from kauldron.data.preprocessing import RandAugment
 from kauldron.data.preprocessing import RandomCrop
 from kauldron.data.preprocessing import RandomFlipLeftRight
 from kauldron.data.preprocessing import Rearrange
 from kauldron.data.preprocessing import Resize
 from kauldron.data.preprocessing import ResizeSmall
+from kauldron.data.preprocessing import TreeFlattenWithPath
 from kauldron.data.preprocessing import ValueRange
 from kauldron.data.preprocessing import VStack
 # pylint: enable=g-importing-member
