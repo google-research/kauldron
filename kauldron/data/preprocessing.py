@@ -153,6 +153,41 @@ class _ElementWise:
       )
 
 
+def _tree_flatten_with_path(features, separator="_"):
+  if not isinstance(features, dict):
+    return {"": features}
+
+  output = {}
+  for prefix, nested_v in features.items():
+    for flat_k, flat_v in _tree_flatten_with_path(nested_v).items():
+      new_key = f"{prefix}{separator}{flat_k}" if flat_k else prefix
+      output[new_key] = flat_v
+  return output
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class TreeFlattenWithPath(_ElementWise, grain.MapTransform):
+  """Flatten any tree-structured elements.
+
+  For example, using 'a' as key, with:
+    features = {'a': {'b': 2, 'c': {'d': 3}}, 'e': 5 , 'f': {'g': 6}}
+
+  becomes:
+    features = {'a_b': 2, 'a_c_d': 3, 'e': 5, 'f': {'g': 6}}
+  """
+
+  separator: str = "_"
+
+  def map(self, features):
+    output = {}
+    for key, element, should_transform in self._per_element(features):
+      if should_transform:
+        output.update(_tree_flatten_with_path({key: element}))
+      else:
+        output[key] = element
+    return output
+
+
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class ElementWiseTransform(_ElementWise, grain.MapTransform):
   """Base class for elementwise transforms."""
@@ -581,3 +616,30 @@ class RandAugment(grain.RandomMapTransform):
       features[self.image_key], features[self.boxes_key] = image_aug, boxes_aug
 
     return features
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class PadFirstDimensionToFixedSize(ElementWiseTransform):
+  """Pads 0-axis of a tensor to a fixed size (can be used for sparse -> dense)."""
+
+  size: int
+  value: int = -1
+
+  @typechecked
+  def map_element(self, element):
+    pad_size = tf.maximum(self.size - tf.shape(element)[0], 0)
+    padded_element = tf.pad(
+        element,
+        ((0, pad_size),) + ((0, 0),) * (len(element.shape) - 1),  # pytype: disable=attribute-error  # allow-recursive-types
+        constant_values=self.value,
+    )
+
+    return tf.ensure_shape(
+        padded_element,
+        [self.size]
+        + (
+            element.get_shape().as_list()[1:]
+            if len(tf.shape(element)) > 1
+            else []
+        ),
+    )
