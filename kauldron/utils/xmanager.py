@@ -25,6 +25,7 @@ from typing import Optional
 
 from etils import epath
 from kauldron import konfig
+from kauldron.utils import utils
 
 from unittest import mock as _mock ; xmanager_api = _mock.Mock()
 
@@ -112,21 +113,10 @@ class Experiment:
     # Use a constant rather than hardcoding `config.json`
     config_path = self.root_dir / str(self.wid) / 'config.json'
     config = json.loads(config_path.read_text())
-    config = _json_list_to_tuple(config)
+    config = utils.json_list_to_tuple(config)
     return konfig.ConfigDict(config)
 
   @functools.cached_property
   def resolved_config(self) -> konfig.ConfigDict:
     """Resolved `ConfigDict`."""
     return konfig.resolve(self.config)
-
-
-def _json_list_to_tuple(json_value):
-  """Normalize the `json` to use `tuple` rather than `list`."""
-  match json_value:
-    case dict():
-      return {k: _json_list_to_tuple(v) for k, v in json_value.items()}
-    case list():
-      return tuple(_json_list_to_tuple(v) for v in json_value)
-    case _:
-      return json_value

@@ -23,6 +23,17 @@ import tqdm
 _T = TypeVar('_T')
 
 
+def json_list_to_tuple(json_value):
+  """Normalize the `json` to use `tuple` rather than `list`."""
+  match json_value:
+    case dict():
+      return {k: json_list_to_tuple(v) for k, v in json_value.items()}
+    case list():
+      return tuple(json_list_to_tuple(v) for v in json_value)
+    case _:
+      return json_value
+
+
 def enum_iter(
     iter: Iterable[_T],  # pylint: disable=redefined-builtin
     *,

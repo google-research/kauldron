@@ -27,15 +27,43 @@ from kauldron import konfig
 from kauldron.train import config_lib
 from kauldron.train import train_lib
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
+from kauldron.utils import sweep_utils
 from ml_collections import config_flags
 
 _CONFIG = config_flags.DEFINE_config_file(
-    "config", None, "Training configuration.", lock_config=True
+    "config", None, "Training configuration.", lock_config=False
+)
+_SWEEP_CONFIG = sweep_utils.define_sweep_flag()
+_POST_MORTEM = flags.DEFINE_boolean(
+    "catch_post_mortem",
+    False,
+    "No effect for now.",
 )
 
 
 def main(_):
-  train_lib.train(_CONFIG.value)
+  with _wu_error_handling(_POST_MORTEM.value):
+    cfg = sweep_utils.update_with_sweep(
+        config=_CONFIG.value,
+        sweep_kwargs=_SWEEP_CONFIG.value,
+    )
+    cfg: config_lib.Config = konfig.resolve(cfg)
+    train_lib.train(cfg)
+
+
+@contextlib.contextmanager
+def _wu_error_handling(post_mortem: bool = False):
+  """Catch and log error."""
+  context = contextlib.nullcontext
+  with context():
+    try:
+      yield
+    except Exception as e:
+      exc_name = type(e).__name__
+      status.log(f"🚨 {exc_name}: {e!s}")
+      status.xp.add_tags(f"🚨 {exc_name} 🚨")
+      raise
+
 
 if __name__ == "__main__":
   # Adds jax flags to the program.
