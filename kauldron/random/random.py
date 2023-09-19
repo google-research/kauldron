@@ -66,7 +66,23 @@ class PRNGKey:
     ):
       # `kd_random.PRNGKey(jnp.asarray(0))` is a valid seed.
       seed_or_rng = jax.random.PRNGKey(seed_or_rng)
-    elif not isinstance(seed_or_rng, (jax.Array, jax.random.PRNGKeyArray)):
+    elif isinstance(
+        seed_or_rng,
+        (
+            jax.Array,
+            # When `jax.config.jax_enable_custom_prng is True`
+            jax.random.PRNGKeyArray,
+            # `jax.core.ShapedArray` is created by `flax.linen.scan`
+            jax.core.ShapedArray,
+        ),
+    ):
+      pass
+    elif type(seed_or_rng) is object:  # pylint: disable=unidiomatic-typecheck
+      # Checking for `object` is a hack required for `@jax.vmap` compatibility:
+      # In `jax/_src/api_util.py` for `flatten_axes`, jax set all values to a
+      # dummy sentinel `object()` value.
+      pass
+    else:  # `int` or `np.ndarray`, normalize
       seed_or_rng = jax.random.PRNGKey(seed_or_rng)
 
     self.rng: jax.random.PRNGKeyArray = seed_or_rng
