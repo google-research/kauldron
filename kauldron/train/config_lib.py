@@ -138,8 +138,12 @@ class Config(config_util.BaseConfig):
 
   def __post_init__(self):
     # It's convenient to set `cfg.eval = None` to disable evaluation
-    if self.eval is None:
-      object.__setattr__(self, 'eval', evaluators.NoopEvaluator())
+    for name, default_factory in {
+        'eval': evaluators.NoopEvaluator,
+        'checkpointer': checkpointer_lib.NoopCheckpointer,
+    }.items():
+      if getattr(self, name) is None:
+        object.__setattr__(self, name, default_factory())
 
     # Some config object values are lazy-initialized from the root config.
     # See `UpdateFromRootCfg` for details
