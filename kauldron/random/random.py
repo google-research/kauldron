@@ -173,7 +173,7 @@ class PRNGKey:
   rademacher = jax.random.rademacher
   randint = jax.random.randint
   rayleigh = jax.random.rayleigh
-  rbg_key = jax.random.rbg_key
+  rbg_key = lambda seed: jax.random.PRNGKey(seed, impl='rbg')  # pytype: disable=wrong-arg-types
   shuffle = jax.random.shuffle
   t = jax.random.t
   truncated_normal = jax.random.truncated_normal
