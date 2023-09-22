@@ -95,15 +95,15 @@ def mock_modules(*module_names: str):
     for name in module_names:
       local_name = f'__main__.{name}'
       module_name = global_ns.get(name).__name__
-      stack.enter_context(
-          unittest.mock.patch(
-              local_name,
-              configdict_proxy.fake_import_utils._fake_import(  # pylint: disable=protected-access
-                  name=module_name,
-                  proxy_cls=configdict_proxy.ConfigDictProxyObject,
-              ),
-          )
-      )
+
+      # Extract the sub-module
+      root_name, *parts = module_name.split('.')
+      root = configdict_proxy.ConfigDictProxyObject.from_cache(name=root_name)
+      root.is_import = True
+      for name in parts:
+        root = root.child_import(name)
+
+      stack.enter_context(unittest.mock.patch(local_name, root))
     yield
 
 

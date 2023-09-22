@@ -40,6 +40,15 @@ QUALNAME_KEY = '__qualname__'
 CONST_KEY = '__const__'
 
 
+# `ConfigDictProxyObject` is a `dict`, so fake modules can be assinged as
+# constant:
+#
+# with konfig.imports():
+#   import my_module
+#
+# # `my_module == {'__const__': 'my_module'}`
+# cfg = konfig.ConfigDict({'module': my_module})
+# cfg = konfig.resolve(cfg)  # Resolve `my_module`
 @dataclasses.dataclass(eq=False, repr=False)
 class ConfigDictProxyObject(fake_import_utils.ProxyObject, dict):
   """Implementation of `ProxyObject` which resolve to `ConfigDict`."""
