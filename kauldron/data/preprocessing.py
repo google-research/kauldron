@@ -29,6 +29,9 @@ import tensorflow as tf
 with epy.lazy_imports():
   import tensorflow_models as tfm  # pylint: disable=g-import-not-at-top
 
+# TODO(klausg): Restore type checking
+typechecked = lambda x: x
+
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class Elements(grain.MapTransform):
