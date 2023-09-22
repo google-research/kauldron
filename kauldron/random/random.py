@@ -20,6 +20,7 @@ from collections.abc import Iterator
 import functools
 import hashlib
 import sys
+import typing
 from typing import Any, TypeVar
 
 from etils.epy import _internal
@@ -30,9 +31,15 @@ import numpy as np
 
 _FnT = TypeVar('_FnT')
 
+if typing.TYPE_CHECKING:
+  # For type checking, `PRNGKey` is a `jax.Array`
+  _Base = jax.Array
+else:
+  _Base = object
+
 
 @jax.tree_util.register_pytree_node_class
-class PRNGKey:
+class PRNGKey(_Base):
   """Small wrapper around `jax.random.PRNGKeyArray` to reduce boilerplate.
 
   Usage:

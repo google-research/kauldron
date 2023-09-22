@@ -139,7 +139,7 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
     )
     context = core.Context(step=0, batch=mock_batch)
     args, kwargs = data_utils.get_model_inputs(self.model, context)
-    params = self.model.init(  # pytype: disable=wrong-arg-types
+    params = self.model.init(
         init_rngs,
         *args,
         method=model_method,
@@ -161,7 +161,7 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
     """Forward pass of the model including losses."""
     context = core.Context(step=step, batch=batch, params=params)
     args, kwargs = data_utils.get_model_inputs(self.model, context)
-    preds, intermediates = self.model.apply(  # TODO(klausg): capture mutables?  # pytype: disable=wrong-arg-types
+    preds, intermediates = self.model.apply(  # TODO(klausg): capture mutables?
         {"params": params},
         *args,
         rngs=rngs,

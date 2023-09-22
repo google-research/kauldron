@@ -464,7 +464,7 @@ class Module(nn.Module):  # pytype: disable=invalid-function-definition
     else:
       # Top-level bind call
       with context.set_in_call_state(self):
-        y, variables = self.apply(  # pytype: disable=wrong-arg-types
+        y, variables = self.apply(
             {Collection.PARAMS: state.params},
             rngs=state.rngs,
             method=getattr(self, fn.__name__),
