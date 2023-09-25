@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Helpers to inspect kd models."""
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -35,6 +36,9 @@ from kauldron.utils import pd_utils
 import ml_collections
 import numpy as np
 import pandas as pd
+
+# API import `kd.inspect.Profiler`
+from kauldron.utils.profile_utils import Profiler  # pylint: disable=unused-import,g-bad-import-order,g-importing-member
 
 
 def _get_source_link(cls) -> str:

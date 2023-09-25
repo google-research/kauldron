@@ -64,11 +64,12 @@ def train_impl(
   add_flatboards(cfg)
 
   hooks = []
-  if status.on_xmanager and status.is_lead_host:
-    hooks.extend([
-        periodic_actions.Profile(num_profile_steps=5, logdir=cfg.workdir),
-        periodic_actions.ReportProgress(num_train_steps=cfg.num_train_steps),
-    ])
+  if status.is_lead_host:
+    hooks.append(cfg.profiler)
+    if status.on_xmanager:
+      hooks.append(
+          periodic_actions.ReportProgress(num_train_steps=cfg.num_train_steps)
+      )
   writer = metric_writer.KDMetricWriter(workdir=cfg.workdir, collection="train")
 
   status.log("Initializing ...")

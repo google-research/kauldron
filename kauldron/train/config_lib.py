@@ -36,6 +36,7 @@ from kauldron.train import rngs_lib
 from kauldron.train import train_lib
 from kauldron.train import train_step
 from kauldron.utils import config_util
+from kauldron.utils import profile_utils
 from kauldron.utils import xmanager
 import optax
 
@@ -71,6 +72,7 @@ class Config(config_util.BaseConfig):
     checkpointer: x
     eval: Evaluator to use (e.g. `kd.train.SingleEvaluator`)
     flatboards: x
+    profiler: Profiler can be customized (see `kd.inspect.Profile`)
     aux: Arbitrary additional values (e.g. can be set once and referenced
       elsewhere `cfg.model.num_layer = cfg.ref.aux.num_layers`)
     trainstep: Training loop step. Do not set this field unless you need a
@@ -118,6 +120,9 @@ class Config(config_util.BaseConfig):
   flatboards: Mapping[str, flatboard.DashboardFactory] = dataclasses.field(
       default_factory=flax.core.FrozenDict
   )
+  profiler: profile_utils.Profiler = dataclasses.field(
+      default_factory=profile_utils.Profiler
+  )
 
   aux: Mapping[str, Any] = dataclasses.field(
       default_factory=flax.core.FrozenDict
@@ -141,6 +146,7 @@ class Config(config_util.BaseConfig):
     for name, default_factory in {
         'eval': evaluators.NoopEvaluator,
         'checkpointer': checkpointer_lib.NoopCheckpointer,
+        'profiler': profile_utils.NoopProfiler,
     }.items():
       if getattr(self, name) is None:
         object.__setattr__(self, name, default_factory())
@@ -152,6 +158,7 @@ class Config(config_util.BaseConfig):
         'rng_streams',
         'eval',
         'checkpointer',
+        'profiler',
         'trainstep',
     ):
       if hasattr(self, attr_name):
