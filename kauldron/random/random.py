@@ -57,6 +57,7 @@ class PRNGKey(_Base):
       self,
       seed_or_rng: int | jax.random.PRNGKeyArray = 0,
       *,
+      impl: str | None = None,
       _allow_seed_array: bool = True,  # Internal variable
   ):
     """Constructor."""
@@ -72,7 +73,7 @@ class PRNGKey(_Base):
         and seed_or_rng.shape == ()  # pylint: disable=g-explicit-bool-comparison
     ):
       # `kd_random.PRNGKey(jnp.asarray(0))` is a valid seed.
-      seed_or_rng = jax.random.PRNGKey(seed_or_rng)
+      seed_or_rng = jax.random.PRNGKey(seed_or_rng, impl=impl)
     elif isinstance(
         seed_or_rng,
         (
@@ -90,7 +91,7 @@ class PRNGKey(_Base):
       # dummy sentinel `object()` value.
       pass
     else:  # `int` or `np.ndarray`, normalize
-      seed_or_rng = jax.random.PRNGKey(seed_or_rng)
+      seed_or_rng = jax.random.PRNGKey(seed_or_rng, impl=impl)
 
     self.rng: jax.random.PRNGKeyArray = seed_or_rng
 
@@ -180,7 +181,6 @@ class PRNGKey(_Base):
   rademacher = jax.random.rademacher
   randint = jax.random.randint
   rayleigh = jax.random.rayleigh
-  rbg_key = jax.random.rbg_key
   shuffle = jax.random.shuffle
   t = jax.random.t
   truncated_normal = jax.random.truncated_normal
