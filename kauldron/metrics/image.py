@@ -19,13 +19,13 @@ from __future__ import annotations
 import dataclasses
 from typing import Optional
 
-from clu import metrics as clu_metrics
 import flax
 import flax.struct
 import jax
 from jax import numpy as jnp
 import jax.scipy as jsp
 from kauldron.metrics import base
+from kauldron.metrics import base_state
 from kauldron.typing import Float, Key, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 
@@ -49,7 +49,7 @@ class Psnr(base.Metric):
   dynamic_range: float = 1.0
 
   @flax.struct.dataclass
-  class State(clu_metrics.Average):
+  class State(base_state.AverageState):
     pass
 
   @typechecked
@@ -60,7 +60,7 @@ class Psnr(base.Metric):
       mask: Optional[Float["*b 1"]] = None,
   ) -> Psnr.State:
     values = psnr(a=pred, b=target, dynamic_range=self.dynamic_range)
-    return self.State.from_model_output(values=values, mask=mask)
+    return self.State.from_values(values=values, mask=mask)
 
 
 # https://github.com/google-research/google-research/blob/abe03104c849ca228af386d785027809d7976a8c/jaxnerf/nerf/utils.py#L278
@@ -150,7 +150,7 @@ class Ssim(base.Metric):
   k2: float = 0.03
 
   @flax.struct.dataclass
-  class State(clu_metrics.Average):
+  class State(base_state.AverageState):
     pass
 
   @typechecked
@@ -169,4 +169,4 @@ class Ssim(base.Metric):
         self.k1,
         self.k2,
     )
-    return self.State.from_model_output(values=values, mask=mask)
+    return self.State.from_values(values=values, mask=mask)

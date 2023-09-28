@@ -27,6 +27,7 @@ from kauldron.data import data_utils
 from kauldron.data.loaders import base as base_data_loader
 from kauldron.typing import PRNGKeyLike, PyTree  # pylint: disable=g-importing-member,g-multiple-import
 from kauldron.utils import config_util
+from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
@@ -56,9 +57,6 @@ class TFDataPipeline(config_util.UpdateFromRootCfg):
       batch size.
     tf_data_options: An optional tf.data.Options instance to be applied to the
       dataset.
-    reshape_for_devices: If True (default) then the per-host batch dimension of
-      the dataset elements are reshaped from `(host_batch_size, ...)` to
-      `(num_local_devices, host_batch_size/num_local_devices, ...)`.
     prefetch_size: Number of batches to prefetch for this dataset. Defaults to
       AUTOTUNE.
     seed: Optional seed. By default reuse the global seed.
@@ -69,7 +67,6 @@ class TFDataPipeline(config_util.UpdateFromRootCfg):
   # TODO(epot): Users should also be able to specify drop_reminder or mask
   batch_size: Optional[int] = None
   tf_data_options: Optional[tf.data.Options] = None
-  reshape_for_devices: bool = True
   prefetch_size: Optional[int] = tf.data.AUTOTUNE
 
   seed: Optional[PRNGKeyLike] = config_util.ROOT_CFG_REF.seed
@@ -92,14 +89,13 @@ class TFDataPipeline(config_util.UpdateFromRootCfg):
     """Returns a numpy tf.data.Dataset iterator."""
     self._assert_root_cfg_resolved()
 
-    ds = self.loader(seed=self.seed)
+    # Loader sometimes uses `jax.random` to generate integer seeds, so allow
+    # host<>device here.
+    with jax.transfer_guard("allow"):
+      ds = self.loader(seed=self.seed)
     transformations = []
     transformations.extend(self.transformations)
     transformations.append(self.batch_fn)
-    if self.reshape_for_devices:
-      # TODO(epot): Should raise more explicit error message if bash size
-      # is not divisible by the number of devices.
-      transformations.append(ReshapeForLocalDevices())
     ds = transforms.apply_transformations(ds, transformations, strict=True)
 
     if self.prefetch_size:
@@ -122,6 +118,8 @@ class TFDataPipeline(config_util.UpdateFromRootCfg):
     ds = ds.map(_drop_grain_meta_features)
     ds = tfds.as_numpy(ds)
     ds = data_utils.IterableDataset(ds)
+    # Shard the batch across the available devices
+    ds = ds.map(lambda ex: sharding.device_put(ex, sharding.SHARDED))
     return ds
 
   def __iter__(self) -> PyTree[_NpArray]:
@@ -138,20 +136,3 @@ class TFDataPipeline(config_util.UpdateFromRootCfg):
 
 def _drop_grain_meta_features(features: Mapping[str, Any]) -> Mapping[str, Any]:
   return {k: v for k, v in features.items() if k not in grain.META_FEATURES}
-
-
-@dataclasses.dataclass(frozen=True, kw_only=True, eq=True)
-class ReshapeForLocalDevices(grain.MapTransform):
-  """Reshape elements from [B, ...] -> [N, B // N, ...] with N = jax devices."""
-
-  def map(self, features):
-    def _reshape(x):
-      n = jax.local_device_count()
-      if isinstance(x, tf.Tensor):
-        x_shape = tf.shape(x)
-        new_shape = tf.concat([[n, x_shape[0] // n], x_shape[1:]], axis=0)
-        return tf.reshape(x, new_shape)
-      elif x is None:
-        return None
-
-    return jax.tree_util.tree_map(_reshape, features)

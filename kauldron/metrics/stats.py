@@ -18,10 +18,10 @@ from __future__ import annotations
 import dataclasses
 from typing import Optional
 
-from clu import metrics as clu_metrics
 import flax.struct
 import jax.numpy as jnp
 from kauldron.metrics import base
+from kauldron.metrics import base_state
 from kauldron.typing import Bool, Float, Key, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 
@@ -56,7 +56,7 @@ class Norm(base.Metric):
   ord: float | int | str | None = None
 
   @flax.struct.dataclass
-  class State(clu_metrics.Average):
+  class State(base_state.AverageState):
     pass
 
   @typechecked
@@ -71,7 +71,67 @@ class Norm(base.Metric):
       mask = jnp.broadcast_to(mask, norm.shape)
 
     # averaging of norms is done by the State
-    return self.State.from_model_output(values=norm, mask=mask)
+    return self.State.from_values(values=norm, mask=mask)
+
+
+@flax.struct.dataclass
+class StdState(base_state.State):
+  """Computes the standard deviation of a scalar or a batch of scalars."""
+
+  total: jnp.ndarray
+  sum_of_squares: jnp.ndarray
+  count: jnp.ndarray
+
+  @classmethod
+  def from_values(
+      cls, values: jnp.ndarray, mask: jnp.ndarray | None = None, **_
+  ) -> StdState:
+    # Note: unlike clu.metrics.Std we support not just batches of scalars but
+    # any shape of values. Thus we flatten the values before passing them on.
+    values = jnp.ravel(values)
+    mask = jnp.ravel(mask) if mask is not None else None
+
+    if values.ndim == 0:
+      values = values[None]
+    assert values.ndim == 1
+    if mask is None:
+      mask = jnp.ones(values.shape[0], dtype=jnp.int32)
+    return cls(
+        total=jnp.where(mask, values, jnp.zeros_like(values)).sum(),
+        sum_of_squares=jnp.where(
+            mask, values**2, jnp.zeros_like(values)
+        ).sum(),
+        count=mask.sum(),
+    )
+
+  @classmethod
+  def empty(cls) -> StdState:
+    return cls(
+        total=jnp.array(0, jnp.float32),
+        sum_of_squares=jnp.array(0, jnp.float32),
+        count=jnp.array(0, jnp.int32),
+    )
+
+  def merge(self, other: StdState) -> StdState:
+    return type(self)(
+        total=self.total + other.total,
+        sum_of_squares=self.sum_of_squares + other.sum_of_squares,
+        count=self.count + other.count,
+    )
+
+  def compute(self) -> jnp.ndarray:
+    # var(X) = 1/N \sum_i (x_i - mean)^2
+    #        = 1/N \sum_i (x_i^2 - 2 x_i mean + mean^2)
+    #        = 1/N ( \sum_i x_i^2 - 2 mean \sum_i x_i + N * mean^2 )
+    #        = 1/N ( \sum_i x_i^2 - 2 mean N mean + N * mean^2 )
+    #        = 1/N ( \sum_i x_i^2 - N * mean^2 )
+    #        = \sum_i x_i^2 / N - mean^2
+    mean = self.total / self.count
+    variance = self.sum_of_squares / self.count - mean**2
+    # Mathematically variance can never be negative but in reality we may run
+    # into such issues due to numeric reasons.
+    variance = jnp.clip(variance, a_min=0.0)
+    return variance**0.5
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -85,7 +145,7 @@ class Std(base.Metric):
   mask: Optional[Key] = None
 
   @flax.struct.dataclass
-  class State(clu_metrics.Std):
+  class State(StdState):
     pass
 
   @typechecked
@@ -94,8 +154,4 @@ class Std(base.Metric):
       values: Float["*b n"],
       mask: Optional[Float["*b 1"]] = None,
   ) -> Std.State:
-    # Note: unlike clu.metrics.Std we support not just batches of scalars but
-    # any shape of values. Thus we flatten the values before passing them on.
-    values = jnp.ravel(values)
-    mask = jnp.ravel(mask) if mask is not None else None
-    return self.State.from_model_output(values=values, mask=mask)
+    return self.State.from_values(values=values, mask=mask)

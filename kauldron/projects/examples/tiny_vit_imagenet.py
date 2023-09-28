@@ -93,6 +93,10 @@ def get_config():
       max_to_keep=1,
   )
 
+  cfg.profiler = kd.inspect.Profiler(
+      all_host=True,
+  )
+
   cfg.eval = kd.train.SingleEvaluator(
       run_every=1000,
       num_batches=10,
