@@ -147,7 +147,7 @@ class Module(nn.Module):  # pytype: disable=invalid-function-definition
 
   def init_bind(
       self: _SelfT,
-      rng: jax.random.KeyArray,
+      rng: jax.Array,
       *args,
       streams: tuple[str, ...] = (Collection.DROPOUT,),
       **kwargs,
@@ -187,8 +187,8 @@ class Module(nn.Module):  # pytype: disable=invalid-function-definition
   def with_rng(
       self: _SelfT,
       rng: int
-      | jax.random.KeyArray
-      | dict[str, jax.random.KeyArray]
+      | jax.Array
+      | dict[str, jax.Array]
       | None = None,
   ) -> _SelfT:
     """Replace the rngs keys.
@@ -512,10 +512,10 @@ def _as_empty(arr: enp.ArraySpec) -> jax.Array:
 
 
 def _normalize_rngs(
-    rng: jax.random.KeyArray | dict[str, jax.random.KeyArray],
+    rng: jax.Array | dict[str, jax.Array],
     streams: list[str] | tuple[str, ...],
     add_params: bool = False,
-) -> dict[str, jax.random.KeyArray]:
+) -> dict[str, jax.Array]:
   """Normalize the rngs keys."""
   rng = jax.tree_util.tree_map(random.PRNGKey, rng)
   if isinstance(rng, dict):

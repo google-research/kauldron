@@ -40,7 +40,7 @@ else:
 
 @jax.tree_util.register_pytree_node_class
 class PRNGKey(_Base):
-  """Small wrapper around `jax.random.PRNGKeyArray` to reduce boilerplate.
+  """Small wrapper around `jax.random` key arrays to reduce boilerplate.
 
   Usage:
 
@@ -52,10 +52,11 @@ class PRNGKey(_Base):
   x = jax.random.uniform(key)  # Jax API still works
   ```
   """
+  rng: jax.Array
 
   def __init__(
       self,
-      seed_or_rng: int | jax.random.PRNGKeyArray = 0,
+      seed_or_rng: int | jax.Array | PRNGKey = 0,
       *,
       impl: str | None = None,
       _allow_seed_array: bool = True,  # Internal variable
@@ -66,34 +67,37 @@ class PRNGKey(_Base):
     # Fold-in should also not be called on the same value twice.
 
     if isinstance(seed_or_rng, PRNGKey):
-      seed_or_rng = seed_or_rng.rng
+      self.rng = seed_or_rng.rng  # type: ignore[annotation-type-mismatch]
     elif (
         _allow_seed_array
         and isinstance(seed_or_rng, jax.Array)
+        and not jax.dtypes.issubdtype(seed_or_rng.dtype, jax.dtypes.prng_key)
         and seed_or_rng.shape == ()  # pylint: disable=g-explicit-bool-comparison
     ):
       # `kd_random.PRNGKey(jnp.asarray(0))` is a valid seed.
-      seed_or_rng = jax.random.PRNGKey(seed_or_rng, impl=impl)
+      self.rng = jax.random.PRNGKey(seed_or_rng, impl=impl)
     elif isinstance(
         seed_or_rng,
         (
             jax.Array,
-            # When `jax.config.jax_enable_custom_prng is True`
-            jax.random.PRNGKeyArray,
             # `jax.core.ShapedArray` is created by `flax.linen.scan`
             jax.core.ShapedArray,
         ),
     ):
-      pass
+      self.rng = seed_or_rng
+    elif hasattr(jax.random, 'PRNGKeyArray') and isinstance(
+        seed_or_rng, jax.random.PRNGKeyArray
+    ):
+      # In jax versions before 0.4.16, typed PRNG keys have a special type.
+      # In newer versions, typed PRNG keys pass the Array instance check above.
+      self.rng = seed_or_rng  # type: ignore[assignment]
     elif type(seed_or_rng) is object:  # pylint: disable=unidiomatic-typecheck
       # Checking for `object` is a hack required for `@jax.vmap` compatibility:
       # In `jax/_src/api_util.py` for `flatten_axes`, jax set all values to a
       # dummy sentinel `object()` value.
-      pass
+      self.rng = seed_or_rng  # type: ignore[assignment]
     else:  # `int` or `np.ndarray`, normalize
-      seed_or_rng = jax.random.PRNGKey(seed_or_rng, impl=impl)
-
-    self.rng: jax.random.PRNGKeyArray = seed_or_rng
+      self.rng = jax.random.PRNGKey(seed_or_rng, impl=impl)
 
   def __iter__(self) -> Iterator[PRNGKey]:
     return (self._new(k) for k in iter(self.rng))
@@ -123,7 +127,7 @@ class PRNGKey(_Base):
 
   def tree_flatten(self) -> tuple[list[jax.Array], dict[str, Any]]:
     """`jax.tree_utils` support."""
-    return ([self.rng], {})
+    return ([self.rng], {})  # type: ignore[bad-return-type]
 
   @classmethod
   def tree_unflatten(
