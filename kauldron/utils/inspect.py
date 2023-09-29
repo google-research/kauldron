@@ -284,7 +284,11 @@ def _get_summary_table(
       model, {"batch": m_batch, "step": 0}
   )
   table_fn = nn.summary._get_module_table(  # pylint: disable=protected-access
-      model, depth=None, show_repeated=False
+      model,
+      depth=None,
+      show_repeated=False,
+      compute_flops=False,
+      compute_vjp_flops=False,
   )
 
   table = table_fn(
