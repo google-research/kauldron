@@ -25,5 +25,6 @@ from kauldron.metrics.image import Psnr
 from kauldron.metrics.image import Ssim
 from kauldron.metrics.lpips import LpipsVgg
 from kauldron.metrics.stats import Norm
+from kauldron.metrics.stats import SingleDimension
 from kauldron.metrics.stats import Std
 # pylint: enable=g-importing-member
