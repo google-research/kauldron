@@ -183,7 +183,7 @@ class Config(config_util.BaseConfig):
     Similar to:
 
     ```python
-    state = trainer.init_state().replicate()
+    state = trainer.init_state()
 
     for batch in trainer.train_ds:
       batch = trainer.trainstep.step(batch, state)

@@ -17,8 +17,8 @@ from __future__ import annotations
 
 import dataclasses
 
-from clu import metrics as clu_metrics
 from kauldron.metrics import base
+from kauldron.metrics import base_state
 from kauldron.typing import Key  # pylint: disable=g-importing-member
 import numpy as np
 
@@ -28,11 +28,11 @@ import numpy as np
 class IntAverage(base.Metric):
   x: Key = "batch.x"
 
-  class State(clu_metrics.Average):
+  class State(base_state.AverageState):
     pass
 
   def get_state(self, x=None) -> IntAverage.State:
-    return IntAverage.State.from_model_output(values=x)
+    return IntAverage.State.from_values(values=x)
 
   def compute(self, state):
     return int(state.compute())

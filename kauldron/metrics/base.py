@@ -19,13 +19,11 @@ import abc
 import dataclasses
 from typing import Any, Mapping
 
-from clu import metrics as clu_metrics
 import flax
 import jax
+from kauldron.metrics import base_state
 from kauldron.typing import Float, Key, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import core
-
-State = clu_metrics.Metric
 
 
 class Metric(abc.ABC):
@@ -53,7 +51,7 @@ class Metric(abc.ABC):
   """
 
   @flax.struct.dataclass
-  class State(clu_metrics.Metric):
+  class State(base_state.State):
     pass
 
   @abc.abstractmethod
@@ -86,10 +84,10 @@ class Metric(abc.ABC):
 
 
 @flax.struct.dataclass
-class TreeState(clu_metrics.Metric):
+class TreeState(base_state.State):
   """Holds a pytree of metric states."""
 
-  tree: Mapping["str", PyTree[clu_metrics.Metric]] = flax.core.FrozenDict()
+  tree: Mapping["str", PyTree[base_state.State]] = flax.core.FrozenDict()
 
   @classmethod
   def empty(cls) -> TreeState:
@@ -110,13 +108,6 @@ class TreeState(clu_metrics.Metric):
         lambda x, y: x.merge(y), self.tree, other.tree, is_leaf=_is_metric_state
     )
     return type(self)(tree=merged_tree)
-
-  def reduce(self) -> TreeState:
-    """Reduces all metric states in the tree (merge along first dimension)."""
-    reduced_tree = jax.tree_map(
-        lambda x: x.reduce(), self.tree, is_leaf=_is_metric_state
-    )
-    return type(self)(tree=reduced_tree)
 
   def compute(self) -> PyTree[Any]:  # pytype: disable=signature-mismatch  # jnp-array
     """Calls compute for all metric states in tree."""
@@ -182,7 +173,7 @@ class TreeReduce(Metric):
 
   metric: Metric
 
-  def get_state(self, **kwargs) -> clu_metrics.Metric:
+  def get_state(self, **kwargs) -> base_state.State:
     state_tree = _tree_map_with_kwargs(self.metric.get_state, **kwargs)
     reduced_state = jax.tree_util.tree_reduce(
         lambda x, y: x.merge(y),
@@ -196,10 +187,10 @@ class TreeReduce(Metric):
     # Use the key and get_state signature of self.metric instead of self
     return core.resolve_kwargs(self.metric, context, func=self.metric.get_state)
 
-  def compute(self, state: clu_metrics.Metric):
+  def compute(self, state: base_state.State):
     return self.metric.compute(state)
 
 
 def _is_metric_state(x: Any) -> bool:
   """Check if x is a valid Metric.State. Used as is_leaf fun in tree_map."""
-  return isinstance(x, clu_metrics.Metric)
+  return isinstance(x, base_state.State)

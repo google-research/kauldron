@@ -18,11 +18,11 @@ from __future__ import annotations
 import dataclasses
 from typing import Optional
 
-from clu import metrics as clu_metrics
 import flax.linen as nn
 import flax.struct
 import jax.numpy as jnp
 from kauldron.metrics import base
+from kauldron.metrics import base_state
 from kauldron.typing import Float, Int, Key, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import numpy as np
 import sklearn.metrics
@@ -37,7 +37,7 @@ class Accuracy(base.Metric):
   mask: Optional[Key] = None
 
   @flax.struct.dataclass
-  class State(clu_metrics.Average):
+  class State(base_state.AverageState):
     pass
 
   @typechecked
@@ -48,7 +48,7 @@ class Accuracy(base.Metric):
       mask: Optional[Float["*b 1"]] = None,
   ) -> Accuracy.State:
     correct = logits.argmax(axis=-1, keepdims=True) == labels
-    return self.State.from_model_output(values=correct, mask=mask)
+    return self.State.from_values(values=correct, mask=mask)
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -62,8 +62,10 @@ class RocAuc(base.Metric):
   multi_class_mode: str = "ovr"  # One-vs-Rest ("ovr") or One-vs-One ("ovo")
 
   @flax.struct.dataclass
-  class State(clu_metrics.CollectingMetric):
-    pass
+  class State(base_state.CollectingState):
+    labels: Int["*b 1"]
+    probs: Float["*b n"]
+    mask: Float["*b 1"]
 
   @typechecked
   def get_state(
@@ -75,22 +77,26 @@ class RocAuc(base.Metric):
     # simply collect the given values
     mask = jnp.ones_like(labels) if mask is None else mask
     probs = nn.activation.softmax(logits, axis=-1)
-    values = {"labels": labels, "probs": probs, "mask": mask}
-    return self.State(values=values)
+    return self.State(
+        labels=labels,
+        probs=probs,
+        mask=mask,
+    )
 
   @typechecked
   def compute(self, state: RocAuc.State) -> float:
-    labels = state.values["labels"][..., 0]
+    out = state.compute()
+    labels = out.labels[..., 0]
     assert isinstance(labels, Int["b"]), labels.shape
     # roc_auc_score is very picky so we first filter out all the classes
     # for which there are no GT examples and renormalize probabilities
     # This will give wrong results, but allows getting a value during training
     # where it cannot be guaranteed that each batch contains all classes.
     unique_labels = np.unique(labels).tolist()
-    probs = state.values["probs"][..., unique_labels]
+    probs = out.probs[..., unique_labels]
     probs /= probs.sum(axis=-1, keepdims=True)  # renormalize
     assert isinstance(probs, Float["b n"]), probs.shape
-    mask = state.values["mask"][..., 0].astype(np.float32)
+    mask = out.mask[..., 0].astype(np.float32)
     assert isinstance(mask, Float["b"]), mask.shape
 
     return sklearn.metrics.roc_auc_score(

@@ -41,8 +41,6 @@ class RngStream:
     train: Whether the rng is used in train (`is_training=True`)
     eval: Whether the rng is used in eval (`is_training=False`)
     per_step: Whether the rng is different at each step
-    per_process: Whether the rng is different for each process
-    per_device: Whether the rng is different for each device (in pmap)
   """
 
   name: str
@@ -54,15 +52,12 @@ class RngStream:
   eval: bool = False
 
   per_step: bool = True
-  per_device: bool = True
-  per_process: bool = True
 
   def make(
       self,
       rng: kd_random.PRNGKey,
       *,
       step: int | None = None,
-      device_id: int | None = None,
       key: str | None = None,
   ) -> kd_random.PRNGKey:
     """Create the `rng` from the global root rng.
@@ -70,8 +65,6 @@ class RngStream:
     Arguments:
       rng: The root rng, common to all processes
       step: Current model step
-      device_id: Indicate be the device / axis id inside `pmap` (e.g.
-        `jax.lax.axis_index('device')`)
       key: Additional string (e.g. `train`, `init`,...) to fold in
 
     Returns:
@@ -81,11 +74,6 @@ class RngStream:
     if self.per_step:
       self._assert_is_not_none(step, 'step')
       rng = rng.fold_in(step)
-    if self.per_process:
-      rng = rng.fold_in(jax.process_index())
-    if self.per_device:
-      self._assert_is_not_none(device_id, 'device_id')
-      rng = rng.fold_in(device_id)
     if key is not None:  # Additional key to fold (e.g. `train`, `eval`)
       rng = rng.fold_in(key)
     return rng
@@ -104,8 +92,6 @@ _DEFAULT_STREAMS = [
         train=False,
         eval=False,
         per_step=False,
-        per_device=False,
-        per_process=False,
     ),
     RngStream('dropout'),
     RngStream('default'),
@@ -168,7 +154,6 @@ class RngStreams(config_util.UpdateFromRootCfg):
         r.name: r.make(
             self.root_rng,
             step=0,
-            device_id=0,  # Assume `model.init` is ran outside `pmap`. Safe ?
             key='init',
         )
         for r in self.streams.values()
@@ -176,13 +161,11 @@ class RngStreams(config_util.UpdateFromRootCfg):
     }
 
   @_jit_method
-  def train_rngs(self, step: int, *, device_id: int) -> Rngs:
+  def train_rngs(self, step: int) -> Rngs:
     """Rngs for `model.apply(..., is_training_property=True)`.
 
     Args:
       step: Current train/eval step
-      device_id: Indicate be the device / axis id inside `pmap` (e.g.
-        `jax.lax.axis_index('device')`)
 
     Returns:
       rngs: The `dict[<stream name>, kd.random.PRNGKey]`
@@ -191,7 +174,6 @@ class RngStreams(config_util.UpdateFromRootCfg):
         r.name: r.make(
             self.root_rng,
             step=step,
-            device_id=device_id,
             key='train',
         )
         for r in self.streams.values()
@@ -199,13 +181,11 @@ class RngStreams(config_util.UpdateFromRootCfg):
     }
 
   @_jit_method
-  def eval_rngs(self, step: int, *, device_id: int) -> Rngs:
+  def eval_rngs(self, step: int) -> Rngs:
     """Rngs for `model.apply(..., is_training_property=False)`.
 
     Args:
       step: Current train/eval step
-      device_id: Indicate be the device / axis id inside `pmap` (e.g.
-        `jax.lax.axis_index('device')`)
 
     Returns:
       rngs: The `dict[<stream name>, kd.random.PRNGKey]`
@@ -214,7 +194,6 @@ class RngStreams(config_util.UpdateFromRootCfg):
         r.name: r.make(
             self.root_rng,
             step=step,
-            device_id=device_id,
             key='eval',
         )
         for r in self.streams.values()

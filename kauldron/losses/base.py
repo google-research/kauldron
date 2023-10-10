@@ -19,11 +19,11 @@ import abc
 import dataclasses
 from typing import Any, Callable, ClassVar, Optional
 
-from clu import metrics as clu_metrics
 import flax
 import jax
 from jax import numpy as jnp
 from kauldron import metrics
+from kauldron.metrics import base_state
 from kauldron.typing import Array, Float, Key, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import core
 
@@ -32,7 +32,7 @@ Schedule = Callable[[int], float]
 
 
 @flax.struct.dataclass
-class AllReduceMean(clu_metrics.Metric):
+class AllReduceMean(base_state.State):
   """Default state for aggregating losses (tracks a scalar mean value)."""
 
   value: jnp.ndarray
@@ -70,9 +70,6 @@ class AllReduceMean(clu_metrics.Metric):
         count=self.count + other.count,
     )
 
-  def reduce(self) -> AllReduceMean:
-    return type(self)(value=jnp.sum(self.value), count=jnp.sum(self.count))
-
   def compute(self) -> Float[""]:
     return self.value / jnp.clip(self.count, a_min=1e-8)
 
@@ -99,9 +96,6 @@ class Loss(metrics.Metric, abc.ABC):
     # In training code use get_state and compute:
     loss_state = loss.get_state_from_context(ctx)        # from context
     loss_state = loss.get_state(logits=..., labels=...)  # directly
-
-    # This e.g. allows correctly aggregating state across devices and steps:
-    loss_state.reduce()  # average over devices
 
     value = loss.compute(loss_state)
     ```
