@@ -16,8 +16,10 @@
 
 from __future__ import annotations
 
+import collections
 from collections.abc import Callable
 import dataclasses
+import itertools
 from typing import Any
 
 from etils import enp
@@ -38,15 +40,15 @@ class IterableDataset:  # Could be generic for better return value
   parent: IterableDataset
 
   def map(self, map_fn: _MapFn) -> IterableDataset:
-    return _MapDataset(self.parent, map_fn=map_fn)
+    return _MapDataset(self, map_fn=map_fn)
 
-  # TODO(epot): Add a prefetch might improve speed when blocking ops in the
+  # Prefetch might improve speed when blocking ops in the
   # CPU (next batch already prefetched), even though it would be best
   # to not have any blocking ops in the host (asynchronous checkpoint saving,
-  # metrics, ...). See:
-  # https://github.com/google-research/jax3d/tree/HEAD/jax3d/nerfstatic/datasets/dataset_utils.py;l=89;rcl=475253752
-  # def prefetch(self, i):
-  #   return _PrefetchDataset()
+  # metrics, ...).
+  def prefetch(self, buffer_size: int = 1):
+    """Pre-fetch the iterator (synchronously)."""
+    return _PrefetchDataset(self, buffer_size=buffer_size)
 
   @property
   def element_spec(self) -> etree.Tree[enp.ArraySpec]:
@@ -74,3 +76,28 @@ class _MapDataset(IterableDataset):
   def __iter__(self) -> _ArrayIterable:
     for elem in self.parent:
       yield self.map_fn(elem)
+
+
+@dataclasses.dataclass(frozen=True)
+class _PrefetchDataset(IterableDataset):
+  """Pre-fetch the iterator (synchronously)."""
+
+  buffer_size: int
+
+  def __iter__(self) -> _ArrayIterable:
+    iterator = iter(self.parent)
+
+    queue = collections.deque()
+    # Prefetch buffer size to the queue
+    for x in itertools.islice(iterator, self.buffer_size):
+      queue.append(x)
+
+    while queue:
+      yield queue.popleft()
+
+      # Eventually push the next element to the queue
+      try:
+        queue.append(next(iterator))
+      except StopIteration:
+        pass
+
