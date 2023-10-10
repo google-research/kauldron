@@ -16,8 +16,10 @@
 from __future__ import annotations
 
 import difflib
+import functools
 import inspect
-from typing import Any, Callable, Optional
+import os
+from typing import Any, Callable, Iterable, Optional
 
 import kauldron.typing as ktyping
 from kauldron.utils import paths
@@ -96,25 +98,39 @@ def get_values_from_context(
       if value is None and key not in optional_keys
   }
   if missing_keys:
-    flat_keys = paths.tree_flatten_with_path(context).keys()
-    suggestions = []
-    details = ""
-    for key, path in missing_keys.items():
-      suggestion = difflib.get_close_matches(key, flat_keys, n=1, cutoff=0)
-      if suggestion:
-        suggestions.append(
-            f"{key}:\n  Not found:    {path!r}\n  Did you mean:"
-            f" {suggestion[0]!r} ?"
-        )
-      else:
-        suggestions.append(
-            f"{key}:\n  Not found:    {path!r}\n. Context keys: {flat_keys} "
-        )
-      details = "\n".join(suggestions)
-
-    msg = _KeyErrorMessage(f"Missing keys:\n{details}")
+    flat_paths = paths.tree_flatten_with_path(context).keys()
+    details = "\n".join(
+        _get_missing_key_error_message(missing_key, path, flat_paths)
+        for missing_key, path in missing_keys.items()
+    )
+    msg = _KeyErrorMessage(f"Missing keys\n{details}")
     raise KeyError(msg)
   return key_values
+
+
+def _get_missing_key_error_message(
+    missing_key: str, missing_path: str, all_paths: Iterable[str]
+) -> str:
+  """Generate an error message with helpful suggestions for missing keypath."""
+  suggestions = difflib.get_close_matches(
+      missing_path, all_paths, n=3, cutoff=0
+  )
+
+  def common_prefix_length(x, path):
+    return len(os.path.commonprefix((x, path)))
+
+  sorted_by_common_prefix = sorted(
+      all_paths,
+      key=functools.partial(common_prefix_length, path=missing_path),
+  )
+  suggestions += sorted_by_common_prefix[-3:]
+  suggestions = sorted(set(suggestions))
+  return (
+      f"Couldn't resolve path for {missing_key!r}:\n"
+      + f"  {missing_path!r}\n"
+      + "Did you mean one of:\n"
+      + "\n".join([f"  {s!r}" for s in suggestions])
+  )
 
 
 def get_keypaths(keyed_obj: Any) -> dict[str, str]:
