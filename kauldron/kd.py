@@ -42,7 +42,6 @@ from kauldron import train
 from kauldron import typing
 from kauldron.utils import inspect
 from kauldron.utils import paths
-from kauldron.utils import plotting
 from kauldron.utils import xmanager as xm
 from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 

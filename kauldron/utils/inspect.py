@@ -38,7 +38,10 @@ import numpy as np
 import pandas as pd
 
 # API import `kd.inspect.Profiler`
-from kauldron.utils.profile_utils import Profiler  # pylint: disable=unused-import,g-bad-import-order,g-importing-member
+# pylint: disable=unused-import,g-bad-import-order,g-importing-member
+from kauldron.utils.plotting import plot_schedules
+from kauldron.utils.profile_utils import Profiler
+# pylint: enable=unused-import,g-bad-import-order,g-importing-member
 
 
 def _get_source_link(cls) -> str:
