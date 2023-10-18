@@ -23,7 +23,7 @@ import einops
 from etils import epy
 import flax.core
 import grain.tensorflow as grain
-from kauldron.typing import Key, TfArray, TfFloat, TfInt, TfUInt8, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Key, TfArray, TfFloat, TfInt, TfUInt8, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import tensorflow as tf
 
 with epy.lazy_imports():
@@ -587,7 +587,7 @@ class RandAugment(grain.RandomMapTransform):
   def random_map(self, features, seed):
     del seed  # TODO(klausg) stateless/deterministic version of this op?
     image = features[self.image_key]
-    assert isinstance(image, TfUInt8["h w 3"])
+    check_type(image, TfUInt8["h w 3"])
 
     if self.boxes_key is None:
       randaug = tfm.vision.augment.RandAugment(
@@ -602,7 +602,7 @@ class RandAugment(grain.RandomMapTransform):
       features[self.image_key] = randaug.distort(image)
     else:
       boxes = features[self.boxes_key]
-      assert isinstance(boxes, TfFloat["n 4"])
+      check_type(boxes, TfFloat["n 4"])
       randaug = tfm.vision.augment.RandAugment.build_for_detection(
           num_layers=self.num_layers,
           magnitude=self.magnitude,

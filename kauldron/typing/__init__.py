@@ -40,6 +40,9 @@ from kauldron.typing.array_types import (  # pylint: disable=g-multiple-import
 from kauldron.typing.shape_spec import Memo, Shape  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.typing.type_check import TypeCheckError, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import numpy as np
+import typeguard as _typeguard
+# make typeguard.check_type accessible in this namespace
+check_type = _typeguard.check_type
 
 PRNGKey = UInt32["2"]
 PRNGKeyLike = Union[int, Sequence[int], np.ndarray, PRNGKey]

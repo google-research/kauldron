@@ -23,7 +23,7 @@ import flax.struct
 import jax.numpy as jnp
 from kauldron.metrics import base
 from kauldron.metrics import base_state
-from kauldron.typing import Float, Int, Key, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Float, Int, Key, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import numpy as np
 import sklearn.metrics
 
@@ -87,7 +87,7 @@ class RocAuc(base.Metric):
   def compute(self, state: RocAuc.State) -> float:
     out = state.compute()
     labels = out.labels[..., 0]
-    assert isinstance(labels, Int["b"]), labels.shape
+    check_type(labels, Int["b"])
     # roc_auc_score is very picky so we first filter out all the classes
     # for which there are no GT examples and renormalize probabilities
     # This will give wrong results, but allows getting a value during training
@@ -95,9 +95,9 @@ class RocAuc(base.Metric):
     unique_labels = np.unique(labels).tolist()
     probs = out.probs[..., unique_labels]
     probs /= probs.sum(axis=-1, keepdims=True)  # renormalize
-    assert isinstance(probs, Float["b n"]), probs.shape
+    check_type(probs, Float["b n"])
     mask = out.mask[..., 0].astype(np.float32)
-    assert isinstance(mask, Float["b"]), mask.shape
+    check_type(mask, Float["b"])
 
     return sklearn.metrics.roc_auc_score(
         y_true=labels,
