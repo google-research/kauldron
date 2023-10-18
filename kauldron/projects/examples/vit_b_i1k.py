@@ -19,6 +19,7 @@ from kauldron import konfig
 # pylint: disable=g-import-not-at-top
 with konfig.imports():
   from kauldron import kd
+  from kauldron.data import extra_image_ops as kd_extra
   import optax
   import flax.linen as nn
 # pylint: enable=g-import-not-at-top
@@ -31,7 +32,7 @@ def _make_ds(training: bool):
         kd.data.Elements(keep=["image", "label"]),
         kd.data.InceptionCrop(key="image", resize_size=(224, 224)),
         kd.data.RandomFlipLeftRight(key="image"),
-        kd.data.RandAugment(image_key="image", num_layers=2, magnitude=15),
+        kd_extra.RandAugment(image_key="image", num_layers=2, magnitude=15),
         kd.data.ValueRange(key="image", in_vrange=(0, 255), vrange=(0, 1)),
         kd.data.Rearrange(key="label", pattern="... -> ... 1"),
     ]
