@@ -50,7 +50,7 @@ class SingleDimension(base.Metric):
       tensor: Float["*any"],
   ) -> SingleDimension.State:
     value = tensor[..., self.index]
-    return self.State.from_model_output(values=value)
+    return self.State.from_values(values=value)
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
