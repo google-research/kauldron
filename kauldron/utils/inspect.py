@@ -68,7 +68,7 @@ def _format_module_config(cfg: Optional[Any]) -> str:
 
   def _abbrev(c):
     if isinstance(c, ml_collections.ConfigDict):
-      qn = getattr(c, "__qualname__")
+      qn = getattr(c, "__qualname__", None)
       if qn is not None:
         return konfig.ConfigDict({"__qualname__": qn, 0: ...})
       else:
