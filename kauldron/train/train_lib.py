@@ -92,6 +92,7 @@ def train_impl(
     writer.write_config(cfg.raw_cfg)
   writer.write_param_overview(initial_step, state.params)
   writer.write_element_spec(initial_step, cfg.train_ds.element_spec)
+  writer.write_context_structure(initial_step, cfg)
 
   timer = timer_module.PerformanceTimer(
       initial_step_num=initial_step,

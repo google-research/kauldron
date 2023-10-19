@@ -21,10 +21,14 @@ from typing import Any, Mapping
 from clu import metric_writers
 from clu import parameter_overview
 from etils import epath
+from etils import etree
 from kauldron import konfig
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 from kauldron.typing import Array, Float, Scalar  # pylint: disable=g-multiple-import
+from kauldron.utils import inspect as kd_inspect
+from kauldron.utils import paths
 import numpy as np
+import pandas as pd
 
 from unittest import mock as _mock ; xmanager_api = _mock.Mock()
 
@@ -154,6 +158,40 @@ class KDMetricWriter(metric_writers.MetricWriter):
   def write_element_spec(self, step: int, element_spec):
     texts = {"element_spec": f"```python\n{element_spec!s}\n```"}
     self.write_texts(step, texts)
+
+  def write_context_structure(self, step: int, config):
+    # do a lightweight shape-eval for the context
+    loss, context = kd_inspect.eval_context_shape(
+        model=config.model,
+        losses=config.train_losses,
+        metrics=config.train_metrics,
+        summaries=config.train_summaries,
+        elem_spec=config.train_ds.element_spec,
+        rngs=config.rng_streams.init_rngs(),
+    )
+    # create a flat spec for the context
+    context_spec = etree.spec_like(
+        paths.tree_flatten_with_path({
+            "step": context.step,
+            "batch": config.train_ds.element_spec,
+            "params": context.params,
+            "preds": context.preds,
+            "interms": context.interms,
+            "loss_states": context.loss_states,
+            "loss_total": loss,
+            "grads": "<<same structure as params>>",
+            "updates": "<<same structure as params>>",
+        })
+    )
+    # convert flat spec into a pandas dataframe
+    ctx_df = pd.DataFrame(
+        # wrap entries in backticks to avoid interpreting __x__ as markdown bold
+        [(f"`{k}`", f"`{v}`") for k, v in context_spec.items()],
+        columns=["Path", "Spec"],
+    )
+    # export pandas dataframe as markdown text
+    markdown_table = ctx_df.to_markdown(index=False, tablefmt="github")
+    self.write_texts(step, {"context_spec": markdown_table})
 
   def add_artifacts(self):
     if not (status.on_xmanager and status.is_lead_host and status.wid == 1):
