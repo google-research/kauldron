@@ -22,7 +22,15 @@ If not provided, losses, metrics, summaries are reused from train.
     `run_every` steps.
 *   `kd.train.MultiEvaluator`: To have multiple eval (each with individual
     metrics, schedule,...)
-*   `kd.train.NoopEvaluator`: Disable evaluation
+
+    ```python
+    kd.train.MultiEvaluator(
+        my_eval=kd.train.SingleEvaluator(),
+        my_other_eval=kd.train.SingleEvaluator(),
+    )
+    ```
+
+*   `kd.train.NoopEvaluator` (or `None`): Disable evaluation
 
 ## Train / eval in Module
 

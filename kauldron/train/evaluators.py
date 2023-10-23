@@ -20,7 +20,7 @@ import abc
 import dataclasses
 import functools
 import itertools
-from typing import Any, Optional, TypeVar
+from typing import Optional, TypeVar
 
 import jax
 from kauldron import data
@@ -39,7 +39,7 @@ from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importin
 
 _SelfT = TypeVar('_SelfT')
 
-_REUSE_TRAIN: Any = object()
+_DEFAULT_EVAL_NAME = 'eval'
 
 
 class EvaluatorBase(
@@ -65,7 +65,7 @@ class EvaluatorBase(
     raise NotImplementedError
 
   @abc.abstractmethod
-  def flatten(self) -> list[EvaluatorBase]:
+  def flatten(self) -> list[SingleEvaluator]:
     """Iterate over the evaluator nodes."""
     raise NotImplementedError
 
@@ -76,7 +76,7 @@ class NoopEvaluator(EvaluatorBase):
   def maybe_eval(self, *, step: int, state: train_step.TrainState) -> None:
     pass
 
-  def flatten(self) -> list[EvaluatorBase]:
+  def flatten(self) -> list[SingleEvaluator]:
     return []
 
 
@@ -98,7 +98,7 @@ class SingleEvaluator(EvaluatorBase):
     summaries: Summaries
   """
 
-  name: str = 'eval'
+  name: str = _DEFAULT_EVAL_NAME
   run_every: int
   num_batches: Optional[int]
   ds: data.TFDataPipeline = config_util.ROOT_CFG_REF.eval_ds
@@ -198,7 +198,7 @@ class SingleEvaluator(EvaluatorBase):
         workdir=self.base_cfg.workdir, collection=self.name
     )
 
-  def flatten(self) -> list[EvaluatorBase]:
+  def flatten(self) -> list[SingleEvaluator]:
     return [self]
 
 
@@ -241,30 +241,62 @@ class MultiEvaluator(EvaluatorBase):
 
   Usage:
 
-  ```
+  ```python
   evaluator = kd.train.MultiEvaluator(
-      children=[
-          kd.train.SingleEvaluator(name='eval0'),
-          kd.train.SingleEvaluator(name='eval1'),
-      ]
+      my_eval=kd.train.SingleEvaluator(),
+      other_eval=kd.train.SingleEvaluator(),
   )
   evaluator.maybe_eval(step=0, state=state)
+
+  evaluator.other_eval.name  # Individual eval can be accessed
   ```
   """
 
-  children: list[EvaluatorBase]
+  children: dict[str, SingleEvaluator]
+
+  def __init__(
+      self,
+      **evaluators: SingleEvaluator,
+  ):
+    evaluators = {k: _replace_name(c, k) for k, c in evaluators.items()}
+    object.__setattr__(self, 'children', evaluators)
 
   def update_from_root_cfg(self: _SelfT, root_cfg: config_lib.Config) -> _SelfT:
     """See base class."""
-    return self.replace(
-        children=[c.update_from_root_cfg(root_cfg) for c in self.children]
-    )
+    new_children = {
+        k: c.update_from_root_cfg(root_cfg) for k, c in self.children.items()  # pylint: disable=protected-access
+    }
+    return type(self)(**new_children)
 
   def maybe_eval(self, *, step: int, state: train_step.TrainState):
-    for evaluator in self.children:
+    for evaluator in self.children.values():
       evaluator.maybe_eval(step=step, state=state)
 
-  def flatten(self) -> list[EvaluatorBase]:
+  def flatten(self) -> list[SingleEvaluator]:
     return list(
-        itertools.chain.from_iterable(eval.flatten() for eval in self.children)
+        itertools.chain.from_iterable(
+            eval.flatten() for eval in self.children.values()
+        )
+    )
+
+  def __getattr__(self, name: str) -> SingleEvaluator:
+    if name not in self.children:
+      return super().__getattribute__(name)
+    return self.children[name]
+
+
+def _replace_name(evaluator: EvaluatorBase, name: str) -> EvaluatorBase:
+  if not isinstance(evaluator, SingleEvaluator):
+    raise TypeError(
+        '`MultiEvaluator` expect `SingleEvaluator`. Got:'
+        f' {name}={type(evaluator)}'
+    )
+  elif evaluator.name == _DEFAULT_EVAL_NAME:  # Default name, overwrite
+    return dataclasses.replace(evaluator, name=name)
+  elif evaluator.name == name:
+    return evaluator
+  else:
+    raise ValueError(
+        'Evaluator name provided to the `MultiEvaluator` should match. Got:'
+        f' {evaluator.name} != {name}'
     )

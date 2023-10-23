@@ -379,15 +379,10 @@ def get_perf_stat_y_keys() -> Sequence[str]:
   ]
 
 
-def get_data_collections(config: Any) -> list[str]:
+def get_data_collections(config: config_lib.Config) -> list[str]:
   """Return a list of datatable collections for a given resolved config."""
   collections = ["train"]
-  evaluator = config.eval
-  if evaluator and hasattr(evaluator, "name"):
-    collections.append(evaluator.name)
-  elif evaluator and hasattr(evaluator, "children"):
-    collections.extend(eval.name for eval in evaluator.children)
-
+  collections.extend(e.name for e in config.eval.flatten())
   return collections
 
 
