@@ -52,6 +52,28 @@ class Accuracy(base.Metric):
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class BinaryAccuracy(base.Metric):
+  """Classification Accuracy for Binary classification tasks."""
+
+  logits: Key = "preds.logits"
+  labels: Key = "batch.label"
+
+  @flax.struct.dataclass
+  class State(base_state.AverageState):
+    pass
+
+  @typechecked
+  def get_state(
+      self,
+      logits: Float["*any"],
+      labels: Int["*any"],
+      mask: Optional[Float["*#any"]] = None,
+  ):
+    correct = (logits > 0) == labels
+    return self.State.from_values(values=correct, mask=mask)
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class RocAuc(base.Metric):
   """Area Under the Receiver Operating Characteristic Curve (ROC AUC)."""
 
