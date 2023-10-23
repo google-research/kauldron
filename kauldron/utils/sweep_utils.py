@@ -42,6 +42,7 @@ from typing import Any, Callable, Iterable
 from absl import flags
 from kauldron import konfig
 from kauldron.utils import utils
+import ml_collections
 
 _FLAG_NAME = "sweep_config"
 
@@ -190,7 +191,7 @@ def update_with_sweep(
     *parts, target = paths.Path.from_str(k).parts
     for part in parts:
       root = root[part]
-      if not isinstance(root, (list, dict, konfig.ConfigDict)):
+      if not isinstance(root, (list, dict, ml_collections.ConfigDict)):
         raise TypeError(
             f"Cannot overwrite sweep arg {k}: {part} is unsuported type"
             f" {type(root)}. Please open an issue if this should be fixed."
