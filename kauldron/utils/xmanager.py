@@ -116,7 +116,7 @@ class Experiment:
     # Use a constant rather than hardcoding `config.json`
     config_path = self.root_dir / str(self.wid) / 'config.json'
     config = json.loads(config_path.read_text())
-    return _json_to_config(config)  # Wrap the dict to ConfigDict
+    return _json_to_config(config)  # Wrap the dict to ConfigDict  # pytype: disable=bad-return-type
 
   @functools.cached_property
   def resolved_config(self) -> konfig.ConfigDict:
@@ -132,6 +132,6 @@ def _json_to_config(json_value):
           {k: _json_to_config(v) for k, v in json_value.items()}
       )
     case list():
-      return (_json_to_config(v) for v in json_value)
+      return tuple(_json_to_config(v) for v in json_value)
     case _:
       return json_value
