@@ -14,15 +14,30 @@
 
 """Test."""
 
+import os
+import pathlib
+
 from kauldron import kd
+from kauldron.projects.examples import mnist_autoencoder
 
 
-def test_multi():
-  evaluator = kd.train.MultiEvaluator(
-      eval00=kd.train.SingleEvaluator(
+def test_multi(tmp_path: pathlib.Path):
+  cfg = mnist_autoencoder.get_config()
+  cfg.workdir = os.fspath(tmp_path)
+  cfg.eval_ds = cfg.train_ds
+
+  cfg.evals = {
+      'test_eval': kd.train.Evaluator(
           run_every=1,
           num_batches=1,
       ),
-  )
+      'eval002': kd.train.Evaluator(
+          run_every=1,
+          num_batches=1,
+      ),
+  }
 
-  assert evaluator.eval00.name == 'eval00'
+  cfg = kd.konfig.resolve(cfg)
+
+  assert cfg.evals['test_eval'].name == 'test_eval'
+  assert cfg.evals['eval002'].name == 'eval002'

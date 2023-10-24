@@ -136,10 +136,11 @@ def train_impl(
           )
           ckptr.save_state(state, i)
 
-        cfg.eval.maybe_eval(
-            step=i,
-            state=state,
-        )
+        for evaluator in cfg.evals.values():
+          evaluator.maybe_eval(
+              step=i,
+              state=state,
+          )
 
       log_summaries = i % cfg.log_summaries_every == 0
       log_metrics = i % cfg.log_metrics_every == 0
@@ -338,15 +339,12 @@ def tree_flatten_with_slash_path(config_dict) -> dict[str, Any]:
   }
 
 
-def get_loss_y_keys(config) -> Sequence[str]:
+def get_loss_y_keys(config: config_lib.Config) -> Sequence[str]:
   """Get a list of loss-keys for a given config."""
   # train losses
   loss_names = {k for k in tree_flatten_with_slash_path(config.train_losses)}
   # evaluator losses
-  for evaluator in config.eval.flatten():
-    # TODO(epot): Cleaner way to support metrics for custom evaluator
-    if not hasattr(evaluator, "losses"):
-      continue
+  for evaluator in config.evals.values():
     loss_names |= {k for k in tree_flatten_with_slash_path(evaluator.losses)}
 
   # If more than one loss, add the total loss
@@ -355,13 +353,11 @@ def get_loss_y_keys(config) -> Sequence[str]:
   return [f"losses/{l.replace('.', '/')}" for l in loss_names]
 
 
-def get_metric_y_keys(config) -> Sequence[str]:
+def get_metric_y_keys(config: config_lib.Config) -> Sequence[str]:
   """Get a list of metric-keys for a given config."""
   metric_names = {k for k in tree_flatten_with_slash_path(config.train_metrics)}
   # add evaluator metrics
-  for evaluator in config.eval.flatten():
-    if not hasattr(evaluator, "metrics"):
-      continue
+  for evaluator in config.evals.values():
     metric_names |= {k for k in tree_flatten_with_slash_path(evaluator.metrics)}
   return [f"metrics/{l.replace('.', '/')}" for l in sorted(metric_names)]
 
@@ -388,7 +384,7 @@ def get_perf_stat_y_keys() -> Sequence[str]:
 def get_data_collections(config: config_lib.Config) -> list[str]:
   """Return a list of datatable collections for a given resolved config."""
   collections = ["train"]
-  collections.extend(e.name for e in config.eval.flatten())
+  collections.extend(e.name for e in config.evals.values())
   return collections
 
 

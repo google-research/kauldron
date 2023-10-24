@@ -116,11 +116,13 @@ def get_config():
       max_to_keep=1,
   )
 
-  cfg.eval = kd.train.SingleEvaluator(
-      run_every=2500,
-      num_batches=2,
-      ds=_make_ds(training=False),
-  )
+  cfg.evals = {
+      "eval": kd.train.Evaluator(
+          run_every=2500,
+          num_batches=2,
+          ds=_make_ds(training=False),
+      )
+  }
   return cfg
 
 

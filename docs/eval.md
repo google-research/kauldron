@@ -6,31 +6,18 @@ Eval can be defined on the `eval` attribute of `kd.train.Config`:
 
 ```python
 cfg = kd.train.Config()
-cfg.eval = kd.train.SingleEvaluator(
-    run_every=100,
-    num_batches=None,
-    ds=_make_ds(training=False),
-    metrics={},
-)
+cfg.evals = {
+    'eval': kd.train.Evaluator(
+        run_every=100,
+        num_batches=None,
+        ds=_make_ds(training=False),
+        metrics={},
+    )
+}
 ```
 
-If not provided, losses, metrics, summaries are reused from train.
-
-3 default evaluators are available:
-
-*   `kd.train.SingleEvaluator`: Evaluator running `num_batches` times every
-    `run_every` steps.
-*   `kd.train.MultiEvaluator`: To have multiple eval (each with individual
-    metrics, schedule,...)
-
-    ```python
-    kd.train.MultiEvaluator(
-        my_eval=kd.train.SingleEvaluator(),
-        my_other_eval=kd.train.SingleEvaluator(),
-    )
-    ```
-
-*   `kd.train.NoopEvaluator` (or `None`): Disable evaluation
+If `kd.train.Evaluator` does not define losses, metrics, summaries, those are
+reused from train.
 
 ## Train / eval in Module
 

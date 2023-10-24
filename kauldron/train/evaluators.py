@@ -16,10 +16,9 @@
 
 from __future__ import annotations
 
-import abc
+import collections.abc
 import dataclasses
 import functools
-import itertools
 from typing import Optional, TypeVar
 
 import jax
@@ -42,48 +41,21 @@ _SelfT = TypeVar('_SelfT')
 _DEFAULT_EVAL_NAME = 'eval'
 
 
-class EvaluatorBase(
-    config_util.BaseConfig, config_util.UpdateFromRootCfg, abc.ABC
-):
-  """Evaluator interface.
+class Evaluator(config_util.BaseConfig, config_util.UpdateFromRootCfg):
+  """Evaluator running `num_batches` times every `run_every` steps.
+
+  If not provided, losses, metrics, summaries are reused from train.
 
   Usage:
 
   ```
-  evaluator = SimpleEvaluator(
+  evaluator = kd.train.Evaluator(
       run_every=100,
       ds=test_ds,
       base_cfg=cfg,
   )
   evaluator.maybe_eval(step=0, state=state)
   ```
-  """
-
-  @abc.abstractmethod
-  def maybe_eval(self, *, step: int, state: train_step.TrainState):
-    """Eventually evaluate the train state."""
-    raise NotImplementedError
-
-  @abc.abstractmethod
-  def flatten(self) -> list[SingleEvaluator]:
-    """Iterate over the evaluator nodes."""
-    raise NotImplementedError
-
-
-class NoopEvaluator(EvaluatorBase):
-  """No evaluation."""
-
-  def maybe_eval(self, *, step: int, state: train_step.TrainState) -> None:
-    pass
-
-  def flatten(self) -> list[SingleEvaluator]:
-    return []
-
-
-class SingleEvaluator(EvaluatorBase):
-  """Evaluator running `num_batches` times every `run_every` steps.
-
-  If not provided, losses, metrics, summaries are reused from train.
 
   Attributes:
     name: Eval name (display in TensorBoard)
@@ -121,8 +93,9 @@ class SingleEvaluator(EvaluatorBase):
     new_self = super().update_from_root_cfg(root_cfg)
     if new_self.ds is None:
       raise ValueError(
-          'Eval dataset missing (`SingleEvaluator.ds is None`). Please set it'
-          ' either in `kd.train.Config.eval_ds` or in `SingleEvaluator.ds`.'
+          f'Eval dataset missing (`cfg.evals.{self.name}.ds is None`). Please'
+          ' set it either in `kd.train.Config.eval_ds` or in'
+          ' `Evaluator(ds=...)`.'
       )
     return new_self.replace(
         ds=new_self.ds.update_from_root_cfg(root_cfg),
@@ -198,9 +171,6 @@ class SingleEvaluator(EvaluatorBase):
         workdir=self.base_cfg.workdir, collection=self.name
     )
 
-  def flatten(self) -> list[SingleEvaluator]:
-    return [self]
-
 
 @jax_utils.jit(
     static_argnames=('model_with_aux', 'rng_streams'),
@@ -236,60 +206,29 @@ def _step(
   return aux
 
 
-class MultiEvaluator(EvaluatorBase):
-  """Evaluator which contain individual evaluators.
-
-  Usage:
-
-  ```python
-  evaluator = kd.train.MultiEvaluator(
-      my_eval=kd.train.SingleEvaluator(),
-      other_eval=kd.train.SingleEvaluator(),
-  )
-  evaluator.maybe_eval(step=0, state=state)
-
-  evaluator.other_eval.name  # Individual eval can be accessed
-  ```
-  """
-
-  children: dict[str, SingleEvaluator]
-
-  def __init__(
-      self,
-      **evaluators: SingleEvaluator,
-  ):
-    evaluators = {k: _replace_name(c, k) for k, c in evaluators.items()}
-    object.__setattr__(self, 'children', evaluators)
-
-  def update_from_root_cfg(self: _SelfT, root_cfg: config_lib.Config) -> _SelfT:
-    """See base class."""
-    new_children = {
-        k: c.update_from_root_cfg(root_cfg) for k, c in self.children.items()  # pylint: disable=protected-access
-    }
-    return type(self)(**new_children)
-
-  def maybe_eval(self, *, step: int, state: train_step.TrainState):
-    for evaluator in self.children.values():
-      evaluator.maybe_eval(step=step, state=state)
-
-  def flatten(self) -> list[SingleEvaluator]:
-    return list(
-        itertools.chain.from_iterable(
-            eval.flatten() for eval in self.children.values()
-        )
-    )
-
-  def __getattr__(self, name: str) -> SingleEvaluator:
-    if name not in self.children:
-      return super().__getattribute__(name)
-    return self.children[name]
-
-
-def _replace_name(evaluator: EvaluatorBase, name: str) -> EvaluatorBase:
-  if not isinstance(evaluator, SingleEvaluator):
+def normalize_evaluators(
+    evaluators: collections.abc.Mapping[str, Evaluator]
+) -> collections.abc.Mapping[str, Evaluator]:
+  """Set the evaluator names."""
+  if not isinstance(evaluators, collections.abc.Mapping):
     raise TypeError(
-        '`MultiEvaluator` expect `SingleEvaluator`. Got:'
+        '`cfg.evals` should be a `dict[str, Evaluator]`. Got:'
+        f' {type(evaluators)}'
+    )
+  return {k: _replace_name(c, k) for k, c in evaluators.items()}
+
+
+def _replace_name(evaluator: Evaluator, name: str) -> Evaluator:
+  """Set the `evaluator.name`."""
+  if not isinstance(evaluator, Evaluator):
+    raise TypeError(
+        'Eval values should be `kd.train.Evaluator`. Got:'
         f' {name}={type(evaluator)}'
+    )
+  elif name == 'train':
+    raise ValueError(
+        'Evaluator cannot be named `train` as it conflict with training'
+        ' metrics.'
     )
   elif evaluator.name == _DEFAULT_EVAL_NAME:  # Default name, overwrite
     return dataclasses.replace(evaluator, name=name)
@@ -297,6 +236,5 @@ def _replace_name(evaluator: EvaluatorBase, name: str) -> EvaluatorBase:
     return evaluator
   else:
     raise ValueError(
-        'Evaluator name provided to the `MultiEvaluator` should match. Got:'
-        f' {evaluator.name} != {name}'
+        f'Evaluator name provided should match. Got: {evaluator.name} != {name}'
     )

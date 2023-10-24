@@ -93,15 +93,13 @@ def get_config():
       all_host=True,
   )
 
-  # `kd.train.SingleEvaluator` can be used directly, but wrap in
-  # a `MultiEvaluator` so `train_test.py` also test `MultiEvaluator`.
-  cfg.eval = kd.train.MultiEvaluator(
-      eval_00=kd.train.SingleEvaluator(
+  cfg.evals = {
+      "eval": kd.train.Evaluator(
           run_every=100,
           num_batches=None,
           ds=_make_ds(training=False),
           metrics={},
       )
-  )
+  }
 
   return cfg

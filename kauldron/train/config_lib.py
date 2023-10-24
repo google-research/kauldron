@@ -70,7 +70,7 @@ class Config(config_util.BaseConfig):
     schedules: x
     optimizer: x
     checkpointer: x
-    eval: Evaluator to use (e.g. `kd.train.SingleEvaluator`)
+    evals: Evaluators to use (e.g. `{'eval': kd.train.Evaluator()}`)
     flatboards: x
     profiler: Profiler can be customized (see `kd.inspect.Profile`)
     aux: Arbitrary additional values (e.g. can be set once and referenced
@@ -114,8 +114,8 @@ class Config(config_util.BaseConfig):
       default_factory=rngs_lib.RngStreams
   )
 
-  eval: evaluators.EvaluatorBase = dataclasses.field(
-      default_factory=evaluators.NoopEvaluator
+  evals: Mapping[str, evaluators.Evaluator] = dataclasses.field(
+      default_factory=flax.core.FrozenDict
   )
   flatboards: Mapping[str, flatboard.DashboardFactory] = dataclasses.field(
       default_factory=flax.core.FrozenDict
@@ -142,9 +142,9 @@ class Config(config_util.BaseConfig):
   )
 
   def __post_init__(self):
-    # It's convenient to set `cfg.eval = None` to disable evaluation
+    # It's convenient to set `cfg.evals = None` to disable evaluation
     for name, default_factory in {
-        'eval': evaluators.NoopEvaluator,
+        'evals': flax.core.FrozenDict,
         'checkpointer': checkpointer_lib.NoopCheckpointer,
         'profiler': profile_utils.NoopProfiler,
     }.items():
@@ -156,7 +156,6 @@ class Config(config_util.BaseConfig):
     for attr_name in (
         'train_ds',
         'rng_streams',
-        'eval',
         'checkpointer',
         'profiler',
         'trainstep',
@@ -165,6 +164,13 @@ class Config(config_util.BaseConfig):
         object.__setattr__(
             self, attr_name, getattr(self, attr_name).update_from_root_cfg(self)
         )
+    if self.evals:
+      evals = evaluators.normalize_evaluators(self.evals)
+      object.__setattr__(
+          self,
+          'evals',
+          {k: v.update_from_root_cfg(self) for k, v in evals.items()},
+      )
 
   def __post_konfig_resolve__(self, cfg: konfig.ConfigDict) -> None:
     """Bind the raw config to kd. Called during `kd.konfig.resolve()`."""

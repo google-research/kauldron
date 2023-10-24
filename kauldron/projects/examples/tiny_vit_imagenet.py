@@ -97,11 +97,13 @@ def get_config():
       all_host=True,
   )
 
-  cfg.eval = kd.train.SingleEvaluator(
-      run_every=1000,
-      num_batches=10,
-      ds=_make_ds(training=False),
-  )
+  cfg.evals = {
+      "eval": kd.train.Evaluator(
+          run_every=1000,
+          num_batches=10,
+          ds=_make_ds(training=False),
+      )
+  }
   return cfg
 
 

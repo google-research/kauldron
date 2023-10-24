@@ -16,9 +16,7 @@
 
 # pylint: disable=g-importing-member
 from kauldron.train.config_lib import Config
-from kauldron.train.evaluators import MultiEvaluator
-from kauldron.train.evaluators import NoopEvaluator
-from kauldron.train.evaluators import SingleEvaluator
+from kauldron.train.evaluators import Evaluator
 from kauldron.train.rngs_lib import RngStream
 from kauldron.train.rngs_lib import RngStreams
 from kauldron.train.train_lib import train
