@@ -25,42 +25,6 @@ with konfig.imports():
 # pylint: enable=g-import-not-at-top
 
 
-def _make_ds(training: bool):
-  """Create a data pipeline for train/eval."""
-  if training:
-    transformations = [
-        kd.data.Elements(keep=["image", "label"]),
-        kd.data.InceptionCrop(key="image", resize_size=(224, 224)),
-        kd.data.RandomFlipLeftRight(key="image"),
-        kd_extra.RandAugment(image_key="image", num_layers=2, magnitude=15),
-        kd.data.ValueRange(key="image", in_vrange=(0, 255), vrange=(0, 1)),
-        kd.data.Rearrange(key="label", pattern="... -> ... 1"),
-    ]
-  else:
-    transformations = [
-        kd.data.Elements(keep=["image", "label"]),
-        kd.data.ValueRange(key="image", in_vrange=(0, 255), vrange=(0, 1)),
-        kd.data.ResizeSmall(key="image", smaller_size=256),
-        kd.data.CenterCrop(key="image", shape=(224, 224, 3)),
-        kd.data.Rearrange(key="label", pattern="... -> ... 1"),
-    ]
-
-  return kd.data.TFDataPipeline(
-      loader=kd.data.loaders.Tfds(
-          name="imagenet2012",
-          split="train[:99%]"
-          if training
-          else "train[99%:]",  # TODO(klausg) pad instead of drop remainder
-          shuffle=True if training else False,
-          shuffle_buffer_size=250_000,
-          num_epochs=None if training else 1,
-          cache=True,
-      ),
-      transformations=transformations,
-      batch_size=4096,
-  )
-
-
 def get_config():
   """Get the default hyperparameter configuration."""
   cfg = kd.train.Config()
@@ -124,6 +88,42 @@ def get_config():
       )
   }
   return cfg
+
+
+def _make_ds(training: bool):
+  """Create a data pipeline for train/eval."""
+  if training:
+    transformations = [
+        kd.data.Elements(keep=["image", "label"]),
+        kd.data.InceptionCrop(key="image", resize_size=(224, 224)),
+        kd.data.RandomFlipLeftRight(key="image"),
+        kd_extra.RandAugment(image_key="image", num_layers=2, magnitude=15),
+        kd.data.ValueRange(key="image", in_vrange=(0, 255), vrange=(0, 1)),
+        kd.data.Rearrange(key="label", pattern="... -> ... 1"),
+    ]
+  else:
+    transformations = [
+        kd.data.Elements(keep=["image", "label"]),
+        kd.data.ValueRange(key="image", in_vrange=(0, 255), vrange=(0, 1)),
+        kd.data.ResizeSmall(key="image", smaller_size=256),
+        kd.data.CenterCrop(key="image", shape=(224, 224, 3)),
+        kd.data.Rearrange(key="label", pattern="... -> ... 1"),
+    ]
+
+  return kd.data.TFDataPipeline(
+      loader=kd.data.loaders.Tfds(
+          name="imagenet2012",
+          split="train[:99%]"
+          if training
+          else "train[99%:]",  # TODO(klausg) pad instead of drop remainder
+          shuffle=True if training else False,
+          shuffle_buffer_size=250_000,
+          num_epochs=None if training else 1,
+          cache=True,
+      ),
+      transformations=transformations,
+      batch_size=4096,
+  )
 
 
 def sweep():

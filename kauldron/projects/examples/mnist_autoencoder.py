@@ -24,22 +24,6 @@ with konfig.imports():
 # pylint: enable=g-import-not-at-top
 
 
-def _make_ds(training: bool):
-  return kd.data.TFDataPipeline(
-      loader=kd.data.loaders.GrainTfds(
-          name="mnist",
-          split="train" if training else "test",
-          shuffle=True if training else False,
-          num_epochs=None if training else 1,
-      ),
-      transformations=[
-          kd.data.Elements(keep=["image"]),
-          kd.data.ValueRange(key="image", vrange=(0, 1)),
-      ],
-      batch_size=256,
-  )
-
-
 def get_config():
   """Get the default hyperparameter configuration."""
   cfg = kd.train.Config()
@@ -103,3 +87,19 @@ def get_config():
   }
 
   return cfg
+
+
+def _make_ds(training: bool):
+  return kd.data.TFDataPipeline(
+      loader=kd.data.loaders.GrainTfds(
+          name="mnist",
+          split="train" if training else "test",
+          shuffle=True if training else False,
+          num_epochs=None if training else 1,
+      ),
+      transformations=[
+          kd.data.Elements(keep=["image"]),
+          kd.data.ValueRange(key="image", vrange=(0, 1)),
+      ],
+      batch_size=256,
+  )
