@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import functools
 from typing import Any, Optional, Sequence, Tuple
 
@@ -108,11 +109,16 @@ def train_impl(
     total_steps = min(total_steps, initial_step + cfg.stop_after_steps)
   aux = None
 
-  # Prevent implicit device transfer inside the train loop
-  # Doc at: https://jax.readthedocs.io/en/latest/transfer_guard.html
-  # This can be locally changed with `with jax.transfer_guard('allow'):`
-  # TODO(epot): Activate this after https://github.com/google/jax/issues/16002
-  with jax.transfer_guard("disallow"):
+  if not jax.config.jax_disable_jit:
+    # Prevent implicit device transfer inside the train loop
+    # Doc at: https://jax.readthedocs.io/en/latest/transfer_guard.html
+    # This can be locally changed with `with jax.transfer_guard('allow'):`
+    # TODO(epot): Activate this after https://github.com/google/jax/issues/16002
+    guard = jax.transfer_guard("disallow")
+  else:
+    guard = contextlib.nullcontext()
+
+  with guard:
     for i, batch in utils.enum_iter(
         cfg.train_ds,
         init_step=initial_step,
