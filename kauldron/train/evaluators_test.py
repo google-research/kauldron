@@ -26,16 +26,17 @@ def test_multi(tmp_path: pathlib.Path):
   cfg.workdir = os.fspath(tmp_path)
   cfg.eval_ds = cfg.train_ds
 
-  cfg.evals = {
-      'test_eval': kd.train.Evaluator(
-          run_every=1,
-          num_batches=1,
-      ),
-      'eval002': kd.train.Evaluator(
-          run_every=1,
-          num_batches=1,
-      ),
-  }
+  with kd.konfig.mock_modules():
+    cfg.evals = {
+        'test_eval': kd.train.Evaluator(
+            run_every=1,
+            num_batches=1,
+        ),
+        'eval002': kd.train.Evaluator(
+            run_every=1,
+            num_batches=1,
+        ),
+    }
 
   cfg = kd.konfig.resolve(cfg)
 

@@ -16,11 +16,13 @@
 
 from __future__ import annotations
 
+import builtins
 from collections.abc import Callable
 import dataclasses
 import functools
 import itertools
 import json
+import os
 from typing import Any, ClassVar, Generic, TypeVar
 
 from etils import epy
@@ -47,6 +49,7 @@ class ConfigDict(ml_collections.ConfigDict):
 
   def __setitem__(self, key: str | int, value: Any) -> None:
     key = self._normalize_arg_key(key, can_append=True)
+    _assert_config_only_value(value, key)
     return super().__setitem__(key, value)
 
   def __repr__(self) -> str:
@@ -145,6 +148,7 @@ class _Visitor(Generic[_T]):
 
 class _DictVisitor(_Visitor):
   """Recurse into dict."""
+
   CLS = (dict, ml_collections.ConfigDict)
 
   def _recurse(self, obj: ml_collections.ConfigDict) -> Any:
@@ -212,6 +216,7 @@ class _Repr:
 
 class _FieldReferenceVisitor(_Visitor):
   """Recurse into FieldReference."""
+
   CLS = ml_collections.FieldReference
 
   def _recurse(self, obj: ml_collections.FieldReference) -> Any:
@@ -225,6 +230,7 @@ class _FieldReferenceVisitor(_Visitor):
 
 class _ListVisitor(_Visitor):
   """Recurse into list, tuple."""
+
   CLS = (list, tuple)
 
   def _recurse(self, obj: list[Any] | tuple[Any]) -> Any:
@@ -239,6 +245,7 @@ class _ListVisitor(_Visitor):
 
 class _DefaultVisitor(_Visitor):
   """Leaves."""
+
   CLS = object
 
   def watch(self, obj: object) -> Any:
@@ -356,6 +363,55 @@ def register_aliases(aliases: dict[str, str]) -> None:
   # Allow overwritten keys: For colab and for tests. Aliases are used
   # only for display, so don't really matter.
   _ALIASES.update(aliases)
+
+
+def _assert_config_only_value(value, name) -> None:
+  """Validate only config values are defined."""
+  # TODO(epot): Could have better error message (display path)
+  # TODO(epot): Test `__setattr__` is also called in `ConfigDict({})`
+  match value:
+    case ConfigDict():  # Leafs should have been already validated
+      return
+    case ml_collections.FieldReference():
+      return
+    case (
+        int()
+        | float()
+        | bool()
+        | str()
+        | bytes()
+        | None
+        | builtins.Ellipsis
+        | slice()
+        | os.PathLike()  # Exceptionally allow pathlib object
+    ):
+      return  # Built-ins
+    case dict() | ml_collections.ConfigDict():
+      for v in value.values():
+        _assert_config_only_value(v, name)
+    case list() | tuple() | set() | frozenset():
+      for v in value:
+        _assert_config_only_value(v, name)
+    case configdict_proxy.ConfigDictProxyObject():
+      return
+    case _:
+      raise ValueError(
+          f'Error setting `cfg.{name}`: To avoid mixing configurable and'
+          ' resolved python object, ConfigDict only accept other configurables'
+          f' (list, int, ConfigDict,...). Got: {_shortn(value, 40)}\nYou can'
+          ' use `with kd.konfig.mock_modules():` to set the value.'
+      )
+
+
+def _shortn(x: str, max_length: int) -> str:
+  """Shortn the string."""
+  if not isinstance(x, str):
+    x = repr(x)
+  if len(x) <= max_length:
+    return x
+
+  keep_chars = max_length // 2
+  return x[:keep_chars] + '...' + x[-keep_chars:]
 
 
 _Field = ml_collections.FieldReference | ConfigDict
