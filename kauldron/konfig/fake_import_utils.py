@@ -21,8 +21,8 @@ import contextlib
 import dataclasses
 import functools
 import inspect
+import types
 from typing import Iterator, Optional
-import unittest.mock
 
 from kauldron.konfig import configdict_proxy
 
@@ -65,7 +65,7 @@ def mock_modules(*module_names: str):
 
   cfg = ...  # import or construct a konfig.ConfigDict instance
 
-  with kd.konfig.mock_modules("kd", "nn"):
+  with kd.konfig.mock_modules():
     cfg.losses["l1"] = kd.losses.L1(preds="preds.image", targets="batch.image")
     # cfg.losses["l1"] is a konfig.ConfigDict rather than a kd.losses.L1
 
@@ -74,37 +74,56 @@ def mock_modules(*module_names: str):
   ```
 
   Args:
-    *module_names: names of already imported modules to be replaced with
-      ConfigDictProxyObjects inside the context. Should be the name of the
-      module as used in the globals() (rather than the full name of the module).
+    *module_names: (optional) if given, only modules given here will be mocked
+      to act like in `konfig.imports()` context. By default mock all modules.
+      Imported alias should be givel (rather than the full name of the module).
       E.g. should be `np` instead of `numpy` if using `import numpy as np`.
 
   Yields:
     None
   """
+  # Use the globals of the frame of the caller (two steps up because of the
+  # contextlib decorator)
+  global_ns = inspect.stack()[2].frame.f_globals
+
+  if not module_names:
+    modules = {  # By default, replace all modules
+        name: module
+        for name, module in global_ns.items()
+        if isinstance(module, types.ModuleType)
+    }
+  else:
+    modules = {name: global_ns[name] for name in module_names}
+
+  # Do not replace `konfig` (note that `kd.konfig` will be mocked)
+  # Filter `ecolab` for `xxx;` compatibility
+  for name in ['konfig', 'ecolab']:
+    modules.pop(name, None)
+
+  # Create the new fake modules
+  new_modules = {
+      k: configdict_proxy.ConfigDictProxyObject.from_module_name(
+          _get_module_name(m)
+      )
+      for k, m in modules.items()
+  }
   try:
-    # If using Notebook/Colab get the globals from there
-    import IPython  # pylint: disable=g-import-not-at-top
-    global_ns = IPython.get_ipython().kernel.shell.user_ns
-  except (ImportError, NameError, AttributeError):
-    # otherwise use the globals of the frame of the caller
-    # (two steps up because of the contextlib decorator)
-    global_ns = inspect.stack()[2].frame.f_globals
-
-  with contextlib.ExitStack() as stack:
-    for name in module_names:
-      local_name = f'__main__.{name}'
-      module_name = global_ns.get(name).__name__
-
-      # Extract the sub-module
-      root_name, *parts = module_name.split('.')
-      root = configdict_proxy.ConfigDictProxyObject.from_cache(name=root_name)
-      root.is_import = True
-      for name in parts:
-        root = root.child_import(name)
-
-      stack.enter_context(unittest.mock.patch(local_name, root))
+    global_ns.update(new_modules)
     yield
+  finally:
+    # Restore the original modules
+    global_ns.update(modules)
+
+
+def _get_module_name(module: types.ModuleType) -> str:
+  """Returns the name of the module."""
+  try:
+    name = module.__dict__['__name__']  # Do not trigger lazy-imports
+  except KeyError:  # Likely a lazy_imports
+    if module.__module__ != 'etils.ecolab.lazy_utils':
+      raise ValueError(f'Unexpected module: {module}') from None
+    name = module._etils_state.module_name  # pylint: disable=protected-access
+  return name
 
 
 @contextlib.contextmanager

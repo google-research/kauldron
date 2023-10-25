@@ -66,6 +66,24 @@ class ConfigDictProxyObject(fake_import_utils.ProxyObject, dict):
     # configdict attribute
     dict.__init__(self, {CONST_KEY: self.qualname})
 
+  @classmethod
+  def from_module_name(cls, module_name: str) -> ConfigDictProxyObject:
+    """Returns the proxy for the given module name.
+
+    Args:
+      module_name: Module name to import
+
+    Returns:
+      Proxy object
+    """
+    # Extract the sub-module
+    root_name, *parts = module_name.split('.')
+    root = cls.from_cache(name=root_name)
+    root.is_import = True
+    for name in parts:
+      root = root.child_import(name)
+    return root
+
   def __call__(self, *args, **kwargs) -> ml_collections.ConfigDict:
     """`my_module.MyObject()`."""
     args_kwargs = {
@@ -80,6 +98,9 @@ class ConfigDictProxyObject(fake_import_utils.ProxyObject, dict):
   # Overwritte `dict` methods
   def __bool__(self) -> bool:
     return True
+
+  def __repr__(self) -> str:
+    return f'ConfigDictProxyObject({self.qualname})'
 
   __eq__ = object.__eq__
   __hash__ = object.__hash__
