@@ -98,7 +98,7 @@ class AddLearnedEmbedding(nn.Module):
 
   @typechecked
   @nn.compact
-  def __call__(self, inputs: Float['*B N D']) -> Float['*B N D']:
+  def __call__(self, inputs: Float['*b n d']) -> Float['*b n d']:
     warnings.warn(
         f'{self.__class__.__name__} is deprecated in favor of LearnedEmbedding',
         DeprecationWarning,

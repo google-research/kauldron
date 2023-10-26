@@ -28,7 +28,7 @@ class Identity(nn.Module):
   """
 
   @nn.compact
-  def __call__(self, inputs: Array['...'], *args, **kwargs) -> Array:
+  def __call__(self, inputs: Array['*any'], *args, **kwargs) -> Array['*any']:
     return inputs
 
 
@@ -48,6 +48,6 @@ class Dropout(nn.Dropout):
 
   @nn.compact
   def __call__(  # pytype: disable=signature-mismatch
-      self, inputs: Array['*d'], *, rng: PRNGKey | None = None
-  ) -> Array['*d']:
+      self, inputs: Array['*any'], *, rng: PRNGKey | None = None
+  ) -> Array['*any']:
     return super().__call__(inputs, deterministic=not self.is_training, rng=rng)
