@@ -23,7 +23,13 @@ from kauldron.klinen.module import Module
 from kauldron.utils.train_property import train_property
 from kauldron.utils.interms_property import interms_property
 
-# Modules
+# Module Types
+from kauldron.modules.knn_types import PositionEmbedding
 
+# Modules
 from kauldron.modules.misc import Dropout
 from kauldron.modules.misc import Identity
+from kauldron.modules.pos_embeddings import AddEmbedding
+from kauldron.modules.pos_embeddings import AddLearnedEmbedding
+from kauldron.modules.pos_embeddings import LearnedEmbedding
+from kauldron.modules.pos_embeddings import ZeroEmbedding
