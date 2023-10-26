@@ -24,6 +24,7 @@ from kauldron.utils.train_property import train_property
 from kauldron.utils.interms_property import interms_property
 
 # Module Types
+from kauldron.modules.knn_types import NormModule
 from kauldron.modules.knn_types import PositionEmbedding
 
 # Modules
