@@ -104,11 +104,8 @@ class Experiment:
   @functools.cached_property
   def root_dir(self) -> epath.Path:
     """Root directory of the artifact."""
-    prefix = ''
-    return epath.Path(
-        # Prefix required due to b/283076417
-        self.artifacts['Workdir'].removeprefix(prefix)
-    )
+    path = self.artifacts['Workdir']
+    return epath.Path(path)
 
   @functools.cached_property
   def config(self) -> konfig.ConfigDict:
