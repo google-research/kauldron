@@ -26,7 +26,6 @@ from etils import epath
 from flax.training import orbax_utils
 import jax
 from kauldron.checkpoints import partial_loader
-from kauldron.checkpoints import pytree_checkpoint
 from kauldron.utils import config_util
 import orbax.checkpoint as ocp
 
@@ -130,7 +129,7 @@ class Checkpointer(BaseCheckpointer):
       manager_cls = ocp.CheckpointManager
     ckpt_mgr = manager_cls(
         epath.Path(self.workdir) / CHECKPOINT_FOLDER_NAME,
-        pytree_checkpoint.PyTreeCheckpointer(),
+        ocp.StandardCheckpointer(),
         options=mgr_options,
     )
     return ckpt_mgr
