@@ -31,8 +31,10 @@ from kauldron import konfig
 from kauldron import random as kd_random
 from kauldron import train
 from kauldron.data import utils as data_utils
+from kauldron.typing import Float, UInt8  # pylint: disable=g-multiple-import
 from kauldron.utils import core
 from kauldron.utils import pd_utils
+import mediapy as media
 import ml_collections
 import numpy as np
 import pandas as pd
@@ -42,6 +44,8 @@ import pandas as pd
 from kauldron.utils.plotting import plot_schedules
 from kauldron.utils.profile_utils import Profiler
 # pylint: enable=unused-import,g-bad-import-order,g-importing-member
+
+_Example = Any
 
 
 def _get_source_link(cls) -> str:
@@ -353,3 +357,68 @@ def get_colab_model_overview(
   """Return `pd.DataFrame` for displaying the model params, inputs,..."""
   table = _get_summary_table(model, train_ds, rngs)
   return _get_styled_df(table, model_config)
+
+
+def get_batch_stats(batch: _Example) -> pd.DataFrame:
+  """Return `pd.DataFrame` containing the batch stats."""
+  # TODO(epot):
+  # * Supports string too
+  # * Support nested dict (`for k, v in _tree_items(batch)`)
+  return pd.DataFrame(
+      [
+          {
+              "Name": f"batch.{k}",
+              "Dtype": v.dtype,
+              "Shape": v.shape,
+              "Min": np.min(v),
+              "Max": np.max(v),
+              "Mean": np.mean(v),
+              "StdDev": np.std(v),
+          }
+          for k, v in batch.items()
+      ]
+  )
+
+
+def plot_batch(batch: _Example) -> None:
+  """Display batch images."""
+  # pylint: disable=invalid-name
+  ImagesGrayscale = Float["b h w 1"] | UInt8["b h w 1"]
+  ImagesRGB = Float["b h w 3"] | UInt8["b h w 3"]
+  ImagesRGBA = Float["b h w 4"] | UInt8["b h w 4"]
+  Images = ImagesGrayscale | ImagesRGB | ImagesRGBA
+
+  VideosRGB = Float["b t h w 3"] | UInt8["b t h w 3"]
+  # pylint: enable=invalid-name
+
+  for k, v in batch.items():
+    if isinstance(v, Images):
+      media.show_images(
+          v[:8], ylabel=f'<span style="font-size: 20;">batch.{k}</span>'
+      )
+    elif isinstance(v, VideosRGB):
+      media.show_videos(
+          v[:8], ylabel=f'<span style="font-size: 20;">batch.{k}</span>'
+      )
+
+
+def plot_context(config: train.Config) -> None:
+  loss, context = eval_context_shape(
+      model=config.model,
+      losses=config.train_losses,
+      metrics=config.train_metrics,
+      summaries=config.train_summaries,
+      elem_spec=config.train_ds.element_spec,
+      rngs=config.rng_streams.init_rngs(),
+  )
+  json_spec_like({
+      "step": context.step,
+      "batch": config.train_ds.element_spec,
+      "params": context.params,
+      "preds": context.preds,
+      "interms": context.interms,
+      "loss_states": context.loss_states,
+      "loss_total": loss,
+      "grads": "[same as params ]",
+      "updates": "[same as params ]",
+  })
