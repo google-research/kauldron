@@ -100,7 +100,7 @@ for batch in ds:
 
   preds = model(input=batch['image'])
 
-  loss = train_loss(preds=preds['image'], batch['image'])
+  loss = train_loss(preds=preds['image'], targets=batch['image'])
 ```
 
 Each key starts by a registered prefix. Common prefixes includes:
