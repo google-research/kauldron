@@ -141,6 +141,7 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
     params = flax.core.unfreeze(params)
     return params
 
+  @jax.named_call
   def forward(
       self,
       params,
@@ -169,6 +170,7 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
     )
     return loss_total, context.replace(loss_states=loss_states)
 
+  @jax.named_call
   def get_aux(
       self,
       context: core.Context,
@@ -261,6 +263,7 @@ class _TrainStep(config_util.UpdateFromRootCfg):
       # ),
       out_shardings=lambda: sharding.REPLICATED,
   )
+  @jax.named_call
   def step(
       self,
       state: TrainState,
@@ -271,20 +274,22 @@ class _TrainStep(config_util.UpdateFromRootCfg):
       return_summaries: bool = False,
   ) -> tuple[TrainState, Auxiliaries]:
     """Training step: forward, losses, gradients, update, and metrics."""
+    # TODO(epot): Should `jax.named_call` be moved downstream directly in optax?
+
     # NOTE: ensure that evaluation metrics are computed from the OLD model state
     # *before* backprop gradients are applied.
     grad_fn = jax.grad(self.model_with_aux.forward, argnums=0, has_aux=True)
-    grads, context = grad_fn(
+    grads, context = jax.named_call(grad_fn, name="grad_fn")(
         state.params,
         batch=batch,
         rngs=self.rng_streams.train_rngs(state.step),
         step=state.step,
         is_training=True,
     )
-    updates, new_opt_state = self.optimizer.update(
+    updates, new_opt_state = jax.named_call(self.optimizer.update)(
         grads, state.opt_state, state.params
     )
-    new_params = optax.apply_updates(state.params, updates)
+    new_params = jax.named_call(optax.apply_updates)(state.params, updates)
     next_state = state.next(new_params=new_params, new_opt_state=new_opt_state)
 
     context = context.replace(grads=grads, updates=updates)

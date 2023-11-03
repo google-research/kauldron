@@ -248,6 +248,7 @@ class Loss(metrics.Metric, abc.ABC):
     return self.compute(state)
 
 
+@jax.named_call
 def compute_losses(
     losses: PyTree[Loss], context: core.Context
 ) -> tuple[Float[""], PyTree[Float[""]]]:
