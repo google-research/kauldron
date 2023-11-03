@@ -203,14 +203,14 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
 
 
 @dataclasses.dataclass(kw_only=True, eq=True, frozen=True)
-class _TrainStep(config_util.UpdateFromRootCfg):
+class TrainStep(config_util.UpdateFromRootCfg):
   """Training Step."""
 
   model_with_aux: ModelWithAux = dataclasses.field(default_factory=ModelWithAux)
   optimizer: optax.GradientTransformation = config_util.ROOT_CFG_REF.optimizer
   rng_streams: rngs_lib.RngStreams = config_util.ROOT_CFG_REF.rng_streams
 
-  def update_from_root_cfg(self, root_cfg) -> _TrainStep:
+  def update_from_root_cfg(self, root_cfg) -> TrainStep:
     new_self = super().update_from_root_cfg(root_cfg)
     new_self = dataclasses.replace(
         new_self,
@@ -302,24 +302,3 @@ class _TrainStep(config_util.UpdateFromRootCfg):
     )
 
     return next_state, aux
-
-
-class TrainStep(_TrainStep):
-  """Training Step."""
-
-  # TODO(epot): Delete once users have migrated
-
-  def __init__(self, **kwargs):
-    model_kwarg_names = {f.name for f in dataclasses.fields(ModelWithAux)}
-    model_kwargs = {}
-    for k in list(kwargs):
-      if k in model_kwarg_names:
-        model_kwargs[k] = kwargs.pop(k)
-    if model_kwargs:
-      print(
-          f"Creating `TrainStep` with {list(model_kwargs)} is DEPRECATED ! "
-          "Instead, `cfg.trainstep` can be called directly"
-      )
-      super().__init__(model_with_aux=ModelWithAux(**model_kwargs), **kwargs)
-    else:
-      super().__init__(**kwargs)
