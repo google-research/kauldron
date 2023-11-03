@@ -32,7 +32,10 @@ with konfig.imports():
 
 cfg = optax.adam(learning_rate=0.003)  # This create a ConfigDict object !!!
 
-assert isinstance(cfg, konfig.ConfigDict)
+assert cfg == konfig.ConfigDict({
+    '__qualname__': 'optax:adam',
+    'learning_rate'  == 0.003,
+})
 
 cfg.learning_rate = 1e-4  # Config can be mutated
 
