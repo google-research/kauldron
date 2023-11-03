@@ -279,25 +279,41 @@ class Memo:
 
   single: dict[str, int]
   variadic: dict[str, tuple[int, ...]]
-  variadic_broadcast: dict[str, list[tuple[int, ...]]]
 
   @classmethod
   def from_current_context(cls):
-    memo_stack = getattr(jaxtyping._decorator.storage, "memo_stack", [])  # pylint: disable=protected-access
-    if memo_stack:
-      single_memo, variadic_memo, variadic_broadcast_memo = memo_stack[-1]
-      return cls(
-          single=single_memo.copy(),
-          variadic=variadic_memo.copy(),
-          variadic_broadcast=variadic_broadcast_memo.copy(),
+    """Create a Memo from the current typechecking context."""
+    # TODO(klausg): tidy this up once the jaxtyping PR chain is done
+    single_memo, variadic_memo = {}, {}
+    try:
+      single_memo, variadic_memo, *_ = jaxtyping._storage.get_shape_memo()  # pylint: disable=protected-access # pytype: disable=module-attr
+    except Exception:  # pylint: disable=broad-exception-caught
+      memo_stack = getattr(
+          jaxtyping._decorator.storage, "memo_stack", []  # pylint: disable=protected-access
       )
-    else:
-      return cls(single={}, variadic={}, variadic_broadcast={})
+      if memo_stack:
+        single_memo, variadic_memo, *_ = memo_stack[-1]
+
+    def _maybe_remove_bool(memo):
+      match memo:
+        case (bool(_), (*dims,)) if all(isinstance(d, int) for d in dims):
+          return tuple(dims)
+        case (*dims,) if all(isinstance(d, int) for d in dims):
+          return tuple(dims)
+        case _:
+          raise ValueError(f"Unexpected variadic memo: {memo!r}")
+
+    variadic_memo = {
+        k: _maybe_remove_bool(memo) for k, memo in variadic_memo.items()
+    }
+    return cls(
+        single=single_memo.copy(),
+        variadic=variadic_memo.copy(),
+    )
 
   def __repr__(self) -> str:
     out = {k: v for k, v in self.single.items()}
     out.update({f"*{k}": v for k, v in self.variadic.items()})
-    out.update({f"*#{k}": v for k, v in self.variadic_broadcast.items()})
     return repr(out)
 
 

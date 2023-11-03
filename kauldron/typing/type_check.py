@@ -198,26 +198,20 @@ class ArraySpecMatch:
   @functools.cached_property
   def shape_correct(self) -> bool:
     """Whether value.shape matches the allowed shapes of the array_spec."""
-    # check if the array spec shape matches (without modifying the memo stack)
-    jaxtyping_memo = shape_spec.Memo.from_current_context()
-    return self.array_spec._check_shape(  # pylint: disable=protected-access
-        self.value,
-        single_memo=jaxtyping_memo.single,
-        variadic_memo=jaxtyping_memo.variadic,
-        variadic_broadcast_memo=jaxtyping_memo.variadic_broadcast,
-    )
+    return self.all_correct  # TODO(klausg): temorarily disable shape-checks
 
   @functools.cached_property
   def all_correct(self) -> bool:
     """Whether the value fully matches the array_spec."""
-    return self.type_correct and self.dtype_correct and self.shape_correct
+    return isinstance(self.value, self.array_spec)
+    # return self.type_correct and self.dtype_correct and self.shape_correct
 
   @functools.cached_property
   def is_interesting(self) -> bool:
     """Whether this is an interesting match failure."""
     if not self.type_correct:
       # Wrong array type entries are only interesting if they match otherwise.
-      return self.shape_correct and self.dtype_correct
+      return self.dtype_correct  # TODO(klausg): and self.shape_correct
     elif not self.dtype_correct and not self.shape_correct:
       # Entries that do not match at all are not interesting.
       return False

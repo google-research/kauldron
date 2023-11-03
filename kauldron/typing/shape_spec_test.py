@@ -97,6 +97,6 @@ def test_shape_eval():
 
 
 def test_shape_eval_with_batch_dim():
-  memo = Memo({"n": 16}, {"batch": (3, 2)}, {})
+  memo = Memo({"n": 16}, {"batch": (3, 2)})
   parsed_shape = parse_shape_spec("*batch n")
   assert parsed_shape.evaluate(memo) == (3, 2, 16)
