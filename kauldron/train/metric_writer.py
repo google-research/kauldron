@@ -21,7 +21,7 @@ from typing import Any, Mapping
 from clu import metric_writers
 from clu import parameter_overview
 from etils import epath
-from etils import etree
+from etils.etree import jax as etree
 from kauldron import konfig
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 from kauldron.typing import Array, Float, Scalar  # pylint: disable=g-multiple-import

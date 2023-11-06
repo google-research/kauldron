@@ -23,7 +23,7 @@ from typing import Any, Optional
 
 from etils import enp
 from etils import epy
-from etils import etree
+from etils.etree import jax as etree  # pylint: disable=g-importing-member
 from flax import linen as nn
 import jax
 from kauldron import data
