@@ -26,6 +26,14 @@ from kauldron.typing import Key, TfArray, TfFloat, TfInt, typechecked  # pylint:
 import tensorflow as tf
 
 
+def _assert_subset(subset: set[str], superset: set[str]) -> None:
+  """Assert that all keys in subset & superset exist in superset."""
+  if not subset.issubset(superset):
+    raise ValueError(
+        f"Keys specified that are not found in the dataset: {subset - superset}"
+    )
+
+
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class Elements(grain.MapTransform):
   """Modify the elements by keeping xor dropping and/or renaming."""
@@ -79,14 +87,17 @@ class Elements(grain.MapTransform):
   def map(self, features):
     # resolve keep or drop
     if self.keep:
+      _assert_subset(self.keep, features.keys())
       output = {k: v for k, v in features.items() if k in self.keep}
     elif self.drop:
+      _assert_subset(self.drop, features.keys())
       output = {
           k: v
           for k, v in features.items()
           if k not in self.drop and k not in self.rename
       }
     else:  # only rename
+      _assert_subset(self.rename, features.keys())
       output = {k: v for k, v in features.items() if k not in self.rename}
 
     # resolve renaming
