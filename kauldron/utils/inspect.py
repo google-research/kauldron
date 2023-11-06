@@ -393,13 +393,37 @@ def plot_batch(batch: _Example) -> None:
 
   for k, v in batch.items():
     if isinstance(v, Images):
+      _, height, _, _ = v.shape
+      height = _normalize_height(height)
       media.show_images(
-          v[:8], ylabel=f'<span style="font-size: 20;">batch.{k}</span>'
+          v[:8],
+          ylabel=f'<span style="font-size: 20;">batch.{k}</span>',
+          height=height,
       )
     elif isinstance(v, VideosRGB):
+      # Dynamically compute the frame-rate, capped at 25 FPS
+      _, num_frames, height, _, _ = v.shape
+      height = _normalize_height(height)
+      fps = min(num_frames // 5, 25.0)
+
       media.show_videos(
-          v[:8], ylabel=f'<span style="font-size: 20;">batch.{k}</span>'
+          v[:8],
+          ylabel=f'<span style="font-size: 20;">batch.{k}</span>',
+          fps=fps,
+          height=height,
       )
+
+
+def _normalize_height(
+    height: int,
+    *,
+    min_height: int = 100,
+    max_height: int = 250,
+) -> int:
+  """Truncate height to be within the range."""
+  height = max(height, min_height)
+  height = min(height, max_height)
+  return height
 
 
 def plot_context(config: train.Config) -> None:
