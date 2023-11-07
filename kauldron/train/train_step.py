@@ -80,13 +80,27 @@ class Auxiliaries:
   def replace(self, **changes: Any) -> Auxiliaries:
     return dataclasses.replace(self, **changes)
 
-  def merge(self, other: Auxiliaries) -> Auxiliaries:
+  def merge(self, other: Optional[Auxiliaries]) -> Auxiliaries:
     """Accumulate auxiliary."""
+    if other is None:
+      return self
     # TODO(epot): How to merge summaries ?
     return self.replace(
         loss_states=_reduce_states(self.loss_states, other.loss_states),
         metric_states=_reduce_states(self.metric_states, other.metric_states),
     )
+
+  def __or__(self, other: Auxiliaries | None) -> Auxiliaries:
+    """Alias for `.merge()`: `aux = aux1 | aux2`."""
+    if other is None:
+      return self
+    return self.merge(other)
+
+  def __ror__(self, other: Auxiliaries | None) -> Auxiliaries:
+    """Alias for `.merge()`: `aux = aux1 | aux2`."""
+    if other is None:
+      return self
+    return other.merge(self)
 
 
 def _reduce_states_single(

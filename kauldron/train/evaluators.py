@@ -132,16 +132,13 @@ class Evaluator(config_util.BaseConfig, config_util.UpdateFromRootCfg):
           batch=batch,
       )
       # Merge/accumulate all states
-      if merged_aux is None:
-        merged_aux = aux
-      else:
-        # By default, cross-process communication is only allowed inside
-        # `jax.jit` but clu metric do not support `jax.jit`:
-        # https://github.com/google/CommonLoopUtils/tree/HEAD/clu/metrics.py;l=383;rcl=559340497
-        # So we locally allow cross-process communication for merging the
-        # metrics
-        with jax.spmd_mode('allow_all'), jax.transfer_guard('allow'):
-          merged_aux = merged_aux.merge(aux)
+      # By default, cross-process communication is only allowed inside
+      # `jax.jit` but clu metric do not support `jax.jit`:
+      # https://github.com/google/CommonLoopUtils/tree/HEAD/clu/metrics.py;l=383;rcl=559340497
+      # So we locally allow cross-process communication for merging the
+      # metrics
+      with jax.spmd_mode('allow_all'), jax.transfer_guard('allow'):
+        merged_aux = merged_aux | aux
     assert merged_aux is not None  # At least one iteration
 
     train_lib.write_summaries(
