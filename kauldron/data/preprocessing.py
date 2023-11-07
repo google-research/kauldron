@@ -77,10 +77,25 @@ class Elements(grain.MapTransform):
     object.__setattr__(self, "drop", drop)
 
   def map(self, features):
+    feature_keys = set(features.keys())
     # resolve keep or drop
     if self.keep:
+      keep_keys = set(self.keep)
+      missing_keep_keys = keep_keys - feature_keys
+      if missing_keep_keys:
+        raise KeyError(
+            f"keep-key(s) {missing_keep_keys} not found in batch. "
+            f"Available keys are {sorted(feature_keys)!r}."
+        )
       output = {k: v for k, v in features.items() if k in self.keep}
     elif self.drop:
+      drop_keys = set(self.drop)
+      missing_drop_keys = drop_keys - feature_keys
+      if missing_drop_keys:
+        raise KeyError(
+            f"drop-key(s) {missing_drop_keys} not found in batch. "
+            f"Available keys are {sorted(feature_keys)!r}."
+        )
       output = {
           k: v
           for k, v in features.items()
@@ -90,6 +105,13 @@ class Elements(grain.MapTransform):
       output = {k: v for k, v in features.items() if k not in self.rename}
 
     # resolve renaming
+    rename_keys = set(self.rename.keys())
+    missing_rename_keys = rename_keys - feature_keys
+    if missing_rename_keys:
+      raise KeyError(
+          f"rename-key(s) {missing_rename_keys} not found in batch. "
+          f"Available keys are {sorted(feature_keys)!r}."
+      )
     renamed = {
         self.rename[k]: v for k, v in features.items() if k in self.rename
     }
