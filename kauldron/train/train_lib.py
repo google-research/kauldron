@@ -26,7 +26,6 @@ from etils import epath
 import flax
 import jax
 import jax.numpy as jnp
-from kauldron import konfig
 from kauldron import metrics
 from kauldron import summaries
 from kauldron.train import config_lib
@@ -45,18 +44,6 @@ import tensorflow as tf
 # Jax config options
 # Required for the `jax.Array` parallelization
 jax.config.update("jax_threefry_partitionable", True)
-
-
-def train(
-    raw_cfg: config_lib.Config,
-) -> Tuple[train_step.TrainState, train_step.Auxiliaries]:
-  """DEPRECATED. Use `cfg.train()` instead."""
-  print(
-      "***DEPRECATED***: Calling `kd.train.train(cfg)` is deprecated. You can"
-      " call `cfg.train()` directly."
-  )
-  cfg = konfig.resolve(raw_cfg)
-  return cfg.train()
 
 
 def train_impl(

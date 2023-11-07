@@ -19,7 +19,6 @@ from kauldron.train.config_lib import Config
 from kauldron.train.evaluators import Evaluator
 from kauldron.train.rngs_lib import RngStream
 from kauldron.train.rngs_lib import RngStreams
-from kauldron.train.train_lib import train
 from kauldron.train.train_step import TrainState
 from kauldron.train.train_step import TrainStep
 # pylint: enable=g-importing-member

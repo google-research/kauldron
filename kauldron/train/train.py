@@ -25,7 +25,6 @@ from absl import flags
 import jax
 from kauldron import konfig
 from kauldron.train import config_lib
-from kauldron.train import train_lib
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 from kauldron.utils import sweep_utils
 from ml_collections import config_flags
@@ -48,7 +47,7 @@ def main(_):
         sweep_kwargs=_SWEEP_CONFIG.value,
     )
     cfg: config_lib.Config = konfig.resolve(cfg)
-    train_lib.train(cfg)
+    cfg.train()
 
 
 @contextlib.contextmanager
