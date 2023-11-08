@@ -332,7 +332,8 @@ def get_loss_y_keys(config: config_lib.Config) -> Sequence[str]:
   loss_names = {k for k in tree_flatten_with_slash_path(config.train_losses)}
   # evaluator losses
   for evaluator in config.evals.values():
-    loss_names |= {k for k in tree_flatten_with_slash_path(evaluator.losses)}
+    eval_losses = getattr(evaluator, "losses", {})
+    loss_names |= {k for k in tree_flatten_with_slash_path(eval_losses)}
 
   # If more than one loss, add the total loss
   if len(loss_names) > 1:
@@ -345,7 +346,8 @@ def get_metric_y_keys(config: config_lib.Config) -> Sequence[str]:
   metric_names = {k for k in tree_flatten_with_slash_path(config.train_metrics)}
   # add evaluator metrics
   for evaluator in config.evals.values():
-    metric_names |= {k for k in tree_flatten_with_slash_path(evaluator.metrics)}
+    eval_metrics = getattr(evaluator, "metrics", {})
+    metric_names |= {k for k in tree_flatten_with_slash_path(eval_metrics)}
   return [f"metrics/{l.replace('.', '/')}" for l in sorted(metric_names)]
 
 
