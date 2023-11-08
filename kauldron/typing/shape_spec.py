@@ -288,9 +288,11 @@ class Memo:
     try:
       single_memo, variadic_memo, *_ = jaxtyping._storage.get_shape_memo()  # pylint: disable=protected-access # pytype: disable=module-attr
     except Exception:  # pylint: disable=broad-exception-caught
-      memo_stack = getattr(
-          jaxtyping._decorator.storage, "memo_stack", []  # pylint: disable=protected-access
-      )
+      if hasattr(jaxtyping._decorator, "storage"):  # pylint: disable=protected-access
+        storage = jaxtyping._decorator.storage  # pylint: disable=protected-access
+      else:
+        storage = jaxtyping._decorator._storage  # pylint: disable=protected-access
+      memo_stack = getattr(storage, "memo_stack", [])  # pylint: disable=protected-access
       if memo_stack:
         single_memo, variadic_memo, *_ = memo_stack[-1]
 
