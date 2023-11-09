@@ -97,7 +97,7 @@ class Loss(metrics.Metric, abc.ABC):
     loss_state = loss.get_state_from_context(ctx)        # from context
     loss_state = loss.get_state(logits=..., labels=...)  # directly
 
-    value = loss.compute(loss_state)
+    value = loss_state.compute()
     ```
 
   Attributes:
@@ -212,10 +212,6 @@ class Loss(metrics.Metric, abc.ABC):
         raise ValueError("Weight is a schedule, so step is required.")
       return self.weight(step)
 
-  def compute(self, state: Loss.State) -> Float[""]:
-    """Compute the final loss value from the gathered state."""
-    return state.compute()
-
   def __call__(
       self,
       *,
@@ -245,7 +241,7 @@ class Loss(metrics.Metric, abc.ABC):
       state = self.get_state_from_context(context)
     else:
       state = self.get_state(**kwargs)
-    return self.compute(state)
+    return state.compute()
 
 
 @jax.named_call
@@ -258,7 +254,9 @@ def compute_losses(
       lambda loss: loss.get_state_from_context(context), losses
   )
   loss_values = jax.tree_util.tree_map(
-      lambda loss, state: loss.compute(state), losses, loss_states
+      lambda state: state.compute(),
+      loss_states,
+      is_leaf=base_state.State.isinstance,
   )
 
   total_loss = jax.tree_util.tree_reduce(

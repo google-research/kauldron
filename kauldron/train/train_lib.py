@@ -17,16 +17,13 @@
 from __future__ import annotations
 
 import contextlib
-import functools
-from typing import Any, Optional, Sequence, Tuple
+from typing import Optional, Sequence, Tuple
 
 from absl import logging
 from clu import periodic_actions
 from etils import epath
-import flax
 import jax
 import jax.numpy as jnp
-from kauldron import metrics
 from kauldron import summaries
 from kauldron.train import config_lib
 from kauldron.train import flatboard
@@ -37,7 +34,6 @@ from kauldron.train.status_utils import status  # pylint: disable=g-importing-me
 from kauldron.utils import paths as paths_lib
 from kauldron.utils import utils
 from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
-import ml_collections
 import tensorflow as tf
 
 # Jax config options
@@ -168,6 +164,7 @@ def train_impl(
   return state, aux
 
 
+# TODO(epot): Move to separate file
 def write_summaries(
     *,
     writer: metric_writer.KDMetricWriter,
@@ -179,32 +176,25 @@ def write_summaries(
     performance_stats: Optional[dict[str, float]] = None,
 ):
   """Logs scalar and image summaries."""
-  # train losses
-  loss_values = compute_and_flatten_summaries(
-      model_with_aux.losses, states=aux.loss_states, prefix="losses"
-  )
-  # Multi-process communication
-  with jax.spmd_mode("allow_all"), jax.transfer_guard("allow"):
-    total_loss = jnp.sum(jnp.asarray(list(loss_values.values())))
-  loss_values["losses/total"] = total_loss
+  aux_result = aux.compute(flatten=True)
 
-  # train metrics
-  metric_values = compute_and_flatten_summaries(
-      model_with_aux.metrics, states=aux.metric_states, prefix="metrics"
-  )
   # schedules
-  schedule_values = compute_and_flatten_summaries(
-      schedules,
-      states=None,
-      prefix="schedules",
-      compute_fn=functools.partial(_compute_schedule, step=step),
+  schedule_values = jax.tree_map(
+      lambda s: _compute_schedule(s, step), schedules
   )
+  schedule_values = paths_lib.flatten_with_path(
+      schedule_values, prefix="schedules", separator="/"
+  )
+
   performance_stats = performance_stats or {}
   with jax.transfer_guard("allow"):
     writer.write_scalars(
         step=step,
         scalars=(
-            loss_values | metric_values | schedule_values | performance_stats
+            aux_result.loss_values
+            | aux_result.metric_values
+            | schedule_values
+            | performance_stats
         ),
     )
 
@@ -248,60 +238,10 @@ def write_summaries(
   writer.flush()
 
 
-def _compute_metric(metric: metrics.Metric, state: Any):
-  """Compute the value of a metric for a given state and return the result."""
-  # Accept cross-process computation (some metrics cannot be jitted)
-  with jax.spmd_mode("allow_all"), jax.transfer_guard("allow"):
-    return metric.compute(state)
-
-
 def _compute_schedule(sched, step: int):
   """Evaluate schedule for step and return result."""
   with jax.transfer_guard("allow"):
     return sched(step)
-
-
-def compute_and_flatten_summaries(
-    summarizers: Any,
-    states: Optional[Any] = None,
-    prefix: Optional[str] = None,
-    compute_fn=_compute_metric,
-) -> dict[str, float]:
-  """Compute a flat dictionary of metric values for reporting to tensorboard.
-
-  Takes a nested structure of summarizers and corresponding states, evaluates
-  them and flattens it into a dict[str, float] with paths of the form
-  "metrics/recon/psnr".
-
-  Args:
-    summarizers: A (nested) dictionary of summary computing objects (e.g.
-      losses, metrics, schedules). The leaf-values of this structure will be
-      passed as the first positional argument to compute_fn.
-    states: An optional (nested) dictionary of states. If this is not None then
-      it has to have the same structure as summarizers and its values will be
-      passed as a second pos-arg to compute_fn.
-    prefix: An optional prefix path to add to the output keys.
-    compute_fn: A callable for computing the values for all the leafs. If states
-      is None then it should take the form (summarizer,) -> float otherwise
-      (summarizer, state) -> float.
-
-  Returns:
-    A flat dictionary mapping paths of the form "losses/mse" to float values.
-    This can e.g. be used for writing summaries to tensorboard.
-  """
-  if isinstance(summarizers, ml_collections.ConfigDict):
-    # Convert to dict because tree_map doesn't handle ConfigDicts properly
-    summarizers = summarizers.to_dict()
-  if not isinstance(summarizers, flax.core.FrozenDict):
-    summarizers = flax.core.FrozenDict(summarizers)
-  if states is not None and not isinstance(states, flax.core.FrozenDict):
-    states = flax.core.FrozenDict(states)
-  if states is None:
-    values = jax.tree_util.tree_map(compute_fn, summarizers)
-  else:
-    values = jax.tree_util.tree_map(compute_fn, summarizers, states)
-
-  return paths_lib.flatten_with_path(values, prefix=prefix, separator="/")
 
 
 def get_loss_y_keys(config: config_lib.Config) -> Sequence[str]:

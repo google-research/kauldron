@@ -22,6 +22,7 @@ from etils import epy
 import flax
 import flax.linen as nn
 import jax
+import jax.numpy as jnp
 from kauldron import losses as kd_losses
 from kauldron import metrics as kd_metrics
 from kauldron import summaries as kd_summaries
@@ -31,6 +32,7 @@ from kauldron.typing import ElementSpec, Float, PyTree  # pylint: disable=g-mult
 from kauldron.utils import config_util
 from kauldron.utils import core
 from kauldron.utils import jax_utils
+from kauldron.utils import paths as paths_lib
 from kauldron.utils import train_property  # pylint: disable=unused-import
 from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 import optax
@@ -67,15 +69,17 @@ class TrainState:
 
 @flax.struct.dataclass
 class Auxiliaries:
-  """Auxiliaries."""
+  """Auxiliaries (intermediate states to be accumulated)."""
 
-  loss_states: dict[str, kd_metrics.State] = dataclasses.field(
-      default_factory=dict
+  loss_states: Mapping[str, kd_metrics.State] = dataclasses.field(
+      default_factory=flax.core.FrozenDict
   )
-  metric_states: dict[str, kd_metrics.State] = dataclasses.field(
-      default_factory=dict
+  metric_states: Mapping[str, kd_metrics.State] = dataclasses.field(
+      default_factory=flax.core.FrozenDict
   )
-  summary_kwargs: dict[str, Any] = dataclasses.field(default_factory=dict)
+  summary_kwargs: Mapping[str, Any] = dataclasses.field(
+      default_factory=flax.core.FrozenDict
+  )
 
   def replace(self, **changes: Any) -> Auxiliaries:
     return dataclasses.replace(self, **changes)
@@ -102,6 +106,59 @@ class Auxiliaries:
       return self
     return other.merge(self)
 
+  def compute(self, *, flatten: bool = True) -> AuxiliariesOutput:
+    """Compute losses and metrics."""
+    # train losses
+    loss_values = jax.tree_map(
+        _compute_metric, self.loss_states, is_leaf=kd_metrics.State.isinstance
+    )
+    # Multi-process communication
+    with jax.spmd_mode("allow_all"), jax.transfer_guard("allow"):
+      total_loss = jnp.sum(jnp.asarray(list(loss_values.values())))
+
+    if isinstance(loss_values, dict):
+      loss_values["total"] = total_loss
+    elif isinstance(loss_values, flax.core.FrozenDict):
+      loss_values = loss_values.copy({"total": total_loss})
+    else:
+      raise TypeError(f"Unexpected losses mapping type: {type(loss_values)}")
+
+    # train metrics
+    metric_values = jax.tree_map(
+        _compute_metric, self.metric_states, is_leaf=kd_metrics.State.isinstance
+    )
+
+    if flatten:
+      metric_values = paths_lib.flatten_with_path(
+          metric_values, prefix="metrics", separator="/"
+      )
+      loss_values = paths_lib.flatten_with_path(
+          loss_values, prefix="losses", separator="/"
+      )
+
+    return AuxiliariesOutput(
+        loss_values=loss_values,
+        metric_values=metric_values,
+        # hist_summaries=hist_summaries,
+        # image_summaries=image_summaries,
+    )
+
+
+def _compute_metric(state: Any):
+  """Compute the value of a metric for a given state and return the result."""
+  # Accept cross-process computation (some metrics cannot be jitted)
+  with jax.spmd_mode("allow_all"), jax.transfer_guard("allow"):
+    return state.compute()
+
+
+@flax.struct.dataclass
+class AuxiliariesOutput:
+  """Auxiliaries final values (after merge and compute)."""
+
+  loss_values: dict[str, Any] = dataclasses.field(default_factory=dict)
+  metric_values: dict[str, Any] = dataclasses.field(default_factory=dict)
+  # TODO(klausg): Add summaries
+
 
 def _reduce_states_single(
     states: tuple[kd_metrics.State, ...]
@@ -113,7 +170,7 @@ def _reduce_states_single(
 
 
 def _reduce_states(
-    *all_states: dict[str, kd_metrics.State]
+    *all_states: Mapping[str, kd_metrics.State]
 ) -> dict[str, kd_metrics.State]:
   """Merge all the states from the different metrics."""
   return {

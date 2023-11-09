@@ -23,4 +23,4 @@ def test_lpips_vgg():
   img_b = jnp.ones([2, 32, 32, 3], jnp.float32)
   lpips_vgg = lpips.LpipsVgg(pred="pred", target="target", mask="mask")
   state = lpips_vgg.get_state(pred=img_a, target=img_b, mask=None)
-  unused_result = lpips_vgg.compute(state)
+  unused_result = state.compute()

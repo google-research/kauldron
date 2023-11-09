@@ -85,9 +85,34 @@ class RocAuc(base.Metric):
 
   @flax.struct.dataclass
   class State(base_state.CollectingState):
+    """RocAuc state."""
     labels: Int["*b 1"]
     probs: Float["*b n"]
     mask: Float["*b 1"]
+
+    @typechecked
+    def compute(self) -> float:
+      out = super().compute()
+      labels = out.labels[..., 0]
+      check_type(labels, Int["b"])
+      # roc_auc_score is very picky so we first filter out all the classes
+      # for which there are no GT examples and renormalize probabilities
+      # This will give wrong results, but allows getting a value during training
+      # where it cannot be guaranteed that each batch contains all classes.
+      unique_labels = np.unique(labels).tolist()
+      probs = out.probs[..., unique_labels]
+      probs /= probs.sum(axis=-1, keepdims=True)  # renormalize
+      check_type(probs, Float["b n"])
+      mask = out.mask[..., 0].astype(np.float32)
+      check_type(mask, Float["b"])
+
+      return sklearn.metrics.roc_auc_score(
+          y_true=labels,
+          y_score=probs,
+          sample_weight=mask,
+          labels=unique_labels,
+          multi_class=self.parent.multi_class_mode,
+      )
 
   @typechecked
   def get_state(
@@ -103,28 +128,4 @@ class RocAuc(base.Metric):
         labels=labels,
         probs=probs,
         mask=mask,
-    )
-
-  @typechecked
-  def compute(self, state: RocAuc.State) -> float:
-    out = state.compute()
-    labels = out.labels[..., 0]
-    check_type(labels, Int["b"])
-    # roc_auc_score is very picky so we first filter out all the classes
-    # for which there are no GT examples and renormalize probabilities
-    # This will give wrong results, but allows getting a value during training
-    # where it cannot be guaranteed that each batch contains all classes.
-    unique_labels = np.unique(labels).tolist()
-    probs = out.probs[..., unique_labels]
-    probs /= probs.sum(axis=-1, keepdims=True)  # renormalize
-    check_type(probs, Float["b n"])
-    mask = out.mask[..., 0].astype(np.float32)
-    check_type(mask, Float["b"])
-
-    return sklearn.metrics.roc_auc_score(
-        y_true=labels,
-        y_score=probs,
-        sample_weight=mask,
-        labels=unique_labels,
-        multi_class=self.multi_class_mode,
     )

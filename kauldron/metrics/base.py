@@ -17,7 +17,8 @@ from __future__ import annotations
 
 import abc
 import dataclasses
-from typing import Any, Mapping
+import functools
+from typing import Any, Mapping, TypeVar
 
 import flax
 import jax
@@ -25,30 +26,54 @@ from kauldron.metrics import base_state
 from kauldron.typing import Float, Key, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import core
 
+_FnT = TypeVar("_FnT")
+
 
 class Metric(abc.ABC):
   """Base class for metrics.
 
+  Usage:
+
+  ```python
+  metric = kd.metrics.Norm()  # Initialize the metric
+  state = metric.get_state(tensor=x)
+
+  state = state.merge(other_state)  # States can be accumulated
+
+  loss = state.compute()  # Get final value
+  ```
+
   All metric implementations should be dataclasses that inherit from this class
   and:
 
-  1) Override the nested State class by inheriting from an appropriate
-     `clu.metric.Metric` that collects and aggregates the required information.
+  1) Overwrite the `Metric.State` class by inheriting from an appropriate
+     `kd.metrics.State` that collects and aggregates the required information.
      In most cases this will either be:
-      - `clu.metrics.Average` (for simple averaging of a value),
-      - `clu.metrics.CollectingMetric` (for metrics that need to collect and
+      - `kd.metrics.AverageState` (for simple averaging of a value),
+      - `kd.metrics.CollectingState` (for metrics that need to collect and
          concatenate model outputs over many batches)
-      - or an existing CLU metric to be wrapped.
   2) Define a set of `kd.typing.Key` annotated fields that are used to set the
      paths for gathering information from the train/eval context.
   3) Override the `get_state(...)` method which should take arguments with the
      same names as the keys defined in 2). This method will usually be executed
      on device within a pmap. It should return an instance of `State` (1).
-  4) Optionally override the `compute(...)` method which takes an instance of
-     `State` (e.g. produced by `get_state`) and returns the final value of
-     the metric. This method will be executed outside of jit/pmap and can thus
-     make use of external libararies to perform its computation.
+  4) Optionally override the `State.compute(...)` method which returns the
+     final value of the metric. This method will be executed outside of
+     jit/pmap and can thus make use of external libararies to perform its
+     computation.
   """
+
+  def __init_subclass__(cls, **kwargs):
+    super().__init_subclass__(**kwargs)
+    cls.get_state = _link_metric_to_state(cls.get_state)
+    cls.empty = _link_metric_to_state(cls.empty)
+    if hasattr(cls, "compute"):
+      # cls.compute is not Metric.compute:
+      raise ValueError(
+          "`Metric.compute` is deprecated. Instead, metrics should subclass"
+          " `kd.metrics.State` and implement their own `.compute` function"
+          f" accessing `self.parent`. Raised for {cls}"
+      )
 
   @flax.struct.dataclass
   class State(base_state.State):
@@ -58,18 +83,15 @@ class Metric(abc.ABC):
   def get_state(self, **kwargs) -> Metric.State:
     ...
 
-  def compute(self, state: Metric.State) -> PyTree[Float[""]]:
-    return state.compute()
-
   def empty(self) -> Metric.State:
     return self.State.empty()
 
-  def resolve_kwargs(self, context: Any) -> dict[Key, Any]:
+  def _resolve_kwargs(self, context: Any) -> dict[Key, Any]:
     """Collects and returns the kwargs required for get_state from context."""
     return core.resolve_kwargs(self, context, func=self.get_state)
 
   def get_state_from_context(self, context: Any) -> Metric.State:
-    kwargs = self.resolve_kwargs(context)
+    kwargs = self._resolve_kwargs(context)
     return self.get_state(**kwargs)
 
   def __call__(self, *, context: Any = None, **kwargs) -> PyTree[Float[""]]:
@@ -79,8 +101,23 @@ class Metric(abc.ABC):
             "Can either pass context or keyword arguments,"
             f"but got context and {kwargs.keys()}."
         )
-      kwargs = self.resolve_kwargs(context)
-    return self.compute(self.get_state(**kwargs))
+      kwargs = self._resolve_kwargs(context)
+    return self.get_state(**kwargs).compute()
+
+
+def _link_metric_to_state(fn: _FnT) -> _FnT:
+  """Set the `State.metric`."""
+  if hasattr(fn, "_has_link_metric"):  # Function decorated already
+    return fn
+
+  @functools.wraps(fn)
+  def new_get_state(self, *args, **kwargs):
+    state = fn(self, *args, **kwargs)
+    state = dataclasses.replace(state, parent=self)
+    return state
+
+  new_get_state._has_link_metric = True  # pylint: disable=protected-access
+  return new_get_state
 
 
 @flax.struct.dataclass
@@ -105,14 +142,17 @@ class TreeState(base_state.State):
       return self
 
     merged_tree = jax.tree_map(
-        lambda x, y: x.merge(y), self.tree, other.tree, is_leaf=_is_metric_state
+        lambda x, y: x.merge(y),
+        self.tree,
+        other.tree,
+        is_leaf=base_state.State.isinstance,
     )
     return type(self)(tree=merged_tree)
 
   def compute(self) -> PyTree[Any]:  # pytype: disable=signature-mismatch  # jnp-array
     """Calls compute for all metric states in tree."""
     return jax.tree_map(
-        lambda x: x.compute(), self.tree, is_leaf=_is_metric_state
+        lambda x: x.compute(), self.tree, is_leaf=base_state.State.isinstance
     )
 
 
@@ -140,12 +180,9 @@ class TreeMap(Metric):
     state_tree = _tree_map_with_kwargs(self.metric.get_state, **kwargs)
     return self.State(state_tree)
 
-  def resolve_kwargs(self, context: Any) -> dict[Key, Any]:
+  def _resolve_kwargs(self, context: Any) -> dict[Key, Any]:
     # Use the key and get_state signature of self.metric instead of self
     return core.resolve_kwargs(self.metric, context, func=self.metric.get_state)
-
-  def compute(self, state: TreeMap.State):
-    return _tree_map_with_kwargs(self.metric.compute, state=state.tree)
 
 
 def _tree_map_with_kwargs(fun, **kwargs):
@@ -164,7 +201,9 @@ def _tree_map_with_kwargs(fun, **kwargs):
     kwargs = dict(zip(argnames, args))
     return fun(**kwargs)
 
-  return jax.tree_map(_fun_with_posargs, *posargs, is_leaf=_is_metric_state)
+  return jax.tree_map(
+      _fun_with_posargs, *posargs, is_leaf=base_state.State.isinstance
+  )
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -179,18 +218,10 @@ class TreeReduce(Metric):
         lambda x, y: x.merge(y),
         state_tree,
         initializer=self.metric.empty(),
-        is_leaf=_is_metric_state,
+        is_leaf=base_state.State.isinstance,
     )
     return reduced_state
 
-  def resolve_kwargs(self, context: Any) -> dict[Key, Any]:
+  def _resolve_kwargs(self, context: Any) -> dict[Key, Any]:
     # Use the key and get_state signature of self.metric instead of self
     return core.resolve_kwargs(self.metric, context, func=self.metric.get_state)
-
-  def compute(self, state: base_state.State):
-    return self.metric.compute(state)
-
-
-def _is_metric_state(x: Any) -> bool:
-  """Check if x is a valid Metric.State. Used as is_leaf fun in tree_map."""
-  return isinstance(x, base_state.State)

@@ -29,13 +29,12 @@ class IntAverage(base.Metric):
   x: Key = "batch.x"
 
   class State(base_state.AverageState):
-    pass
+
+    def compute(self):
+      return int(super().compute())
 
   def get_state(self, x=None) -> IntAverage.State:
     return IntAverage.State.from_values(values=x)
-
-  def compute(self, state):
-    return int(state.compute())
 
 
 def test_avgerage_x_metric():
@@ -43,18 +42,16 @@ def test_avgerage_x_metric():
   x = np.arange(12).reshape((3, 4))
   # interface 1
   s1 = m.get_state(x=x)
-  y1 = m.compute(s1)
+  y1 = s1.compute()
   assert y1 == 5
 
   # with merging
   e = m.empty()
-  s1 = e.merge(s1)
-  y1 = m.compute(s1)
+  y1 = e.merge(s1).compute()
   assert y1 == 5
 
   # interface 2
-  s2 = m.get_state_from_context({"batch": {"x": x}})
-  y2 = m.compute(s2)
+  y2 = m.get_state_from_context({"batch": {"x": x}}).compute()
   assert y2 == 5
 
   # interface 3

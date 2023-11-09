@@ -18,8 +18,10 @@ from __future__ import annotations
 
 import abc
 import dataclasses
+import functools
 import types
-from typing import Any, TypeVar
+import typing
+from typing import Any, Generic, TypeVar
 
 from etils import epy
 import flax
@@ -28,10 +30,19 @@ import jax.numpy as jnp
 from kauldron.typing import Array, Bool, Float, Integer  # pylint: disable=g-multiple-import
 import numpy as np
 
+
+if typing.TYPE_CHECKING:
+  from kauldron.metrics import base  # pylint: disable=g-bad-import-order
+
+  _MetricT = TypeVar("_MetricT", bound=base.Metric)
+else:
+  _MetricT = TypeVar("_MetricT")
 _SelfT = TypeVar("_SelfT")
+_FnT = TypeVar("_FnT")
 
 
-class State(abc.ABC):
+@flax.struct.dataclass
+class State(abc.ABC, Generic[_MetricT]):
   """Base metric state class.
 
   In Kauldron, `kd.metrics.Metric` are stateless pure-python objects. Instead,
@@ -39,7 +50,7 @@ class State(abc.ABC):
   (often inside the `jax.jit` train or eval step).
 
   Those states can then be accumulated across multiple steps (with
-  `state.merge`) before computing the final value (with `metric.compute(state)`)
+  `state.merge`) before computing the final value (with `state.compute()`)
 
   ```python
   metric = kd.metric.Accuracy()
@@ -49,9 +60,23 @@ class State(abc.ABC):
   # Optionally accumulate the state across multiple batches
   state = state.merge(other_state)
 
-  values = metric.compute(state)  # Get the final value
+  values = state.compute()  # Get the final value
   ```
+
+  Attribute:
+    parent: A reference to the metric that emitted this state. Automatically
+      added by `metric.get_state()`.
   """
+
+  if not typing.TYPE_CHECKING:
+    _: dataclasses.KW_ONLY
+    parent: _MetricT = flax.struct.field(pytree_node=False, default=None)
+
+  def __init_subclass__(cls, **kwargs):
+    super().__init_subclass__(**kwargs)
+    # TODO(epot): Could also check that the 2 states are merged from the
+    # same metric !!
+    cls.merge = _propagate_parent_in_merge(cls.merge)
 
   @classmethod
   @abc.abstractmethod
@@ -76,6 +101,33 @@ class State(abc.ABC):
   def compute(self) -> Any:
     """Computes final metrics from intermediate values."""
     raise NotImplementedError("Abstract method.")
+
+  @staticmethod
+  def isinstance(other) -> bool:
+    """Returns whether `other` is a `State` (used in `tree_map(is_leaf=)`)."""
+    return isinstance(other, State)
+
+
+def _propagate_parent_in_merge(old_merge: _FnT) -> _FnT:
+  """Propagate the parent."""
+
+  @functools.wraps(old_merge)
+  def new_merge(self, other):
+    # TODO(epot): Comparison should ignore the `key: Key` (valid to merge
+    # metrics from 2 differents origins)
+    if self.parent != other.parent:
+      raise ValueError(
+          "Trying to merge state comming from different metrics:"
+          f" {self.parent} != {other.parent}\n"
+          "If this is raised because the Keys are differents, you can open an "
+          "issue."
+      )
+
+    new_self = old_merge(self, other)
+    new_self = dataclasses.replace(new_self, parent=self.parent)
+    return new_self
+
+  return new_merge
 
 
 @flax.struct.dataclass
@@ -122,6 +174,12 @@ class CollectingState(State):
     # Normalize array values to `tuple()`
     for k, val in self._accumulated_fields.items():
       if not isinstance(val, tuple):  # Normalize `array` to tuple
+        if not isinstance(val, (int, float, np.ndarray, jax.Array)):
+          raise TypeError(
+              f"Collecting state got non-array input: {k}={val}.\n"
+              "Please open an issue if you need your metric state to support "
+              "non-array attributes."
+          )
         val = jnp.asarray(val)
         if val.shape == ():  # Scalars are broadcasted (for concatenation)  # pylint: disable=g-explicit-bool-comparison
           val = val[None, ...]
@@ -129,12 +187,18 @@ class CollectingState(State):
 
   @property
   def _accumulated_fields(self) -> dict[str, Array]:
-    return {f.name: getattr(self, f.name) for f in dataclasses.fields(self)}
+    return {
+        f.name: getattr(self, f.name)
+        for f in dataclasses.fields(self)
+        if f.name != "parent"  # Do not process `state.parent`
+    }
 
   @classmethod
   def empty(cls: type[_SelfT]) -> _SelfT:
     # Only empty tuples
-    return cls(**{f.name: () for f in dataclasses.fields(cls)})
+    return cls(
+        **{f.name: () for f in dataclasses.fields(cls) if f.name != "parent"}
+    )
 
   def merge(self: _SelfT, other: _SelfT) -> _SelfT:
     merged_fields = {
