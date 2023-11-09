@@ -98,7 +98,7 @@ def get_values_from_context(
       if value is None and key not in optional_keys
   }
   if missing_keys:
-    flat_paths = paths.tree_flatten_with_path(context).keys()
+    flat_paths = paths.flatten_with_path(context).keys()
     details = "\n".join(
         _get_missing_key_error_message(missing_key, path, flat_paths)
         for missing_key, path in missing_keys.items()

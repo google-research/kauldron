@@ -19,6 +19,6 @@
 from kauldron.utils.annotate import is_key_annotated
 from kauldron.utils.annotate import resolve_kwargs
 from kauldron.utils.context import Context
+from kauldron.utils.paths import flatten_with_path
 from kauldron.utils.paths import get_by_path
 from kauldron.utils.paths import Path
-from kauldron.utils.paths import tree_flatten_with_path

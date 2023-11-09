@@ -29,7 +29,7 @@ def plot_schedules(schedules: PyTree[Schedule], num_steps: int) -> alt.Chart:
   if isinstance(schedules, ml_collections.ConfigDict):
     schedules = schedules.to_dict()
   # flatten schedules
-  flat_schedules = paths.tree_flatten_with_path(schedules)
+  flat_schedules = paths.flatten_with_path(schedules)
   # evaluate each for 1000 linearly spaced step-values
   x = np.round(np.linspace(0, num_steps, num=1000)).astype(int)
   sched_values = {

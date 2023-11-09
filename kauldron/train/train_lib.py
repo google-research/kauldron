@@ -34,7 +34,6 @@ from kauldron.train import metric_writer
 from kauldron.train import timer as timer_module
 from kauldron.train import train_step
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
-from kauldron.utils import core
 from kauldron.utils import paths as paths_lib
 from kauldron.utils import utils
 from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
@@ -302,38 +301,21 @@ def compute_and_flatten_summaries(
   else:
     values = jax.tree_util.tree_map(compute_fn, summarizers, states)
 
-  def _format_path(path, prefix: Optional[str] = None):
-    str_parts = [prefix] if prefix else []
-    str_parts.extend([paths_lib.jax_key_entry_to_str(p) for p in path])  # pylint: disable=no-value-for-parameter
-    return "/".join(str_parts)
-
-  flat_values, _ = jax.tree_util.tree_flatten_with_path(values)
-  flat_results = {
-      _format_path(path, prefix=prefix): value for path, value in flat_values
-  }
-  return flat_results
-
-
-def tree_flatten_with_slash_path(config_dict) -> dict[str, Any]:
-  """Turn the (nested) keys of a config dict into a list of 'keys/like/this'."""
-  if isinstance(config_dict, ml_collections.ConfigDict):
-    # Normalize ConfigDict to dict
-    config_dict = config_dict.to_dict()
-  flat_tree_items, _ = jax.tree_util.tree_flatten_with_path(config_dict)
-  return {
-      "/".join(core.Path.from_jax_path(jax_path).parts): value
-      for jax_path, value in flat_tree_items
-  }
+  return paths_lib.flatten_with_path(values, prefix=prefix, separator="/")
 
 
 def get_loss_y_keys(config: config_lib.Config) -> Sequence[str]:
   """Get a list of loss-keys for a given config."""
   # train losses
-  loss_names = {k for k in tree_flatten_with_slash_path(config.train_losses)}
+  loss_names = {
+      k for k in paths_lib.flatten_with_path(config.train_losses, separator="/")
+  }
   # evaluator losses
   for evaluator in config.evals.values():
     eval_losses = getattr(evaluator, "losses", {})
-    loss_names |= {k for k in tree_flatten_with_slash_path(eval_losses)}
+    loss_names |= {
+        k for k in paths_lib.flatten_with_path(eval_losses, separator="/")
+    }
 
   # If more than one loss, add the total loss
   if len(loss_names) > 1:
@@ -343,17 +325,24 @@ def get_loss_y_keys(config: config_lib.Config) -> Sequence[str]:
 
 def get_metric_y_keys(config: config_lib.Config) -> Sequence[str]:
   """Get a list of metric-keys for a given config."""
-  metric_names = {k for k in tree_flatten_with_slash_path(config.train_metrics)}
+  metric_names = {
+      k
+      for k in paths_lib.flatten_with_path(config.train_metrics, separator="/")
+  }
   # add evaluator metrics
   for evaluator in config.evals.values():
     eval_metrics = getattr(evaluator, "metrics", {})
-    metric_names |= {k for k in tree_flatten_with_slash_path(eval_metrics)}
+    metric_names |= {
+        k for k in paths_lib.flatten_with_path(eval_metrics, separator="/")
+    }
   return [f"metrics/{l.replace('.', '/')}" for l in sorted(metric_names)]
 
 
 def get_schedule_y_keys(config) -> Sequence[str]:
   """Get a list of schedule-keys for a given config."""
-  schedule_names = [k for k in tree_flatten_with_slash_path(config.schedules)]
+  schedule_names = [
+      k for k in paths_lib.flatten_with_path(config.schedules, separator="/")
+  ]
   return [f"schedules/{l.replace('.', '/')}" for l in schedule_names]
 
 

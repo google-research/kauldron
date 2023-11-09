@@ -62,4 +62,4 @@ class Context:
   replace = dataclasses.replace
 
   def flatten(self) -> dict[str, Any]:
-    return paths.tree_flatten_with_path(self)
+    return paths.flatten_with_path(self)

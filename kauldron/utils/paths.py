@@ -17,13 +17,16 @@ from __future__ import annotations
 
 import ast
 import collections
-from typing import Any, Optional, Union, overload
+from typing import Any, Optional, TypeVar, Union, overload
 
 from etils import epy
 from etils.etree import jax as etree  # pylint: disable=g-importing-member
 import jax.tree_util
 from kauldron.typing import PyTree  # pylint: disable=g-importing-member
 import lark
+import ml_collections
+
+_T = TypeVar("_T")
 
 
 JaxKeyEntry = Union[
@@ -154,10 +157,6 @@ def _jax_key_entry_to_kd_path_element(
   raise TypeError(f"Unknown key entry type {type(jax_key_entry)}")
 
 
-def jax_key_entry_to_str(jax_key_entry: JaxKeyEntry) -> str:
-  return str(_jax_key_entry_to_kd_path_element(jax_key_entry))
-
-
 def get_by_path(obj: Any, path: str | tuple[str] | Path, default=None) -> Any:
   """Get (nested) item or attribute by given path.
 
@@ -190,12 +189,27 @@ def get_by_path(obj: Any, path: str | tuple[str] | Path, default=None) -> Any:
   return path.get_from(obj, default=default)
 
 
-def tree_flatten_with_path(pytree: PyTree[Any]) -> dict[str, Any]:
+def flatten_with_path(
+    pytree: PyTree[_T],
+    *,
+    prefix: str = "",
+    separator: str | None = None,
+) -> dict[str, _T]:
+  """Flatten any PyTree / ConfigDict into a dict with 'keys.like[0].this'."""
+  if isinstance(pytree, ml_collections.ConfigDict):
+    # Normalize ConfigDict to dict
+    pytree = pytree.to_dict()
   flat_tree_items, _ = jax.tree_util.tree_flatten_with_path(pytree)
-  return {
-      str(Path.from_jax_path(jax_path)): value
-      for jax_path, value in flat_tree_items
-  }
+  prefix = (jax.tree_util.GetAttrKey(prefix),) if prefix else ()
+
+  def _format_path(jax_path):
+    path = Path.from_jax_path(prefix + jax_path)
+    if separator is None:
+      return str(path)
+    else:
+      return separator.join(str(p) for p in path.parts)
+
+  return {_format_path(jax_path): value for jax_path, value in flat_tree_items}
 
 
 def _format_part(part: Any) -> str:

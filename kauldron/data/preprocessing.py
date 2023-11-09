@@ -23,6 +23,7 @@ import einops
 import flax.core
 import grain.tensorflow as grain
 from kauldron.typing import Key, TfArray, TfFloat, TfInt, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.utils import paths as paths_lib
 import tensorflow as tf
 
 
@@ -171,18 +172,6 @@ class _ElementWise:
       )
 
 
-def _tree_flatten_with_path(features, separator="_"):
-  if not isinstance(features, dict):
-    return {"": features}
-
-  output = {}
-  for prefix, nested_v in features.items():
-    for flat_k, flat_v in _tree_flatten_with_path(nested_v).items():
-      new_key = f"{prefix}{separator}{flat_k}" if flat_k else prefix
-      output[new_key] = flat_v
-  return output
-
-
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class TreeFlattenWithPath(_ElementWise, grain.MapTransform):
   """Flatten any tree-structured elements.
@@ -200,7 +189,11 @@ class TreeFlattenWithPath(_ElementWise, grain.MapTransform):
     output = {}
     for key, element, should_transform in self._per_element(features):
       if should_transform:
-        output.update(_tree_flatten_with_path({key: element}))
+        output.update(
+            paths_lib.flatten_with_path(
+                {key: element}, separator=self.separator
+            )
+        )
       else:
         output[key] = element
     return output

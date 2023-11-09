@@ -171,7 +171,7 @@ class KDMetricWriter(metric_writers.MetricWriter):
     )
     # create a flat spec for the context
     context_spec = etree.spec_like(
-        paths.tree_flatten_with_path({
+        paths.flatten_with_path({
             "step": context.step,
             "batch": config.train_ds.element_spec,
             "params": context.params,

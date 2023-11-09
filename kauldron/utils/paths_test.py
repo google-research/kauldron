@@ -76,6 +76,15 @@ def test_tree_flatten_with_path():
     foo: Any
     bar: Any
 
-  mt = MyTree(foo={"a": 10, "b": 7}, bar=9)
-  flat_tree = paths.tree_flatten_with_path(mt)
-  assert flat_tree == {"foo.a": 10, "foo.b": 7, "bar": 9}
+  mt = MyTree(foo={"a": 10, "b": [7]}, bar=9)
+  flat_tree = paths.flatten_with_path(mt)
+  assert flat_tree == {"foo.a": 10, "foo.b[0]": 7, "bar": 9}
+
+  flat_tree = paths.flatten_with_path(mt, prefix="cfg")
+  assert flat_tree == {"cfg.foo.a": 10, "cfg.foo.b[0]": 7, "cfg.bar": 9}
+
+  flat_tree = paths.flatten_with_path(mt, separator="/")
+  assert flat_tree == {"foo/a": 10, "foo/b/0": 7, "bar": 9}
+
+  flat_tree = paths.flatten_with_path(mt, prefix="cfg", separator="/")
+  assert flat_tree == {"cfg/foo/a": 10, "cfg/foo/b/0": 7, "cfg/bar": 9}

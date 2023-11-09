@@ -33,6 +33,7 @@ from kauldron import train
 from kauldron.data import utils as data_utils
 from kauldron.typing import Float, UInt8  # pylint: disable=g-multiple-import
 from kauldron.utils import core
+from kauldron.utils import paths as paths_lib
 from kauldron.utils import pd_utils
 import mediapy as media
 import ml_collections
@@ -209,7 +210,7 @@ def _format_param_shapes(module_variables) -> str:
   if not params:
     return ""
   tree = jax.tree_map(_convert_to_array_spec, params)
-  flat_tree = core.tree_flatten_with_path(tree)
+  flat_tree = core.flatten_with_path(tree)
   return "<br>".join(f"<b>{k}</b>: {_nbsp(v)}" for k, v in flat_tree.items())
 
 
@@ -363,7 +364,6 @@ def get_batch_stats(batch: _Example) -> pd.DataFrame:
   """Return `pd.DataFrame` containing the batch stats."""
   # TODO(epot):
   # * Supports string too
-  # * Support nested dict (`for k, v in _tree_items(batch)`)
   return pd.DataFrame(
       [
           {
@@ -375,7 +375,7 @@ def get_batch_stats(batch: _Example) -> pd.DataFrame:
               "Mean": np.mean(v),
               "StdDev": np.std(v),
           }
-          for k, v in batch.items()
+          for k, v in paths_lib.flatten_with_path(batch).items()
       ]
   )
 
