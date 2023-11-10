@@ -284,17 +284,7 @@ class Memo:
   def from_current_context(cls):
     """Create a Memo from the current typechecking context."""
     # TODO(klausg): tidy this up once the jaxtyping PR chain is done
-    single_memo, variadic_memo = {}, {}
-    try:
-      single_memo, variadic_memo, *_ = jaxtyping._storage.get_shape_memo()  # pylint: disable=protected-access # pytype: disable=module-attr
-    except Exception:  # pylint: disable=broad-exception-caught
-      if hasattr(jaxtyping._decorator, "storage"):  # pylint: disable=protected-access
-        storage = jaxtyping._decorator.storage  # pylint: disable=protected-access
-      else:
-        storage = jaxtyping._decorator._storage  # pylint: disable=protected-access
-      memo_stack = getattr(storage, "memo_stack", [])  # pylint: disable=protected-access
-      if memo_stack:
-        single_memo, variadic_memo, *_ = memo_stack[-1]
+    single_memo, variadic_memo, *_ = jaxtyping._storage.get_shape_memo()  # pylint: disable=protected-access
 
     def _maybe_remove_bool(memo):
       match memo:
