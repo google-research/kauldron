@@ -23,6 +23,7 @@ from kauldron.metrics.base_state import CollectingState
 from kauldron.metrics.base_state import State
 from kauldron.metrics.classification import Accuracy
 from kauldron.metrics.classification import BinaryAccuracy
+from kauldron.metrics.classification import Precision1
 from kauldron.metrics.classification import RocAuc
 from kauldron.metrics.clustering import Ari
 from kauldron.metrics.image import Psnr

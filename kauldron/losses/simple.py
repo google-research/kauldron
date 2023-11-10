@@ -85,13 +85,13 @@ class SoftmaxCrossEntropyWithIntLabels(base.Loss):
 
 @dataclasses.dataclass(eq=True, frozen=True, kw_only=True)
 class SigmoidBinaryCrossEntropy(base.Loss):
-  """Softmax cross-entropy loss with integer labels."""
+  """Sigmoid cross-entropy loss with binary labels."""
 
   logits: Key = "preds.logits"
   labels: Key = "batch.label"
 
   @typechecked
   def get_values(
-      self, logits: Float["*a n"], labels: Int["*a n"]
-  ) -> Float["*a 1"]:
+      self, logits: Float["*a n"], labels: Float["*a n"]
+  ) -> Float["*a n"]:
     return optax.sigmoid_binary_cross_entropy(logits, labels)

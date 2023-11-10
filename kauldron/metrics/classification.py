@@ -52,6 +52,30 @@ class Accuracy(base.Metric):
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class Precision1(base.Metric):
+  """Precision@1 for multilabel classification."""
+
+  logits: Key = "preds.logits"
+  labels: Key = "batch.labels"
+  mask: Optional[Key] = None
+
+  @flax.struct.dataclass
+  class State(base_state.AverageState):
+    pass
+
+  @typechecked
+  def get_state(
+      self,
+      logits: Float["*b n"],
+      labels: Float["*b n"],
+      mask: Optional[Float["*b 1"]] = None,
+  ) -> Precision1.State:
+    pred_argmax = logits.argmax(axis=-1, keepdims=True)
+    correct = jnp.take_along_axis(labels, pred_argmax, -1)
+    return self.State.from_values(values=correct, mask=mask)
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class BinaryAccuracy(base.Metric):
   """Classification Accuracy for Binary classification tasks."""
 
