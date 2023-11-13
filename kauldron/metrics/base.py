@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Base classes for defining metrics."""
+
 from __future__ import annotations
 
 import abc
@@ -22,9 +23,9 @@ from typing import Any, Mapping, TypeVar
 
 import flax
 import jax
+from kauldron import kontext
 from kauldron.metrics import base_state
-from kauldron.typing import Float, Key, PyTree  # pylint: disable=g-multiple-import,g-importing-member
-from kauldron.utils import core
+from kauldron.typing import Float, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 
 _FnT = TypeVar("_FnT")
 
@@ -52,7 +53,7 @@ class Metric(abc.ABC):
       - `kd.metrics.AverageState` (for simple averaging of a value),
       - `kd.metrics.CollectingState` (for metrics that need to collect and
          concatenate model outputs over many batches)
-  2) Define a set of `kd.typing.Key` annotated fields that are used to set the
+  2) Define a set of `kd.kontext.Key` annotated fields that are used to set the
      paths for gathering information from the train/eval context.
   3) Override the `get_state(...)` method which should take arguments with the
      same names as the keys defined in 2). This method will usually be executed
@@ -86,9 +87,9 @@ class Metric(abc.ABC):
   def empty(self) -> Metric.State:
     return self.State.empty()
 
-  def _resolve_kwargs(self, context: Any) -> dict[Key, Any]:
+  def _resolve_kwargs(self, context: Any) -> dict[kontext.Key, Any]:
     """Collects and returns the kwargs required for get_state from context."""
-    return core.resolve_kwargs(self, context, func=self.get_state)
+    return kontext.get_from_keys_obj(context, self, func=self.get_state)
 
   def get_state_from_context(self, context: Any) -> Metric.State:
     kwargs = self._resolve_kwargs(context)
@@ -180,9 +181,11 @@ class TreeMap(Metric):
     state_tree = _tree_map_with_kwargs(self.metric.get_state, **kwargs)
     return self.State(state_tree)
 
-  def _resolve_kwargs(self, context: Any) -> dict[Key, Any]:
+  def _resolve_kwargs(self, context: Any) -> dict[kontext.Key, Any]:
     # Use the key and get_state signature of self.metric instead of self
-    return core.resolve_kwargs(self.metric, context, func=self.metric.get_state)
+    return kontext.get_from_keys_obj(
+        context, self.metric, func=self.metric.get_state
+    )
 
 
 def _tree_map_with_kwargs(fun, **kwargs):
@@ -222,6 +225,8 @@ class TreeReduce(Metric):
     )
     return reduced_state
 
-  def _resolve_kwargs(self, context: Any) -> dict[Key, Any]:
+  def _resolve_kwargs(self, context: Any) -> dict[kontext.Key, Any]:
     # Use the key and get_state signature of self.metric instead of self
-    return core.resolve_kwargs(self.metric, context, func=self.metric.get_state)
+    return kontext.get_from_keys_obj(
+        context, self.metric, func=self.metric.get_state
+    )

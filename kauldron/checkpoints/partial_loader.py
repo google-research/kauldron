@@ -26,8 +26,8 @@ from etils import epy
 from etils.etree import jax as etree  # pylint: disable=g-importing-member
 from flax.training import orbax_utils
 import jax
+from kauldron import kontext
 from kauldron.checkpoints import checkpointer
-from kauldron.utils import paths as path_utils
 import orbax.checkpoint as ocp
 
 _T = TypeVar('_T')
@@ -99,9 +99,9 @@ class PartialLoader(AbstractPartialLoader):
     object.__setattr__(self, 'new_to_old', new_to_old)
 
   @functools.cached_property
-  def _new_to_old_path(self) -> dict[path_utils.Path, path_utils.Path]:
+  def _new_to_old_path(self) -> dict[kontext.Path, kontext.Path]:
     return {
-        path_utils.Path.from_str(from_): path_utils.Path.from_str(to)
+        kontext.Path.from_str(from_): kontext.Path.from_str(to)
         for from_, to in self.new_to_old.items()
     }
 

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Preprocessing Ops."""
+
 from __future__ import annotations
 
 import abc
@@ -22,8 +23,8 @@ from typing import Any, Dict, Iterable, Mapping, Optional, Sequence
 import einops
 import flax.core
 import grain.tensorflow as grain
-from kauldron.typing import Key, TfArray, TfFloat, TfInt, typechecked  # pylint: disable=g-multiple-import,g-importing-member
-from kauldron.utils import paths as paths_lib
+from kauldron import kontext
+from kauldron.typing import TfArray, TfFloat, TfInt, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import tensorflow as tf
 
 
@@ -141,13 +142,13 @@ class _ElementWise:
   ElementWiseRandomTransform.
   """
 
-  key: Key | Sequence[Key] | Dict[Key, Key]
+  key: kontext.Key | Sequence[kontext.Key] | Dict[kontext.Key, kontext.Key]
 
   def __post_init__(self):
     if not self.key:
-      raise KeyError(f"Key required for {self}")
+      raise KeyError(f"kontext.Key required for {self}")
 
-    # Convert key to Dict[Key, Key] format.
+    # Convert key to Dict[kontext.Key, kontext.Key] format.
     keys = self.key
     if isinstance(self.key, str):
       keys = {self.key: self.key}
@@ -190,9 +191,7 @@ class TreeFlattenWithPath(_ElementWise, grain.MapTransform):
     for key, element, should_transform in self._per_element(features):
       if should_transform:
         output.update(
-            paths_lib.flatten_with_path(
-                {key: element}, separator=self.separator
-            )
+            kontext.flatten_with_path({key: element}, separator=self.separator)
         )
       else:
         output[key] = element

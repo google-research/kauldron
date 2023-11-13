@@ -73,8 +73,8 @@ and `get_state` attribute.
 class Accuracy(kd.metrics.Metric):
   """Classification Accuracy."""
 
-  logits: Key = "preds.logits"
-  labels: Key = "batch.label"
+  logits: kontext.Key = "preds.logits"
+  labels: kontext.Key = "batch.label"
 
   # Could be `State = kd.metrics.AverageState` but inheritance give a better
   # name `Accuracy.State`

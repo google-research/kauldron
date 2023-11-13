@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Base class for defining losses."""
+
 from __future__ import annotations
 
 import abc
@@ -22,10 +23,11 @@ from typing import Any, Callable, ClassVar, Optional
 import flax
 import jax
 from jax import numpy as jnp
+from kauldron import kontext
 from kauldron import metrics
 from kauldron.metrics import base_state
-from kauldron.typing import Array, Float, Key, PyTree  # pylint: disable=g-multiple-import,g-importing-member
-from kauldron.utils import core
+from kauldron.typing import Array, Float, PyTree  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.utils import context as context_lib
 
 
 Schedule = Callable[[int], float]
@@ -114,8 +116,8 @@ class Loss(metrics.Metric, abc.ABC):
       weight of the loss.
   """
 
-  step: Key = "step"
-  mask: Optional[Key] = None
+  step: kontext.Key = "step"
+  mask: Optional[kontext.Key] = None
   weight: int | float | Schedule = 1.0
 
   State: ClassVar[type[AllReduceMean]] = (  # pylint: disable=invalid-name
@@ -128,8 +130,8 @@ class Loss(metrics.Metric, abc.ABC):
 
     Subclasses need to implement this method.
     Args:
-      *args: Any required arguments (names should match Key annotations)
-      **kwargs: Any arguments (names should match Key annotations)
+      *args: Any required arguments (names should match kontext.Key annotations)
+      **kwargs: Any arguments (names should match kontext.Key annotations)
 
     Returns:
       A jnp.Array of loss values compatible in shape with any desired masking.
@@ -175,20 +177,21 @@ class Loss(metrics.Metric, abc.ABC):
     """Compute the loss-state by auto-filling args from given context.
 
     This is a wrapper around `get_state` that gathers the required arguments
-    from the given context, using `Key`s of the loss.
-    For example if the loss has a `target : Key` set to `"batch.label"`,
-    then `context.batch.["label"]` will be passed to the `__call__` function
+    from the given context, using `kontext.Key`s of the loss.
+    For example if the loss has a `target : kontext.Key` set to `"batch.label"`,
+    then `context.batch["label"]` will be passed to the `get_state` function
     of the loss.
 
     Args:
       context: A context object that holds the information (e.g. the current
-        batch and the model outputs) against which the Keys of the loss are
-        resolved.
+        batch and the model outputs) against which the kontext.Keys of the loss
+        are resolved.
 
     Returns:
       An instance of Loss.State. See `get_state` for details.
     """
-    kwargs = core.resolve_kwargs(self, context)
+    # TODO(epot): Add `func=self.get_values`
+    kwargs = kontext.get_from_keys_obj(context, self)
     mask = kwargs.pop("mask", None)
     step = kwargs.pop("step", None)
     values = self.get_values(**kwargs)
@@ -246,7 +249,7 @@ class Loss(metrics.Metric, abc.ABC):
 
 @jax.named_call
 def compute_losses(
-    losses: PyTree[Loss], context: core.Context
+    losses: PyTree[Loss], context: context_lib.Context
 ) -> tuple[Float[""], PyTree[Float[""]]]:
   """Compute all losses based on given context."""
 

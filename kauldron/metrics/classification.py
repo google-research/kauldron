@@ -21,9 +21,10 @@ from typing import Optional
 import flax.linen as nn
 import flax.struct
 import jax.numpy as jnp
+from kauldron import kontext
 from kauldron.metrics import base
 from kauldron.metrics import base_state
-from kauldron.typing import Float, Int, Key, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Float, Int, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import numpy as np
 import sklearn.metrics
 
@@ -32,9 +33,9 @@ import sklearn.metrics
 class Accuracy(base.Metric):
   """Classification Accuracy."""
 
-  logits: Key = "preds.logits"
-  labels: Key = "batch.label"
-  mask: Optional[Key] = None
+  logits: kontext.Key = "preds.logits"
+  labels: kontext.Key = "batch.label"
+  mask: Optional[kontext.Key] = None
 
   @flax.struct.dataclass
   class State(base_state.AverageState):
@@ -55,9 +56,9 @@ class Accuracy(base.Metric):
 class Precision1(base.Metric):
   """Precision@1 for multilabel classification."""
 
-  logits: Key = "preds.logits"
-  labels: Key = "batch.labels"
-  mask: Optional[Key] = None
+  logits: kontext.Key = "preds.logits"
+  labels: kontext.Key = "batch.labels"
+  mask: Optional[kontext.Key] = None
 
   @flax.struct.dataclass
   class State(base_state.AverageState):
@@ -79,8 +80,8 @@ class Precision1(base.Metric):
 class BinaryAccuracy(base.Metric):
   """Classification Accuracy for Binary classification tasks."""
 
-  logits: Key = "preds.logits"
-  labels: Key = "batch.label"
+  logits: kontext.Key = "preds.logits"
+  labels: kontext.Key = "batch.label"
 
   @flax.struct.dataclass
   class State(base_state.AverageState):
@@ -101,9 +102,9 @@ class BinaryAccuracy(base.Metric):
 class RocAuc(base.Metric):
   """Area Under the Receiver Operating Characteristic Curve (ROC AUC)."""
 
-  logits: Key = "preds.logits"
-  labels: Key = "batch.label"
-  mask: Optional[Key] = None
+  logits: kontext.Key = "preds.logits"
+  labels: kontext.Key = "batch.label"
+  mask: Optional[kontext.Key] = None
 
   multi_class_mode: str = "ovr"  # One-vs-Rest ("ovr") or One-vs-One ("ovo")
 

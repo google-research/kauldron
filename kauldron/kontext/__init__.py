@@ -12,13 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Core classes and abstractions used in Kauldron."""
+"""Kontext is a small self-contained library to manipulate nested trees.
+
+* Extract values
+
+"""
 
 # pylint: disable=g-importing-member,unused-import
 
-from kauldron.utils.annotate import is_key_annotated
-from kauldron.utils.annotate import resolve_kwargs
-from kauldron.utils.context import Context
-from kauldron.utils.paths import flatten_with_path
-from kauldron.utils.paths import get_by_path
-from kauldron.utils.paths import Path
+from kauldron.kontext.annotate import get_from_keys_obj
+from kauldron.kontext.annotate import is_key_annotated
+from kauldron.kontext.annotate import Key
+from kauldron.kontext.paths import flatten_with_path
+from kauldron.kontext.paths import get_by_path
+from kauldron.kontext.paths import Path

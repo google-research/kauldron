@@ -123,19 +123,15 @@ match both `a['b']` (index) or `a.b` (attribute).
 The key system makes it very easy to add metrics, losses on arbitrary variables
 (e.g. intermediate model output).
 
-<!--
-TODO(klausg): For more info on keys, see doc at:
--->
-
-Internally, object using keys define them through the `: Key` annotation. When
-the object is used, Kaulron will extract the actual value from the keys and
-forward them to the method call.
+Internally, object using keys define them through the `: kontext.Key`
+annotation. When the object is used, Kauldron will extract the actual value from
+the keys and forward them to the method call.
 
 ```python
-from kauldron.typing import Key
+from kauldron import kontext
 
 class AutoEncoder(flax.linen.Module):
-  input: Key  # Key names match the `__call__` signature
+  input: kontext.Key  # Key names match the `__call__` signature
 
   @nn.compact
   def __call__(self, input: Float["*b h w c"]) -> Float["*b h w c"]:

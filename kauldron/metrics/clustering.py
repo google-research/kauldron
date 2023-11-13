@@ -20,9 +20,10 @@ from typing import Optional, Sequence
 
 from etils import epy
 import flax.struct
+from kauldron import kontext
 from kauldron.metrics import base
 from kauldron.metrics import base_state
-from kauldron.typing import Float, Integer, Key, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Float, Integer, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 with epy.lazy_imports():
   from grand_vision.eval.metrics import clustering as gv_clustering  # pylint: disable=g-import-not-at-top
@@ -48,9 +49,9 @@ class Ari(base.Metric):
   num_instances_pred: int
   ignored_ids: Optional[Sequence[int] | int] = None
 
-  predictions: Key = "preds.segmentations_video"
-  labels: Key = "batch.segmentations_video"
-  mask: Optional[Key] = None
+  predictions: kontext.Key = "preds.segmentations_video"
+  labels: kontext.Key = "batch.segmentations_video"
+  mask: Optional[kontext.Key] = None
 
   @flax.struct.dataclass
   class State(base_state.AverageState):

@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-from kauldron.utils import path_builder
+from kauldron.kontext import path_builder
 import pytest
 
 

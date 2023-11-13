@@ -13,12 +13,13 @@
 # limitations under the License.
 
 """Some plotting helpers."""
+
 from __future__ import annotations
 
 import altair as alt
 import jax
+from kauldron import kontext
 from kauldron.typing import PyTree, Schedule  # pylint: disable=g-multiple-import,g-importing-member
-from kauldron.utils import paths
 import ml_collections
 import numpy as np
 import pandas as pd
@@ -29,7 +30,7 @@ def plot_schedules(schedules: PyTree[Schedule], num_steps: int) -> alt.Chart:
   if isinstance(schedules, ml_collections.ConfigDict):
     schedules = schedules.to_dict()
   # flatten schedules
-  flat_schedules = paths.flatten_with_path(schedules)
+  flat_schedules = kontext.flatten_with_path(schedules)
   # evaluate each for 1000 linearly spaced step-values
   x = np.round(np.linspace(0, num_steps, num=1000)).astype(int)
   sched_values = {

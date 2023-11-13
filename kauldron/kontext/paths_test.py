@@ -18,7 +18,7 @@ from typing import Any
 import flax.struct
 import hypothesis
 import hypothesis.strategies as st
-from kauldron.utils import paths
+from kauldron import kontext
 import regex
 
 
@@ -59,14 +59,14 @@ def test_python_identifier_regex(x: str):
 
 @hypothesis.given(st.lists(simple_literals, min_size=1, max_size=16))
 def test_path_parsing(path_elements):
-  p = paths.Path(*path_elements)
-  p2 = paths.Path.from_str(repr(p))
+  p = kontext.Path(*path_elements)
+  p2 = kontext.Path.from_str(repr(p))
   assert p == p2
 
 
 def test_path_parsing_custom_example():
   path_str = "itermed.encoder.layer_0.MHDP.attention"
-  assert str(paths.Path.from_str(path_str)) == path_str
+  assert str(kontext.Path.from_str(path_str)) == path_str
 
 
 def test_tree_flatten_with_path():
@@ -77,14 +77,14 @@ def test_tree_flatten_with_path():
     bar: Any
 
   mt = MyTree(foo={"a": 10, "b": [7]}, bar=9)
-  flat_tree = paths.flatten_with_path(mt)
+  flat_tree = kontext.flatten_with_path(mt)
   assert flat_tree == {"foo.a": 10, "foo.b[0]": 7, "bar": 9}
 
-  flat_tree = paths.flatten_with_path(mt, prefix="cfg")
+  flat_tree = kontext.flatten_with_path(mt, prefix="cfg")
   assert flat_tree == {"cfg.foo.a": 10, "cfg.foo.b[0]": 7, "cfg.bar": 9}
 
-  flat_tree = paths.flatten_with_path(mt, separator="/")
+  flat_tree = kontext.flatten_with_path(mt, separator="/")
   assert flat_tree == {"foo/a": 10, "foo/b/0": 7, "bar": 9}
 
-  flat_tree = paths.flatten_with_path(mt, prefix="cfg", separator="/")
+  flat_tree = kontext.flatten_with_path(mt, prefix="cfg", separator="/")
   assert flat_tree == {"cfg/foo/a": 10, "cfg/foo/b/0": 7, "cfg/bar": 9}

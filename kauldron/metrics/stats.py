@@ -20,9 +20,10 @@ from typing import Optional
 
 import flax.struct
 import jax.numpy as jnp
+from kauldron import kontext
 from kauldron.metrics import base
 from kauldron.metrics import base_state
-from kauldron.typing import Bool, Float, Key, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Bool, Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -30,13 +31,13 @@ class SingleDimension(base.Metric):
   """Returns a single chosen dimension of the tensor.
 
   Attributes:
-    tensor: Key for the tensor to capture the value of.
+    tensor: kontext.Key for the tensor to capture the value of.
     mask: Ignored.
     index: Dimension to index (from the last axis).
   """
 
-  tensor: Key
-  mask: Optional[Key] = None
+  tensor: kontext.Key
+  mask: Optional[kontext.Key] = None
 
   index: int = 0
 
@@ -64,7 +65,7 @@ class Norm(base.Metric):
 
 
   Attributes:
-    tensor: Key for the tensor to compute the norm over.
+    tensor: kontext.Key for the tensor to compute the norm over.
     mask: Optional key for masking out some of the tensors (i.e. ignore them in
       the averaging).
     axis: Axis over which to compute the norm. If axis is an integer, it
@@ -77,8 +78,8 @@ class Norm(base.Metric):
       -np.inf, -2, -1, 0, or any integer or float. See `np.linalg.norm`.
   """
 
-  tensor: Key
-  mask: Optional[Key] = None
+  tensor: kontext.Key
+  mask: Optional[kontext.Key] = None
 
   axis: None | int | tuple[int, int] = -1
   ord: float | int | str | None = None
@@ -169,8 +170,8 @@ class Std(base.Metric):
   This is a simple example of wrapping a CLU metric.
   """
 
-  values: Key
-  mask: Optional[Key] = None
+  values: kontext.Key
+  mask: Optional[kontext.Key] = None
 
   @flax.struct.dataclass
   class State(StdState):

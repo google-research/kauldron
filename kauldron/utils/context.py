@@ -19,7 +19,7 @@ from __future__ import annotations
 import dataclasses
 from typing import Any
 import flax
-from kauldron.utils import paths
+from kauldron import kontext
 
 
 @flax.struct.dataclass
@@ -62,4 +62,4 @@ class Context:
   replace = dataclasses.replace
 
   def flatten(self) -> dict[str, Any]:
-    return paths.flatten_with_path(self)
+    return kontext.flatten_with_path(self)

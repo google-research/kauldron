@@ -23,6 +23,7 @@ import flax
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
+from kauldron import kontext
 from kauldron import losses as kd_losses
 from kauldron import metrics as kd_metrics
 from kauldron import summaries as kd_summaries
@@ -30,9 +31,8 @@ import kauldron.data.utils as data_utils
 from kauldron.train import rngs_lib
 from kauldron.typing import ElementSpec, Float, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import config_util
-from kauldron.utils import core
+from kauldron.utils import context as context_lib
 from kauldron.utils import jax_utils
-from kauldron.utils import paths as paths_lib
 from kauldron.utils import train_property  # pylint: disable=unused-import
 from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 import optax
@@ -129,10 +129,10 @@ class Auxiliaries:
     )
 
     if flatten:
-      metric_values = paths_lib.flatten_with_path(
+      metric_values = kontext.flatten_with_path(
           metric_values, prefix="metrics", separator="/"
       )
-      loss_values = paths_lib.flatten_with_path(
+      loss_values = kontext.flatten_with_path(
           loss_values, prefix="losses", separator="/"
       )
 
@@ -200,7 +200,7 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
   ) -> _Params:
     self._assert_root_cfg_resolved()
     mock_batch = data_utils.mock_batch_from_elem_spec(elem_spec)
-    context = core.Context(step=0, batch=mock_batch)
+    context = context_lib.Context(step=0, batch=mock_batch)
     args, kwargs = data_utils.get_model_inputs(self.model, context)
     params = self.model.init(
         init_rngs,
@@ -221,9 +221,9 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
       rngs: rngs_lib.Rngs,
       step: int,
       is_training: bool,
-  ) -> tuple[float, core.Context]:
+  ) -> tuple[float, context_lib.Context]:
     """Forward pass of the model including losses."""
-    context = core.Context(step=step, batch=batch, params=params)
+    context = context_lib.Context(step=step, batch=batch, params=params)
     args, kwargs = data_utils.get_model_inputs(self.model, context)
     preds, intermediates = self.model.apply(  # TODO(klausg): capture mutables?
         {"params": params},
@@ -244,7 +244,7 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
   @jax.named_call
   def get_aux(
       self,
-      context: core.Context,
+      context: context_lib.Context,
       *,
       # TODO(epot): Better signature
       return_losses: bool = False,

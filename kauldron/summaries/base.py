@@ -26,8 +26,8 @@ from etils import epy
 import flax
 import jax
 import jax.numpy as jnp
-from kauldron.typing import Array, Bool, Float, Integer, Key, Shape, UInt8, typechecked  # pylint: disable=g-multiple-import,g-importing-member
-from kauldron.utils import core
+from kauldron import kontext
+from kauldron.typing import Array, Bool, Float, Integer, Shape, UInt8, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import mediapy as media
 import numpy as np
 import sklearn.decomposition
@@ -46,7 +46,7 @@ class Summary(abc.ABC):
 
   def gather_kwargs(self, context: Any) -> dict[str, Any]:
     """Returns the required information from context as a kwargs dict."""
-    return core.resolve_kwargs(self, context)
+    return kontext.get_from_keys_obj(context, self)
 
 
 class ImageSummary(Summary, abc.ABC):
@@ -64,7 +64,7 @@ class ImageSummary(Summary, abc.ABC):
             "Can either pass context or keyword arguments,"
             f"but got context and {kwargs.keys()}."
         )
-      kwargs = core.resolve_kwargs(self, context, func=self.get_images)
+      kwargs = kontext.get_from_keys_obj(context, self, func=self.get_images)
     return self.get_images(**kwargs)
 
 
@@ -72,7 +72,7 @@ class ImageSummary(Summary, abc.ABC):
 class HistogramSummary(Summary):
   """Basic histogram summary."""
 
-  tensor: Key
+  tensor: kontext.Key
   num_buckets: int = 30
 
   def get_tensor(self, tensor: Array["..."]) -> tuple[int, Array["n"]]:
@@ -83,8 +83,8 @@ class HistogramSummary(Summary):
 class ShowImages(ImageSummary):
   """Show a set of images with optional reshaping and resizing."""
 
-  images: Key
-  masks: Optional[Key] = None
+  images: kontext.Key
+  masks: Optional[kontext.Key] = None
 
   num_images: int
   rearrange: Optional[str] = None
@@ -100,7 +100,7 @@ class ShowImages(ImageSummary):
 
   def gather_kwargs(self, context: Any) -> dict[str, Images | Masks]:
     # optimize gather_kwargs to only return num_images many images
-    kwargs = core.resolve_kwargs(self, context)
+    kwargs = kontext.get_from_keys_obj(context, self)
     images = kwargs["images"]
     masks = kwargs.get("masks", None)
     if self.rearrange:
@@ -163,9 +163,9 @@ class ShowImages(ImageSummary):
 class ShowDifferenceImages(ImageSummary):
   """Show a set of difference images with optional reshaping and resizing."""
 
-  images1: Key
-  images2: Key
-  masks: Optional[Key] = None
+  images1: kontext.Key
+  images2: kontext.Key
+  masks: Optional[kontext.Key] = None
 
   num_images: int
   vrange: tuple[float, float]
@@ -181,7 +181,7 @@ class ShowDifferenceImages(ImageSummary):
 
   def gather_kwargs(self, context: Any) -> dict[str, Images | Masks]:
     # optimize gather_kwargs to only return num_images many images
-    kwargs = core.resolve_kwargs(self, context)
+    kwargs = kontext.get_from_keys_obj(context, self)
     images1, images2 = kwargs["images1"], kwargs["images2"]
     masks = kwargs.get("masks", None)
     if self.rearrange:
@@ -253,7 +253,7 @@ class ShowDifferenceImages(ImageSummary):
 class ShowSegmentations(ImageSummary):
   """Show a set of segmentations with optional reshaping and resizing."""
 
-  segmentations: Key
+  segmentations: kontext.Key
 
   num_images: int
   rearrange: Optional[str] = None
@@ -266,7 +266,7 @@ class ShowSegmentations(ImageSummary):
 
   def gather_kwargs(self, context: Any) -> dict[str, Segmentations]:
     # optimize gather_kwargs to only return num_images many images
-    kwargs = core.resolve_kwargs(self, context)
+    kwargs = kontext.get_from_keys_obj(context, self)
     segmentations = kwargs["segmentations"]
     if self.rearrange:
       segmentations = einops.rearrange(
@@ -303,7 +303,7 @@ class ShowSegmentations(ImageSummary):
 class PerImageChannelPCA(ImageSummary):
   """Reduce the channel dim using PCA to 3dim and show as image."""
 
-  feature_maps: Key
+  feature_maps: kontext.Key
 
   num_images: int
   rearrange: Optional[str] = None
@@ -315,7 +315,7 @@ class PerImageChannelPCA(ImageSummary):
 
   def gather_kwargs(self, context: Any) -> dict[str, Segmentations]:
     # optimize gather_kwargs to only return num_images many images
-    kwargs = core.resolve_kwargs(self, context)
+    kwargs = kontext.get_from_keys_obj(context, self)
     feature_maps = kwargs["feature_maps"]
     if self.rearrange:
       feature_maps = einops.rearrange(

@@ -113,14 +113,14 @@ def _propagate_parent_in_merge(old_merge: _FnT) -> _FnT:
 
   @functools.wraps(old_merge)
   def new_merge(self, other):
-    # TODO(epot): Comparison should ignore the `key: Key` (valid to merge
-    # metrics from 2 differents origins)
+    # TODO(epot): Comparison should ignore the `key: kontext.Key` (valid to
+    # merge metrics from 2 differents origins)
     if self.parent != other.parent:
       raise ValueError(
           "Trying to merge state comming from different metrics:"
           f" {self.parent} != {other.parent}\n"
-          "If this is raised because the Keys are differents, you can open an "
-          "issue."
+          "If this is raised because the kontext.Keys are differents, you can "
+          "open an issue."
       )
 
     new_self = old_merge(self, other)

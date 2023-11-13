@@ -17,16 +17,17 @@ from __future__ import annotations
 
 import ast
 import collections
+from collections.abc import Mapping, Sequence
 from typing import Any, Optional, TypeVar, Union, overload
 
 from etils import epy
 from etils.etree import jax as etree  # pylint: disable=g-importing-member
 import jax.tree_util
-from kauldron.typing import PyTree  # pylint: disable=g-importing-member
 import lark
 import ml_collections
 
 _T = TypeVar("_T")
+PyTree = Union[_T, Sequence["PyTree[_T]"], Mapping[str, "PyTree[_T]"]]
 
 
 JaxKeyEntry = Union[
@@ -100,7 +101,7 @@ class Path(collections.abc.Sequence):
         `jax.tree_util.tree_flatten_with_path(...)`.
 
     Returns:
-      The corresponding kd.core.Path.
+      The corresponding `kontext.Path`.
     """
     return cls(*(_jax_key_entry_to_kd_path_element(p) for p in jax_path))
 
@@ -140,7 +141,7 @@ class Path(collections.abc.Sequence):
 def _jax_key_entry_to_kd_path_element(
     jax_key_entry: JaxKeyEntry,
 ) -> Part:
-  """Convert a JaxKeyEntry into a valid kd.core.Path element."""
+  """Convert a JaxKeyEntry into a valid `kontext.Path` element."""
   # pytype: disable=match-error
   match jax_key_entry:
     case jax.tree_util.GetAttrKey(name):

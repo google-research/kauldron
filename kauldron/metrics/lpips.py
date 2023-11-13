@@ -25,9 +25,10 @@ from flax import linen as nn
 import flax.struct
 import jax
 from jax import numpy as jnp
+from kauldron import kontext
 from kauldron.metrics import base
 from kauldron.metrics import base_state
-from kauldron.typing import Float, Key, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 
 # Should be private, but changing the name of the class breaks ckpt loading...
@@ -125,9 +126,9 @@ class LpipsVgg(base.Metric):
 
   """
 
-  pred: Key
-  target: Key
-  mask: Optional[Key] = None
+  pred: kontext.Key
+  target: kontext.Key
+  mask: Optional[kontext.Key] = None
 
   @flax.struct.dataclass
   class State(base_state.AverageState):

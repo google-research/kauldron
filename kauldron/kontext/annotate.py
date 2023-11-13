@@ -19,21 +19,23 @@ import difflib
 import functools
 import inspect
 import os
-from typing import Any, Callable, Iterable, Optional
+from typing import Annotated, Any, Callable, Iterable, Optional
 
-import kauldron.typing as ktyping
-from kauldron.utils import paths
-from kauldron.utils import type_utils
+from kauldron.kontext import paths
+from kauldron.kontext import type_utils
+
+_key_token = object()
+Key = Annotated[str, _key_token]
 
 
-def resolve_kwargs(
-    keyed_obj: Any, context: Any, func: Optional[Callable[..., Any]] = None
+def get_from_keys_obj(
+    tree: Any, keyed_obj: Any, *, func: Optional[Callable[..., Any]] = None
 ) -> dict[str, Any]:
   """Resolve the Key annotations of an object for given context.
 
   Args:
+    tree: Any object from which the values are retrieved.
     keyed_obj: An instance of a class with fields annotated as Key.
-    context: Any object from which the values are retrieved.
     func: Optionally pass a function to be called with the kwargs. This adds
       some extra checking to ensure the call function signature matches the
       provided keys.
@@ -81,10 +83,10 @@ def resolve_kwargs(
             "default value."
         )
 
-  return get_values_from_context(context, key_paths, optional_keys)
+  return _get_values_from_context(tree, key_paths, optional_keys)
 
 
-def get_values_from_context(
+def _get_values_from_context(
     context: Any, key_paths: dict[str, str], optional_keys=Optional[set[str]]
 ) -> dict[str, Any]:
   """Get values for key_paths from context with useful errors when failing."""
@@ -137,13 +139,13 @@ def get_keypaths(keyed_obj: Any) -> dict[str, str]:
   """Return a dictionary mapping Key-annotated fieldnames to their paths."""
   return {
       key: getattr(keyed_obj, key)
-      for key in set(type_utils.get_annotated(keyed_obj, ktyping.Key))
+      for key in set(type_utils.get_annotated(keyed_obj, Key))
   }
 
 
 def is_key_annotated(cls_or_obj: type[Any] | Any) -> bool:
   """Check if a given class or instance has fields annotated with `Key`."""
-  return bool(type_utils.get_annotated(cls_or_obj, ktyping.Key))
+  return bool(type_utils.get_annotated(cls_or_obj, Key))
 
 
 class _KeyErrorMessage(str):

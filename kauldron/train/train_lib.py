@@ -24,6 +24,7 @@ from clu import periodic_actions
 from etils import epath
 import jax
 import jax.numpy as jnp
+from kauldron import kontext
 from kauldron import summaries
 from kauldron.train import config_lib
 from kauldron.train import flatboard
@@ -31,7 +32,6 @@ from kauldron.train import metric_writer
 from kauldron.train import timer as timer_module
 from kauldron.train import train_step
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
-from kauldron.utils import paths as paths_lib
 from kauldron.utils import utils
 from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 import tensorflow as tf
@@ -182,7 +182,7 @@ def write_summaries(
   schedule_values = jax.tree_map(
       lambda s: _compute_schedule(s, step), schedules
   )
-  schedule_values = paths_lib.flatten_with_path(
+  schedule_values = kontext.flatten_with_path(
       schedule_values, prefix="schedules", separator="/"
   )
 
@@ -248,13 +248,13 @@ def get_loss_y_keys(config: config_lib.Config) -> Sequence[str]:
   """Get a list of loss-keys for a given config."""
   # train losses
   loss_names = {
-      k for k in paths_lib.flatten_with_path(config.train_losses, separator="/")
+      k for k in kontext.flatten_with_path(config.train_losses, separator="/")
   }
   # evaluator losses
   for evaluator in config.evals.values():
     eval_losses = getattr(evaluator, "losses", {})
     loss_names |= {
-        k for k in paths_lib.flatten_with_path(eval_losses, separator="/")
+        k for k in kontext.flatten_with_path(eval_losses, separator="/")
     }
 
   # If more than one loss, add the total loss
@@ -266,14 +266,13 @@ def get_loss_y_keys(config: config_lib.Config) -> Sequence[str]:
 def get_metric_y_keys(config: config_lib.Config) -> Sequence[str]:
   """Get a list of metric-keys for a given config."""
   metric_names = {
-      k
-      for k in paths_lib.flatten_with_path(config.train_metrics, separator="/")
+      k for k in kontext.flatten_with_path(config.train_metrics, separator="/")
   }
   # add evaluator metrics
   for evaluator in config.evals.values():
     eval_metrics = getattr(evaluator, "metrics", {})
     metric_names |= {
-        k for k in paths_lib.flatten_with_path(eval_metrics, separator="/")
+        k for k in kontext.flatten_with_path(eval_metrics, separator="/")
     }
   return [f"metrics/{l.replace('.', '/')}" for l in sorted(metric_names)]
 
@@ -281,7 +280,7 @@ def get_metric_y_keys(config: config_lib.Config) -> Sequence[str]:
 def get_schedule_y_keys(config) -> Sequence[str]:
   """Get a list of schedule-keys for a given config."""
   schedule_names = [
-      k for k in paths_lib.flatten_with_path(config.schedules, separator="/")
+      k for k in kontext.flatten_with_path(config.schedules, separator="/")
   ]
   return [f"schedules/{l.replace('.', '/')}" for l in schedule_names]
 

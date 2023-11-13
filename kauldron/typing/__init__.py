@@ -15,7 +15,7 @@
 """Common Typing Annotations."""
 from __future__ import annotations
 
-from typing import Annotated, Any, Callable, Hashable, Sequence, Union
+from typing import Any, Callable, Hashable, Sequence, Union
 
 from clu.data.dataset_iterator import ArraySpec, ElementSpec, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 import jax
@@ -48,9 +48,6 @@ PRNGKey = UInt32["2"]
 PRNGKeyLike = Union[int, Sequence[int], np.ndarray, PRNGKey]
 
 Dtype = Any
-
-_key_token = object()
-Key = Annotated[str, _key_token]
 
 Initializer = Callable[[PRNGKey, Shape, Dtype], Array]
 Axes = int | tuple[int, ...]

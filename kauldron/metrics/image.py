@@ -24,9 +24,10 @@ import flax.struct
 import jax
 from jax import numpy as jnp
 import jax.scipy as jsp
+from kauldron import kontext
 from kauldron.metrics import base
 from kauldron.metrics import base_state
-from kauldron.typing import Float, Key, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 
 def psnr(
@@ -42,9 +43,9 @@ def psnr(
 class Psnr(base.Metric):
   """PSNR."""
 
-  pred: Key
-  target: Key
-  mask: Optional[Key] = None
+  pred: kontext.Key
+  target: kontext.Key
+  mask: Optional[kontext.Key] = None
 
   dynamic_range: float = 1.0
 
@@ -139,9 +140,9 @@ def _compute_ssim(
 class Ssim(base.Metric):
   """Structural similarity (SSIM)."""
 
-  pred: Key
-  target: Key
-  mask: Optional[Key] = None
+  pred: kontext.Key
+  target: kontext.Key
+  mask: Optional[kontext.Key] = None
 
   max_val: float = 1
   filter_size: int = 11

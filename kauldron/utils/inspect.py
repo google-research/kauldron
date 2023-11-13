@@ -28,12 +28,11 @@ from flax import linen as nn
 import jax
 from kauldron import data
 from kauldron import konfig
+from kauldron import kontext
 from kauldron import random as kd_random
 from kauldron import train
 from kauldron.data import utils as data_utils
 from kauldron.typing import Float, UInt8  # pylint: disable=g-multiple-import
-from kauldron.utils import core
-from kauldron.utils import paths as paths_lib
 from kauldron.utils import pd_utils
 import mediapy as media
 import ml_collections
@@ -210,7 +209,7 @@ def _format_param_shapes(module_variables) -> str:
   if not params:
     return ""
   tree = jax.tree_map(_convert_to_array_spec, params)
-  flat_tree = core.flatten_with_path(tree)
+  flat_tree = kontext.flatten_with_path(tree)
   return "<br>".join(f"<b>{k}</b>: {_nbsp(v)}" for k, v in flat_tree.items())
 
 
@@ -245,7 +244,7 @@ def _get_styled_df(table, model_config: konfig.ConfigDict) -> pd.DataFrame:
     args, input_ann, return_ann = _get_args(
         row.module_type, row.method, row.inputs
     )
-    m_config = core.get_by_path(model_config, ".".join(row.path))
+    m_config = kontext.get_by_path(model_config, ".".join(row.path))
     df_rows.append({
         "Cfg": _format_module_config(m_config),
         "Path": _format_module_path(row.path),
@@ -375,7 +374,7 @@ def get_batch_stats(batch: _Example) -> pd.DataFrame:
               "Mean": np.mean(v),
               "StdDev": np.std(v),
           }
-          for k, v in paths_lib.flatten_with_path(batch).items()
+          for k, v in kontext.flatten_with_path(batch).items()
       ]
   )
 

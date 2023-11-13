@@ -17,7 +17,7 @@
 import dataclasses
 from typing import Annotated, Optional, TypeVar
 
-from kauldron.utils import type_utils
+from kauldron.kontext import type_utils
 import pytest
 
 _token_a = object()

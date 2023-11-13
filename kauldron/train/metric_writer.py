@@ -23,10 +23,10 @@ from clu import parameter_overview
 from etils import epath
 from etils.etree import jax as etree
 from kauldron import konfig
+from kauldron import kontext
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 from kauldron.typing import Array, Float, Scalar  # pylint: disable=g-multiple-import
 from kauldron.utils import inspect as kd_inspect
-from kauldron.utils import paths
 import numpy as np
 import pandas as pd
 
@@ -171,7 +171,7 @@ class KDMetricWriter(metric_writers.MetricWriter):
     )
     # create a flat spec for the context
     context_spec = etree.spec_like(
-        paths.flatten_with_path({
+        kontext.flatten_with_path({
             "step": context.step,
             "batch": config.train_ds.element_spec,
             "params": context.params,

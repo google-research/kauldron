@@ -19,7 +19,8 @@ import dataclasses
 from typing import Optional
 
 import grain.tensorflow as grain
-from kauldron.typing import Key, TfFloat, TfUInt8, check_type  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron import kontext
+from kauldron.typing import TfFloat, TfUInt8, check_type  # pylint: disable=g-multiple-import,g-importing-member
 
 import tensorflow_models as tfm
 
@@ -47,8 +48,8 @@ class RandAugment(grain.RandomMapTransform):
     exclude_ops: exclude selected operations.
   """
 
-  image_key: Key = "image"
-  boxes_key: Optional[Key] = None
+  image_key: kontext.Key = "image"
+  boxes_key: Optional[kontext.Key] = None
 
   num_layers: int = 2
   magnitude: int = 10

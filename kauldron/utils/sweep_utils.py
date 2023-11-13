@@ -173,7 +173,7 @@ def update_with_sweep(
   """Update the config with sweep."""
   # Might create issue with adhoc import, but `update_with_sweep` is likely not
   # called on Colab
-  from kauldron.utils import paths  # pylint: disable=g-import-not-at-top
+  from kauldron import kontext  # pylint: disable=g-import-not-at-top
 
   if not sweep_kwargs:
     return config
@@ -188,7 +188,7 @@ def update_with_sweep(
   for k, v in sweep_kwargs.items():
     root = config
 
-    *parts, target = paths.Path.from_str(k).parts
+    *parts, target = kontext.Path.from_str(k).parts
     for part in parts:
       root = root[part]
       if not isinstance(root, (list, dict, ml_collections.ConfigDict)):

@@ -17,16 +17,16 @@ from __future__ import annotations
 
 import dataclasses
 
+from kauldron import kontext
 from kauldron.metrics import base
 from kauldron.metrics import base_state
-from kauldron.typing import Key  # pylint: disable=g-importing-member
 import numpy as np
 
 
 # --------- Test a custom metric -------
 @dataclasses.dataclass(eq=True, frozen=True, kw_only=True)
 class IntAverage(base.Metric):
-  x: Key = "batch.x"
+  x: kontext.Key = "batch.x"
 
   class State(base_state.AverageState):
 

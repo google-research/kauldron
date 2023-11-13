@@ -21,8 +21,9 @@ import flax.linen as nn
 import jax
 import jax.numpy as jnp
 import jax.tree_util
+from kauldron import kontext
 from kauldron.typing import ArraySpec, ElementSpec, PyTree  # pylint: disable=g-multiple-import,g-importing-member
-from kauldron.utils import core
+from kauldron.utils import context as context_lib
 import numpy as np
 
 
@@ -60,10 +61,10 @@ Kwargs = dict[str, jax.Array]
 
 
 def get_model_inputs(
-    model: nn.Module, context: core.Context
+    model: nn.Module, context: context_lib.Context
 ) -> tuple[Args, Kwargs]:
   """Get the inputs for a top-level module from a batch."""
-  if core.is_key_annotated(model):
-    return (), core.resolve_kwargs(model, context, func=model.__call__)
+  if kontext.is_key_annotated(model):
+    return (), kontext.get_from_keys_obj(context, model, func=model.__call__)
   else:
     return (context.batch,), {}

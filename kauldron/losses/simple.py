@@ -18,8 +18,9 @@ from __future__ import annotations
 import dataclasses
 
 import jax.numpy as jnp
+from kauldron import kontext
 from kauldron.losses import base
-from kauldron.typing import Float, Int, Key, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Float, Int, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import optax
 
 
@@ -30,8 +31,8 @@ import optax
 class L1(base.Loss):
   """L1 loss."""
 
-  preds: Key
-  targets: Key
+  preds: kontext.Key
+  targets: kontext.Key
 
   @typechecked
   def get_values(self, preds: Float["*a"], targets: Float["*a"]) -> Float["*a"]:
@@ -42,8 +43,8 @@ class L1(base.Loss):
 class L2(base.Loss):
   """L2 loss."""
 
-  preds: Key
-  targets: Key
+  preds: kontext.Key
+  targets: kontext.Key
 
   @typechecked
   def get_values(self, preds: Float["*a"], targets: Float["*a"]) -> Float["*a"]:
@@ -57,8 +58,8 @@ class L2(base.Loss):
 class SoftmaxCrossEntropy(base.Loss):
   """Softmax cross-entropy loss."""
 
-  logits: Key = "preds.logits"
-  labels: Key = "batch.label"
+  logits: kontext.Key = "preds.logits"
+  labels: kontext.Key = "batch.label"
 
   @typechecked
   def get_values(
@@ -71,8 +72,8 @@ class SoftmaxCrossEntropy(base.Loss):
 class SoftmaxCrossEntropyWithIntLabels(base.Loss):
   """Softmax cross-entropy loss with integer labels."""
 
-  logits: Key = "preds.logits"
-  labels: Key = "batch.label"
+  logits: kontext.Key = "preds.logits"
+  labels: kontext.Key = "batch.label"
 
   @typechecked
   def get_values(
@@ -87,8 +88,8 @@ class SoftmaxCrossEntropyWithIntLabels(base.Loss):
 class SigmoidBinaryCrossEntropy(base.Loss):
   """Sigmoid cross-entropy loss with binary labels."""
 
-  logits: Key = "preds.logits"
-  labels: Key = "batch.label"
+  logits: kontext.Key = "preds.logits"
+  labels: kontext.Key = "batch.label"
 
   @typechecked
   def get_values(
