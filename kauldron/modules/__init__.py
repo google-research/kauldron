@@ -27,6 +27,7 @@ from kauldron.modules.knn_types import NormModule
 from kauldron.modules.knn_types import PositionEmbedding
 
 # Modules
+from kauldron.modules.adapter import ExternalModule
 from kauldron.modules.misc import Dropout
 from kauldron.modules.misc import Identity
 from kauldron.modules.pos_embeddings import AddEmbedding
