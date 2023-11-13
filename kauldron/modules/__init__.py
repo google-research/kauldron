@@ -19,7 +19,6 @@
 # Do not sort imports
 # fmt: skip-import-sorting
 
-from kauldron.klinen.module import Module
 from kauldron.utils.train_property import train_property
 from kauldron.utils.interms_property import interms_property
 
