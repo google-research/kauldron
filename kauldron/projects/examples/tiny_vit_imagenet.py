@@ -52,7 +52,7 @@ def get_config():
       "accuracy": kd.metrics.Accuracy(),
       "roc_auc": kd.metrics.RocAuc(),
       "final_attention_std": kd.metrics.Std(
-          values="interms.encoder.layer_11.MHDPA.attention[0]"
+          values="interms.encoder.layers_11.attention.attn_weights[0]"
       ),
   }
 
@@ -60,7 +60,7 @@ def get_config():
   cfg.schedules = {
       "learning_rate": optax.warmup_cosine_decay_schedule(
           init_value=0.0,
-          peak_value=0.001,
+          peak_value=0.0003,
           warmup_steps=5_000,
           decay_steps=cfg.ref.num_train_steps,
       )

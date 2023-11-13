@@ -22,9 +22,11 @@
 from kauldron.utils.train_property import train_property
 from kauldron.utils.interms_property import interms_property
 
-# Module Types
+# module types
+from kauldron.modules.knn_types import AttentionModule
 from kauldron.modules.knn_types import NormModule
-from kauldron.modules.knn_types import PositionEmbedding
+from kauldron.modules.knn_types import ImageTokenizer
+from kauldron.modules.knn_types import TransformerBlock
 
 # Modules
 from kauldron.modules.adapter import ExternalModule

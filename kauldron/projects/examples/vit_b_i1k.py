@@ -21,7 +21,6 @@ with konfig.imports():
   from kauldron import kd
   from kauldron.data import extra_image_ops as kd_extra
   import optax
-  import flax.linen as nn
 # pylint: enable=g-import-not-at-top
 
 
@@ -38,9 +37,13 @@ def get_config():
   # TODO(klausg): classifier token
   cfg.model = kd.nn.Vit(
       image="batch.image",
-      encoder=kd.nn.VitEncoder.from_variant_str("ViT-B/16"),
+      encoder=kd.nn.VitEncoder.from_variant_str(
+          "ViT-B/16",
+          block_type=kd.nn.ParallelAttentionBlock,
+          prepend_cls_token=True,
+      ),
       num_classes=1000,
-      init_head_bias=nn.initializers.constant(-6.9),
+      mode="cls_token",
   )
 
   # Training
@@ -61,7 +64,7 @@ def get_config():
   cfg.schedules = {
       "learning_rate": optax.warmup_cosine_decay_schedule(
           init_value=0.0,
-          peak_value=0.003,
+          peak_value=0.001,
           warmup_steps=10_000,
           decay_steps=cfg.ref.num_train_steps,
       )
