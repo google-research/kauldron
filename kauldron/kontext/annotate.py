@@ -27,6 +27,8 @@ from kauldron.kontext import type_utils
 _key_token = object()
 Key = Annotated[str, _key_token]
 
+REQUIRED = "__KEY_REQUIRED__"
+
 
 def get_from_keys_obj(
     tree: Any, keyed_obj: Any, *, func: Optional[Callable[..., Any]] = None
@@ -47,7 +49,13 @@ def get_from_keys_obj(
   Raises:
     KeyError: If any non-optional keys are mapped to None.
   """
-  key_paths = get_keypaths(keyed_obj)
+  key_paths = _get_keypaths(keyed_obj)
+  missing_keys = [k for k, v in key_paths.items() if v == REQUIRED]
+  if missing_keys:
+    raise ValueError(
+        f"Cannot resolve required keys: {missing_keys} for {keyed_obj}.\n"
+        "Keys should be defined during object construction."
+    )
   optional_keys = {  # treat Optional[Key] as optional only if set to None
       k
       for k in type_utils.get_optional_fields(keyed_obj)
@@ -135,7 +143,7 @@ def _get_missing_key_error_message(
   )
 
 
-def get_keypaths(keyed_obj: Any) -> dict[str, str]:
+def _get_keypaths(keyed_obj: Any) -> dict[str, str]:
   """Return a dictionary mapping Key-annotated fieldnames to their paths."""
   return {
       key: getattr(keyed_obj, key)

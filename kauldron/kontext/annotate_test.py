@@ -12,18 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Kontext is a small self-contained library to manipulate nested trees.
+"""Test."""
 
-* Extract values
+import dataclasses
 
-"""
+from kauldron import kontext
+import pytest
 
-# pylint: disable=g-importing-member,unused-import
 
-from kauldron.kontext.annotate import get_from_keys_obj
-from kauldron.kontext.annotate import is_key_annotated
-from kauldron.kontext.annotate import Key
-from kauldron.kontext.annotate import REQUIRED
-from kauldron.kontext.paths import flatten_with_path
-from kauldron.kontext.paths import get_by_path
-from kauldron.kontext.paths import Path
+@dataclasses.dataclass(frozen=True)
+class A:
+  x: kontext.Key = kontext.REQUIRED
+  y: None | kontext.Key = None
+
+
+def test_missing():
+  tree = {'a': 1, 'b': 2, 'c': 3}
+
+  with pytest.raises(ValueError, match='required keys'):
+    kontext.get_from_keys_obj(tree, A())
+
+  with pytest.raises(ValueError, match='required keys'):
+    kontext.get_from_keys_obj(tree, A(y='a'))
+
+  assert kontext.get_from_keys_obj(tree, A(x='a')) == {'x': 1, 'y': None}

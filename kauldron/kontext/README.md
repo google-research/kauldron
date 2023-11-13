@@ -77,8 +77,8 @@ Each model can define through Key what are the expected model inputs:
 
 ```python
 class MyModel(nn.Module):
-  img: kontext.Key = kontext.MISSING  # Match `__call__` signature
-  label: kontext.Key = kontext.MISSING
+  img: kontext.Key = kontext.REQUIRED  # Match `__call__` signature
+  label: kontext.Key = kontext.REQUIRED
 
   @nn.compact
   def __call__(self, img, label):
