@@ -86,8 +86,8 @@ class Config(config_util.BaseConfig):
   # usually set by the launcher
   workdir: edc.AutoCast[epath.Path] = epath.Path()
   # TODO(epot): Replace by non-TF generic protocol
-  train_ds: data.TFDataPipeline
-  eval_ds: data.TFDataPipeline = None
+  train_ds: data.Pipeline
+  eval_ds: Optional[data.Pipeline] = None
   model: nn.Module
   num_train_steps: Optional[int] = None
   stop_after_steps: Optional[int] = None

@@ -282,7 +282,7 @@ def _get_styled_df(table, model_config: konfig.ConfigDict) -> pd.DataFrame:
 
 def _get_summary_table(
     model: nn.Module,
-    ds: data.TFDataPipeline,
+    ds: data.Pipeline,
     rngs: dict[str, kd_random.PRNGKey],
 ) -> nn.summary.Table:
   """Return model overview as a `nn.summary.Table`."""
@@ -350,7 +350,7 @@ def eval_context_shape(model, losses, metrics, summaries, elem_spec, rngs):
 
 def get_colab_model_overview(
     model: nn.Module,
-    train_ds: data.TFDataPipeline,
+    train_ds: data.Pipeline,
     model_config: konfig.ConfigDict,
     rngs: dict[str, kd_random.PRNGKey],
 ) -> pd.DataFrame:

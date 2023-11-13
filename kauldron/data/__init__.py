@@ -13,9 +13,12 @@
 # limitations under the License.
 
 """Data modules."""
+
 # pylint: disable=g-importing-member
 from kauldron.data import loaders
 from kauldron.data import utils
+from kauldron.data.pipelines import Pipeline
+from kauldron.data.pipelines import PyGrainPipeline
 from kauldron.data.pipelines import TFDataPipeline
 from kauldron.data.preprocessing import CenterCrop
 from kauldron.data.preprocessing import Elements

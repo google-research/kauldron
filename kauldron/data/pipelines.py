@@ -20,7 +20,10 @@ from typing import Any, Mapping, Optional, TypeAlias
 
 from etils import edc
 from etils import enp
+from etils import epy
+from etils.etree import jax as etree  # pylint: disable=g-importing-member
 from grain._src.tensorflow import transforms
+import grain.python as pygrain
 import grain.tensorflow as grain
 import jax
 from kauldron.data import data_utils
@@ -39,7 +42,45 @@ _NpArray: TypeAlias = Any
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True, eq=True)
-class TFDataPipeline(config_util.UpdateFromRootCfg):
+class Pipeline(config_util.UpdateFromRootCfg):
+  """Base class for kauldron data pipelines.
+
+  Attributes:
+    batch_size: Global batch size. Has to be divisible by number of global
+      devices. Pipeline should take care of sharding the data between hosts.
+    seed: Random seed to be used for things like shuffling and randomness in
+      preprocessing. Defaults to the seed from the root config.
+  """
+
+  batch_size: int
+  seed: Optional[PRNGKeyLike] = config_util.ROOT_CFG_REF.seed
+
+  def __iter__(self) -> PyTree[_NpArray]:
+    """Iterator that produces batches as PyTrees of Sharded jax.Arrays."""
+    raise NotImplementedError()
+
+  @functools.cached_property
+  def element_spec(self) -> PyTree[enp.ArraySpec]:
+    """Returns the element specs of a single batch."""
+    first_elem = next(iter(self))
+    return etree.spec_like(first_elem)
+
+  @functools.cached_property
+  def host_batch_size(self) -> int:
+    num_hosts = jax.process_count()
+    num_devices = jax.device_count()
+    if self.batch_size % num_devices != 0:
+      raise ValueError(
+          "batch_size must be divisible by num_devices."
+          f" {self.batch_size=} {num_devices=}"
+      )
+    return self.batch_size // num_hosts
+
+  __repr__ = edc.repr
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True, eq=True)
+class TFDataPipeline(Pipeline):
   """Basic tf.data pipeline.
 
   Attributes:
@@ -48,13 +89,6 @@ class TFDataPipeline(config_util.UpdateFromRootCfg):
     transformations: A list of transformations to apply to the dataset. Each
       transformation should be either a `grain.MapTransform` or a
       `grain.RandomMapTransform`.
-    batch_size: Global batch size (has to be divisible by number of global
-      devices). If specified, then the batch_fn is set to be
-      `grain.TfBatch(batch_size=batch_size//num_hosts, drop_remainder=True)`
-      Mutually exclusive with `batch_fn` argument.
-    batch_fn: A batching function. Note that this transformation has to produce
-      batches for individual devices, so it has to use a per-host (not global)
-      batch size.
     tf_data_options: An optional tf.data.Options instance to be applied to the
       dataset.
     prefetch_size: Number of batches to prefetch for this dataset. Defaults to
@@ -65,24 +99,13 @@ class TFDataPipeline(config_util.UpdateFromRootCfg):
   loader: base_data_loader.DataLoader
   transformations: grain.Transformations
   # TODO(epot): Users should also be able to specify drop_reminder or mask
-  batch_size: Optional[int] = None
   tf_data_options: Optional[tf.data.Options] = None
   prefetch_size: Optional[int] = tf.data.AUTOTUNE
-
-  seed: Optional[PRNGKeyLike] = config_util.ROOT_CFG_REF.seed
 
   @functools.cached_property
   def batch_fn(self) -> BatchFn:
     """Batch transformaton."""
-    num_hosts = jax.process_count()
-    num_devices = jax.device_count()
-    if self.batch_size % num_devices != 0:
-      raise ValueError(
-          "batch_size must be divisible by num_devices."
-          f" {self.batch_size=} {num_devices=}"
-      )
-    host_batch_size = self.batch_size // num_hosts
-    return grain.TfBatch(batch_size=host_batch_size, drop_remainder=True)
+    return grain.TfBatch(batch_size=self.host_batch_size, drop_remainder=True)
 
   @functools.cached_property
   def _ds_iter(self) -> data_utils.IterableDataset:
@@ -131,8 +154,79 @@ class TFDataPipeline(config_util.UpdateFromRootCfg):
     """Returns the element specs of the dataset."""
     return self._ds_iter.element_spec
 
-  __repr__ = edc.repr
-
 
 def _drop_grain_meta_features(features: Mapping[str, Any]) -> Mapping[str, Any]:
   return {k: v for k, v in features.items() if k not in grain.META_FEATURES}
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True, eq=True)
+class PyGrainPipeline(Pipeline):
+  """Basic pygrain pipeline.
+
+  Attributes:
+    data_source: a random access datasource
+    transformations: A list of transformations to apply to the dataset. Each
+      transformation should be either a `grain.MapTransform` or a
+      `grain.RandomMapTransform`.
+    shuffle: whether to shuffle
+    worker_count: how many worker processes to use for data loading
+  """
+
+  data_source: pygrain.RandomAccessDataSource
+  transformations: grain.Transformations
+  shuffle: bool
+  num_epochs: Optional[int] = None
+  worker_count: int = 16
+
+  @functools.cached_property
+  def batch_fn(self) -> pygrain.Batch:
+    """Batch transformaton."""
+    # TODO(klausg): Users should also be able to specify drop_reminder or mask
+    return pygrain.Batch(self.host_batch_size, drop_remainder=True)
+
+  @property
+  def sampler(self) -> pygrain.Sampler:
+    return pygrain.IndexSampler(
+        num_records=len(self.data_source),
+        num_epochs=None,
+        seed=self.seed,
+        shuffle=self.shuffle,
+        shard_options=pygrain.ShardByJaxProcess(),
+    )
+
+  @functools.cached_property
+  def _ds_iter(self) -> data_utils.IterableDataset:
+    """Returns a numpy tf.data.Dataset iterator."""
+    self._assert_root_cfg_resolved()
+
+    transformations = []
+    transformations.extend(self.transformations)
+    transformations.append(self.batch_fn)
+
+    transformations.append(DevicePut())
+
+    worker_count = self.worker_count
+    if epy.is_notebook():  # in colab worker_count has to be 0
+      # TODO(klausg): autodetect if Kernel supports multiprocessing
+      print("Disabling pygrain multi-processing (unsupported in colab).")
+      worker_count = 0
+
+    dataloader = pygrain.DataLoader(
+        data_source=self.data_source,
+        operations=transformations,
+        sampler=self.sampler,
+        worker_count=worker_count,
+        shard_options=pygrain.ShardByJaxProcess(),
+    )
+    return data_utils.IterableDataset(dataloader)
+
+  def __iter__(self) -> PyTree[_NpArray]:
+    """Iterate over the dataset elements."""
+    return iter(self._ds_iter)
+
+
+class DevicePut(pygrain.MapTransform):
+  """Put the batch onto device in a sharded way."""
+
+  def map(self, batch):
+    return sharding.device_put(batch, sharding.SHARDED)

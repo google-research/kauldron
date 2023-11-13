@@ -73,7 +73,7 @@ class Evaluator(config_util.BaseConfig, config_util.UpdateFromRootCfg):
   name: str = _DEFAULT_EVAL_NAME
   run_every: int
   num_batches: Optional[int]
-  ds: data.TFDataPipeline = config_util.ROOT_CFG_REF.eval_ds
+  ds: data.Pipeline = config_util.ROOT_CFG_REF.eval_ds
   losses: dict[str, losses_lib.Loss] = config_util.ROOT_CFG_REF.train_losses
   metrics: dict[str, metrics_lib.Metric] = (
       config_util.ROOT_CFG_REF.train_metrics
