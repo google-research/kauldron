@@ -26,6 +26,12 @@ class A:
   y: None | kontext.Key = None
 
 
+class B:
+
+  def __kontext_keys__(self):
+    return {'x': 'a', 'y': 'b'}
+
+
 def test_missing():
   tree = {'a': 1, 'b': 2, 'c': 3}
 
@@ -36,3 +42,9 @@ def test_missing():
     kontext.get_from_keys_obj(tree, A(y='a'))
 
   assert kontext.get_from_keys_obj(tree, A(x='a')) == {'x': 1, 'y': None}
+
+
+def test_protocol():
+  tree = {'a': 1, 'b': 2, 'c': 3}
+
+  assert kontext.get_from_keys_obj(tree, B()) == {'x': 1, 'y': 2}

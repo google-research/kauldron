@@ -29,6 +29,9 @@ Key = Annotated[str, _key_token]
 
 REQUIRED = "__KEY_REQUIRED__"
 
+# Protocol to returns the Keys
+_GET_KEY_PROTOCOL = "__kontext_keys__"
+
 
 def get_from_keys_obj(
     tree: Any, keyed_obj: Any, *, func: Optional[Callable[..., Any]] = None
@@ -37,10 +40,11 @@ def get_from_keys_obj(
 
   Args:
     tree: Any object from which the values are retrieved.
-    keyed_obj: An instance of a class with fields annotated as Key.
-    func: Optionally pass a function to be called with the kwargs. This adds
-      some extra checking to ensure the call function signature matches the
-      provided keys.
+    keyed_obj: An instance of a class with fields annotated as Key, or
+      implementing the `__kontext_keys__()` protocol.
+    func: Optionally pass a function from which the signature should match the
+      keys. This adds some extra checking to ensure the call function signature
+      matches the provided keys.
 
   Returns:
     A dict mapping Key names to values from context corresponding to the paths
@@ -145,6 +149,8 @@ def _get_missing_key_error_message(
 
 def _get_keypaths(keyed_obj: Any) -> dict[str, str]:
   """Return a dictionary mapping Key-annotated fieldnames to their paths."""
+  if hasattr(type(keyed_obj), _GET_KEY_PROTOCOL):
+    return getattr(keyed_obj, _GET_KEY_PROTOCOL)()
   return {
       key: getattr(keyed_obj, key)
       for key in set(type_utils.get_annotated(keyed_obj, Key))
@@ -153,7 +159,9 @@ def _get_keypaths(keyed_obj: Any) -> dict[str, str]:
 
 def is_key_annotated(cls_or_obj: type[Any] | Any) -> bool:
   """Check if a given class or instance has fields annotated with `Key`."""
-  return bool(type_utils.get_annotated(cls_or_obj, Key))
+  return hasattr(cls_or_obj, _GET_KEY_PROTOCOL) or bool(
+      type_utils.get_annotated(cls_or_obj, Key)
+  )
 
 
 class _KeyErrorMessage(str):
