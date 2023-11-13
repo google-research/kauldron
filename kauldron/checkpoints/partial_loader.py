@@ -24,7 +24,6 @@ from typing import Any, TypeVar
 from etils import epath
 from etils import epy
 from etils.etree import jax as etree  # pylint: disable=g-importing-member
-from flax.training import orbax_utils
 import jax
 from kauldron import kontext
 from kauldron.checkpoints import checkpointer
@@ -223,12 +222,6 @@ class KauldronSource(CkptSource):
         # Use `_NOT_RESTORED` sentinel value as `orbax` will silently
         # forward the additional values not present in the checkpoint.
         initial_state=jax.tree_map(lambda _: _NOT_RESTORED, item),
-        restore_kwargs=dict(
-            restore_args=orbax_utils.restore_args_from_target(item),
-            # Set `transforms={}` to indicate `orbax` to drop the keys not
-            # specified in `item`
-            transforms={},
-        ),
     )
 
     # Validate `state` do not contain `_NOT_RESTORED`
