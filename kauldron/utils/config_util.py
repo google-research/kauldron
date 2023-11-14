@@ -83,17 +83,17 @@ class BaseConfig(konfig.WithRef):
 
 
 @dataclasses.dataclass(frozen=True)
-class _FakeRootCfg:
+class _FakeRootTrainer:
   """Fake root config reference object.
 
-  See `UpdateFromRootCfg` for usage.
+  See `UpdateFromRootTrainer` for usage.
 
   If the field is not set, the value will be copied from the root
   `kd.train.Trainer` object, after it is created.
   """
 
-  parent: _FakeRootCfg | None = None
-  name: str = 'cfg'
+  parent: _FakeRootTrainer | None = None
+  name: str = 'trainer'
 
   def __getattr__(self, name: str) -> Any:
     if name.startswith('_'):
@@ -104,10 +104,10 @@ class _FakeRootCfg:
       # Context: https://github.com/python/cpython/issues/107580
       # `inspect.unwrap()` check for `__wrapped__`
       return super().__getattribute__('__isabstractmethod__')
-    return _FakeRootCfg(parent=self, name=name)
+    return _FakeRootTrainer(parent=self, name=name)
 
   @classmethod
-  def make_fake_cfg(cls) -> config_lib.Trainer:
+  def make_fake_trainer(cls) -> config_lib.Trainer:
     return cls()  # pytype: disable=bad-return-type
 
   @property
@@ -124,18 +124,18 @@ class _FakeRootCfg:
     return f'{type(self).__name__}({qualname!r})'
 
   def __set_name__(self, owner, name):
-    if not issubclass(owner, UpdateFromRootCfg):
+    if not issubclass(owner, UpdateFromRootTrainer):
       raise TypeError(
-          '`ROOT_CFG_REF` can only be assigned on subclasses of'
-          f' `UpdateFromRootCfg`.\nFor: {owner.__name__}.{name} = {self}'
+          '`ROOT_TRAINER_REF` can only be assigned on subclasses of'
+          f' `UpdateFromRootTrainer`.\nFor: {owner.__name__}.{name} = {self}'
       )
 
 
-ROOT_CFG_REF: config_lib.Trainer = _FakeRootCfg.make_fake_cfg()
+ROOT_TRAINER_REF: config_lib.Trainer = _FakeRootTrainer.make_fake_trainer()
 
 
 @dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
-class UpdateFromRootCfg:
+class UpdateFromRootTrainer:
   """Allow child object to be updated with values from the base config.
 
   For example:
@@ -145,72 +145,71 @@ class UpdateFromRootCfg:
 
   To use, either:
 
-  * Set your dataclass fields to `ROOT_CFG_REF.xxx` to specify the fields should
+  * Set your dataclass fields to `ROOT_TRAINER_REF.xxx` to specify the fields
+  should
     be copied from the base config.
-  * Overwrite the `update_from_root_cfg` method, for a custom initialization.
+  * Overwrite the `update_from_root_trainer` method, for a custom
+  initialization.
 
   When using, make sure to also update the `kd.train.Trainer.__post_init__` to
   call
-  `update_from_root_cfg`. Currently this not done automatically.
+  `update_from_root_trainer`. Currently this not done automatically.
 
   Example:
 
   ```python
   @dataclasses.dataclass
   class MyObject:
-    workdir: epath.Path = ROOT_CFG_REF.workdir
+    workdir: epath.Path = ROOT_TRAINER_REF.workdir
 
 
-  root_cfg = kd.train.Trainer(workdir='/path/to/dir')
+  trainer = kd.train.Trainer(workdir='/path/to/dir')
 
   obj = MyObject()  # Workdir not set yet
 
-  # Copy the `workdir` from `root_cfg`
-  obj = obj.update_from_root_cfg(root_cfg)
-  assert obj.workdir == root_cfg.work_dir
+  # Copy the `workdir` from `trainer`
+  obj = obj.update_from_root_trainer(trainer)
+  assert obj.workdir == trainer.work_dir
   ```
-
-  Attributes:
-    _REUSE_FROM_ROOT_CFG: Mapping <root_cfg attribute> to <self attribute>
   """
 
-  def update_from_root_cfg(
-      self: _SelfT, root_cfg: config_lib.Trainer
+  def update_from_root_trainer(
+      self: _SelfT, trainer: config_lib.Trainer
   ) -> _SelfT:
     """Returns a copy of `self`, potentially with updated values."""
     fields_to_replace = {}
     for f in dataclasses.fields(self):
       default = f.default
-      if not isinstance(default, _FakeRootCfg):
+      if not isinstance(default, _FakeRootTrainer):
         continue
       value = getattr(self, f.name)
-      if not isinstance(value, _FakeRootCfg):
+      if not isinstance(value, _FakeRootTrainer):
         continue
-      # value is a fake cfg, should be update
-      new_value = root_cfg
+      # value is a fake trainer, should be update
+      new_value = trainer
       for attr in value.names[1:]:
-        new_value = getattr(root_cfg, attr)
+        new_value = getattr(trainer, attr)
       fields_to_replace[f.name] = new_value
     if not fields_to_replace:
       return self
     else:
       return dataclasses.replace(self, **fields_to_replace)
 
-  def _assert_root_cfg_resolved(self) -> None:
-    """Raise an error if one attribute is still a `ROOT_CFG_REF`."""
-    return self._assert_root_cfg_resolved_value
+  def _assert_root_trainer_resolved(self) -> None:
+    """Raise an error if one attribute is still a `ROOT_TRAINER_REF`."""
+    return self._assert_root_trainer_resolved_value
 
   @functools.cached_property
-  def _assert_root_cfg_resolved_value(self) -> None:
+  def _assert_root_trainer_resolved_value(self) -> None:
     for f in dataclasses.fields(self):
-      if not isinstance(f.default, _FakeRootCfg):
+      if not isinstance(f.default, _FakeRootTrainer):
         continue
       value = getattr(self, f.name)
-      if isinstance(value, _FakeRootCfg):
+      if isinstance(value, _FakeRootTrainer):
         raise ValueError(
             f'{type(self).__qualname__}.{f.name} is an unresolved'
-            f' `ROOT_CFG_REF` value ({value}).\nTo resolve the value, either'
-            f' explicitly set `{f.name}` in `__init__`, or call'
-            ' `obj.update_from_root_cfg(root_cfg)` to copy the value from the'
-            ' root `kd.train.Trainer` object.'
+            f' `ROOT_TRAINER_REF` value ({value}).\nTo resolve the value,'
+            f' either explicitly set `{f.name}` in `__init__`, or call'
+            ' `obj.update_from_root_trainer(trainer)` to copy the value from '
+            'the root `kd.train.Trainer` object.'
         )

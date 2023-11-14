@@ -153,7 +153,7 @@ class Trainer(config_util.BaseConfig):
         object.__setattr__(self, name, default_factory())
 
     # Some config object values are lazy-initialized from the root config.
-    # See `UpdateFromRootCfg` for details
+    # See `UpdateFromRootTrainer` for details
     for attr_name in (
         'train_ds',
         'rng_streams',
@@ -163,14 +163,16 @@ class Trainer(config_util.BaseConfig):
     ):
       if hasattr(self, attr_name):
         object.__setattr__(
-            self, attr_name, getattr(self, attr_name).update_from_root_cfg(self)
+            self,
+            attr_name,
+            getattr(self, attr_name).update_from_root_trainer(self),
         )
     if self.evals:
       evals = evaluators.normalize_evaluators(self.evals)
       object.__setattr__(
           self,
           'evals',
-          {k: v.update_from_root_cfg(self) for k, v in evals.items()},
+          {k: v.update_from_root_trainer(self) for k, v in evals.items()},
       )
 
   def __post_konfig_resolve__(self, cfg: konfig.ConfigDict) -> None:

@@ -180,16 +180,16 @@ def _reduce_states(
 
 
 @dataclasses.dataclass(kw_only=True, eq=True, frozen=True)
-class ModelWithAux(config_util.UpdateFromRootCfg):
+class ModelWithAux(config_util.UpdateFromRootTrainer):
   """Wrapper around model which also compute the summaries and metrics."""
 
-  model: nn.Module = config_util.ROOT_CFG_REF.model
-  losses: Mapping[str, kd_losses.Loss] = config_util.ROOT_CFG_REF.train_losses
+  model: nn.Module = config_util.ROOT_TRAINER_REF.model
+  losses: Mapping[str, kd_losses.Loss] = config_util.ROOT_TRAINER_REF.train_losses
   metrics: Mapping[str, kd_metrics.Metric] = (
-      config_util.ROOT_CFG_REF.train_metrics
+      config_util.ROOT_TRAINER_REF.train_metrics
   )
   summaries: Mapping[str, kd_summaries.Summary] = (
-      config_util.ROOT_CFG_REF.train_summaries
+      config_util.ROOT_TRAINER_REF.train_summaries
   )
 
   def init(  # pylint:disable=missing-function-docstring
@@ -198,7 +198,7 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
       elem_spec: ElementSpec,
       model_method: Optional[str] = None,
   ) -> _Params:
-    self._assert_root_cfg_resolved()
+    self._assert_root_trainer_resolved()
     mock_batch = data_utils.mock_batch_from_elem_spec(elem_spec)
     context = context_lib.Context(step=0, batch=mock_batch)
     args, kwargs = data_utils.get_model_inputs(self.model, context)
@@ -277,18 +277,22 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
 
 
 @dataclasses.dataclass(kw_only=True, eq=True, frozen=True)
-class TrainStep(config_util.UpdateFromRootCfg):
+class TrainStep(config_util.UpdateFromRootTrainer):
   """Training Step."""
 
   model_with_aux: ModelWithAux = dataclasses.field(default_factory=ModelWithAux)
-  optimizer: optax.GradientTransformation = config_util.ROOT_CFG_REF.optimizer
-  rng_streams: rngs_lib.RngStreams = config_util.ROOT_CFG_REF.rng_streams
+  optimizer: optax.GradientTransformation = (
+      config_util.ROOT_TRAINER_REF.optimizer
+  )
+  rng_streams: rngs_lib.RngStreams = config_util.ROOT_TRAINER_REF.rng_streams
 
-  def update_from_root_cfg(self, root_cfg) -> TrainStep:
-    new_self = super().update_from_root_cfg(root_cfg)
+  def update_from_root_trainer(self, trainer) -> TrainStep:
+    new_self = super().update_from_root_trainer(trainer)
     new_self = dataclasses.replace(
         new_self,
-        model_with_aux=new_self.model_with_aux.update_from_root_cfg(root_cfg),
+        model_with_aux=new_self.model_with_aux.update_from_root_trainer(
+            trainer
+        ),
     )
     return new_self
 
@@ -299,7 +303,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
       model_method: Optional[str] = None,
   ) -> TrainState:
     """Initialize the model and return the initial TrainState."""
-    self._assert_root_cfg_resolved()
+    self._assert_root_trainer_resolved()
     return self._init(flax.core.freeze(elem_spec), model_method)
 
   @jax_utils.jit(
