@@ -169,12 +169,19 @@ class PyGrainPipeline(Pipeline):
       transformation should be either a `grain.MapTransform` or a
       `grain.RandomMapTransform`.
     shuffle: whether to shuffle
+    num_epochs: Number of epoch. If missing, number of iteration is given by
+      `cfg.num_training_steps`
     worker_count: how many worker processes to use for data loading
   """
 
   data_source: pygrain.RandomAccessDataSource
   transformations: grain.Transformations
   shuffle: bool
+  # TODO(epot): More consistent way to customize the number of steps. Unify:
+  # * `cfg.num_training_steps`
+  # * `cfg.train_ds.num_epochs` (for `PyGrainPipeline`)
+  # * `cfg.train_ds.loader.num_epochs` (for `kd.data.loader.GrainTfds`)
+  # * `cfg.evals[].num_batches`
   num_epochs: Optional[int] = None
   worker_count: int = 16
 
@@ -188,7 +195,7 @@ class PyGrainPipeline(Pipeline):
   def sampler(self) -> pygrain.Sampler:
     return pygrain.IndexSampler(
         num_records=len(self.data_source),
-        num_epochs=None,
+        num_epochs=self.num_epochs,
         seed=self.seed,
         shuffle=self.shuffle,
         shard_options=pygrain.ShardByJaxProcess(),
