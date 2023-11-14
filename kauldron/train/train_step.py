@@ -239,7 +239,10 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
     loss_total, loss_states = kd_losses.compute_losses(
         losses=self.losses, context=context
     )
-    return loss_total, context.replace(loss_states=loss_states)
+    return loss_total, context.replace(
+        loss_states=loss_states,
+        loss_total=loss_total,
+    )
 
   @jax.named_call
   def get_aux(

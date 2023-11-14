@@ -89,7 +89,7 @@ class _FakeRootCfg:
   See `UpdateFromRootCfg` for usage.
 
   If the field is not set, the value will be copied from the root
-  `kd.train.Config` object, after it is created.
+  `kd.train.Trainer` object, after it is created.
   """
 
   parent: _FakeRootCfg | None = None
@@ -107,7 +107,7 @@ class _FakeRootCfg:
     return _FakeRootCfg(parent=self, name=name)
 
   @classmethod
-  def make_fake_cfg(cls) -> config_lib.Config:
+  def make_fake_cfg(cls) -> config_lib.Trainer:
     return cls()  # pytype: disable=bad-return-type
 
   @property
@@ -131,7 +131,7 @@ class _FakeRootCfg:
       )
 
 
-ROOT_CFG_REF: config_lib.Config = _FakeRootCfg.make_fake_cfg()
+ROOT_CFG_REF: config_lib.Trainer = _FakeRootCfg.make_fake_cfg()
 
 
 @dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
@@ -149,7 +149,7 @@ class UpdateFromRootCfg:
     be copied from the base config.
   * Overwrite the `update_from_root_cfg` method, for a custom initialization.
 
-  When using, make sure to also update the `kd.train.Config.__post_init__` to
+  When using, make sure to also update the `kd.train.Trainer.__post_init__` to
   call
   `update_from_root_cfg`. Currently this not done automatically.
 
@@ -161,7 +161,7 @@ class UpdateFromRootCfg:
     workdir: epath.Path = ROOT_CFG_REF.workdir
 
 
-  root_cfg = kd.train.Config(workdir='/path/to/dir')
+  root_cfg = kd.train.Trainer(workdir='/path/to/dir')
 
   obj = MyObject()  # Workdir not set yet
 
@@ -174,7 +174,9 @@ class UpdateFromRootCfg:
     _REUSE_FROM_ROOT_CFG: Mapping <root_cfg attribute> to <self attribute>
   """
 
-  def update_from_root_cfg(self: _SelfT, root_cfg: config_lib.Config) -> _SelfT:
+  def update_from_root_cfg(
+      self: _SelfT, root_cfg: config_lib.Trainer
+  ) -> _SelfT:
     """Returns a copy of `self`, potentially with updated values."""
     fields_to_replace = {}
     for f in dataclasses.fields(self):
@@ -210,5 +212,5 @@ class UpdateFromRootCfg:
             f' `ROOT_CFG_REF` value ({value}).\nTo resolve the value, either'
             f' explicitly set `{f.name}` in `__init__`, or call'
             ' `obj.update_from_root_cfg(root_cfg)` to copy the value from the'
-            ' root `kd.train.Config` object.'
+            ' root `kd.train.Trainer` object.'
         )

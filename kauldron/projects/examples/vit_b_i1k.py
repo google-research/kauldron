@@ -27,7 +27,7 @@ with konfig.imports():
 
 def get_config():
   """Get the default hyperparameter configuration."""
-  cfg = kd.train.Config()
+  cfg = kd.train.Trainer()
   cfg.workdir = konfig.placeholder(str)  # will be set by the launcher
   cfg.seed = 42
 

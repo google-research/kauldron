@@ -91,19 +91,21 @@ class Evaluator(config_util.BaseConfig, config_util.UpdateFromRootCfg):
       config_util.ROOT_CFG_REF.train_summaries
   )
 
-  base_cfg: config_lib.Config = dataclasses.field(
+  base_cfg: config_lib.Trainer = dataclasses.field(
       default=config_util.ROOT_CFG_REF, repr=False
   )
 
   # TODO(klausg): filter out metrics / summaries that access grads/updates
 
-  def update_from_root_cfg(self: _SelfT, root_cfg: config_lib.Config) -> _SelfT:
+  def update_from_root_cfg(
+      self: _SelfT, root_cfg: config_lib.Trainer
+  ) -> _SelfT:
     """See base class."""
     new_self = super().update_from_root_cfg(root_cfg)
     if new_self.ds is None:
       raise ValueError(
           f'Eval dataset missing (`cfg.evals.{self.name}.ds is None`). Please'
-          ' set it either in `kd.train.Config.eval_ds` or in'
+          ' set it either in `kd.train.Trainer.eval_ds` or in'
           ' `Evaluator(ds=...)`.'
       )
     return new_self.replace(
@@ -311,7 +313,7 @@ class FewShotEvaluator(config_util.BaseConfig, config_util.UpdateFromRootCfg):
   selected_repr: str = 'pre_logits'
   seed: int = 17
 
-  base_cfg: config_lib.Config = dataclasses.field(
+  base_cfg: config_lib.Trainer = dataclasses.field(
       default=config_util.ROOT_CFG_REF, repr=False
   )
 

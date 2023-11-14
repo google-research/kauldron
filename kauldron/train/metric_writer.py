@@ -21,12 +21,12 @@ from typing import Any, Mapping
 from clu import metric_writers
 from clu import parameter_overview
 from etils import epath
-from etils.etree import jax as etree
+from etils.etree import jax as etree  # pylint: disable=g-importing-member
 from kauldron import konfig
 from kauldron import kontext
+from kauldron.train import config_lib
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 from kauldron.typing import Array, Float, Scalar  # pylint: disable=g-multiple-import
-from kauldron.utils import inspect as kd_inspect
 import numpy as np
 import pandas as pd
 
@@ -159,26 +159,21 @@ class KDMetricWriter(metric_writers.MetricWriter):
     texts = {"element_spec": f"```python\n{element_spec!s}\n```"}
     self.write_texts(step, texts)
 
-  def write_context_structure(self, step: int, config):
+  def write_context_structure(
+      self, step: int, trainer: config_lib.Trainer
+  ) -> None:
     # do a lightweight shape-eval for the context
-    loss, context = kd_inspect.eval_context_shape(
-        model=config.model,
-        losses=config.train_losses,
-        metrics=config.train_metrics,
-        summaries=config.train_summaries,
-        elem_spec=config.train_ds.element_spec,
-        rngs=config.rng_streams.init_rngs(),
-    )
+    context = trainer.context_specs
     # create a flat spec for the context
     context_spec = etree.spec_like(
         kontext.flatten_with_path({
             "step": context.step,
-            "batch": config.train_ds.element_spec,
+            "batch": context.batch,
             "params": context.params,
             "preds": context.preds,
             "interms": context.interms,
             "loss_states": context.loss_states,
-            "loss_total": loss,
+            "loss_total": context.loss_total,
             "grads": "<<same structure as params>>",
             "updates": "<<same structure as params>>",
         })

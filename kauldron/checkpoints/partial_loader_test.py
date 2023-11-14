@@ -31,7 +31,7 @@ _NUM_FEATURES = 6
 
 
 @pytest.fixture  # (scope='module')
-def new_cfg(tmp_path: pathlib.Path) -> kd.train.Config:
+def new_trainer(tmp_path: pathlib.Path) -> kd.train.Trainer:
   cfg = mnist_autoencoder.get_config()
   cfg.workdir = str(tmp_path / 'new_workdir')
 
@@ -55,7 +55,7 @@ def new_cfg(tmp_path: pathlib.Path) -> kd.train.Config:
 
 
 @pytest.fixture  # (scope='module')
-def old_cfg(tmp_path: pathlib.Path):
+def old_trainer(tmp_path: pathlib.Path):
   cfg = mnist_autoencoder.get_config()
   cfg.workdir = str(tmp_path / 'old_workdir')
 
@@ -75,32 +75,32 @@ def old_cfg(tmp_path: pathlib.Path):
 
 
 def _make_chpt(
-    old_cfg: kd.train.Config,  # pylint: disable=redefined-outer-name
-    new_cfg: kd.train.Config,  # pylint: disable=redefined-outer-name
+    old_trainer: kd.train.Trainer,  # pylint: disable=redefined-outer-name
+    new_trainer: kd.train.Trainer,  # pylint: disable=redefined-outer-name
     new_to_old: dict[str, str],
 ):
   loader = kd.ckpts.PartialLoader(  # pytype: disable=wrong-arg-types
-      source=kd.ckpts.KauldronSource(old_cfg.workdir),  # pylint: disable=missing-kwoa
+      source=kd.ckpts.KauldronSource(old_trainer.workdir),  # pylint: disable=missing-kwoa
       new_to_old=new_to_old,
   )
 
   ckpt = kd.ckpts.Checkpointer(  # pytype: disable=wrong-arg-types
-      workdir=new_cfg.workdir,
+      workdir=new_trainer.workdir,
       save_interval_steps=1,
       partial_initializer=loader,
   )
   return ckpt
 
 
-def test_loader(new_cfg: kd.train.Config, old_cfg: kd.train.Config):  # pylint: disable=redefined-outer-name
-  old_state = old_cfg.init_state()
-  old_cfg.checkpointer.save_state(old_state, 0)
+def test_loader(new_trainer: kd.train.Trainer, old_trainer: kd.train.Trainer):  # pylint: disable=redefined-outer-name
+  old_state = old_trainer.init_state()
+  old_trainer.checkpointer.save_state(old_state, 0)
 
-  init_state = new_cfg.init_state()
+  init_state = new_trainer.init_state()
 
   ckpt = _make_chpt(
-      old_cfg,
-      new_cfg,
+      old_trainer,
+      new_trainer,
       new_to_old={
           'params.decoder.layers_1': 'params.encoder',
       },
@@ -129,8 +129,8 @@ def test_loader(new_cfg: kd.train.Config, old_cfg: kd.train.Config):  # pylint: 
   )
 
   ckpt = _make_chpt(
-      old_cfg,
-      new_cfg,
+      old_trainer,
+      new_trainer,
       new_to_old={
           'params.encoder': 'params.encoder',
       },

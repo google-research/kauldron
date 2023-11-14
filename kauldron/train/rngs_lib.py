@@ -113,7 +113,7 @@ class RngStreams(config_util.UpdateFromRootCfg):
     stream_overwrites: Additional streams to add. Will be merged with the
       default ones.
     seed: Seed to initialize the root_rng. If `None`, will reuse the global seed
-      from `kd.train.Config`
+      from `kd.train.Trainer`
   """
 
   stream_overwrites: Sequence[RngStream] = dataclasses.field(

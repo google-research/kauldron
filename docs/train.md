@@ -2,7 +2,7 @@
 
 ## Create the trainer
 
-The root trainer object is `kd.train.Config` which defines the model, datasets,
+The root trainer object is `kd.train.Trainer` which defines the model, datasets,
 metrics, losses,...
 
 See https://github.com/google-research/kauldron/tree/HEAD/kauldron/projects/examples/mnist_autoencoder.py for

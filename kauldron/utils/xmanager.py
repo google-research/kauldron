@@ -25,6 +25,7 @@ from typing import Optional
 
 from etils import epath
 from kauldron import konfig
+from kauldron.train import config_lib
 
 from unittest import mock as _mock ; xmanager_api = _mock.Mock()
 
@@ -116,7 +117,7 @@ class Experiment:
     return _json_to_config(config)  # Wrap the dict to ConfigDict  # pytype: disable=bad-return-type
 
   @functools.cached_property
-  def resolved_config(self) -> konfig.ConfigDict:
+  def trainer(self) -> config_lib.Trainer:
     """Resolved `ConfigDict`."""
     return konfig.resolve(self.config)
 
