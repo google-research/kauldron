@@ -30,10 +30,7 @@ def get_connection_graph(cfg: config_lib.Config) -> graphviz.Digraph:
   """Build the graphviz."""
   dot = graphviz.Digraph()
 
-  # TODO(epot): Should refactor to avoid circular dependency
-  from kauldron.utils import inspect  # pylint: disable=g-import-not-at-top
-
-  ctx = inspect.eval_context_shape(cfg)
+  ctx = cfg.context_specs
 
   # TODO(epot): How to better style the graph ?
   dot.attr(rankdir='LR')

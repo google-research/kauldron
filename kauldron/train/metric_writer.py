@@ -21,12 +21,12 @@ from typing import Any, Mapping
 from clu import metric_writers
 from clu import parameter_overview
 from etils import epath
-from etils.etree import jax as etree
+from etils.etree import jax as etree  # pylint: disable=g-importing-member
 from kauldron import konfig
 from kauldron import kontext
+from kauldron.train import config_lib
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 from kauldron.typing import Array, Float, Scalar  # pylint: disable=g-multiple-import
-from kauldron.utils import inspect as kd_inspect
 import numpy as np
 import pandas as pd
 
@@ -159,23 +159,17 @@ class KDMetricWriter(metric_writers.MetricWriter):
     texts = {"element_spec": f"```python\n{element_spec!s}\n```"}
     self.write_texts(step, texts)
 
-  def write_context_structure(self, step: int, config):
+  def write_context_structure(
+      self, step: int, config: config_lib.Config
+  ) -> None:
     # do a lightweight shape-eval for the context
-    context = kd_inspect.eval_context_shape(config)
+    context = config.context_specs
     # create a flat spec for the context
-    context_spec = etree.spec_like(
-        kontext.flatten_with_path({
-            "step": context.step,
-            "batch": config.train_ds.element_spec,
-            "params": context.params,
-            "preds": context.preds,
-            "interms": context.interms,
-            "loss_states": context.loss_states,
-            "loss_total": context.loss_total,
-            "grads": "<<same structure as params>>",
-            "updates": "<<same structure as params>>",
-        })
-    )
+    context_spec = kontext.flatten_with_path(context)
+    context_spec = etree.spec_like(context_spec)
+    context_spec["grads"] = "<<same structure as params>>"
+    context_spec["updates"] = "<<same structure as params>>"
+
     # convert flat spec into a pandas dataframe
     ctx_df = pd.DataFrame(
         # wrap entries in backticks to avoid interpreting __x__ as markdown bold

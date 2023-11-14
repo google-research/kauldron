@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-import functools
+import dataclasses
 import inspect
 from typing import Any, Optional
 
@@ -332,27 +332,6 @@ def json_spec_like(obj) -> Any:
   return json_spec
 
 
-# TODO(epot): Should cache this function (or better this should be a
-# `kd.train.Config` property.
-def eval_context_shape(config: train.Config) -> train.Context:
-  """Shape evaluate the model (fast) and return the shapes of the context."""
-
-  elem_spec = config.train_ds.element_spec
-  rngs = config.rng_streams.init_rngs()
-  mwa = config.trainstep.model_with_aux
-
-  params = jax.eval_shape(mwa.init, init_rngs=rngs, elem_spec=elem_spec)
-  m_batch = data_utils.mock_batch_from_elem_spec(elem_spec)
-  _, context = jax.eval_shape(
-      functools.partial(mwa.forward, is_training=True),
-      params=params,
-      batch=m_batch,
-      rngs=rngs,
-      step=0,
-  )
-  return context
-
-
 def get_colab_model_overview(
     model: nn.Module,
     train_ds: data.Pipeline,
@@ -431,15 +410,11 @@ def _normalize_height(
 
 
 def plot_context(config: train.Config) -> None:
-  context = eval_context_shape(config)
-  json_spec_like({
-      "step": context.step,
-      "batch": context.batch,
-      "params": context.params,
-      "preds": context.preds,
-      "interms": context.interms,
-      "loss_states": context.loss_states,
-      "loss_total": context.loss_total,
-      "grads": "[same as params ]",
-      "updates": "[same as params ]",
-  })
+  """Display the context structure."""
+  context = config.context_specs
+  context = {
+      f.name: getattr(context, f.name) for f in dataclasses.fields(context)
+  }
+  context["grads"] = "[same as params]"
+  context["updates"] = "[same as params]"
+  json_spec_like(context)
