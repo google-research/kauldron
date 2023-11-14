@@ -12,39 +12,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Config."""
+"""Trainer."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 import dataclasses
+import functools
 from typing import Any, Optional
 
 from etils import edc
 from etils import epath
 import flax
 from flax import linen as nn
+import jax
 from kauldron import data
 from kauldron import konfig
 from kauldron import losses
 from kauldron import metrics
 from kauldron import summaries
 from kauldron.checkpoints import checkpointer as checkpointer_lib
+from kauldron.data import utils as data_utils
 from kauldron.train import evaluators
 from kauldron.train import flatboard
 from kauldron.train import rngs_lib
 from kauldron.train import train_lib
 from kauldron.train import train_step
 from kauldron.utils import config_util
+from kauldron.utils import context as context_lib
 from kauldron.utils import profile_utils
 from kauldron.utils import xmanager
 import optax
 
 
-# TODO(epot): Rename: Experiment, Plan, Main, Root, Trainer, Train ?
-
-
-class Config(config_util.BaseConfig):
+class Trainer(config_util.BaseConfig):
   """Base config class.
 
   Attributes:
@@ -152,7 +153,7 @@ class Config(config_util.BaseConfig):
         object.__setattr__(self, name, default_factory())
 
     # Some config object values are lazy-initialized from the root config.
-    # See `UpdateFromRootCfg` for details
+    # See `UpdateFromRootTrainer` for details
     for attr_name in (
         'train_ds',
         'rng_streams',
@@ -162,14 +163,16 @@ class Config(config_util.BaseConfig):
     ):
       if hasattr(self, attr_name):
         object.__setattr__(
-            self, attr_name, getattr(self, attr_name).update_from_root_cfg(self)
+            self,
+            attr_name,
+            getattr(self, attr_name).update_from_root_trainer(self),
         )
     if self.evals:
       evals = evaluators.normalize_evaluators(self.evals)
       object.__setattr__(
           self,
           'evals',
-          {k: v.update_from_root_cfg(self) for k, v in evals.items()},
+          {k: v.update_from_root_trainer(self) for k, v in evals.items()},
       )
 
   def __post_konfig_resolve__(self, cfg: konfig.ConfigDict) -> None:
@@ -200,3 +203,21 @@ class Config(config_util.BaseConfig):
       Auxiliaries
     """
     return train_lib.train_impl(self)
+
+  @functools.cached_property
+  def context_specs(self) -> context_lib.Context:
+    """Shape evaluate the model (fast) and return the context structure."""
+    elem_spec = self.train_ds.element_spec
+    rngs = self.rng_streams.init_rngs()
+    mwa = self.trainstep.model_with_aux
+
+    params = jax.eval_shape(mwa.init, init_rngs=rngs, elem_spec=elem_spec)
+    m_batch = data_utils.mock_batch_from_elem_spec(elem_spec)
+    _, context = jax.eval_shape(
+        functools.partial(mwa.forward, is_training=True),
+        params=params,
+        batch=m_batch,
+        rngs=rngs,
+        step=0,
+    )
+    return context

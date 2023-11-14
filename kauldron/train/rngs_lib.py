@@ -99,7 +99,7 @@ _DEFAULT_STREAMS = [
 
 
 @dataclasses.dataclass(frozen=True, eq=True)
-class RngStreams(config_util.UpdateFromRootCfg):
+class RngStreams(config_util.UpdateFromRootTrainer):
   """Manager of rng streams.
 
   See doc at https://kauldron.rtfd.io/en/latest/eval.html#rng-streams
@@ -113,7 +113,7 @@ class RngStreams(config_util.UpdateFromRootCfg):
     stream_overwrites: Additional streams to add. Will be merged with the
       default ones.
     seed: Seed to initialize the root_rng. If `None`, will reuse the global seed
-      from `kd.train.Config`
+      from `kd.train.Trainer`
   """
 
   stream_overwrites: Sequence[RngStream] = dataclasses.field(
@@ -121,7 +121,7 @@ class RngStreams(config_util.UpdateFromRootCfg):
   )
 
   _: dataclasses.KW_ONLY
-  seed: int = config_util.ROOT_CFG_REF.seed
+  seed: int = config_util.ROOT_TRAINER_REF.seed
 
   @functools.cached_property
   def streams(self) -> dict[str, RngStream]:
@@ -138,7 +138,7 @@ class RngStreams(config_util.UpdateFromRootCfg):
   @_jit_method
   def root_rng(self) -> kd_random.PRNGKey:
     """Base root rng from which others are derived."""
-    self._assert_root_cfg_resolved()
+    self._assert_root_trainer_resolved()
 
     if self.seed is None:
       raise ValueError('RngStreams.seed should be set.')

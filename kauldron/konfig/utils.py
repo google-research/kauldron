@@ -16,10 +16,17 @@
 
 import functools
 import os
-from typing import Any
+from typing import Annotated, Any, TypeVar
 
 from etils import epath
 import ml_collections
+
+
+_T = TypeVar('_T')
+# No-op annotation to indicate the object should be a ConfigDict object:
+# * `x: MyObj`: Resolved object
+# * `x: ConfigLike[MyObj]`: ConfigDict object, but allow auto-complete
+ConfigLike = Annotated[_T, None]
 
 
 # Wrapper around `placeholder` which accept any default

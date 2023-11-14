@@ -42,7 +42,7 @@ _NpArray: TypeAlias = Any
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True, eq=True)
-class Pipeline(config_util.UpdateFromRootCfg):
+class Pipeline(config_util.UpdateFromRootTrainer):
   """Base class for kauldron data pipelines.
 
   Attributes:
@@ -53,7 +53,7 @@ class Pipeline(config_util.UpdateFromRootCfg):
   """
 
   batch_size: int
-  seed: Optional[PRNGKeyLike] = config_util.ROOT_CFG_REF.seed
+  seed: Optional[PRNGKeyLike] = config_util.ROOT_TRAINER_REF.seed
 
   def __iter__(self) -> PyTree[_NpArray]:
     """Iterator that produces batches as PyTrees of Sharded jax.Arrays."""
@@ -110,7 +110,7 @@ class TFDataPipeline(Pipeline):
   @functools.cached_property
   def _ds_iter(self) -> data_utils.IterableDataset:
     """Returns a numpy tf.data.Dataset iterator."""
-    self._assert_root_cfg_resolved()
+    self._assert_root_trainer_resolved()
 
     # Loader sometimes uses `jax.random` to generate integer seeds, so allow
     # host<>device here.
@@ -204,7 +204,7 @@ class PyGrainPipeline(Pipeline):
   @functools.cached_property
   def _ds_iter(self) -> data_utils.IterableDataset:
     """Returns a numpy tf.data.Dataset iterator."""
-    self._assert_root_cfg_resolved()
+    self._assert_root_trainer_resolved()
 
     transformations = []
     transformations.extend(self.transformations)

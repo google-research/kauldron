@@ -53,7 +53,7 @@ def get_from_keys_obj(
   Raises:
     KeyError: If any non-optional keys are mapped to None.
   """
-  key_paths = _get_keypaths(keyed_obj)
+  key_paths = get_keypaths(keyed_obj)
   missing_keys = [k for k, v in key_paths.items() if v == REQUIRED]
   if missing_keys:
     raise ValueError(
@@ -147,7 +147,7 @@ def _get_missing_key_error_message(
   )
 
 
-def _get_keypaths(keyed_obj: Any) -> dict[str, str]:
+def get_keypaths(keyed_obj: Any) -> dict[str, str]:
   """Return a dictionary mapping Key-annotated fieldnames to their paths."""
   if hasattr(type(keyed_obj), _GET_KEY_PROTOCOL):
     return getattr(keyed_obj, _GET_KEY_PROTOCOL)()

@@ -187,6 +187,12 @@ class TreeMap(Metric):
         context, self.metric, func=self.metric.get_state
     )
 
+  # Forwards `__kontext_keys__` so the keys can be extracted from the top-level
+  # TODO(epot): Is it possible to remove `_resolve_kwargs` entirely by
+  # having another `__kontext_func__` protocol to get the `func=` ?
+  def __kontext_keys__(self) -> dict[kontext.Key, kontext.Key]:
+    return kontext.get_keypaths(self.metric)
+
 
 def _tree_map_with_kwargs(fun, **kwargs):
   """Same as jax.tree_map but taking and passing trees to fun as kwargs."""
@@ -230,3 +236,7 @@ class TreeReduce(Metric):
     return kontext.get_from_keys_obj(
         context, self.metric, func=self.metric.get_state
     )
+
+  # Forwards `__kontext_keys__` so the keys can be extracted from the top-level
+  def __kontext_keys__(self) -> dict[kontext.Key, kontext.Key]:
+    return kontext.get_keypaths(self.metric)

@@ -50,7 +50,7 @@ _DEFAULT_EVAL_NAME = 'eval'
 _DEFAULT_FEWSHOT_EVAL_NAME = 'fewshot_eval'
 
 
-class Evaluator(config_util.BaseConfig, config_util.UpdateFromRootCfg):
+class Evaluator(config_util.BaseConfig, config_util.UpdateFromRootTrainer):
   """Evaluator running `num_batches` times every `run_every` steps.
 
   If not provided, losses, metrics, summaries are reused from train.
@@ -82,32 +82,34 @@ class Evaluator(config_util.BaseConfig, config_util.UpdateFromRootCfg):
   name: str = _DEFAULT_EVAL_NAME
   run_every: int
   num_batches: Optional[int]
-  ds: data.Pipeline = config_util.ROOT_CFG_REF.eval_ds
-  losses: dict[str, losses_lib.Loss] = config_util.ROOT_CFG_REF.train_losses
+  ds: data.Pipeline = config_util.ROOT_TRAINER_REF.eval_ds
+  losses: dict[str, losses_lib.Loss] = config_util.ROOT_TRAINER_REF.train_losses
   metrics: dict[str, metrics_lib.Metric] = (
-      config_util.ROOT_CFG_REF.train_metrics
+      config_util.ROOT_TRAINER_REF.train_metrics
   )
   summaries: dict[str, summaries_lib.Summary] = (
-      config_util.ROOT_CFG_REF.train_summaries
+      config_util.ROOT_TRAINER_REF.train_summaries
   )
 
-  base_cfg: config_lib.Config = dataclasses.field(
-      default=config_util.ROOT_CFG_REF, repr=False
+  base_cfg: config_lib.Trainer = dataclasses.field(
+      default=config_util.ROOT_TRAINER_REF, repr=False
   )
 
   # TODO(klausg): filter out metrics / summaries that access grads/updates
 
-  def update_from_root_cfg(self: _SelfT, root_cfg: config_lib.Config) -> _SelfT:
+  def update_from_root_trainer(
+      self: _SelfT, trainer: config_lib.Trainer
+  ) -> _SelfT:
     """See base class."""
-    new_self = super().update_from_root_cfg(root_cfg)
+    new_self = super().update_from_root_trainer(trainer)
     if new_self.ds is None:
       raise ValueError(
           f'Eval dataset missing (`cfg.evals.{self.name}.ds is None`). Please'
-          ' set it either in `kd.train.Config.eval_ds` or in'
+          ' set it either in `kd.train.Trainer.eval_ds` or in'
           ' `Evaluator(ds=...)`.'
       )
     return new_self.replace(
-        ds=new_self.ds.update_from_root_cfg(root_cfg),
+        ds=new_self.ds.update_from_root_trainer(trainer),
     )
 
   def maybe_eval(
@@ -124,7 +126,7 @@ class Evaluator(config_util.BaseConfig, config_util.UpdateFromRootCfg):
       self, state: train_step.TrainState, step: int
   ) -> train_step.Auxiliaries:
     """Run one full evaluation."""
-    self._assert_root_cfg_resolved()
+    self._assert_root_trainer_resolved()
 
     merged_aux = None
     for eval_step, batch in utils.enum_iter(
@@ -255,7 +257,9 @@ def _replace_name(evaluator: Evaluator, name: str) -> Evaluator:
 
 
 # TODO(adosovitskiy) move to separate file once evaluator base class is in place
-class FewShotEvaluator(config_util.BaseConfig, config_util.UpdateFromRootCfg):
+class FewShotEvaluator(
+    config_util.BaseConfig, config_util.UpdateFromRootTrainer
+):
   """FewShotEvaluator running closed-form few-shot classification.
 
   Compute the features from the model, solve closed-form L2-regularized linear
@@ -280,7 +284,6 @@ class FewShotEvaluator(config_util.BaseConfig, config_util.UpdateFromRootCfg):
     selected_repr: a key from repr_names for which to put the accuracies to the
       main metrics
     seed: random seed for selecting the training data subset
-
 
   Usage example:
     "fewshot_i1k": kd.train.evaluators.FewShotEvaluator(
@@ -311,8 +314,8 @@ class FewShotEvaluator(config_util.BaseConfig, config_util.UpdateFromRootCfg):
   selected_repr: str = 'pre_logits'
   seed: int = 17
 
-  base_cfg: config_lib.Config = dataclasses.field(
-      default=config_util.ROOT_CFG_REF, repr=False
+  base_cfg: config_lib.Trainer = dataclasses.field(
+      default=config_util.ROOT_TRAINER_REF, repr=False
   )
 
   def maybe_eval(
@@ -334,7 +337,7 @@ class FewShotEvaluator(config_util.BaseConfig, config_util.UpdateFromRootCfg):
 
   def evaluate(self, state: train_step.TrainState, step: int):
     """Run one full evaluation."""
-    self._assert_root_cfg_resolved()
+    self._assert_root_trainer_resolved()
 
     train_features, train_labels = self.compute_features(state, self.ds_train)
     val_features, val_labels = self.compute_features(state, self.ds_val)

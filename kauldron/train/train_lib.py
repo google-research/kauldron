@@ -42,53 +42,57 @@ jax.config.update("jax_threefry_partitionable", True)
 
 
 def train_impl(
-    cfg: config_lib.Config,
+    trainer: config_lib.Trainer,
 ) -> Tuple[train_step.TrainState, Optional[train_step.Auxiliaries]]:
-  """Implements of `Config.train`."""
+  """Implements of `Trainer.train`."""
   tf.config.experimental.set_visible_devices([], "GPU")
 
   status.log("Configuring ...")
-  ensure_workdir(cfg.workdir)
-  add_flatboards(cfg)
+  ensure_workdir(trainer.workdir)
+  add_flatboards(trainer)
 
   hooks = []
   if status.is_lead_host:
-    hooks.append(cfg.profiler)
+    hooks.append(trainer.profiler)
     if status.on_xmanager:
       hooks.append(
-          periodic_actions.ReportProgress(num_train_steps=cfg.num_train_steps)
+          periodic_actions.ReportProgress(
+              num_train_steps=trainer.num_train_steps
+          )
       )
-  writer = metric_writer.KDMetricWriter(workdir=cfg.workdir, collection="train")
+  writer = metric_writer.KDMetricWriter(
+      workdir=trainer.workdir, collection="train"
+  )
 
   status.log("Initializing ...")
-  trainstep = cfg.trainstep
+  trainstep = trainer.trainstep
 
-  state = trainstep.init(cfg.train_ds.element_spec)
+  state = trainstep.init(trainer.train_ds.element_spec)
 
   # Initialize CheckpointManager and attempt to restore.
-  ckptr = cfg.checkpointer
+  ckptr = trainer.checkpointer
   state = ckptr.restore(state, noop_if_missing=True)
   latest_step = ckptr.latest_step
   initial_step = 0 if not latest_step else latest_step
 
   if initial_step == 0:
-    writer.write_config(cfg.raw_cfg)
+    writer.write_config(trainer.raw_cfg)
   writer.write_param_overview(initial_step, state.params)
-  writer.write_element_spec(initial_step, cfg.train_ds.element_spec)
-  writer.write_context_structure(initial_step, cfg)
+  writer.write_element_spec(initial_step, trainer.train_ds.element_spec)
+  writer.write_context_structure(initial_step, trainer)
 
   timer = timer_module.PerformanceTimer(
       initial_step_num=initial_step,
       initial_training_time_hours=float(state.training_time_hours),
-      per_device_batch_size=cfg.train_ds.batch_size / jax.device_count(),
-      global_batch_size=cfg.train_ds.batch_size,
+      per_device_batch_size=trainer.train_ds.batch_size / jax.device_count(),
+      global_batch_size=trainer.train_ds.batch_size,
   )
 
   status.log(f"Starting training loop at step {initial_step}")
   # NOTE: DO *NOT* CHANGE THE ORDER OF OPERATIONS IN THE TRAINING LOOP!
-  total_steps = cfg.num_train_steps + 1
-  if cfg.stop_after_steps is not None:
-    total_steps = min(total_steps, initial_step + cfg.stop_after_steps)
+  total_steps = trainer.num_train_steps + 1
+  if trainer.stop_after_steps is not None:
+    total_steps = min(total_steps, initial_step + trainer.stop_after_steps)
   aux = None
 
   if not jax.config.jax_disable_jit:
@@ -102,7 +106,7 @@ def train_impl(
 
   with guard:
     for i, batch in utils.enum_iter(
-        cfg.train_ds,
+        trainer.train_ds,
         init_step=initial_step,
         total_steps=total_steps,
         desc="train",
@@ -118,14 +122,14 @@ def train_impl(
           )
           ckptr.save_state(state, i)
 
-        for evaluator in cfg.evals.values():
+        for evaluator in trainer.evals.values():
           evaluator.maybe_eval(
               step=i,
               state=state,
           )
 
-      log_summaries = i % cfg.log_summaries_every == 0
-      log_metrics = i % cfg.log_metrics_every == 0
+      log_summaries = i % trainer.log_summaries_every == 0
+      log_metrics = i % trainer.log_metrics_every == 0
       if not log_summaries and not log_metrics:
         state, aux = trainstep.step(state, batch)  # pylint: disable=unused-variable
         timer.finish_step()
@@ -150,7 +154,7 @@ def train_impl(
               writer=writer,
               step=i,
               aux=aux,
-              schedules=cfg.schedules,
+              schedules=trainer.schedules,
               model_with_aux=trainstep.model_with_aux,
               performance_stats=performance_stats,
               log_summaries=log_summaries,
@@ -244,14 +248,14 @@ def _compute_schedule(sched, step: int):
     return sched(step)
 
 
-def get_loss_y_keys(config: config_lib.Config) -> Sequence[str]:
-  """Get a list of loss-keys for a given config."""
+def get_loss_y_keys(trainer: config_lib.Trainer) -> Sequence[str]:
+  """Get a list of loss-keys for a given trainer."""
   # train losses
   loss_names = {
-      k for k in kontext.flatten_with_path(config.train_losses, separator="/")
+      k for k in kontext.flatten_with_path(trainer.train_losses, separator="/")
   }
   # evaluator losses
-  for evaluator in config.evals.values():
+  for evaluator in trainer.evals.values():
     eval_losses = getattr(evaluator, "losses", {})
     loss_names |= {
         k for k in kontext.flatten_with_path(eval_losses, separator="/")
@@ -263,13 +267,13 @@ def get_loss_y_keys(config: config_lib.Config) -> Sequence[str]:
   return [f"losses/{l.replace('.', '/')}" for l in loss_names]
 
 
-def get_metric_y_keys(config: config_lib.Config) -> Sequence[str]:
-  """Get a list of metric-keys for a given config."""
+def get_metric_y_keys(trainer: config_lib.Trainer) -> Sequence[str]:
+  """Get a list of metric-keys for a given trainer."""
   metric_names = {
-      k for k in kontext.flatten_with_path(config.train_metrics, separator="/")
+      k for k in kontext.flatten_with_path(trainer.train_metrics, separator="/")
   }
   # add evaluator metrics
-  for evaluator in config.evals.values():
+  for evaluator in trainer.evals.values():
     eval_metrics = getattr(evaluator, "metrics", {})
     metric_names |= {
         k for k in kontext.flatten_with_path(eval_metrics, separator="/")
@@ -277,10 +281,10 @@ def get_metric_y_keys(config: config_lib.Config) -> Sequence[str]:
   return [f"metrics/{l.replace('.', '/')}" for l in sorted(metric_names)]
 
 
-def get_schedule_y_keys(config) -> Sequence[str]:
-  """Get a list of schedule-keys for a given config."""
+def get_schedule_y_keys(trainer: config_lib.Trainer) -> Sequence[str]:
+  """Get a list of schedule-keys for a given trainer."""
   schedule_names = [
-      k for k in kontext.flatten_with_path(config.schedules, separator="/")
+      k for k in kontext.flatten_with_path(trainer.schedules, separator="/")
   ]
   return [f"schedules/{l.replace('.', '/')}" for l in schedule_names]
 
@@ -298,33 +302,33 @@ def get_perf_stat_y_keys() -> Sequence[str]:
   ]
 
 
-def get_data_collections(config: config_lib.Config) -> list[str]:
-  """Return a list of datatable collections for a given resolved config."""
+def get_data_collections(trainer: config_lib.Trainer) -> list[str]:
+  """Return a list of datatable collections for a given resolved trainer."""
   collections = ["train"]
-  collections.extend(e.name for e in config.evals.values())
+  collections.extend(e.name for e in trainer.evals.values())
   return collections
 
 
-def get_default_dashboards(config):
-  """Return the default set of Flatboard dashboards for given config."""
-  data_collections = get_data_collections(config)
+def get_default_dashboards(trainer: config_lib.Trainer):
+  """Return the default set of Flatboard dashboards for given trainer."""
+  data_collections = get_data_collections(trainer)
   dashboards = {}
   # losses
-  y_keys = get_loss_y_keys(config)
+  y_keys = get_loss_y_keys(trainer)
   if y_keys:
     dashboards["losses"] = flatboard.DefaultDashboard(
         title="{xid}: Losses", y_keys=y_keys, collections=data_collections
     )
 
   # metric
-  y_keys = get_metric_y_keys(config)
+  y_keys = get_metric_y_keys(trainer)
   if y_keys:
     dashboards["metrics"] = flatboard.DefaultDashboard(
         title="{xid}: Metrics", y_keys=y_keys, collections=data_collections
     )
 
   # schedules
-  y_keys = get_schedule_y_keys(config)
+  y_keys = get_schedule_y_keys(trainer)
   if y_keys:
     dashboards["schedules"] = flatboard.DefaultDashboard(
         title="{xid}: Schedules",
@@ -353,13 +357,13 @@ def ensure_workdir(workdir: epath.PathLike):
   workdir.mkdir(parents=True, exist_ok=True)
 
 
-def add_flatboards(cfg):
-  """Add flatboards based on cfg.flatboards or default flatboards."""
+def add_flatboards(trainer: config_lib.Trainer):
+  """Add flatboards based on trainer.flatboards or default flatboards."""
   if not status.on_xmanager or not status.is_lead_host or status.wid != 1:
     return  # only add flatboards once per experiment
-  dashboard_factories = cfg.flatboards
+  dashboard_factories = trainer.flatboards
   if not dashboard_factories:
-    dashboard_factories = get_default_dashboards(cfg)
+    dashboard_factories = get_default_dashboards(trainer)
   flatboard.add_flatboard_artifacts(dashboard_factories)
 
 

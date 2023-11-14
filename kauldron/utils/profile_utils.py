@@ -36,7 +36,7 @@ class NoopProfiler:
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class Profiler(config_util.UpdateFromRootCfg):
+class Profiler(config_util.UpdateFromRootTrainer):
   """`kd.inspect.Profiler`.
 
   Attributes:
@@ -62,7 +62,7 @@ class Profiler(config_util.UpdateFromRootCfg):
   every_secs: float | None = 3600.0
   on_colab: bool = False
 
-  workdir: epath.Path = config_util.ROOT_CFG_REF.workdir
+  workdir: epath.Path = config_util.ROOT_TRAINER_REF.workdir
 
   @functools.cached_property
   def _profile(self):

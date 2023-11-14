@@ -17,7 +17,7 @@ The codebase itself is divided between:
 
 At the core of Kauldron is the config system. Each user compose their experiment
 in their `config.py` by choosing which sub-modules to use. The root of the
-config is the `kd.train.Config` trainer object which defines which model,
+config is the `kd.train.Trainer` trainer object which defines which model,
 dataset, metrics,... to use.
 
 The config objects looks like standard Python call (which allow auto-complete /
@@ -78,7 +78,7 @@ cfg.schedules = {
 When `num_train_steps` is changed (e.g. with `--config.num_train_steps=XX`), the
 schedule will automatically adjust to the new value.
 
-`kd.train.Config` defines a `cfg.aux = {}` field to store additional variables
+`kd.train.Trainer` defines a `cfg.aux = {}` field to store additional variables
 that can easily be referred too through `cfg.ref.aux.xxx`, and globally updated.
 
 ### Keys and Context

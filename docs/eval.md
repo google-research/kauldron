@@ -2,10 +2,10 @@
 
 ## Use eval
 
-Eval can be defined on the `eval` attribute of `kd.train.Config`:
+Eval can be defined on the `eval` attribute of `kd.train.Trainer`:
 
 ```python
-cfg = kd.train.Config()
+cfg = kd.train.Trainer()
 cfg.evals = {
     'eval': kd.train.Evaluator(
         run_every=100,
@@ -64,12 +64,12 @@ By default, the following `rng` streams are created:
 *   `default`: Default `rng` stream, only available in training (not eval).
 
 If you need custom streams, or need to overwrite the default values. You can set
-the `rng_streams` attribute of `kd.train.Config` to `kd.train.RngStreams`. Note
+the `rng_streams` attribute of `kd.train.Trainer` to `kd.train.RngStreams`. Note
 that the `kd.train.RngStreams` will be **merged** with the default streams (so
 you don't need to re-specify `params`,...):
 
 ```python
-cfg = kd.train.Config()
+cfg = kd.train.Trainer()
 cfg.rng_streams = kd.train.RngStreams([
     # Overwrite `dropout` stream to only be activated in `eval`
     kd.train.RngStream('dropout', train=False, eval=True),
