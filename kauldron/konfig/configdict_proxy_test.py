@@ -81,7 +81,7 @@ def test_configdict_resolve_constructor():
 
   assert cfg == expected_cfg
   assert repr(cfg) == epy.dedent("""
-      types.SimpleNamespace(
+      <ConfigDict[types.SimpleNamespace(
           const=pathlib.Path,
           x=123,
           y=types.SimpleNamespace(
@@ -90,7 +90,7 @@ def test_configdict_resolve_constructor():
                   types.SimpleNamespace(),
               ],
           ),
-      )
+      )]>
       """)
 
   obj = konfig.resolve(expected_cfg)

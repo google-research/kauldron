@@ -54,7 +54,8 @@ class ConfigDict(ml_collections.ConfigDict):
 
   def __repr__(self) -> str:
     visited = _VisitedTracker()
-    return visited.build_repr(self)
+    inner_repr = visited.build_repr(self)
+    return f'<ConfigDict[{inner_repr}]>'
 
   __str__ = __repr__
 
