@@ -36,15 +36,15 @@ def test_missing():
   tree = {'a': 1, 'b': 2, 'c': 3}
 
   with pytest.raises(ValueError, match='required keys'):
-    kontext.get_from_keys_obj(tree, A())
+    kontext.resolve_from_keyed_obj(tree, A())
 
   with pytest.raises(ValueError, match='required keys'):
-    kontext.get_from_keys_obj(tree, A(y='a'))
+    kontext.resolve_from_keyed_obj(tree, A(y='a'))
 
-  assert kontext.get_from_keys_obj(tree, A(x='a')) == {'x': 1, 'y': None}
+  assert kontext.resolve_from_keyed_obj(tree, A(x='a')) == {'x': 1, 'y': None}
 
 
 def test_protocol():
   tree = {'a': 1, 'b': 2, 'c': 3}
 
-  assert kontext.get_from_keys_obj(tree, B()) == {'x': 1, 'y': 2}
+  assert kontext.resolve_from_keyed_obj(tree, B()) == {'x': 1, 'y': 2}

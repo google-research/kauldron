@@ -65,6 +65,8 @@ def get_model_inputs(
 ) -> tuple[Args, Kwargs]:
   """Get the inputs for a top-level module from a batch."""
   if kontext.is_key_annotated(model):
-    return (), kontext.get_from_keys_obj(context, model, func=model.__call__)
+    return (), kontext.resolve_from_keyed_obj(
+        context, model, func=model.__call__
+    )
   else:
     return (context.batch,), {}

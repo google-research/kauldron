@@ -56,12 +56,12 @@ class A:
 
 Here `A` defines 2 keys: `x` and `y`.
 
-Those keys can then be resolved with `get_from_keys_obj`:
+Those keys can then be resolved with `resolve_from_keyed_obj`:
 
 ```python
 a = A(x='a[0].b.inner', y='a[1].e')
 
-assert kontext.get_from_keys_obj(tree, a) == {
+assert kontext.resolve_from_keyed_obj(tree, a) == {
     'x': 123,
     'y': 789,
 }
@@ -96,13 +96,13 @@ model = MyModel(
 ```
 
 Kauldron internally uses `kontext` to extract the values from `batch` and
-forward them to the `model``.
+forward them to the `model`.
 
 ```python
 context = {
     'batch': batch,
     ...
 }
-model_kwargs = kontext.get_from_keys_obj(context, model)
+model_kwargs = kontext.resolve_from_keyed_obj(context, model)
 pred = model.apply(rng, **model_kwargs)
 ```

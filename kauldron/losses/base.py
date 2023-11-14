@@ -191,7 +191,7 @@ class Loss(metrics.Metric, abc.ABC):
       An instance of Loss.State. See `get_state` for details.
     """
     # TODO(epot): Add `func=self.get_values`
-    kwargs = kontext.get_from_keys_obj(context, self)
+    kwargs = kontext.resolve_from_keyed_obj(context, self)
     mask = kwargs.pop("mask", None)
     step = kwargs.pop("step", None)
     values = self.get_values(**kwargs)

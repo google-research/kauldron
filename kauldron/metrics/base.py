@@ -89,7 +89,7 @@ class Metric(abc.ABC):
 
   def _resolve_kwargs(self, context: Any) -> dict[kontext.Key, Any]:
     """Collects and returns the kwargs required for get_state from context."""
-    return kontext.get_from_keys_obj(context, self, func=self.get_state)
+    return kontext.resolve_from_keyed_obj(context, self, func=self.get_state)
 
   def get_state_from_context(self, context: Any) -> Metric.State:
     kwargs = self._resolve_kwargs(context)
@@ -183,7 +183,7 @@ class TreeMap(Metric):
 
   def _resolve_kwargs(self, context: Any) -> dict[kontext.Key, Any]:
     # Use the key and get_state signature of self.metric instead of self
-    return kontext.get_from_keys_obj(
+    return kontext.resolve_from_keyed_obj(
         context, self.metric, func=self.metric.get_state
     )
 
@@ -233,7 +233,7 @@ class TreeReduce(Metric):
 
   def _resolve_kwargs(self, context: Any) -> dict[kontext.Key, Any]:
     # Use the key and get_state signature of self.metric instead of self
-    return kontext.get_from_keys_obj(
+    return kontext.resolve_from_keyed_obj(
         context, self.metric, func=self.metric.get_state
     )
 

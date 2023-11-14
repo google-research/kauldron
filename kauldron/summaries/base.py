@@ -46,7 +46,7 @@ class Summary(abc.ABC):
 
   def gather_kwargs(self, context: Any) -> dict[str, Any]:
     """Returns the required information from context as a kwargs dict."""
-    return kontext.get_from_keys_obj(context, self)
+    return kontext.resolve_from_keyed_obj(context, self)
 
 
 class ImageSummary(Summary, abc.ABC):
@@ -64,7 +64,9 @@ class ImageSummary(Summary, abc.ABC):
             "Can either pass context or keyword arguments,"
             f"but got context and {kwargs.keys()}."
         )
-      kwargs = kontext.get_from_keys_obj(context, self, func=self.get_images)
+      kwargs = kontext.resolve_from_keyed_obj(
+          context, self, func=self.get_images
+      )
     return self.get_images(**kwargs)
 
 
@@ -100,7 +102,7 @@ class ShowImages(ImageSummary):
 
   def gather_kwargs(self, context: Any) -> dict[str, Images | Masks]:
     # optimize gather_kwargs to only return num_images many images
-    kwargs = kontext.get_from_keys_obj(context, self)
+    kwargs = kontext.resolve_from_keyed_obj(context, self)
     images = kwargs["images"]
     masks = kwargs.get("masks", None)
     if self.rearrange:
@@ -181,7 +183,7 @@ class ShowDifferenceImages(ImageSummary):
 
   def gather_kwargs(self, context: Any) -> dict[str, Images | Masks]:
     # optimize gather_kwargs to only return num_images many images
-    kwargs = kontext.get_from_keys_obj(context, self)
+    kwargs = kontext.resolve_from_keyed_obj(context, self)
     images1, images2 = kwargs["images1"], kwargs["images2"]
     masks = kwargs.get("masks", None)
     if self.rearrange:
@@ -266,7 +268,7 @@ class ShowSegmentations(ImageSummary):
 
   def gather_kwargs(self, context: Any) -> dict[str, Segmentations]:
     # optimize gather_kwargs to only return num_images many images
-    kwargs = kontext.get_from_keys_obj(context, self)
+    kwargs = kontext.resolve_from_keyed_obj(context, self)
     segmentations = kwargs["segmentations"]
     if self.rearrange:
       segmentations = einops.rearrange(
@@ -315,7 +317,7 @@ class PerImageChannelPCA(ImageSummary):
 
   def gather_kwargs(self, context: Any) -> dict[str, Segmentations]:
     # optimize gather_kwargs to only return num_images many images
-    kwargs = kontext.get_from_keys_obj(context, self)
+    kwargs = kontext.resolve_from_keyed_obj(context, self)
     feature_maps = kwargs["feature_maps"]
     if self.rearrange:
       feature_maps = einops.rearrange(

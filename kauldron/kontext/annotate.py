@@ -33,7 +33,7 @@ REQUIRED = "__KEY_REQUIRED__"
 _GET_KEY_PROTOCOL = "__kontext_keys__"
 
 
-def get_from_keys_obj(
+def resolve_from_keyed_obj(
     tree: Any, keyed_obj: Any, *, func: Optional[Callable[..., Any]] = None
 ) -> dict[str, Any]:
   """Resolve the Key annotations of an object for given context.

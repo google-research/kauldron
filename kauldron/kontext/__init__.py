@@ -20,11 +20,11 @@
 
 # pylint: disable=g-importing-member,unused-import
 
-from kauldron.kontext.annotate import get_from_keys_obj
 from kauldron.kontext.annotate import get_keypaths
 from kauldron.kontext.annotate import is_key_annotated
 from kauldron.kontext.annotate import Key
 from kauldron.kontext.annotate import REQUIRED
+from kauldron.kontext.annotate import resolve_from_keyed_obj
 from kauldron.kontext.paths import flatten_with_path
 from kauldron.kontext.paths import get_by_path
 from kauldron.kontext.paths import Path
