@@ -43,6 +43,7 @@ import pandas as pd
 # pylint: disable=unused-import,g-bad-import-order,g-importing-member
 from kauldron.utils.plotting import plot_schedules
 from kauldron.utils.profile_utils import Profiler
+from kauldron.utils.graphviz_utils import get_connection_graph
 # pylint: enable=unused-import,g-bad-import-order,g-importing-member
 
 _Example = Any
@@ -331,21 +332,25 @@ def json_spec_like(obj) -> Any:
   return json_spec
 
 
-def eval_context_shape(model, losses, metrics, summaries, elem_spec, rngs):
+# TODO(epot): Should cache this function (or better this should be a
+# `kd.train.Config` property.
+def eval_context_shape(config: train.Config) -> train.Context:
   """Shape evaluate the model (fast) and return the shapes of the context."""
-  mwa = train.train_step.ModelWithAux(
-      model=model, losses=losses, metrics=metrics, summaries=summaries
-  )
+
+  elem_spec = config.train_ds.element_spec
+  rngs = config.rng_streams.init_rngs()
+  mwa = config.trainstep.model_with_aux
+
   params = jax.eval_shape(mwa.init, init_rngs=rngs, elem_spec=elem_spec)
   m_batch = data_utils.mock_batch_from_elem_spec(elem_spec)
-  loss, context = jax.eval_shape(
+  _, context = jax.eval_shape(
       functools.partial(mwa.forward, is_training=True),
       params=params,
       batch=m_batch,
       rngs=rngs,
       step=0,
   )
-  return loss, context
+  return context
 
 
 def get_colab_model_overview(
@@ -426,22 +431,15 @@ def _normalize_height(
 
 
 def plot_context(config: train.Config) -> None:
-  loss, context = eval_context_shape(
-      model=config.model,
-      losses=config.train_losses,
-      metrics=config.train_metrics,
-      summaries=config.train_summaries,
-      elem_spec=config.train_ds.element_spec,
-      rngs=config.rng_streams.init_rngs(),
-  )
+  context = eval_context_shape(config)
   json_spec_like({
       "step": context.step,
-      "batch": config.train_ds.element_spec,
+      "batch": context.batch,
       "params": context.params,
       "preds": context.preds,
       "interms": context.interms,
       "loss_states": context.loss_states,
-      "loss_total": loss,
+      "loss_total": context.loss_total,
       "grads": "[same as params ]",
       "updates": "[same as params ]",
   })

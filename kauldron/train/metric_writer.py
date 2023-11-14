@@ -161,14 +161,7 @@ class KDMetricWriter(metric_writers.MetricWriter):
 
   def write_context_structure(self, step: int, config):
     # do a lightweight shape-eval for the context
-    loss, context = kd_inspect.eval_context_shape(
-        model=config.model,
-        losses=config.train_losses,
-        metrics=config.train_metrics,
-        summaries=config.train_summaries,
-        elem_spec=config.train_ds.element_spec,
-        rngs=config.rng_streams.init_rngs(),
-    )
+    context = kd_inspect.eval_context_shape(config)
     # create a flat spec for the context
     context_spec = etree.spec_like(
         kontext.flatten_with_path({
@@ -178,7 +171,7 @@ class KDMetricWriter(metric_writers.MetricWriter):
             "preds": context.preds,
             "interms": context.interms,
             "loss_states": context.loss_states,
-            "loss_total": loss,
+            "loss_total": context.loss_total,
             "grads": "<<same structure as params>>",
             "updates": "<<same structure as params>>",
         })
