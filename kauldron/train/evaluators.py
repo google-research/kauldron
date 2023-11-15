@@ -460,7 +460,7 @@ BIAS_CONSTANT = 100.0
 
 
 def to_cpu(x):
-  return jax.device_put(x, jax.devices(backend='cpu')[0])
+  return jax.device_put(x, jax.local_devices(backend='cpu')[0])
 
 
 def run_fewshot(
