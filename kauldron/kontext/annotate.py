@@ -66,6 +66,7 @@ def resolve_from_keyed_obj(
       if k in key_paths and key_paths[k] is None
   }
 
+  # TODO(epot): Add tests for `func` that check error messages
   if func is not None:
     # If a function is passed (and doesn't accept **kwargs), then ensure that
     # it has a parameter for each key, and that the parameter for each optional
