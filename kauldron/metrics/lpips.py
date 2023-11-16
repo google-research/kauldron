@@ -126,8 +126,8 @@ class LpipsVgg(base.Metric):
 
   """
 
-  pred: kontext.Key
-  target: kontext.Key
+  pred: kontext.Key = kontext.REQUIRED
+  target: kontext.Key = kontext.REQUIRED
   mask: Optional[kontext.Key] = None
 
   @flax.struct.dataclass

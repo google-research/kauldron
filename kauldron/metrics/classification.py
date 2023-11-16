@@ -33,8 +33,8 @@ import sklearn.metrics
 class Accuracy(base.Metric):
   """Classification Accuracy."""
 
-  logits: kontext.Key = "preds.logits"
-  labels: kontext.Key = "batch.label"
+  logits: kontext.Key = kontext.REQUIRED  # e.g. "preds.logits"
+  labels: kontext.Key = kontext.REQUIRED  # e.g. "batch.label"
   mask: Optional[kontext.Key] = None
 
   @flax.struct.dataclass
@@ -56,8 +56,8 @@ class Accuracy(base.Metric):
 class Precision1(base.Metric):
   """Precision@1 for multilabel classification."""
 
-  logits: kontext.Key = "preds.logits"
-  labels: kontext.Key = "batch.labels"
+  logits: kontext.Key = kontext.REQUIRED  # e.g. "preds.logits"
+  labels: kontext.Key = kontext.REQUIRED  # e.g. "batch.labels"
   mask: Optional[kontext.Key] = None
 
   @flax.struct.dataclass
@@ -80,8 +80,8 @@ class Precision1(base.Metric):
 class BinaryAccuracy(base.Metric):
   """Classification Accuracy for Binary classification tasks."""
 
-  logits: kontext.Key = "preds.logits"
-  labels: kontext.Key = "batch.label"
+  logits: kontext.Key = kontext.REQUIRED  # e.g. "preds.logits"
+  labels: kontext.Key = kontext.REQUIRED  # e.g. "batch.label"
 
   @flax.struct.dataclass
   class State(base_state.AverageState):
@@ -102,8 +102,8 @@ class BinaryAccuracy(base.Metric):
 class RocAuc(base.Metric):
   """Area Under the Receiver Operating Characteristic Curve (ROC AUC)."""
 
-  logits: kontext.Key = "preds.logits"
-  labels: kontext.Key = "batch.label"
+  logits: kontext.Key = kontext.REQUIRED  # e.g. "preds.logits"
+  labels: kontext.Key = kontext.REQUIRED  # e.g. "batch.label"
   mask: Optional[kontext.Key] = None
 
   multi_class_mode: str = "ovr"  # One-vs-Rest ("ovr") or One-vs-One ("ovo")

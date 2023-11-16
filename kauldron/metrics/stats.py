@@ -36,7 +36,7 @@ class SingleDimension(base.Metric):
     index: Dimension to index (from the last axis).
   """
 
-  tensor: kontext.Key
+  tensor: kontext.Key = kontext.REQUIRED
   mask: Optional[kontext.Key] = None
 
   index: int = 0
@@ -78,7 +78,7 @@ class Norm(base.Metric):
       -np.inf, -2, -1, 0, or any integer or float. See `np.linalg.norm`.
   """
 
-  tensor: kontext.Key
+  tensor: kontext.Key = kontext.REQUIRED
   mask: Optional[kontext.Key] = None
 
   axis: None | int | tuple[int, int] = -1
@@ -170,7 +170,7 @@ class Std(base.Metric):
   This is a simple example of wrapping a CLU metric.
   """
 
-  values: kontext.Key
+  values: kontext.Key = kontext.REQUIRED
   mask: Optional[kontext.Key] = None
 
   @flax.struct.dataclass

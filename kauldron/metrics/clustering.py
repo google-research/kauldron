@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Metrics for clustering tasks."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -49,8 +50,9 @@ class Ari(base.Metric):
   num_instances_pred: int
   ignored_ids: Optional[Sequence[int] | int] = None
 
-  predictions: kontext.Key = "preds.segmentations_video"
-  labels: kontext.Key = "batch.segmentations_video"
+  # e.g. "preds.segmentations_video"
+  predictions: kontext.Key = kontext.REQUIRED
+  labels: kontext.Key = kontext.REQUIRED  # e.g. "batch.segmentations_video"
   mask: Optional[kontext.Key] = None
 
   @flax.struct.dataclass

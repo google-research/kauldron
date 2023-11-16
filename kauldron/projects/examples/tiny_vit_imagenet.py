@@ -44,13 +44,18 @@ def get_config():
 
   # Losses
   cfg.train_losses = {
-      "xentropy": kd.losses.SoftmaxCrossEntropyWithIntLabels(),
+      "xentropy": kd.losses.SoftmaxCrossEntropyWithIntLabels(
+          logits="preds.logits",
+          labels="batch.label",
+      ),
   }
 
   # Metrics
   cfg.train_metrics = {
-      "accuracy": kd.metrics.Accuracy(),
-      "roc_auc": kd.metrics.RocAuc(),
+      "accuracy": kd.metrics.Accuracy(
+          logits="preds.logits", labels="batch.label"
+      ),
+      "roc_auc": kd.metrics.RocAuc(logits="preds.logits", labels="batch.label"),
       "final_attention_std": kd.metrics.Std(
           values="interms.encoder.layers_11.attention.attn_weights[0]"
       ),
@@ -66,9 +71,7 @@ def get_config():
       )
   }
 
-  cfg.optimizer = optax.adam(
-      learning_rate=cfg.ref.schedules["learning_rate"]
-  )
+  cfg.optimizer = optax.adam(learning_rate=cfg.ref.schedules["learning_rate"])
 
   # Checkpointer
   cfg.checkpointer = kd.ckpts.Checkpointer(

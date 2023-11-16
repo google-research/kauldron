@@ -52,12 +52,17 @@ def get_config():
   # Losses
   # TODO(klausg): use sigmoid_xent instead?
   cfg.train_losses = {
-      "xentropy": kd.losses.SoftmaxCrossEntropyWithIntLabels(),
+      "xentropy": kd.losses.SoftmaxCrossEntropyWithIntLabels(
+          logits="preds.logits",
+          labels="batch.label",
+      ),
   }
 
   # Metrics
   cfg.train_metrics = {
-      "accuracy": kd.metrics.Accuracy(),
+      "accuracy": kd.metrics.Accuracy(
+          logits="preds.logits", labels="batch.label"
+      ),
   }
 
   # Optimizer

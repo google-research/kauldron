@@ -31,8 +31,8 @@ import optax
 class L1(base.Loss):
   """L1 loss."""
 
-  preds: kontext.Key
-  targets: kontext.Key
+  preds: kontext.Key = kontext.REQUIRED
+  targets: kontext.Key = kontext.REQUIRED
 
   @typechecked
   def get_values(self, preds: Float["*a"], targets: Float["*a"]) -> Float["*a"]:
@@ -43,8 +43,8 @@ class L1(base.Loss):
 class L2(base.Loss):
   """L2 loss."""
 
-  preds: kontext.Key
-  targets: kontext.Key
+  preds: kontext.Key = kontext.REQUIRED
+  targets: kontext.Key = kontext.REQUIRED
 
   @typechecked
   def get_values(self, preds: Float["*a"], targets: Float["*a"]) -> Float["*a"]:
@@ -58,8 +58,8 @@ class L2(base.Loss):
 class SoftmaxCrossEntropy(base.Loss):
   """Softmax cross-entropy loss."""
 
-  logits: kontext.Key = "preds.logits"
-  labels: kontext.Key = "batch.label"
+  logits: kontext.Key = kontext.REQUIRED  # e.g. "preds.logits"
+  labels: kontext.Key = kontext.REQUIRED  # e.g. "batch.label"
 
   @typechecked
   def get_values(
@@ -72,8 +72,8 @@ class SoftmaxCrossEntropy(base.Loss):
 class SoftmaxCrossEntropyWithIntLabels(base.Loss):
   """Softmax cross-entropy loss with integer labels."""
 
-  logits: kontext.Key = "preds.logits"
-  labels: kontext.Key = "batch.label"
+  logits: kontext.Key = kontext.REQUIRED  # e.g. "preds.logits"
+  labels: kontext.Key = kontext.REQUIRED  # e.g. "batch.label"
 
   @typechecked
   def get_values(
@@ -88,8 +88,8 @@ class SoftmaxCrossEntropyWithIntLabels(base.Loss):
 class SigmoidBinaryCrossEntropy(base.Loss):
   """Sigmoid cross-entropy loss with binary labels."""
 
-  logits: kontext.Key = "preds.logits"
-  labels: kontext.Key = "batch.label"
+  logits: kontext.Key = kontext.REQUIRED  # e.g. "preds.logits"
+  labels: kontext.Key = kontext.REQUIRED  # e.g. "batch.label"
 
   @typechecked
   def get_values(

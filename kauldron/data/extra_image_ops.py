@@ -48,7 +48,7 @@ class RandAugment(grain.RandomMapTransform):
     exclude_ops: exclude selected operations.
   """
 
-  image_key: kontext.Key = "image"
+  image_key: kontext.Key = kontext.REQUIRED  # e.g. "image"
   boxes_key: Optional[kontext.Key] = None
 
   num_layers: int = 2

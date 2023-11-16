@@ -43,8 +43,8 @@ def psnr(
 class Psnr(base.Metric):
   """PSNR."""
 
-  pred: kontext.Key
-  target: kontext.Key
+  pred: kontext.Key = kontext.REQUIRED
+  target: kontext.Key = kontext.REQUIRED
   mask: Optional[kontext.Key] = None
 
   dynamic_range: float = 1.0
@@ -140,8 +140,8 @@ def _compute_ssim(
 class Ssim(base.Metric):
   """Structural similarity (SSIM)."""
 
-  pred: kontext.Key
-  target: kontext.Key
+  pred: kontext.Key = kontext.REQUIRED
+  target: kontext.Key = kontext.REQUIRED
   mask: Optional[kontext.Key] = None
 
   max_val: float = 1
