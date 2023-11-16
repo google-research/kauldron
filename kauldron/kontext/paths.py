@@ -158,14 +158,14 @@ def _jax_key_entry_to_kd_path_element(
   raise TypeError(f"Unknown key entry type {type(jax_key_entry)}")
 
 
-def get_by_path(obj: Any, path: str | tuple[str] | Path, default=None) -> Any:
+def get_by_path(obj: Any, path: str | tuple[str] | Path, default=...) -> Any:
   """Get (nested) item or attribute by given path.
 
   Args:
     obj: The object / dict / dataclass to retrieve the value from.
     path: The path to retrieve, either as a string "foo[1]", a tuple ("foo", 1)
       or a Path object.
-    default: return value if no value is found.
+    default: return value if no value is found. By default, raise an error.
 
   Returns:
     The value corresponding to the path if it exists, or `default` otherwise.
@@ -183,7 +183,7 @@ def get_by_path(obj: Any, path: str | tuple[str] | Path, default=None) -> Any:
     case Path():
       pass
     case None:  # If path is None return the default (useful for optional paths)
-      return default
+      return None if default is ... else default
     case _:
       raise TypeError(f"Unknown key/path {path} of type{type(path)}")
 

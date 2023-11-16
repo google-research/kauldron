@@ -68,7 +68,7 @@ def _convert_to_array_spec(x: Any) -> Any:
 
 def _format_module_config(cfg: Optional[Any]) -> str:
   """Return html span with emoji and tooltip containing abbreviated config."""
-  if not cfg:
+  if not isinstance(cfg, konfig.ConfigDict):
     return ""
 
   def _abbrev(c):
@@ -238,14 +238,23 @@ def _get_cumulative_params(path: tuple[str, ...], table) -> int:
   )
 
 
-def _get_styled_df(table, model_config: konfig.ConfigDict) -> pd.DataFrame:
+def _get_styled_df(
+    table: nn.summary.Table, model_config: konfig.ConfigDict
+) -> pd.DataFrame:
   """Return a styled pd.DataFrame for the model-overview table in colab."""
   df_rows = []
   for row in table:
     args, input_ann, return_ann = _get_args(
         row.module_type, row.method, row.inputs
     )
-    m_config = kontext.get_by_path(model_config, ".".join(row.path))
+    # It's still possible that the module path conflict with an attribute, like
+    # * In the config: `model = MyModel(some_value=Config())`
+    # * Inside `MyModel.__call__`: `x = nn.Dense(name='some_value')(x)`
+    # Here `get_by_path(, 'some_value')` will extract the `Config()`, instead
+    # of returning `None`.
+    m_config = kontext.get_by_path(
+        model_config, ".".join(row.path), default=None
+    )
     df_rows.append({
         "Cfg": _format_module_config(m_config),
         "Path": _format_module_path(row.path),
