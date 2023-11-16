@@ -137,8 +137,8 @@ class Config(config_util.BaseConfig):
   )
 
   # XManager parameters
-  run: xmanager.RunConfig = dataclasses.field(
-      default_factory=xmanager.RunConfig
+  runtime: xmanager.Runtime = dataclasses.field(
+      default_factory=xmanager.Runtime
   )
 
   raw_cfg: Optional[konfig.ConfigDict] = dataclasses.field(
