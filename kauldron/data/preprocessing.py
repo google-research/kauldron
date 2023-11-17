@@ -18,13 +18,17 @@ from __future__ import annotations
 
 import abc
 import dataclasses
+import functools
 from typing import Any, Dict, Iterable, Mapping, Optional, Sequence
 
 import einops
 import flax.core
 import grain.tensorflow as grain
 from kauldron import kontext
-from kauldron.typing import TfArray, TfFloat, TfInt, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+
+from kauldron.typing import Array, Float, Key, Shape, TfArray, TfFloat, TfInt, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.utils import paths as paths_lib
+import numpy as np
 import tensorflow as tf
 
 
@@ -238,7 +242,10 @@ class Rearrange(ElementWiseTransform):
   pattern: str
 
   # @typechecked
-  def map_element(self, element: TfArray["..."]) -> TfFloat["..."]:
+  def map_element(
+      self,
+      element: TfArray["..."] | Array["..."],
+  ) -> TfArray["..."] | Array["..."]:
     return einops.rearrange(element, self.pattern)
 
 
@@ -252,8 +259,12 @@ class ValueRange(ElementWiseTransform):
   dtype: Any = tf.float32
   clip_values: bool = True
 
-  @typechecked
-  def map_element(self, element: TfArray["*dims"]) -> TfFloat["*dims"]:
+  @functools.singledispatchmethod
+  def map_element(self, element):
+    pass
+
+  @map_element.register
+  def _(self, element: tf.Tensor) -> tf.Tensor:
     in_min_t = tf.constant(self.in_vrange[0], tf.float32)
     in_max_t = tf.constant(self.in_vrange[1], tf.float32)
     vmax = tf.constant(self.vrange[1], tf.float32)
@@ -265,6 +276,34 @@ class ValueRange(ElementWiseTransform):
     if self.clip_values:
       element = tf.clip_by_value(element, vmin, vmax)
     return element
+
+  @typechecked
+  @map_element.register
+  def _(self, element: np.ndarray) -> np.ndarray:
+    in_min, in_max = self.in_vrange
+    vmin, vmax = self.vrange
+
+    element = (element - in_min) / (in_max - in_min)
+    element = element * (vmax - vmin) + vmin
+
+    if self.clip_values:
+      element = np.clip(element, a_min=vmin, a_max=vmax)
+
+    NP_DTYPES = {tf.float32: np.float32, np.float32: np.float32}
+
+    return element.astype(dtype=NP_DTYPES[self.dtype])
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class AsNumpy(ElementWiseTransform):
+  dtype: Any = None
+  broadcast_to: Optional[Shape] = None
+
+  def map_element(self, element: Any) -> np.ndarray:
+    np_elem = np.array(element, dtype=self.dtype)
+    if self.broadcast_to is not None:
+      np_elem = np.broadcast_to(np_elem, self.broadcast_to)
+    return np_elem
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
