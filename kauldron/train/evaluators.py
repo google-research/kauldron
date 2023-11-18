@@ -19,7 +19,7 @@ from __future__ import annotations
 import collections.abc
 import dataclasses
 import functools
-from typing import Mapping, Optional, TypeVar
+from typing import Any, Mapping, Optional, TypeVar
 
 import flax
 import jax
@@ -47,10 +47,49 @@ import numpy as np
 _SelfT = TypeVar('_SelfT')
 
 _DEFAULT_EVAL_NAME = 'eval'
-_DEFAULT_FEWSHOT_EVAL_NAME = 'fewshot_eval'
 
 
-class Evaluator(config_util.BaseConfig, config_util.UpdateFromRootCfg):
+class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
+  """Base class for inline evaluators.
+
+  Evaluators should inherit from this class and implement the `evaluate` method.
+
+  Attributes:
+    name: Eval name (collection name for TensorBoard and Datatables)
+    run_every: Run eval every `run_every` train steps
+    base_cfg: reference to the experiment configuration (set automatically).
+  """
+
+  name: str = _DEFAULT_EVAL_NAME  # TODO(klausg): change default to None?
+
+  run_every: int
+
+  base_cfg: config_lib.Config = dataclasses.field(
+      default=config_util.ROOT_CFG_REF, repr=False
+  )
+
+  def maybe_eval(self, *, step: int, state: train_step.TrainState) -> Any:
+    """Run or skip the evaluator for the given train-step."""
+    if self.should_eval(step):
+      return self.evaluate(state, step)
+
+  def should_eval(self, step: int) -> bool:
+    """Whether the evaluator should be run for the given train-step."""
+    return step % self.run_every == 0
+
+  def evaluate(self, state: train_step.TrainState, step: int) -> Any:
+    """Run this evaluator then write and optionally return the results."""
+    raise NotImplementedError
+
+  @functools.cached_property
+  def writer(self) -> metric_writer.KDMetricWriter:
+    """Metric writer used for this evaluator."""
+    return metric_writer.KDMetricWriter(
+        workdir=self.base_cfg.workdir, collection=self.name
+    )
+
+
+class Evaluator(EvaluatorBase):
   """Evaluator running `num_batches` times every `run_every` steps.
 
   If not provided, losses, metrics, summaries are reused from train.
@@ -67,8 +106,6 @@ class Evaluator(config_util.BaseConfig, config_util.UpdateFromRootCfg):
   ```
 
   Attributes:
-    name: Eval name (display in TensorBoard)
-    run_every: Run eval every `run_every` train steps
     num_batches: How many batches to run evaluation on. Use `None` to evaluate
       on the full test dataset. Note that each evaluation reinitializes the
       dataset iterator, so setting to `1` will run all evaluations on the same
@@ -79,8 +116,6 @@ class Evaluator(config_util.BaseConfig, config_util.UpdateFromRootCfg):
     summaries: Summaries
   """
 
-  name: str = _DEFAULT_EVAL_NAME
-  run_every: int
   num_batches: Optional[int]
   ds: data.Pipeline = config_util.ROOT_CFG_REF.eval_ds
   losses: dict[str, losses_lib.Loss] = config_util.ROOT_CFG_REF.train_losses
@@ -89,10 +124,6 @@ class Evaluator(config_util.BaseConfig, config_util.UpdateFromRootCfg):
   )
   summaries: dict[str, summaries_lib.Summary] = (
       config_util.ROOT_CFG_REF.train_summaries
-  )
-
-  base_cfg: config_lib.Config = dataclasses.field(
-      default=config_util.ROOT_CFG_REF, repr=False
   )
 
   # TODO(klausg): filter out metrics / summaries that access grads/updates
@@ -109,16 +140,6 @@ class Evaluator(config_util.BaseConfig, config_util.UpdateFromRootCfg):
     return new_self.replace(
         ds=new_self.ds.update_from_root_cfg(root_cfg),
     )
-
-  def maybe_eval(
-      self, *, step: int, state: train_step.TrainState
-  ) -> train_step.Auxiliaries | None:
-    """See base class."""
-    if self.should_eval(step):
-      return self.evaluate(state, step)
-
-  def should_eval(self, step: int) -> bool:
-    return step % self.run_every == 0
 
   def evaluate(
       self, state: train_step.TrainState, step: int
@@ -170,13 +191,6 @@ class Evaluator(config_util.BaseConfig, config_util.UpdateFromRootCfg):
         summaries=self.summaries,
     )
 
-  @functools.cached_property
-  def writer(self) -> metric_writer.KDMetricWriter:
-    """Metric writer."""
-    return metric_writer.KDMetricWriter(
-        workdir=self.base_cfg.workdir, collection=self.name
-    )
-
 
 @jax_utils.jit(
     static_argnames=('model_with_aux', 'rng_streams'),
@@ -213,26 +227,22 @@ def _step(
 
 
 def normalize_evaluators(
-    evaluators: collections.abc.Mapping[str, Evaluator]
-) -> collections.abc.Mapping[str, Evaluator]:
+    evaluators: collections.abc.Mapping[str, EvaluatorBase]
+) -> collections.abc.Mapping[str, EvaluatorBase]:
   """Set the evaluator names."""
   if not isinstance(evaluators, collections.abc.Mapping):
     raise TypeError(
-        '`cfg.evals` should be a `dict[str, Evaluator]`. Got:'
+        '`cfg.evals` should be a `dict[str, EvaluatorBase]`. Got:'
         f' {type(evaluators)}'
     )
   return {k: _replace_name(c, k) for k, c in evaluators.items()}
 
 
-def _replace_name(evaluator: Evaluator, name: str) -> Evaluator:
+def _replace_name(evaluator: EvaluatorBase, name: str) -> EvaluatorBase:
   """Set the `evaluator.name`."""
-  # TODO(klausg): factor out baseclass
-  if not (
-      isinstance(evaluator, Evaluator)
-      or isinstance(evaluator, FewShotEvaluator)
-  ):
+  if not isinstance(evaluator, EvaluatorBase):
     raise TypeError(
-        'Eval values should be `kd.train.Evaluator`. Got:'
+        'Eval values should be `kd.train.EvaluatorBase`. Got:'
         f' {name}={type(evaluator)}'
     )
   elif name == 'train':
@@ -240,11 +250,7 @@ def _replace_name(evaluator: Evaluator, name: str) -> Evaluator:
         'Evaluator cannot be named `train` as it conflict with training'
         ' metrics.'
     )
-  # TODO(epot): generalize or remove default name mechanism
-  elif evaluator.name in [
-      _DEFAULT_EVAL_NAME,
-      _DEFAULT_FEWSHOT_EVAL_NAME,
-  ]:  # Default name, overwrite
+  elif evaluator.name == _DEFAULT_EVAL_NAME:  # Default name, overwrite
     return dataclasses.replace(evaluator, name=name)
   elif evaluator.name == name:
     return evaluator
@@ -255,7 +261,7 @@ def _replace_name(evaluator: Evaluator, name: str) -> Evaluator:
 
 
 # TODO(adosovitskiy) move to separate file once evaluator base class is in place
-class FewShotEvaluator(config_util.BaseConfig, config_util.UpdateFromRootCfg):
+class FewShotEvaluator(EvaluatorBase):
   """FewShotEvaluator running closed-form few-shot classification.
 
   Compute the features from the model, solve closed-form L2-regularized linear
@@ -265,8 +271,6 @@ class FewShotEvaluator(config_util.BaseConfig, config_util.UpdateFromRootCfg):
   Following (and largely copying) https://github.com/google-research/big_vision
 
   Attributes:
-    name: Eval name (display in TensorBoard)
-    run_every: Run eval every `run_every` train steps
     ds_train: Dataset to train few-shot classification on
     ds_train: Dataset to validate few-shot classification on (to select L2 reg)
     ds_train: Dataset to test few-shot classification on
@@ -280,7 +284,6 @@ class FewShotEvaluator(config_util.BaseConfig, config_util.UpdateFromRootCfg):
     selected_repr: a key from repr_names for which to put the accuracies to the
       main metrics
     seed: random seed for selecting the training data subset
-
 
   Usage example:
     "fewshot_i1k": kd.train.evaluators.FewShotEvaluator(
@@ -296,8 +299,6 @@ class FewShotEvaluator(config_util.BaseConfig, config_util.UpdateFromRootCfg):
     )
   """
 
-  name: str = _DEFAULT_FEWSHOT_EVAL_NAME
-  run_every: int
   ds_train: data.TFDataPipeline
   ds_val: data.TFDataPipeline
   ds_test: data.TFDataPipeline
@@ -310,20 +311,6 @@ class FewShotEvaluator(config_util.BaseConfig, config_util.UpdateFromRootCfg):
   label_name: str
   selected_repr: str = 'pre_logits'
   seed: int = 17
-
-  base_cfg: config_lib.Config = dataclasses.field(
-      default=config_util.ROOT_CFG_REF, repr=False
-  )
-
-  def maybe_eval(
-      self, *, step: int, state: train_step.TrainState
-  ) -> train_step.Auxiliaries | None:
-    """See base class."""
-    if self.should_eval(step):
-      return self.evaluate(state, step)
-
-  def should_eval(self, step: int) -> bool:
-    return step % self.run_every == 0
 
   @property
   def metrics(self):
@@ -423,13 +410,6 @@ class FewShotEvaluator(config_util.BaseConfig, config_util.UpdateFromRootCfg):
         ),
         losses=flax.core.FrozenDict({}),
         summaries=flax.core.FrozenDict({}),
-    )
-
-  @functools.cached_property
-  def writer(self) -> metric_writer.KDMetricWriter:
-    """Metric writer."""
-    return metric_writer.KDMetricWriter(
-        workdir=self.base_cfg.workdir, collection=self.name
     )
 
 
