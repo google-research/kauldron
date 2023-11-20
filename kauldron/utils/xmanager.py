@@ -30,7 +30,7 @@ from unittest import mock as _mock ; xmanager_api = _mock.Mock()
 
 
 @dataclasses.dataclass
-class RunConfig:
+class Runtime:
   """Executable config.
 
   Attributes:
