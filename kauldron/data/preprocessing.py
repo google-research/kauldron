@@ -243,6 +243,17 @@ class Rearrange(ElementWiseTransform):
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class Cast(ElementWiseTransform):
+  """Cast an element to the specified dtype."""
+
+  dtype: Any
+
+  @typechecked
+  def map_element(self, element: TfArray["*any"]) -> TfArray["*any"]:
+    return tf.cast(element, self.dtype)
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class ValueRange(ElementWiseTransform):
   """Map the value range of an element."""
 
