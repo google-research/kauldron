@@ -37,6 +37,7 @@ Finally, objects are resolved to their actual type with:
 cfg = konfig.resolve(cfg)
 ```
 """
+
 # pylint: disable=g-importing-member
 from kauldron.konfig.configdict_base import ConfigDict
 from kauldron.konfig.configdict_base import register_aliases
@@ -46,5 +47,6 @@ from kauldron.konfig.fake_import_utils import mock_modules
 from kauldron.konfig.ref_utils import ref_copy
 from kauldron.konfig.ref_utils import ref_fn
 from kauldron.konfig.ref_utils import WithRef
+from kauldron.konfig.utils import ConfigDictLike
 from kauldron.konfig.utils import placeholder
 # pylint: enable=g-importing-member

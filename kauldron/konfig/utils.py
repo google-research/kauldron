@@ -16,10 +16,28 @@
 
 import functools
 import os
-from typing import Any
+import typing
+from typing import Annotated, Any, TypeVar
 
 from etils import epath
 import ml_collections
+
+_T = TypeVar('_T')
+# No-op annotation to indicate the object should be a ConfigDict object:
+# * `x: MyObj`: Resolved object
+# * `x: ConfigDictLike[MyObj]`: ConfigDict object, but allow auto-complete
+if not typing.TYPE_CHECKING:
+  ConfigDictLike = Annotated[_T, None]
+else:
+  # TODO(b/254514368): Remove hack to make the alias work with PyType
+
+  class _ConfigDictLikeMeta(type):
+
+    def __getitem__(cls, obj):
+      return obj
+
+  class ConfigDictLike(metaclass=_ConfigDictLikeMeta):
+    pass
 
 
 # Wrapper around `placeholder` which accept any default
