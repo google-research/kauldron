@@ -156,12 +156,30 @@ class _ElementWise:
       keys = {k: k for k in self.key}
     object.__setattr__(self, "key", keys)
 
-  def _per_element(self, features):
-    """Iterator that returns out_key, value pairs."""
+  def _per_element(
+      self,
+      features: dict[str, Any],
+  ) -> Iterable[tuple[str, Any, bool]]:
+    """Iterator that returns out_key, value, should_transform triplets.
+
+    Args:
+      features: a dict of features
+
+    Yields:
+      an iterator with tuples of out_key, value, and should_transform.
+      `ElementWiseTransform` and `ElementWiseRandomTransform` iterate over this
+      and set:
+      `batch[out_key] = transformed(value) if should transform else value`
+
+    Raises:
+      KeyError: if the key did not match any of the features.
+    """
     is_noop = True
     for k, v in features.items():
       if k in self.key:
         yield self.key[k], v, True
+        if k != self.key[k]:  # if renaming then keep original key
+          yield k, v, False
         is_noop = False
       else:
         yield k, v, False
