@@ -67,4 +67,4 @@ def _wu_error_handling(post_mortem: bool = False):
 if __name__ == "__main__":
   # Adds jax flags to the program.
   jax.config.parse_flags_with_absl()
-  app.run(main)
+  app.run(main)  # external
