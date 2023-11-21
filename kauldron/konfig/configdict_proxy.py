@@ -25,10 +25,13 @@ import typing
 from typing import Any, TypeVar
 
 from etils import epy
-import flax
 from kauldron.konfig import configdict_base
 from kauldron.konfig import fake_import_utils
 import ml_collections
+
+with epy.lazy_imports():
+  # Lazy-import when konfig is imported in XManager launcher script
+  import flax  # pylint: disable=g-import-not-at-top
 
 
 _T = TypeVar('_T')
