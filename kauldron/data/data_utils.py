@@ -25,6 +25,7 @@ from typing import Any
 from etils import enp
 from etils import epy
 from etils import etree
+from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 
 _MapFn = Callable[..., Any]
 _ArrayIterable = Any
@@ -57,7 +58,7 @@ class IterableDataset:  # Could be generic for better return value
 
   def __iter__(self) -> _ArrayIterable:
     for elem in self.parent:
-      yield elem
+      yield sharding.device_put(elem, sharding.SHARDED)
 
   def __len__(self) -> int:
     return len(self.parent)
@@ -100,4 +101,3 @@ class _PrefetchDataset(IterableDataset):
         queue.append(next(iterator))
       except StopIteration:
         pass
-

@@ -30,7 +30,6 @@ from kauldron.data import data_utils
 from kauldron.data.loaders import base as base_data_loader
 from kauldron.typing import PRNGKeyLike, PyTree  # pylint: disable=g-importing-member,g-multiple-import
 from kauldron.utils import config_util
-from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
@@ -140,10 +139,7 @@ class TFDataPipeline(Pipeline):
     # drop grain meta features
     ds = ds.map(_drop_grain_meta_features)
     ds = tfds.as_numpy(ds)
-    ds = data_utils.IterableDataset(ds)
-    # Shard the batch across the available devices
-    ds = ds.map(lambda ex: sharding.device_put(ex, sharding.SHARDED))
-    return ds
+    return data_utils.IterableDataset(ds)
 
   def __iter__(self) -> PyTree[_NpArray]:
     """Iterate over the dataset elements."""
@@ -210,8 +206,6 @@ class PyGrainPipeline(Pipeline):
     transformations.extend(self.transformations)
     transformations.append(self.batch_fn)
 
-    transformations.append(DevicePut())
-
     worker_count = self.worker_count
     if epy.is_notebook():  # in colab worker_count has to be 0
       # TODO(klausg): autodetect if Kernel supports multiprocessing
@@ -230,10 +224,3 @@ class PyGrainPipeline(Pipeline):
   def __iter__(self) -> PyTree[_NpArray]:
     """Iterate over the dataset elements."""
     return iter(self._ds_iter)
-
-
-class DevicePut(pygrain.MapTransform):
-  """Put the batch onto device in a sharded way."""
-
-  def map(self, batch):
-    return sharding.device_put(batch, sharding.SHARDED)
