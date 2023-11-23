@@ -80,3 +80,19 @@ def test_collecting_merge():
   np.testing.assert_allclose(final_state.compute(), 0.833333333333333)
   # Inverse merging should provide the same result
   np.testing.assert_allclose(state1.merge(state0).compute(), 0.833333333333333)
+
+
+@flax.struct.dataclass
+class FirstNImages(kd.metrics.CollectFirstState):
+  images: Float['N h w 3']
+
+
+def test_collecting_first_image():
+  state0 = FirstNImages(images=jnp.zeros((4, 16, 16, 3)), keep_first=5)
+  state1 = FirstNImages(images=jnp.ones((4, 16, 16, 3)), keep_first=5)
+  final_state = state0.merge(state1)
+  result = final_state.compute()
+
+  assert result.images.shape == (5, 16, 16, 3)
+  np.testing.assert_allclose(result.images[:4], jnp.zeros((4, 16, 16, 3)))
+  np.testing.assert_allclose(result.images[4:], jnp.ones((1, 16, 16, 3)))

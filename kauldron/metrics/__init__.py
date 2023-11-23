@@ -19,6 +19,7 @@ from kauldron.metrics.base import Metric
 from kauldron.metrics.base import TreeMap
 from kauldron.metrics.base import TreeReduce
 from kauldron.metrics.base_state import AverageState
+from kauldron.metrics.base_state import CollectFirstState
 from kauldron.metrics.base_state import CollectingState
 from kauldron.metrics.base_state import State
 from kauldron.metrics.classification import Accuracy

@@ -306,3 +306,84 @@ class AverageState(State):
 
   def compute(self) -> Float[""]:
     return self.total / self.count
+
+
+@flax.struct.dataclass
+class CollectFirstState(State):
+  """Get the first outputs (possibly) across multiple steps (no reducing).
+
+  Example:
+
+  ```python
+  @flax.struct.dataclass
+  class FirstNImages(kd.metrics.CollectFirstState):
+    images: Float['N h w 3']
+
+
+  state0 = FirstNImages(images=jnp.zeros((4, 16, 16, 3)), keep_first=5)
+  state1 = FirstNImages(images=jnp.ones((4, 16, 16, 3)), keep_first=5)
+  final_state = state0.merge(state1)
+  assert final_state.compute().images.shape == (5, 16, 16, 3)
+  ```
+  """
+  if typing.TYPE_CHECKING:
+    keep_first: int
+  else:
+    _: dataclasses.KW_ONLY
+    keep_first: int = flax.struct.field(pytree_node=False)
+
+  # TODO(klausg) dynamically check type annotations in post_init
+
+  @classmethod
+  def empty(cls: type[_SelfT]) -> _SelfT:
+    return cls(
+        **{
+            f.name: None
+            for f in dataclasses.fields(cls)
+            if f.name not in {"parent", "keep_first"}
+        }
+    )
+
+  @property
+  def _accumulated_fields(self) -> dict[str, Array]:
+    return {
+        f.name: getattr(self, f.name)
+        for f in dataclasses.fields(self)
+        if f.name not in {"parent", "keep_first"}
+    }
+
+  def merge(self: _SelfT, other: _SelfT) -> _SelfT:
+    assert hasattr(other, "keep_first")
+    if self.keep_first != other.keep_first:
+      raise ValueError(
+          f"Expected same keep_first: {self.keep_first} != {other.keep_first}"
+      )
+    merged_fields = {
+        k: _concat_truncate(v1, v2, self.keep_first)  # merge & truncate
+        for k, (v1, v2) in epy.zip_dict(
+            self._accumulated_fields, other._accumulated_fields  # pylint: disable=protected-access
+        )
+    }
+    return dataclasses.replace(self, **merged_fields)
+
+  # Return `_SelfT` so auto-complete works
+  def compute(self: _SelfT) -> _SelfT:
+    """Returns the concatenated values."""
+    return _CollectingStateOutput(**self._accumulated_fields)  # pytype: disable=bad-return-type
+
+
+def _concat_truncate(v1, v2, num: int):
+  """Concatenate two arrays along dim 0 up to length num_samples."""
+  if v1 is None:
+    return np.asarray(v2)
+
+  if v1.shape[0] < num and v2 is not None:
+    n = num - v1.shape[0]
+    v1 = np.concatenate([v1, v2[:n]], axis=0)
+
+  if isinstance(v1, jax.core.Tracer):
+    raise RuntimeError(
+        "Tracer detected! CollectingState.merge should not be JIT compiled."
+    )
+
+  return v1
