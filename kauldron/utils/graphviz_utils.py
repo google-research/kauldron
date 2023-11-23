@@ -26,11 +26,11 @@ with epy.lazy_imports():
   import graphviz  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
 
 
-def get_connection_graph(cfg: config_lib.Trainer) -> graphviz.Digraph:
+def get_connection_graph(trainer: config_lib.Trainer) -> graphviz.Digraph:
   """Build the graphviz."""
   dot = graphviz.Digraph()
 
-  ctx = cfg.context_specs
+  ctx = trainer.context_specs
 
   # TODO(epot): How to better style the graph ?
   dot.attr(rankdir='LR')
@@ -42,7 +42,7 @@ def get_connection_graph(cfg: config_lib.Trainer) -> graphviz.Digraph:
     subgraph.node('batch', label=_make_node('batch', batch))
 
     # Make a node for the model
-    model_inputs = kontext.get_keypaths(cfg.model)
+    model_inputs = kontext.get_keypaths(trainer.model)
     subgraph.node('model', label=_make_node('model', model_inputs.keys()))
     for k, v in model_inputs.items():
       subgraph.edge(f'{_path_to_graphviz_path(v)}', f'model:{k}')
@@ -57,10 +57,10 @@ def get_connection_graph(cfg: config_lib.Trainer) -> graphviz.Digraph:
 
   # Make a node for each losses, metrics, summaries,...
   for group_name, group_objs in {
-      'train': {'model': cfg.model},
-      'losses': dict(cfg.train_losses),
-      'metrics': dict(cfg.train_metrics),
-      'summaries': dict(cfg.train_summaries),
+      'train': {'model': trainer.model},
+      'losses': dict(trainer.train_losses),
+      'metrics': dict(trainer.train_metrics),
+      'summaries': dict(trainer.train_summaries),
   }.items():
     with dot.subgraph(name=f'cluster_{group_name}') as subgraph:
       subgraph.attr(label=group_name)

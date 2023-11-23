@@ -160,10 +160,10 @@ class KDMetricWriter(metric_writers.MetricWriter):
     self.write_texts(step, texts)
 
   def write_context_structure(
-      self, step: int, config: config_lib.Trainer
+      self, step: int, trainer: config_lib.Trainer
   ) -> None:
     # do a lightweight shape-eval for the context
-    context = config.context_specs
+    context = trainer.context_specs
     # create a flat spec for the context
     context_spec = kontext.flatten_with_path(context)
     context_spec = etree.spec_like(context_spec)
