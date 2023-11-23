@@ -25,9 +25,9 @@ import jax
 from jax import numpy as jnp
 from kauldron import data
 from kauldron import kontext
+from kauldron.evals import evaluators
 from kauldron.metrics import base
 from kauldron.metrics import base_state
-from kauldron.train import evaluators
 from kauldron.train import train_step
 from kauldron.typing import Array, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import utils
@@ -60,7 +60,7 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
     seed: random seed for selecting the training data subset
 
   Usage example:
-    "fewshot_i1k": kd.train.evaluators.FewShotEvaluator(
+    "fewshot_i1k": kd.evals.FewShotEvaluator(
         run_every=10_000,
         metric_prefix="i1k",
         ds_train=_make_i1k_fewshot(split="train[:-10000]", batch_size=4096),

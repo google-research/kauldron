@@ -32,6 +32,7 @@ del pytest, sys
 # Namespaces
 from kauldron import checkpoints as ckpts
 from kauldron import data
+from kauldron import evals
 from kauldron import konfig
 from kauldron import kontext
 from kauldron import losses

@@ -90,7 +90,7 @@ class Evaluator(EvaluatorBase):
   Usage:
 
   ```
-  evaluator = kd.train.Evaluator(
+  evaluator = kd.evals.Evaluator(
       run_every=100,
       ds=test_ds,
       base_cfg=cfg,
@@ -237,7 +237,7 @@ def _replace_name(evaluator: EvaluatorBase, name: str) -> EvaluatorBase:
   """Set the `evaluator.name`."""
   if not isinstance(evaluator, EvaluatorBase):
     raise TypeError(
-        'Eval values should be `kd.train.EvaluatorBase`. Got:'
+        'Eval values should be `kd.evals.EvaluatorBase`. Got:'
         f' {name}={type(evaluator)}'
     )
   elif name == 'train':

@@ -33,7 +33,7 @@ from kauldron import metrics
 from kauldron import summaries
 from kauldron.checkpoints import checkpointer as checkpointer_lib
 from kauldron.data import utils as data_utils
-from kauldron.train import evaluators
+from kauldron.evals import evaluators
 from kauldron.train import flatboard
 from kauldron.train import rngs_lib
 from kauldron.train import train_lib
@@ -71,7 +71,7 @@ class Trainer(config_util.BaseConfig):
     schedules: x
     optimizer: x
     checkpointer: x
-    evals: Evaluators to use (e.g. `{'eval': kd.train.Evaluator()}`)
+    evals: Evaluators to use (e.g. `{'eval': kd.eval.Evaluator()}`)
     flatboards: x
     profiler: Profiler can be customized (see `kd.inspect.Profile`)
     aux: Arbitrary additional values (e.g. can be set once and referenced
@@ -115,7 +115,7 @@ class Trainer(config_util.BaseConfig):
       default_factory=rngs_lib.RngStreams
   )
 
-  evals: Mapping[str, evaluators.Evaluator] = dataclasses.field(
+  evals: Mapping[str, evaluators.EvaluatorBase] = dataclasses.field(
       default_factory=flax.core.FrozenDict
   )
   flatboards: Mapping[str, flatboard.DashboardFactory] = dataclasses.field(

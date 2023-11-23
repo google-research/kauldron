@@ -7,7 +7,7 @@ Eval can be defined on the `eval` attribute of `kd.train.Trainer`:
 ```python
 cfg = kd.train.Trainer()
 cfg.evals = {
-    'eval': kd.train.Evaluator(
+    'eval': kd.evals.Evaluator(
         run_every=100,
         num_batches=None,
         ds=_make_ds(training=False),
@@ -16,7 +16,7 @@ cfg.evals = {
 }
 ```
 
-If `kd.train.Evaluator` does not define losses, metrics, summaries, those are
+If `kd.evals.Evaluator` does not define losses, metrics, summaries, those are
 reused from train.
 
 ## Train / eval in Module
