@@ -18,18 +18,10 @@
 from kauldron.train.config_lib import Trainer
 from kauldron.train.evaluators import Evaluator
 from kauldron.train.evaluators import EvaluatorBase
+from kauldron.train.fewshot_evaluator import FewShotEvaluator
 from kauldron.train.rngs_lib import RngStream
 from kauldron.train.rngs_lib import RngStreams
 from kauldron.train.train_step import TrainState
 from kauldron.train.train_step import TrainStep
 from kauldron.utils.context import Context  # TODO(epot): Move context to train
 # pylint: enable=g-importing-member
-
-
-# def __getattr__(name: str):
-#   import traceback
-
-#   if name == 'Config':
-#     traceback.print_stack(limit=3)
-#     print('kd.train.Trainer has been renamed to kd.train.Trainer.')
-#   raise AttributeError(f'module {__name__!r} has no attribute {name!r}')
