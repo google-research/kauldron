@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Config."""
+"""Trainer."""
 
 from __future__ import annotations
 
@@ -45,10 +45,7 @@ from kauldron.utils import xmanager
 import optax
 
 
-# TODO(epot): Rename: Experiment, Plan, Main, Root, Trainer, Train ?
-
-
-class Config(config_util.BaseConfig):
+class Trainer(config_util.BaseConfig):
   """Base config class.
 
   Attributes:

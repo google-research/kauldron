@@ -26,7 +26,7 @@ with epy.lazy_imports():
   import graphviz  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
 
 
-def get_connection_graph(cfg: config_lib.Config) -> graphviz.Digraph:
+def get_connection_graph(cfg: config_lib.Trainer) -> graphviz.Digraph:
   """Build the graphviz."""
   dot = graphviz.Digraph()
 

@@ -160,7 +160,7 @@ class KDMetricWriter(metric_writers.MetricWriter):
     self.write_texts(step, texts)
 
   def write_context_structure(
-      self, step: int, config: config_lib.Config
+      self, step: int, config: config_lib.Trainer
   ) -> None:
     # do a lightweight shape-eval for the context
     context = config.context_specs

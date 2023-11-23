@@ -418,9 +418,9 @@ def _normalize_height(
   return height
 
 
-def plot_context(config: train.Config) -> None:
+def plot_context(trainer: train.Trainer) -> None:
   """Display the context structure."""
-  context = config.context_specs
+  context = trainer.context_specs
   context = {
       f.name: getattr(context, f.name) for f in dataclasses.fields(context)
   }

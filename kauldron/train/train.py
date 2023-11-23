@@ -46,7 +46,7 @@ def main(_):
         config=_CONFIG.value,
         sweep_kwargs=_SWEEP_CONFIG.value,
     )
-    cfg: config_lib.Config = konfig.resolve(cfg)
+    cfg: config_lib.Trainer = konfig.resolve(cfg)
     cfg.train()
 
 

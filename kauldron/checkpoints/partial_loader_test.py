@@ -31,7 +31,7 @@ _NUM_FEATURES = 6
 
 
 @pytest.fixture  # (scope='module')
-def new_cfg(tmp_path: pathlib.Path) -> kd.train.Config:
+def new_cfg(tmp_path: pathlib.Path) -> kd.train.Trainer:
   cfg = mnist_autoencoder.get_config()
   cfg.workdir = str(tmp_path / 'new_workdir')
 
@@ -75,8 +75,8 @@ def old_cfg(tmp_path: pathlib.Path):
 
 
 def _make_chpt(
-    old_cfg: kd.train.Config,  # pylint: disable=redefined-outer-name
-    new_cfg: kd.train.Config,  # pylint: disable=redefined-outer-name
+    old_cfg: kd.train.Trainer,  # pylint: disable=redefined-outer-name
+    new_cfg: kd.train.Trainer,  # pylint: disable=redefined-outer-name
     new_to_old: dict[str, str],
 ):
   loader = kd.ckpts.PartialLoader(  # pytype: disable=wrong-arg-types
@@ -92,7 +92,7 @@ def _make_chpt(
   return ckpt
 
 
-def test_loader(new_cfg: kd.train.Config, old_cfg: kd.train.Config):  # pylint: disable=redefined-outer-name
+def test_loader(new_cfg: kd.train.Trainer, old_cfg: kd.train.Trainer):  # pylint: disable=redefined-outer-name
   old_state = old_cfg.init_state()
   old_cfg.checkpointer.save_state(old_state, 0)
 

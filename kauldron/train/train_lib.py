@@ -42,7 +42,7 @@ jax.config.update("jax_threefry_partitionable", True)
 
 
 def train_impl(
-    cfg: config_lib.Config,
+    cfg: config_lib.Trainer,
 ) -> Tuple[train_step.TrainState, Optional[train_step.Auxiliaries]]:
   """Implements of `Config.train`."""
   tf.config.experimental.set_visible_devices([], "GPU")
@@ -244,7 +244,7 @@ def _compute_schedule(sched, step: int):
     return sched(step)
 
 
-def get_loss_y_keys(config: config_lib.Config) -> Sequence[str]:
+def get_loss_y_keys(config: config_lib.Trainer) -> Sequence[str]:
   """Get a list of loss-keys for a given config."""
   # train losses
   loss_names = {
@@ -263,7 +263,7 @@ def get_loss_y_keys(config: config_lib.Config) -> Sequence[str]:
   return [f"losses/{l.replace('.', '/')}" for l in loss_names]
 
 
-def get_metric_y_keys(config: config_lib.Config) -> Sequence[str]:
+def get_metric_y_keys(config: config_lib.Trainer) -> Sequence[str]:
   """Get a list of metric-keys for a given config."""
   metric_names = {
       k for k in kontext.flatten_with_path(config.train_metrics, separator="/")
@@ -298,7 +298,7 @@ def get_perf_stat_y_keys() -> Sequence[str]:
   ]
 
 
-def get_data_collections(config: config_lib.Config) -> list[str]:
+def get_data_collections(config: config_lib.Trainer) -> list[str]:
   """Return a list of datatable collections for a given resolved config."""
   collections = ["train"]
   collections.extend(e.name for e in config.evals.values())
