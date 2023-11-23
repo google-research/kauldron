@@ -37,7 +37,7 @@ _T = TypeVar("_T")
 CHECKPOINT_FOLDER_NAME = "checkpoints"
 
 
-class BaseCheckpointer(config_util.UpdateFromRootCfg, abc.ABC):
+class BaseCheckpointer(config_util.UpdateFromRootTrainer, abc.ABC):
   """Basic checkpointing interface."""
 
   @abc.abstractmethod
@@ -99,7 +99,7 @@ class Checkpointer(BaseCheckpointer):
     fast: (internal) Activate some optimizations
   """
 
-  workdir: str | epath.Path = config_util.ROOT_CFG_REF.workdir
+  workdir: str | epath.Path = config_util.ROOT_TRAINER_REF.workdir
 
   save_interval_steps: int
   max_to_keep: Optional[int] = 3
