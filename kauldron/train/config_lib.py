@@ -208,14 +208,15 @@ class Trainer(config_util.BaseConfig):
     elem_spec = self.train_ds.element_spec
     rngs = self.rng_streams.init_rngs()
     mwa = self.trainstep.model_with_aux
+    state_spec = jax.eval_shape(self.init_state)
 
-    params = jax.eval_shape(mwa.init, init_rngs=rngs, elem_spec=elem_spec)
     m_batch = data_utils.mock_batch_from_elem_spec(elem_spec)
     _, context = jax.eval_shape(
         functools.partial(mwa.forward, is_training=True),
-        params=params,
+        params=state_spec.params,
         batch=m_batch,
         rngs=rngs,
         step=0,
     )
+    context = context.replace(opt_state=state_spec.opt_state)
     return context

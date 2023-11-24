@@ -42,6 +42,9 @@ class Context:
       after the backward pass, e.g. for metrics)
     updates: The transformed gradients as returned by the optimizer. (available
       after the backward pass, e.g. for metrics)
+    opt_state: The state of the optimizer prior to the update. (available
+      after the backward pass, e.g. for metrics). The old state is chosen to be
+      consistent with parameters which are also pre-update.
   """
 
   # These are always available:
@@ -58,6 +61,7 @@ class Context:
   # Become available after the backward pass and optimizer:
   grads: Any = None
   updates: Any = None
+  opt_state: Any = None
 
   replace = dataclasses.replace
 

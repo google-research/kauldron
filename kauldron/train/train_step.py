@@ -286,6 +286,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
 
   def update_from_root_cfg(self, root_cfg) -> TrainStep:
     new_self = super().update_from_root_cfg(root_cfg)
+    assert isinstance(new_self, TrainStep)
     new_self = dataclasses.replace(
         new_self,
         model_with_aux=new_self.model_with_aux.update_from_root_cfg(root_cfg),
@@ -366,7 +367,12 @@ class TrainStep(config_util.UpdateFromRootCfg):
     new_params = jax.named_call(optax.apply_updates)(state.params, updates)
     next_state = state.next(new_params=new_params, new_opt_state=new_opt_state)
 
-    context = context.replace(grads=grads, updates=updates)
+    # add the gradients, computed updates, and *old* optimizer state to context
+    context = context.replace(
+        grads=grads,
+        updates=updates,
+        opt_state=state.opt_state,
+    )
 
     aux = self.model_with_aux.get_aux(
         context,
