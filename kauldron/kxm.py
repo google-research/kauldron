@@ -37,7 +37,7 @@ from kauldron.xm._src.kauldron_utils import KauldronSweep
 from kauldron.xm._src.sweep_utils import SweepItem
 
 # Others
-from kauldron.xm._src.workdir_utils import WorkdirInfo
-from kauldron.xm._src.workdir_utils import wu_workdir
-from kauldron.xm._src.workdir_utils import xp_workdir
-from kauldron.xm._src.workdir_utils import file_path
+from kauldron.xm._src.dir_utils import SubdirFormat
+from kauldron.xm._src.dir_utils import WU_DIR_PROXY
+from kauldron.xm._src.dir_utils import XP_DIR_PROXY
+from kauldron.xm._src.dir_utils import file_path
