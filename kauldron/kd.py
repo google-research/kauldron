@@ -38,6 +38,7 @@ from kauldron import kontext
 from kauldron import losses
 from kauldron import metrics
 from kauldron import modules as nn
+from kauldron import optim
 from kauldron import random
 from kauldron import summaries
 from kauldron import train
