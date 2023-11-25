@@ -25,6 +25,13 @@ class MyModel(nn.Module):
 
   @nn.compact
   def __call__(self, x):
+    with train_property.set_train_property(True):
+      assert self.is_training
+      with train_property.set_train_property(False):
+        assert not self.is_training
+        with train_property.set_train_property(True):
+          assert self.is_training
+
     if self.is_training:
       return (x, x)
     else:

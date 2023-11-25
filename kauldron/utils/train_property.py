@@ -30,25 +30,38 @@ _FnT = TypeVar('_FnT')
 @edc.dataclass
 @dataclasses.dataclass
 class _Context:
-  is_training: edc.ContextVar[bool | None] = None
+  """`is_training` state."""
+  is_training_stack: edc.ContextVar[list[bool]] = dataclasses.field(
+      default_factory=list
+  )
+
+  @property
+  def is_training(self) -> bool:
+    if not self.is_training_stack:
+      raise ValueError(
+          'Calling `self.is_training` property, yet `is_training_property=` '
+          'kwargs was not set in `.init` / `.apply`.\n'
+      )
+    return self.is_training_stack[-1]
 
 
 _context = _Context()
 
 
-# TODO(epot): Allow nesting is_training (e.g. use a pre-trained encoder inside
-# another model)
 @contextlib.contextmanager
-def _set_training(is_training: bool) -> Iterator[None]:  # pylint: disable=redefined-outer-name
-  """Update the `is_training` state."""
-  if _context.is_training is not None:
-    raise ValueError('Nesting `.apply` / `.init` not supported.')
-
+def set_train_property(is_training: bool) -> Iterator[None]:  # pylint: disable=redefined-outer-name
+  """Set the `self.is_training` state to the given value."""
   try:
-    _context.is_training = is_training
+    _context.is_training_stack.append(is_training)
     yield
   finally:
-    _context.is_training = None
+    _context.is_training_stack.pop()
+
+
+def _set_train_property(is_training: bool):
+  if _context.is_training_stack:
+    raise ValueError('Nesting `.apply` / `.init` not supported.')
+  return set_train_property(is_training)
 
 
 def train_property() -> bool:
@@ -71,6 +84,9 @@ def train_property() -> bool:
   The `is_training` property value has to be set at the top level `.init()` or
   `.apply()` call and will be propagated to all children.
 
+  Alternatively, the value can be set and changed inside any module with the
+  `kd.nn.set_train_property(False)` context manager.
+
   ```python
   model = MyModule()
   model.init(..., is_training_property=True)
@@ -89,14 +105,7 @@ def _is_training(self: nn.Module) -> bool:
         '`is_training` property can only be called from within `.init` /'
         ' `.apply`.'
     )
-
-  is_training = _context.is_training
-  if is_training is None:
-    raise ValueError(
-        'Calling `self.is_training` property, yet `is_training_property=` '
-        'kwargs was not set in `.init` / `.apply`'
-    )
-  return is_training
+  return _context.is_training
 
 
 @functools.cache
@@ -113,7 +122,7 @@ def _add_is_training_kwargs(fn: _FnT) -> _FnT:
   @functools.wraps(fn)
   def decorated(*args, is_training_property: bool | None = None, **kwargs):  # pylint: disable=redefined-outer-name
     if is_training_property is not None:
-      cm = _set_training(is_training_property)
+      cm = _set_train_property(is_training_property)
     else:
       cm = contextlib.nullcontext()
     with cm:

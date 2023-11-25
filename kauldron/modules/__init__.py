@@ -19,6 +19,7 @@
 # Do not sort imports
 # fmt: skip-import-sorting
 
+from kauldron.utils.train_property import set_train_property
 from kauldron.utils.train_property import train_property
 from kauldron.utils.interms_property import interms_property
 

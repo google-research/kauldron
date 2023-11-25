@@ -55,6 +55,22 @@ params = model.init(..., is_training_property=True)
 y = model.apply(..., is_training_property=False)  # Eval
 ```
 
+Inside a module, you can overwrite the `is_training` value with the
+`kd.nn.set_train_property` contextmanager:
+
+```python
+class MyModule(nn.Module):
+
+  @nn.compact
+  def __call__(self, x):
+    with kd.nn.set_train_property(False):
+      x = self.pretrained_encoder(x)
+```
+
+`kd.nn.set_train_property` can also be used to call a Kauldron model inside a
+non-Kauldron model (to propagate the `train` / `deterministic` kwarg to the
+model).
+
 ## Rng streams
 
 By default, the following `rng` streams are created:
