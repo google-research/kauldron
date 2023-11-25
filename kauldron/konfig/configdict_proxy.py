@@ -27,11 +27,8 @@ from typing import Any, TypeVar
 from etils import epy
 from kauldron.konfig import configdict_base
 from kauldron.konfig import fake_import_utils
+from kauldron.konfig import immutabledict_lib
 import ml_collections
-
-with epy.lazy_imports():
-  # Lazy-import when konfig is imported in XManager launcher script
-  import flax  # pylint: disable=g-import-not-at-top
 
 
 _T = TypeVar('_T')
@@ -89,9 +86,7 @@ class ConfigDictProxyObject(fake_import_utils.ProxyObject, dict):
 
   def __call__(self, *args, **kwargs) -> ml_collections.ConfigDict:
     """`my_module.MyObject()`."""
-    args_kwargs = {
-        str(i): v for i, v in enumerate(args)
-    }
+    args_kwargs = {str(i): v for i, v in enumerate(args)}
     return configdict_base.ConfigDict({
         QUALNAME_KEY: self.qualname,
         **args_kwargs,
@@ -125,7 +120,7 @@ def resolve(cfg, *, freeze=True):
   Args:
     cfg: The config to resolved
     freeze: If `True` (default), `list` are converted to `tuple`,
-      `dict`/`ConfigDict` are converted to `flax.core.FrozenDict`.
+      `dict`/`ConfigDict` are converted to `immutabledict`.
 
   Returns:
     The resolved config.
@@ -176,7 +171,7 @@ class _ConfigDictVisitor:
   def _resolve_dict(self, value):
     cls = type(value)
     if self._freeze:
-      cls = flax.core.FrozenDict
+      cls = immutabledict_lib.ImmutableDict
     return cls(
         {
             k: _reraise_with_info(self._resolve_value, k)(v)
@@ -192,7 +187,6 @@ class _ConstructorResolver(_ConfigDictVisitor):
   """Instanciate all `ConfigDict` proxy object."""
 
   def _resolve_dict(self, value):
-
     # Dict proxies have `__const__` or `__qualname__` keys
     if QUALNAME_KEY in value:
       if CONST_KEY in value:

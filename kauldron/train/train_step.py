@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Default TrainState and TrainStep implementations."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -116,12 +117,9 @@ class Auxiliaries:
     with jax.spmd_mode("allow_all"), jax.transfer_guard("allow"):
       total_loss = jnp.sum(jnp.asarray(list(loss_values.values())))
 
-    if isinstance(loss_values, dict):
-      loss_values["total"] = total_loss
-    elif isinstance(loss_values, flax.core.FrozenDict):
-      loss_values = loss_values.copy({"total": total_loss})
-    else:
-      raise TypeError(f"Unexpected losses mapping type: {type(loss_values)}")
+    if not isinstance(loss_values, dict):
+      loss_values = dict(loss_values)  # Convert FrozenDict, ImmutableDict
+    loss_values["total"] = total_loss
 
     # train metrics
     metric_values = jax.tree_map(
