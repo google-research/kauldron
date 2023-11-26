@@ -22,6 +22,7 @@ from kauldron import konfig
 import pytest
 
 
+@konfig.set_lazy_imported_modules(include=["*"])
 def test_configdict():
   with konfig.imports():
     import abc.edf as some_module  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error

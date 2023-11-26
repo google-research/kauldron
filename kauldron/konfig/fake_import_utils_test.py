@@ -17,15 +17,15 @@
 from __future__ import annotations
 
 from kauldron import konfig
+import pytest
 
 
-def assert_module(
-    m: konfig.fake_import_utils.ProxyObject, name: str
-) -> None:
+def assert_module(m: konfig.fake_import_utils.ProxyObject, name: str) -> None:
   assert isinstance(m, konfig.fake_import_utils.ProxyObject)
   assert m.qualname == name
 
 
+@konfig.set_lazy_imported_modules(include=['*'])
 def test_fake_imports():
   with konfig.imports():
     # pylint: disable=g-import-not-at-top,g-multiple-import
@@ -55,3 +55,34 @@ def test_fake_imports():
   assert_module(c4.non_module.c, 'a3.b.c.c4:non_module.c')
   assert c01 is c00
   assert c02 is c00
+
+
+def test_lazy_imports():
+  # pylint: disable=g-import-not-at-top,g-multiple-import,unused-import
+  # pytype: disable=import-error
+  with konfig.imports():
+    with pytest.raises(ImportError):
+      import asdasdasd
+    with pytest.raises(ImportError):
+      from aaa import bbb
+
+  with konfig.set_lazy_imported_modules(include=['*'], exclude=['aaa.ccc']):
+    with konfig.imports():
+      import asdasdasd
+      from aaa import bbb
+      from aaa.cccddd import ddd
+
+      with pytest.raises(ImportError):
+        from aaa.ccc import ddd
+
+  with konfig.set_lazy_imported_modules(include=['aaa.ccc']):
+    with konfig.imports():
+      with pytest.raises(ImportError):
+        import asdasdasd
+      with pytest.raises(ImportError):
+        from aaa.cccddd import ddd
+
+      from aaa.ccc import ddd
+
+  # pytype: enable=import-error
+  # pylint: enable=g-import-not-at-top,g-multiple-import,unused-import

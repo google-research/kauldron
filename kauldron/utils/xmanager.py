@@ -20,10 +20,12 @@ from collections.abc import Iterator
 import contextlib
 import dataclasses
 import functools
+import importlib
 import json
 from typing import Optional
 
 from etils import epath
+from etils import epy
 from kauldron import konfig
 from kauldron.train import config_lib
 
@@ -126,9 +128,19 @@ def _json_to_config(json_value):
   """Wraps a `dict` to a `ConfigDict` and convert list to tuple."""
   match json_value:
     case dict():
-      return konfig.ConfigDict(
-          {k: _json_to_config(v) for k, v in json_value.items()}
-      )
+      values = {k: _json_to_config(v) for k, v in json_value.items()}
+      if qualname := values.get('__qualname__'):
+        try:
+          importlib.import_module(qualname.split(':', 1)[0])
+        except ImportError as e:
+          epy.reraise(
+              e,
+              suffix=(
+                  '\nOn Colab, you might need to access the config from a adhoc'
+                  ' import context.'
+              ),
+          )
+      return konfig.ConfigDict(values)
     case list():
       return tuple(_json_to_config(v) for v in json_value)
     case _:
