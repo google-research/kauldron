@@ -28,6 +28,7 @@ import jax
 from kauldron.checkpoints import partial_loader
 from kauldron.checkpoints import pytree_checkpoint
 from kauldron.utils import config_util
+from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-members
 import orbax.checkpoint as ocp
 
 _T = TypeVar("_T")
@@ -160,6 +161,7 @@ class Checkpointer(BaseCheckpointer):
             " requires an initial state."
         )
       state = self.partial_initializer.transform(state)
+      state = sharding.device_put(state, sharding.REPLICATED)
     elif not noop_if_missing:  # No checkpoint
       raise FileNotFoundError(
           f"No checkpoint found in {self.workdir}. Use `noop_if_missing=True`"
