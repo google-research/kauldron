@@ -264,7 +264,7 @@ class Rearrange(ElementWiseTransform):
 class Gather(ElementWiseTransform):
   """Gathers entries along a single dimension."""
 
-  axis: str
+  axis: int
   indices: tuple[int, ...]
 
   @typechecked
