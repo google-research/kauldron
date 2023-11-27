@@ -18,11 +18,12 @@ from __future__ import annotations
 
 import builtins
 import contextlib
+import ctypes
 import dataclasses
 import functools
 import inspect
 import types
-from typing import Iterator, Optional
+from typing import Any, Iterator, Optional
 
 from kauldron.konfig import configdict_proxy
 
@@ -84,7 +85,20 @@ def mock_modules(*module_names: str):
   """
   # Use the globals of the frame of the caller (two steps up because of the
   # contextlib decorator)
-  global_ns = inspect.stack()[2].frame.f_globals
+  frame = inspect.stack()[2].frame
+  with (
+      _mock_modules(*module_names, frame=frame, property_name='f_globals'),
+      _mock_modules(*module_names, frame=frame, property_name='f_locals'),
+  ):
+    yield
+
+
+@contextlib.contextmanager
+def _mock_modules(
+    *module_names: str, frame: types.FrameType, property_name: str
+):
+  """Mock module implementation."""
+  global_ns: dict[str, Any] = getattr(frame, property_name)
 
   if not module_names:
     modules = {  # By default, replace all modules
@@ -109,10 +123,26 @@ def mock_modules(*module_names: str):
   }
   try:
     global_ns.update(new_modules)
+    _force_locals_update(frame, property_name)
     yield
   finally:
     # Restore the original modules
     global_ns.update(modules)
+    _force_locals_update(frame, property_name)
+
+
+def _force_locals_update(frame, property_name):
+  if property_name != 'f_locals':
+    return
+  # In the current Python version, mutating the `locals()` has not effect.
+  # This is a hack to force update:
+  # https://stackoverflow.com/questions/34650744/modify-existing-variable-in-locals-or-frame-f-locals
+  # Future Python version likely won't require this:
+  # https://peps.python.org/pep-0667/
+  ctypes.pythonapi.PyFrame_LocalsToFast(
+      ctypes.py_object(frame),
+      ctypes.c_int(0),  # Keep existing `locals()`
+  )
 
 
 def _get_module_name(module: types.ModuleType) -> str:
