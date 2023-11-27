@@ -21,13 +21,16 @@ import contextlib
 import dataclasses
 import functools
 import json
+import typing
 from typing import Optional
 
 from etils import epath
 from kauldron import konfig
-from kauldron.train import config_lib
 
 from unittest import mock as _mock ; xmanager_api = _mock.Mock()
+
+if typing.TYPE_CHECKING:
+  from kauldron.train import config_lib  # pylint: disable=g-bad-import-order
 
 
 @dataclasses.dataclass
@@ -109,7 +112,7 @@ class Experiment:
     return epath.Path(path)
 
   @functools.cached_property
-  def config(self) -> konfig.ConfigDict:
+  def config(self) -> konfig.ConfigDictLike[config_lib.Trainer]:
     """Unresolved `ConfigDict`."""
     # Use a constant rather than hardcoding `config.json`
     config_path = self.root_dir / str(self.wid) / 'config.json'
