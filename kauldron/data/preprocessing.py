@@ -261,6 +261,20 @@ class Rearrange(ElementWiseTransform):
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class Gather(ElementWiseTransform):
+  """Gathers entries along a single dimension."""
+
+  axis: str
+  indices: tuple[int, ...]
+
+  @typechecked
+  def map_element(self, element: TfArray["..."]) -> TfFloat["..."]:
+    data = tf.unstack(element, axis=self.axis)
+    out = [data[idx] for idx in self.indices]
+    return tf.stack(out, axis=self.axis)
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class Cast(ElementWiseTransform):
   """Cast an element to the specified dtype."""
 

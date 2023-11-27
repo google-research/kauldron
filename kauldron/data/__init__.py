@@ -26,6 +26,7 @@ from kauldron.data.preprocessing import CenterCrop
 from kauldron.data.preprocessing import Elements
 from kauldron.data.preprocessing import ElementWiseRandomTransform
 from kauldron.data.preprocessing import ElementWiseTransform
+from kauldron.data.preprocessing import Gather
 from kauldron.data.preprocessing import HStack
 from kauldron.data.preprocessing import InceptionCrop
 from kauldron.data.preprocessing import OneHot
