@@ -45,6 +45,8 @@ def get_connection_graph(trainer: config_lib.Trainer) -> graphviz.Digraph:
     model_inputs = kontext.get_keypaths(trainer.model)
     subgraph.node('model', label=_make_node('model', model_inputs.keys()))
     for k, v in model_inputs.items():
+      if v is None:
+        continue
       subgraph.edge(f'{_path_to_graphviz_path(v)}', f'model:{k}')
 
     # Make a node for the model preds
