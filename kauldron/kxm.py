@@ -41,3 +41,11 @@ from kauldron.xm._src.dir_utils import SubdirFormat
 from kauldron.xm._src.dir_utils import WU_DIR_PROXY
 from kauldron.xm._src.dir_utils import XP_DIR_PROXY
 from kauldron.xm._src.dir_utils import file_path
+
+# Register aliases for cleaner config display
+from kauldron import konfig
+
+konfig.register_aliases({
+    'kauldron.kxm': 'kxm',
+})
+del konfig
