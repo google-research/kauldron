@@ -604,17 +604,6 @@ class VStack(ElementWiseTransform):
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
-class AddTrailingDim(ElementWiseTransform):
-  """Adds trailing 1-dimension to the array shape."""
-
-  @typechecked
-  def map_element(  # pylint: disable=arguments-renamed
-      self, x: TfArray["..."]
-  ) -> TfArray["... 1"]:
-    return x[..., None]
-
-
-@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class PadFirstDimensionToFixedSize(ElementWiseTransform):
   """Pads 0-axis of a tensor to a fixed size (can be used for sparse -> dense)."""
 
