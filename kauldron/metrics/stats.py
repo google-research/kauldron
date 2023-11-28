@@ -115,16 +115,9 @@ class StdState(base_state.State):
   def from_values(
       cls, values: jnp.ndarray, mask: jnp.ndarray | None = None, **_
   ) -> StdState:
-    # Note: unlike clu.metrics.Std we support not just batches of scalars but
-    # any shape of values. Thus we flatten the values before passing them on.
-    values = jnp.ravel(values)
-    mask = jnp.ravel(mask) if mask is not None else None
-
-    if values.ndim == 0:
-      values = values[None]
-    assert values.ndim == 1
     if mask is None:
-      mask = jnp.ones(values.shape[0], dtype=jnp.int32)
+      mask = jnp.ones([])
+    mask = jnp.broadcast_to(mask, values.shape)
     return cls(
         total=jnp.where(mask, values, jnp.zeros_like(values)).sum(),
         sum_of_squares=jnp.where(
@@ -165,10 +158,7 @@ class StdState(base_state.State):
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class Std(base.Metric):
-  """Compute the standard deviation for float values.
-
-  This is a simple example of wrapping a CLU metric.
-  """
+  """Compute the standard deviation for float values."""
 
   values: kontext.Key = kontext.REQUIRED
   mask: Optional[kontext.Key] = None
