@@ -15,11 +15,10 @@
 """Utils."""
 
 import functools
-import os
+import json
 import typing
-from typing import Annotated, Any, TypeVar
+from typing import Any, TypeVar
 
-from etils import epath
 import ml_collections
 
 _T = TypeVar('_T')
@@ -27,7 +26,7 @@ _T = TypeVar('_T')
 # * `x: MyObj`: Resolved object
 # * `x: ConfigDictLike[MyObj]`: ConfigDict object, but allow auto-complete
 if not typing.TYPE_CHECKING:
-  ConfigDictLike = Annotated[_T, None]
+  ConfigDictLike = typing.Annotated[_T, None]
 else:
   # TODO(b/254514368): Remove hack to make the alias work with PyType
 
@@ -41,17 +40,38 @@ else:
 
 
 # Wrapper around `placeholder` which accept any default
+# Returns `Any` as it can be assigned to every attribute
 @functools.wraps(ml_collections.config_dict.placeholder)
 def placeholder(field_type: Any = object, *, required: bool = False) -> Any:
-  """Defines an entry in a ConfigDict that has no value yet."""
-  return ml_collections.config_dict.placeholder(field_type, required=required)
+  """Defines an entry in a ConfigDict that has no value yet.
+
+  Args:
+    field_type: type of value.
+    required: If `True`, the placeholder will raise an error on access if the
+      underlying value hasn't been set.
+
+  Returns:
+    A `FieldReference` with value None and the given type.
+  """
+  return ml_collections.FieldReference(
+      None, field_type=field_type, required=required
+  )
 
 
-class DefaultJSONEncoder(ml_collections.config_dict.CustomJSONEncoder):
+class DefaultJSONEncoder(json.JSONEncoder):
   """Default JSONEncoder."""
 
-  def default(self, obj):
-    if isinstance(obj, epath.PathLikeCls):
-      return os.fspath(obj)
-    # Could add protocol support to allow encode arbitrary json objects
-    return super().default(obj)
+  def default(self, o):
+    obj = o  # base class name is too short
+    match obj:
+      case ml_collections.FieldReference():
+        # TODO(epot): Support field-ref (at least with identity), so
+        # deserialization restore the ref.
+        return obj.get()
+      case ml_collections.ConfigDict():
+        return {k: v for k, v in obj._fields.items()}
+      case _:
+        raise TypeError(
+            '{} is not JSON serializable. Instead use '
+            'ConfigDict.to_json_best_effort()'.format(type(obj))
+        )
