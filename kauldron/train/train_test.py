@@ -18,7 +18,7 @@ import os
 
 from etils import epath
 from kauldron import kd
-from kauldron.projects.examples import mnist_autoencoder
+from kauldron.examples import mnist_autoencoder
 import tensorflow_datasets as tfds
 
 

@@ -5,7 +5,7 @@
 The root trainer object is `kd.train.Trainer` which defines the model, datasets,
 metrics, losses,...
 
-See https://github.com/google-research/kauldron/tree/HEAD/kauldron/projects/examples/mnist_autoencoder.py for
+See https://github.com/google-research/kauldron/tree/HEAD/kauldron/examples/mnist_autoencoder.py for
 an example.
 
 ## High level API
