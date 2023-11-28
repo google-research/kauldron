@@ -19,6 +19,7 @@ from __future__ import annotations
 import collections
 from collections.abc import Callable
 import dataclasses
+import functools
 import itertools
 from typing import Any
 
@@ -101,3 +102,16 @@ class _PrefetchDataset(IterableDataset):
         queue.append(next(iterator))
       except StopIteration:
         pass
+
+
+@dataclasses.dataclass(frozen=True)
+class CachedDataset(IterableDataset):
+  cache_size: int
+
+  @functools.cached_property
+  def cached_examples(self) -> tuple[..., Any]:
+    return [b for _, b in zip(range(self.cache_size), iter(self.parent))]
+
+  def __iter__(self) -> _ArrayIterable:
+    for elem in self.cached_examples:
+      yield elem

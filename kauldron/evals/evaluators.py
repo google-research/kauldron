@@ -26,6 +26,7 @@ from kauldron import data
 from kauldron import losses as losses_lib
 from kauldron import metrics as metrics_lib
 from kauldron import summaries as summaries_lib
+from kauldron.data import data_utils
 from kauldron.train import config_lib
 from kauldron.train import metric_writer
 from kauldron.train import rngs_lib
@@ -107,6 +108,7 @@ class Evaluator(EvaluatorBase):
     losses: Losses
     metrics: Metrics
     summaries: Summaries
+    cache: Whether to cache the num_batches used for evaluation in memory.
   """
 
   num_batches: Optional[int]
@@ -118,6 +120,7 @@ class Evaluator(EvaluatorBase):
   summaries: dict[str, summaries_lib.Summary] = (
       config_util.ROOT_CFG_REF.train_summaries
   )
+  cache: bool = False
 
   # TODO(klausg): filter out metrics / summaries that access grads/updates
 
@@ -132,9 +135,10 @@ class Evaluator(EvaluatorBase):
           ' set it either in `kd.train.Trainer.eval_ds` or in'
           ' `Evaluator(ds=...)`.'
       )
-    return new_self.replace(
-        ds=new_self.ds.update_from_root_cfg(root_cfg),
-    )
+    ds = new_self.ds.update_from_root_cfg(root_cfg)
+    if self.cache:
+      ds = data_utils.CachedDataset(parent=ds, cache_size=self.num_batches)
+    return new_self.replace(ds=ds)
 
   def evaluate(
       self, state: train_step.TrainState, step: int
