@@ -16,7 +16,6 @@
 
 # pylint: disable=g-importing-member
 from kauldron.optim.combine import named_chain
-from kauldron.optim.combine import scale_by_learning_rate
 from kauldron.optim.transform import decay_to_init
 # pylint: enable=g-importing-memberfrom
 

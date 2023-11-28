@@ -52,31 +52,3 @@ def named_chain(
   """
   transforms = tuple((name, transf) for name, transf in transforms.items())
   return optax.named_chain(*transforms)
-
-
-# TODO(klausg): remove once this is part of the public optax API
-def scale_by_learning_rate(
-    learning_rate: ScalarOrSchedule, flip_sign: bool = True
-) -> optax.GradientTransformation:
-  """Scale by learning rate (either as scalar or as schedule).
-
-  The same as optax.scale or optax.scale_by_schedule, but also flips the sign,
-  as is typically done in with learning rate.
-
-  Note:
-    `optax.adam(learning_rate=0.1)` is equivalent to
-    `optax.chain(optax.scale_by_adam(), scale_by_learning_rate(0.1))`
-
-  Args:
-    learning_rate: Either a scalar or a schedule i.e. a callable that maps an
-      (int) step to a float.
-    flip_sign: Whether to flip the sign of the multiplier.
-
-  Returns:
-    An optax.GradientTransformation that corresponds to multiplying the gradient
-    with -learning_rate (if flip_sign is True).
-  """
-  m = -1 if flip_sign else 1
-  if callable(learning_rate):
-    return optax.scale_by_schedule(lambda count: m * learning_rate(count))
-  return optax.scale(m * learning_rate)
