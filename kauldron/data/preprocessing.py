@@ -286,6 +286,15 @@ class Cast(ElementWiseTransform):
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class OneMinus(ElementWiseTransform):
+  """One minus an element (e.g. for inverting a mask)."""
+
+  @typechecked
+  def map_element(self, element: TfArray["*any"]) -> TfArray["*any"]:
+    return 1 - element
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class ValueRange(ElementWiseTransform):
   """Map the value range of an element."""
 

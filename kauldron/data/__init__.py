@@ -29,6 +29,7 @@ from kauldron.data.preprocessing import Gather
 from kauldron.data.preprocessing import HStack
 from kauldron.data.preprocessing import InceptionCrop
 from kauldron.data.preprocessing import OneHot
+from kauldron.data.preprocessing import OneMinus
 from kauldron.data.preprocessing import PadFirstDimensionToFixedSize
 from kauldron.data.preprocessing import RandomCrop
 from kauldron.data.preprocessing import RandomFlipLeftRight
