@@ -18,10 +18,10 @@ from __future__ import annotations
 
 import builtins
 from collections.abc import Callable
+import copy
 import dataclasses
 import functools
 import itertools
-import json
 import os
 from typing import Any, ClassVar, Generic, TypeVar
 
@@ -39,9 +39,31 @@ _ALIASES = {
     'flax.linen': 'nn',
 }
 
+# This map the qualname to the default values to inject, when the `ConfigDict`
+# is created. See `konfig.register_default_values`
+_QUALNAME_TO_DEFAULT_VALUES: dict[str, ConfigDict] = {}
+
 
 class ConfigDict(ml_collections.ConfigDict):
   """Wrapper around ConfigDict."""
+
+  def __init__(
+      self,
+      init_dict: dict[str, Any] | ml_collections.ConfigDict | None = None,
+      # Internally, `ConfigDict` call `type(self)(d, self.type_safe)`, so we
+      # have to keep this, but this should never be changed
+      type_safe: bool = True,
+      convert_dict: bool = True,
+  ) -> None:
+    assert type_safe
+    assert convert_dict
+    init_dict = dict(init_dict or {})
+    init_dict = _maybe_update_init_dict(init_dict)
+    super().__init__(
+        initial_dictionary=init_dict,
+        type_safe=True,
+        convert_dict=True,
+    )
 
   def __getitem__(self, key: str | int) -> Any:
     key = self._normalize_arg_key(key)
@@ -75,11 +97,8 @@ class ConfigDict(ml_collections.ConfigDict):
       key = str(key)
     return key
 
-  def to_json(
-      self, json_encoder_cls: type[json.JSONEncoder] | None = None, **kwargs
-  ) -> str:
-    json_encoder_cls = json_encoder_cls or utils.DefaultJSONEncoder
-    return super().to_json(json_encoder_cls, **kwargs)
+  def to_json(self, **dumps_kwargs) -> str:  # pytype: disable=signature-mismatch
+    return super().to_json(utils.DefaultJSONEncoder, **dumps_kwargs)
 
   @property
   def ref(self: _SelfT) -> _SelfT:
@@ -101,6 +120,19 @@ class ConfigDict(ml_collections.ConfigDict):
       RuntimeError: When used outside of a `konfig.ConfigDict` context.
     """
     return super().ref  # pytype: disable=attribute-error
+
+
+def _maybe_update_init_dict(init_dict: dict[str, Any]) -> dict[str, Any]:
+  """Initialize the ConfigDict with the provided values."""
+  qualname = init_dict.get(configdict_proxy.QUALNAME_KEY)
+  if not qualname or qualname not in _QUALNAME_TO_DEFAULT_VALUES:
+    return init_dict
+
+  # Merge the 2 dict togethers
+  default_values = _QUALNAME_TO_DEFAULT_VALUES[qualname]
+  default_values = copy.deepcopy(default_values)
+  default_values.update(init_dict)
+  return default_values
 
 
 @dataclasses.dataclass
@@ -364,6 +396,40 @@ def register_aliases(aliases: dict[str, str]) -> None:
   # Allow overwritten keys: For colab and for tests. Aliases are used
   # only for display, so don't really matter.
   _ALIASES.update(aliases)
+
+
+def register_default_values(default_values: ConfigDict) -> None:
+  """Register default values when creating the ConfigDict.
+
+  Some class want to inject default values when being created as `ConfigDict`,
+  like:
+
+  * `cfg = kd.train.Trainer()` create `cfg.workdir = placeholder()`, so
+    the user don't need to specify it in it's config
+  * `cfg = kxm.Job()` create `cfg.executor = Borg()`, to allow the CLI to access
+    nested fields (e.g. `job.executor.scheduling.max_task_failures = 0`) without
+    having to define them in the `get_config()`.
+
+  Usage:
+
+  ```python
+  with konfig.imports():
+    import kauldron as kd
+
+  konfig.register_default_values(
+      kd.train.Trainer(
+          workdir=konfig.placeholder(str),
+      )
+  )
+  ```
+
+  Args:
+    default_values: The default `ConfigDict` to create.
+  """
+  qualname = default_values.__qualname__
+  if registered_values := _QUALNAME_TO_DEFAULT_VALUES.get(qualname):
+    raise ValueError(f'{qualname} is already registered: {registered_values}.')
+  _QUALNAME_TO_DEFAULT_VALUES[qualname] = default_values
 
 
 def _assert_config_only_value(value, name) -> None:
