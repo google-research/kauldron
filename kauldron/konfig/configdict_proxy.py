@@ -202,7 +202,7 @@ class _ConstructorResolver(_ConfigDictVisitor):
 
     kwargs = dict(value.items())
 
-    constructor = _import_constructor(kwargs.pop(qualname_key))
+    constructor = import_qualname(kwargs.pop(qualname_key))
 
     if qualname_key == CONST_KEY:
       if kwargs:
@@ -223,7 +223,7 @@ class _ConstructorResolver(_ConfigDictVisitor):
     return obj
 
 
-def _import_constructor(qualname_str: str) -> Callable[..., Any]:
+def import_qualname(qualname_str: str) -> Callable[..., Any]:
   """Fix the import constructors."""
   match qualname_str.split(':'):
     case [import_str, attributes]:

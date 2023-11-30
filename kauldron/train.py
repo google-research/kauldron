@@ -23,14 +23,18 @@ import contextlib
 from absl import app
 from absl import flags
 import jax
-from kauldron import konfig
-from kauldron.train import config_lib
+from kauldron import kd
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 from kauldron.utils import sweep_utils
 from ml_collections import config_flags
 
+
 _CONFIG = config_flags.DEFINE_config_file(
-    "config", None, "Training configuration.", lock_config=False
+    "config",
+    None,
+    "Training configuration.",
+    lock_config=False,
+    accept_new_attributes=True,
 )
 _SWEEP_CONFIG = sweep_utils.define_sweep_flag()
 _POST_MORTEM = flags.DEFINE_boolean(
@@ -46,7 +50,7 @@ def main(_):
         config=_CONFIG.value,
         sweep_kwargs=_SWEEP_CONFIG.value,
     )
-    trainer: config_lib.Trainer = konfig.resolve(cfg)
+    trainer: kd.train.Trainer = kd.konfig.resolve(cfg)
     trainer.train()
 
 
@@ -67,7 +71,7 @@ def _wu_error_handling(post_mortem: bool = False):
 def _flags_parser(args: list[str]) -> None:
   """Flag parser."""
   # Import everything, except kxm (XManager not included in the trainer binary)
-  with konfig.set_lazy_imported_modules(
+  with kd.konfig.set_lazy_imported_modules(
       lazy_import=["kauldron.kxm"],
   ):
     flags.FLAGS(args)
