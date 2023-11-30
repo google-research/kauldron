@@ -33,6 +33,36 @@ class AddEmbedding(nn.Module):
     return inputs + self.emb(inputs.shape, axis=self.axis)
 
 
+class FourierEmbedding(nn.Module):
+  """Apply Fourier position embedding to a grid of coordinates.
+
+  Attr:
+    num_fourier_bases: The number of Fourier bases to use. The embedding
+      dimensionality is 2 x len(axis) x num_fourier_bases, but the result will
+      be projected to match the given shape.
+
+  Return:
+    Fourier position embeddings broadcastable to given shape.
+  """
+
+  num_fourier_bases: int
+
+  @typechecked
+  @nn.compact
+  def __call__(self, shape: Shape, *, axis: Axes) -> Float['...']:
+    emb_shape = _get_embedding_shape_from_axes(shape, axis)
+    coord_shape = emb_shape[:-1]  # skip feature axis
+
+    # NeRF-style Fourier/sinusoidal position encoding.
+    coords = _create_gradient_grid(coord_shape, value_range=(-jnp.pi, jnp.pi))
+    pos_embedding = _convert_to_fourier_features(
+        coords, basis_degree=self.num_fourier_bases
+    )
+    # Project to desired feature dims.
+    projected_pos_emb = nn.Dense(shape[-1], name='dense_pe')(pos_embedding)
+    return jnp.broadcast_to(projected_pos_emb, shape=shape)
+
+
 class LearnedEmbedding(nn.Module):
   """Learned positional embeddings.
 
@@ -169,3 +199,46 @@ def _get_shape_from_axes(full_shape: Shape, axes: Axes) -> Shape:
   for ax in axes:
     shape[ax] = full_shape[ax]
   return tuple(shape)
+
+
+@typechecked
+def _create_gradient_grid(
+    samples_per_dim: tuple[int, ...],
+    value_range: tuple[float, float] = (-1.0, 1.0),
+) -> Float['...']:
+  """Creates a tensor with equidistant entries from -1 to +1 in each dim.
+
+  Args:
+    samples_per_dim: Number of points to have along each dimension.
+    value_range: In each dimension, points will go from range[0] to range[1]
+
+  Returns:
+    A tensor of shape samples_per_dim + (N,) where N is the number of entries
+    in samples_per_dim that are bigger than 1.
+  """
+  effective_dims = [s for s in samples_per_dim if s != 1]
+  s = [jnp.linspace(value_range[0], value_range[1], n) for n in effective_dims]
+  grid = jnp.stack(jnp.meshgrid(*s, sparse=False, indexing='ij'), axis=-1)
+  return grid.reshape(samples_per_dim + grid.shape[-1:])
+
+
+@typechecked
+def _convert_to_fourier_features(
+    inputs: Float['... D'], basis_degree: int
+) -> Float['... d']:
+  """Convert inputs to Fourier features, e.g. for positional encoding."""
+
+  # inputs.shape = (..., n_dims).
+  # inputs should be in range [-pi, pi] or [0, 2pi].
+  n_dims = inputs.shape[-1]
+
+  # Generate frequency basis.
+  freq_basis = jnp.concatenate(  # shape = (n_dims, n_dims * basis_degree)
+      [2**i * jnp.eye(n_dims) for i in range(basis_degree)], 1
+  )
+
+  # x.shape = (..., n_dims * basis_degree)
+  x = inputs @ freq_basis  # Project inputs onto frequency basis.
+
+  # Obtain Fourier features as [sin(x), cos(x)] = [sin(x), sin(x + 0.5 * pi)].
+  return jnp.sin(jnp.concatenate([x, x + 0.5 * jnp.pi], axis=-1))

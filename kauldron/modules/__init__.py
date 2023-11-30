@@ -35,5 +35,6 @@ from kauldron.modules.misc import Dropout
 from kauldron.modules.misc import Identity
 from kauldron.modules.pos_embeddings import AddEmbedding
 from kauldron.modules.pos_embeddings import AddLearnedEmbedding
+from kauldron.modules.pos_embeddings import FourierEmbedding
 from kauldron.modules.pos_embeddings import LearnedEmbedding
 from kauldron.modules.pos_embeddings import ZeroEmbedding
