@@ -149,7 +149,7 @@ class _TakeDataset(_DatasetOp):
   def __iter__(self) -> _ArrayIterable:
     yield from itertools.islice(self.parent, self.num_examples)
 
-  def __length_hint__(self) -> int:
+  def __len__(self) -> int:
     return self.num_examples
 
 
