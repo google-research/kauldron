@@ -64,6 +64,15 @@ def _wu_error_handling(post_mortem: bool = False):
       raise
 
 
+def _flags_parser(args: list[str]) -> None:
+  """Flag parser."""
+  # Import everything, except kxm (XManager not included in the trainer binary)
+  with konfig.set_lazy_imported_modules(
+      lazy_import=["kauldron.kxm"],
+  ):
+    flags.FLAGS(args)
+
+
 if __name__ == "__main__":
   # Adds jax flags to the program.
   jax.config.parse_flags_with_absl()

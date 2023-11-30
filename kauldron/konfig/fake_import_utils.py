@@ -23,7 +23,7 @@ import dataclasses
 import functools
 import inspect
 import types
-from typing import Any, Iterator, Optional
+from typing import Any, Callable, Iterator, Optional
 
 from kauldron.konfig import configdict_proxy
 
@@ -47,7 +47,12 @@ def imports() -> Iterator[None]:
   Yields:
     None
   """
-  with _fake_imports(proxy_cls=configdict_proxy.ConfigDictProxyObject):
+  new_import = functools.partial(
+      _fake_import,
+      proxy_cls=configdict_proxy.ConfigDictProxyObject,
+      origin_import=builtins.__import__,
+  )
+  with _fake_imports(new_import=new_import):
     yield
 
 
@@ -159,33 +164,30 @@ def _get_module_name(module: types.ModuleType) -> str:
 @contextlib.contextmanager
 def _fake_imports(
     *,
-    proxy_cls: Optional[type[ProxyObject]] = None,
+    new_import: Callable[..., types.ModuleType],
 ) -> Iterator[None]:
   """Contextmanager which replace import statements by dummy `ProxyObject`.
 
   Usage:
 
   ```python
-  with konfig.fake_imports(proxy_cls=ProxyObject):
+  with konfig.fake_imports(new_import=...):
     import xyz.abc as a0
 
   assert isinstance(a0, ProxyObject)
   ```
 
   Args:
-    proxy_cls: The module/class/function type of the fake import statement.
-      Allow to control the behavior of the fake_imports.
+    new_import: New import to replace
 
   Yields:
     None
   """
-  proxy_cls = proxy_cls or ProxyObject
-
   # Need to mock `__import__` (instead of `sys.meta_path`, as we do not want
   # to modify the `sys.modules` cache in any way)
   origin_import = builtins.__import__
   try:
-    builtins.__import__ = functools.partial(_fake_import, proxy_cls=proxy_cls)
+    builtins.__import__ = new_import
     yield
   finally:
     builtins.__import__ = origin_import
@@ -199,8 +201,23 @@ def _fake_import(
     level: int = 0,
     *,
     proxy_cls: type[ProxyObject],
-):
-  """Mock of `builtins.__import__`."""
+    origin_import: Callable[..., types.ModuleType],
+) -> types.ModuleType:
+  """Mock of `builtins.__import__`.
+
+  Args:
+    name: Module to import
+    globals_: Same as `builtins.__import__`
+    locals_: Same as `builtins.__import__`
+    fromlist: Same as `builtins.__import__`
+    level: Same as `builtins.__import__`
+    proxy_cls: The module/class/function type of the fake import statement.
+      Allow to control the behavior of the fake_imports.
+    origin_import: Original import function
+
+  Returns:
+    The `ProxyObject` fake module
+  """
   del globals_, locals_  # Unused
 
   if level:
@@ -214,11 +231,11 @@ def _fake_import(
     # import x.y.z as z
 
     # Register the child modules
-    childs = root
+    child = root
     for name in parts:
-      childs = childs.child_import(name)
+      child = child.child_import(name)
 
-    return root
+    _maybe_import(origin_import, child.qualname)
   else:
     # from x.y.z import a, b
 
@@ -227,8 +244,9 @@ def _fake_import(
       root = root.child_import(name)
     # Register the child imports
     for name in fromlist:
-      root.child_import(name)
-    return root
+      child = root.child_import(name)
+      _maybe_import(origin_import, child.qualname)
+  return root
 
 
 @dataclasses.dataclass(eq=False, kw_only=True)
@@ -289,3 +307,55 @@ class ProxyObject:
 
   def __call__(self, *args, **kwargs):
     raise NotImplementedError('Inherit ProxyObject to support `__call__`.')
+
+
+_LAZY_IMPORTED_MODULES: tuple[str, ...] | None = None
+_EXCEPT_MODULES: tuple[str, ...] | None = None
+
+
+@contextlib.contextmanager
+def set_lazy_imported_modules(
+    *,
+    lazy_import: list[str],
+    except_: list[str] | tuple[str, ...] = (),
+) -> Iterator[None]:
+  """Set which modules inside `with konfig.imports()` will be lazy-imported."""
+  global _LAZY_IMPORTED_MODULES
+  global _EXCEPT_MODULES
+  assert _LAZY_IMPORTED_MODULES is None
+  assert _EXCEPT_MODULES is None
+  _LAZY_IMPORTED_MODULES = tuple(lazy_import)
+  _EXCEPT_MODULES = tuple(except_)
+  try:
+    yield
+  finally:
+    _LAZY_IMPORTED_MODULES = None
+    _EXCEPT_MODULES = None
+
+
+def _maybe_import(origin_import, module_name: str) -> None:
+  """Trigger the actual import."""
+  # Restore the original import
+  with _fake_imports(new_import=origin_import):
+    # Lazy import not set, so import everything
+    if _LAZY_IMPORTED_MODULES is None:
+      origin_import(module_name)
+      return
+
+    assert _EXCEPT_MODULES is not None  # But might still be empty
+    if _module_name_is_in(module_name, _EXCEPT_MODULES):
+      # Except takes precedence over lazy imports
+      origin_import(module_name)
+    elif _module_name_is_in(module_name, _LAZY_IMPORTED_MODULES):
+      pass  # Module explicitly set as lazy
+    else:
+      # By default, import everything that was not explicitly set as lazy
+      origin_import(module_name)
+
+
+def _module_name_is_in(module_name: str, names: tuple[str, ...]) -> bool:
+  if '*' in names:
+    return True
+  return module_name in names or f'{module_name}.'.startswith(
+      tuple(f'{n}.' for n in names)
+  )
