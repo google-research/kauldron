@@ -103,6 +103,7 @@ class Evaluator(EvaluatorBase):
       on the full test dataset. Note that each evaluation reinitializes the
       dataset iterator, so setting to `1` will run all evaluations on the same
       batch.
+    cache: Whether to cache the iterator
     ds: Dataset to evaluate on.
     losses: Losses
     metrics: Metrics
@@ -110,6 +111,7 @@ class Evaluator(EvaluatorBase):
   """
 
   num_batches: Optional[int]
+  cache: bool = False
   ds: data.Pipeline = config_util.ROOT_CFG_REF.eval_ds
   losses: dict[str, losses_lib.Loss] = config_util.ROOT_CFG_REF.train_losses
   metrics: dict[str, metrics_lib.Metric] = (
@@ -136,6 +138,25 @@ class Evaluator(EvaluatorBase):
         ds=new_self.ds.update_from_root_cfg(root_cfg),
     )
 
+  @functools.cached_property
+  def ds_iter(self) -> data.IterableDataset:
+    """"""
+    ds_iter = self.ds
+    if self.num_batches is not None:
+      ds_iter = ds_iter.take(self.num_batches)
+    if self.cache:
+      if self.num_batches is None:
+        raise ValueError('Can only cache if num_batches is set.')
+      ds_iter = ds_iter.cache()
+    return ds_iter.device_put()
+
+  @functools.cached_property
+  def writer(self) -> metric_writer.KDMetricWriter:
+    """Metric writer used for this evaluator."""
+    return metric_writer.KDMetricWriter(
+        workdir=self.base_cfg.workdir, collection=self.name
+    )
+
   def evaluate(
       self, state: train_step.TrainState, step: int
   ) -> train_step.Auxiliaries:
@@ -143,11 +164,7 @@ class Evaluator(EvaluatorBase):
     self._assert_root_cfg_resolved()
 
     merged_aux = None
-    for eval_step, batch in utils.enum_iter(
-        self.ds,
-        total_steps=self.num_batches,
-        desc='eval',
-    ):
+    for eval_step, batch in utils.enum_iter(self.ds_iter, desc='eval'):
       eval_step = sharding.device_put(eval_step, sharding.REPLICATED)
       aux = basic_eval_step(
           model_with_aux=self.model_with_aux,

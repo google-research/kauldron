@@ -106,7 +106,7 @@ def train_impl(
 
   with guard:
     for i, batch in utils.enum_iter(
-        trainer.train_ds,
+        trainer.train_ds.device_put(),
         init_step=initial_step,
         total_steps=total_steps,
         desc="train",

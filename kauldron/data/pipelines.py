@@ -16,7 +16,7 @@
 
 import dataclasses
 import functools
-from typing import Any, Mapping, Optional, TypeAlias
+from typing import Any, Iterator, Mapping, Optional, TypeAlias
 
 from etils import edc
 from etils import enp
@@ -41,7 +41,7 @@ _NpArray: TypeAlias = Any
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True, eq=True)
-class Pipeline(config_util.UpdateFromRootCfg):
+class Pipeline(data_utils.IterableDataset, config_util.UpdateFromRootCfg):
   """Base class for kauldron data pipelines.
 
   Attributes:
@@ -53,10 +53,6 @@ class Pipeline(config_util.UpdateFromRootCfg):
 
   batch_size: int
   seed: Optional[PRNGKeyLike] = config_util.ROOT_CFG_REF.seed
-
-  def __iter__(self) -> PyTree[_NpArray]:
-    """Iterator that produces batches as PyTrees of Sharded jax.Arrays."""
-    raise NotImplementedError()
 
   @functools.cached_property
   def element_spec(self) -> PyTree[enp.ArraySpec]:
@@ -92,7 +88,6 @@ class TFDataPipeline(Pipeline):
       dataset.
     prefetch_size: Number of batches to prefetch for this dataset. Defaults to
       AUTOTUNE.
-    seed: Optional seed. By default reuse the global seed.
   """
 
   loader: base_data_loader.DataLoader
@@ -139,9 +134,9 @@ class TFDataPipeline(Pipeline):
     # drop grain meta features
     ds = ds.map(_drop_grain_meta_features)
     ds = tfds.as_numpy(ds)
-    return data_utils.IterableDataset(ds)
+    return ds
 
-  def __iter__(self) -> PyTree[_NpArray]:
+  def __iter__(self) -> Iterator[PyTree[_NpArray]]:
     """Iterate over the dataset elements."""
     return iter(self._ds_iter)
 
@@ -198,7 +193,7 @@ class PyGrainPipeline(Pipeline):
     )
 
   @functools.cached_property
-  def _ds_iter(self) -> data_utils.IterableDataset:
+  def loader(self) -> pygrain.DataLoader:
     """Returns a numpy tf.data.Dataset iterator."""
     self._assert_root_cfg_resolved()
 
@@ -219,8 +214,15 @@ class PyGrainPipeline(Pipeline):
         worker_count=worker_count,
         shard_options=pygrain.ShardByJaxProcess(),
     )
-    return data_utils.IterableDataset(dataloader)
+    return dataloader
 
-  def __iter__(self) -> PyTree[_NpArray]:
+  def __iter__(self) -> Iterator[PyTree[_NpArray]]:
     """Iterate over the dataset elements."""
-    return iter(self._ds_iter)
+    yield from self.loader
+
+  def __length_hint__(self) -> int:
+    # https://peps.python.org/pep-0424/
+    if self.num_epochs is None:
+      return NotImplemented
+    else:
+      return self.num_epochs * len(self.data_source)
