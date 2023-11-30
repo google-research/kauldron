@@ -166,7 +166,6 @@ class PyGrainPipeline(Pipeline):
   """
 
   data_source: pygrain.RandomAccessDataSource
-  transformations: grain.Transformations
   shuffle: bool
   # TODO(epot): More consistent way to customize the number of steps. Unify:
   # * `cfg.num_training_steps`
@@ -174,7 +173,11 @@ class PyGrainPipeline(Pipeline):
   # * `cfg.train_ds.loader.num_epochs` (for `kd.data.loader.GrainTfds`)
   # * `cfg.evals[].num_batches`
   num_epochs: Optional[int] = None
+  transformations: grain.Transformations = dataclasses.field(
+      default_factory=list
+  )
   worker_count: int = 16
+  num_prefetch_elements: int = 1
 
   @functools.cached_property
   def batch_fn(self) -> pygrain.Batch:
@@ -212,6 +215,7 @@ class PyGrainPipeline(Pipeline):
         operations=transformations,
         sampler=self.sampler,
         worker_count=worker_count,
+        worker_buffer_size=self.num_prefetch_elements,
         shard_options=pygrain.ShardByJaxProcess(),
     )
     return dataloader
