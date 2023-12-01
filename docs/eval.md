@@ -1,6 +1,8 @@
-# Eval and determinism
+# Train, eval, randomness
 
-## Use eval
+## Evaluation
+
+### Use eval
 
 Eval can be defined on the `eval` attribute of `kd.train.Trainer`:
 
@@ -19,7 +21,7 @@ cfg.evals = {
 If `kd.evals.Evaluator` does not define losses, metrics, summaries, those are
 reused from train.
 
-## Train / eval in Module
+### Train / eval in Module
 
 Model can detect if they are in training / eval mode by using the
 `kd.train.train_property`.
@@ -71,7 +73,48 @@ class MyModule(nn.Module):
 non-Kauldron model (to propagate the `train` / `deterministic` kwarg to the
 model).
 
-## Rng streams
+## Training
+
+### Create the trainer
+
+The root trainer object is `kd.train.Trainer` which defines the model, datasets,
+metrics, losses,...
+
+See https://github.com/google-research/kauldron/tree/HEAD/kauldron/examples/mnist_autoencoder.py for an
+example.
+
+### High level API
+
+The `Config` can be run by calling the `.train()` method. It will take care of
+everything (checkpoint, eval, summaries,...).
+
+```python
+cfg.train()
+```
+
+### Mid level API
+
+If you only need to run the training loop:
+
+```python
+state = cfg.init_state()
+
+for batch in cfg.train_ds.device_put():
+  state, aux = cfg.trainstep.step(state, batch)
+```
+
+The `.device_put()` is chained with the dataset to put examples on devices (
+default to `kd.sharding.SHARDED`).
+
+## Randomness
+
+### Determinism
+
+Kauldron uses a global seed (`trainer.seed = 42`) that is then split into the
+various sub-components (dataset, model,...). For more control, the seed can also
+be explicitly set inside the submodules (e.g. `trainer.train_ds.seed = 42`)
+
+### Rng streams
 
 By default, the following `rng` streams are created:
 

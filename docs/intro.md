@@ -3,12 +3,13 @@
 Kauldron is a research codebase optimized for **research velocity** and
 **modularity**.
 
-Kauldron core contains a collection of composable modules and tools providing
-all the boilerplate required for research and run experiments.
+This doc explain how to quickly get started and run your first Kauldron
+experiment.
 
-Kauldron further comes with examples projects in
-[`kauldron/examples/`](http://https://github.com/google-research/kauldron/tree/HEAD/kauldron/examples/) which
-demonstrate several features of the codebase.
+See more examples at:
+
+*   [`kauldron/examples/`](http://https://github.com/google-research/kauldron/tree/HEAD/kauldron/examples/):
+    demonstrate several features of the codebase.
 
 ## Define experiment
 
