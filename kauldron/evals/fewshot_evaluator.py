@@ -46,8 +46,8 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
 
   Attributes:
     ds_train: Dataset to train few-shot classification on
-    ds_train: Dataset to validate few-shot classification on (to select L2 reg)
-    ds_train: Dataset to test few-shot classification on
+    ds_val: Dataset to validate few-shot classification on (to select L2 reg)
+    ds_test: Dataset to test few-shot classification on
     metric_prefix: String prefix to be used for the metrics from this evaluator
     num_classes: Number of classes in the classification task
     num_shots: A sequence of integers - numbers of shots to be evaluated
@@ -138,9 +138,9 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
       )
     return None
 
-  def compute_features(self, state, ds):
+  def compute_features(self, state, ds: data.IterableDataset):
     merged_aux = None
-    for eval_step, batch in utils.enum_iter(ds):
+    for eval_step, batch in utils.enum_iter(ds.device_put()):
       eval_step = sharding.device_put(eval_step, sharding.REPLICATED)
       aux = evaluators.basic_eval_step(  # pylint: disable=protected-access
           model_with_aux=self.model_with_aux,
