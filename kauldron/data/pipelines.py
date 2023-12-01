@@ -145,6 +145,9 @@ class TFDataPipeline(Pipeline):
     """Returns the element specs of the dataset."""
     return self._ds_iter.element_spec
 
+  def __length__(self) -> int:
+    return len(self._ds_iter)
+
 
 def _drop_grain_meta_features(features: Mapping[str, Any]) -> Mapping[str, Any]:
   return {k: v for k, v in features.items() if k not in grain.META_FEATURES}
@@ -224,9 +227,8 @@ class PyGrainPipeline(Pipeline):
     """Iterate over the dataset elements."""
     yield from self.loader
 
-  def __length_hint__(self) -> int:
-    # https://peps.python.org/pep-0424/
+  def __length__(self) -> int:
     if self.num_epochs is None:
-      return NotImplemented
+      raise TypeError("Cannot get length of infinite dataset.")
     else:
       return self.num_epochs * len(self.data_source)
