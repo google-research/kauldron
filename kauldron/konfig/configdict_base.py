@@ -71,7 +71,7 @@ class ConfigDict(ml_collections.ConfigDict):
 
   def __setitem__(self, key: str | int, value: Any) -> None:
     key = self._normalize_arg_key(key, can_append=True)
-    _assert_config_only_value(value, key)
+    value = _normalize_config_only_value(value, key)
     return super().__setitem__(key, value)
 
   def __repr__(self) -> str:
@@ -194,7 +194,7 @@ class _DictVisitor(_Visitor):
   def _repr(self, obj: ml_collections.ConfigDict) -> str:
     if configdict_proxy.CONST_KEY in obj:
       return self._repr_const(obj)
-    elif configdict_proxy.QUALNAME_KEY in obj or isinstance(obj, ConfigDict):
+    elif configdict_proxy.QUALNAME_KEY in obj:
       return self._repr_qualname(obj)
     else:
       return self._repr_dict(obj)
@@ -432,15 +432,14 @@ def register_default_values(default_values: utils.ConfigDictLike[Any]) -> None:
   _QUALNAME_TO_DEFAULT_VALUES[qualname] = default_values
 
 
-def _assert_config_only_value(value, name) -> None:
+def _normalize_config_only_value(value, name) -> Any:
   """Validate only config values are defined."""
-  # TODO(epot): Could have better error message (display path)
   # TODO(epot): Test `__setattr__` is also called in `ConfigDict({})`
   match value:
     case ConfigDict():  # Leafs should have been already validated
-      return
+      return value
     case ml_collections.FieldReference():
-      return
+      return value
     case (
         int()
         | float()
@@ -452,15 +451,21 @@ def _assert_config_only_value(value, name) -> None:
         | slice()
         | os.PathLike()  # Exceptionally allow pathlib object
     ):
-      return  # Built-ins
+      return value  # Built-ins
     case dict() | ml_collections.ConfigDict():
-      for v in value.values():
-        _assert_config_only_value(v, name)
+      return ConfigDict(  # Convert `dict` -> `ConfigDict`
+          {
+              k: _normalize_config_only_value(v, f'{name}.{k}')
+              for k, v in value.items()
+          }
+      )
     case list() | tuple() | set() | frozenset():
-      for v in value:
-        _assert_config_only_value(v, name)
+      return type(value)(
+          _normalize_config_only_value(v, f'{name}[{i}]')
+          for i, v in enumerate(value)
+      )
     case configdict_proxy.ConfigDictProxyObject():
-      return
+      return value
     case _:
       raise ValueError(
           f'Error setting `cfg.{name}`: To avoid mixing configurable and'

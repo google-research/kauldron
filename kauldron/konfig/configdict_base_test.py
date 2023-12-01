@@ -32,13 +32,13 @@ def test_cycles():
   cfg.cycle = cfg
 
   assert repr(cfg) == epy.dedent("""
-    <ConfigDict[&id003 ConfigDict(
-        a0=&id001 'abc',
-        a1=*id001,
-        c0=&id002 {'a': 123},
-        c1=*id002,
-        cycle=*id003,
-    )]>
+    <ConfigDict[&id003 {
+        'a0': &id001 'abc',
+        'a1': *id001,
+        'c0': &id002 {'a': 123},
+        'c1': *id002,
+        'cycle': *id003,
+    }]>
   """)
 
 
