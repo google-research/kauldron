@@ -23,7 +23,6 @@ import functools
 import importlib
 import json
 import typing
-from typing import Optional
 
 from etils import epath
 from etils import epy
@@ -33,17 +32,6 @@ from unittest import mock as _mock ; xmanager_api = _mock.Mock()
 
 if typing.TYPE_CHECKING:
   from kauldron.train import config_lib  # pylint: disable=g-bad-import-order
-
-
-@dataclasses.dataclass
-class RunConfig:
-  """Executable config.
-
-  Attributes:
-    target: Build target. If not defined, is auto-detected from the config path.
-  """
-
-  target: Optional[str] = None
 
 
 @functools.cache

@@ -315,11 +315,13 @@ _EXCEPT_MODULES: tuple[str, ...] | None = None
 
 @contextlib.contextmanager
 def set_lazy_imported_modules(
+    lazy_import: list[str] | tuple[str, ...] = ('*',),
     *,
-    lazy_import: list[str],
     except_: list[str] | tuple[str, ...] = (),
 ) -> Iterator[None]:
   """Set which modules inside `with konfig.imports()` will be lazy-imported."""
+  assert isinstance(lazy_import, (list, tuple))
+  assert isinstance(except_, (list, tuple))
   global _LAZY_IMPORTED_MODULES
   global _EXCEPT_MODULES
   assert _LAZY_IMPORTED_MODULES is None

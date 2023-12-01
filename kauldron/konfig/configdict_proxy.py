@@ -203,6 +203,10 @@ class _ConstructorResolver(_ConfigDictVisitor):
     kwargs = dict(value.items())
 
     constructor = import_qualname(kwargs.pop(qualname_key))
+    if hasattr(constructor, '__konfig_resolve_exclude_fields__'):
+      exclude_fields = constructor.__konfig_resolve_exclude_fields__
+    else:
+      exclude_fields = ()
 
     if qualname_key == CONST_KEY:
       if kwargs:
@@ -212,7 +216,11 @@ class _ConstructorResolver(_ConfigDictVisitor):
       return constructor  # Constant are returned as-is
 
     kwargs = {
-        k: _reraise_with_info(self._resolve_value, k)(v)
+        k: (
+            v
+            if k in exclude_fields
+            else _reraise_with_info(self._resolve_value, k)(v)
+        )
         for k, v in kwargs.items()
     }
     args = [kwargs.pop(str(i)) for i in range(num_args(kwargs))]

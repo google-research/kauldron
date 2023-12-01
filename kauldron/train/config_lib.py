@@ -19,6 +19,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 import dataclasses
 import functools
+import typing
 from typing import Any, Optional
 
 from etils import edc
@@ -41,8 +42,24 @@ from kauldron.train import train_step
 from kauldron.utils import config_util
 from kauldron.utils import context as context_lib
 from kauldron.utils import profile_utils
-from kauldron.utils import xmanager
 import optax
+
+# TODO(epot): Maybe merge like `konfig.imports(lazy=['*'])`
+with (
+    konfig.set_lazy_imported_modules(),
+    konfig.imports(),
+):
+  # Do not resolve job_lib to not link the full XManager API to Kauldron
+  from kauldron.xm._src import job_lib  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+
+
+# TODO(epot): There's some strange interaction between `get_type_hints` from
+# `edc`, `ConfigDictLike` and lazy job imports. Should investigate but as it's
+# not critical, just use this workaround.
+if typing.TYPE_CHECKING:
+  _JobConfigDict = konfig.ConfigDictLike[job_lib.Job]
+else:
+  _JobConfigDict = Any
 
 
 class Trainer(config_util.BaseConfig):
@@ -78,7 +95,7 @@ class Trainer(config_util.BaseConfig):
       elsewhere `cfg.model.num_layer = cfg.ref.aux.num_layers`)
     trainstep: Training loop step. Do not set this field unless you need a
       custom training step.
-    run: XManager runtime parameters (e.g. which target is the config using)
+    xm_job: XManager runtime parameters (e.g. which target is the config using)
     raw_cfg: Original config from which this `Config` was created. Automatically
       set during `konfig.resolve()`
   """
@@ -134,9 +151,10 @@ class Trainer(config_util.BaseConfig):
   )
 
   # XManager parameters
-  run: xmanager.RunConfig = dataclasses.field(
-      default_factory=xmanager.RunConfig
-  )
+  # This is only resolved in the XManager launcher, so to avoid depending on
+  # the full XManager binary, we keep the `ConfigDict` even after
+  # `trainer = konfig.resolve(cfg)`
+  xm_job: _JobConfigDict = dataclasses.field(default_factory=job_lib.Job)
 
   raw_cfg: Optional[konfig.ConfigDict] = dataclasses.field(
       default=None, repr=False
@@ -172,6 +190,8 @@ class Trainer(config_util.BaseConfig):
           'evals',
           {k: v.update_from_root_cfg(self) for k, v in evals.items()},
       )
+
+  __konfig_resolve_exclude_fields__ = ('xm_job',)
 
   def __post_konfig_resolve__(self, cfg: konfig.ConfigDict) -> None:
     """Bind the raw config to kd. Called during `kd.konfig.resolve()`."""
