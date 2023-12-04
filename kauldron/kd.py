@@ -51,6 +51,7 @@ from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importin
 konfig.register_aliases(
     {
         'kauldron.kd': 'kd',
+        'kauldron.kxm': 'kxm',
     }
 )
 

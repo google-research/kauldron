@@ -49,7 +49,11 @@ from kauldron.xm._src import default_values as _default_values
 # Register aliases for cleaner config display
 from kauldron import konfig
 
+# TODO(epot): Could unify aliases in a separate file.
+# Aliases are duplicated between `kd` because `kd` is lazy-imported during
+# `kxm` launcher.
 konfig.register_aliases({
+    'kauldron.kd': 'kd',
     'kauldron.kxm': 'kxm',
 })
 del konfig

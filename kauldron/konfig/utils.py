@@ -43,19 +43,25 @@ else:
 # Wrapper around `placeholder` which accept any default
 # Returns `Any` as it can be assigned to every attribute
 @functools.wraps(ml_collections.config_dict.placeholder)
-def placeholder(field_type: Any = object, *, required: bool = False) -> Any:
+def placeholder(
+    field_type: Any = object,
+    *,
+    required: bool = False,
+    default: Any = None,
+) -> Any:
   """Defines an entry in a ConfigDict that has no value yet.
 
   Args:
     field_type: type of value.
     required: If `True`, the placeholder will raise an error on access if the
       underlying value hasn't been set.
+    default: Can specify the default value.
 
   Returns:
     A `FieldReference` with value None and the given type.
   """
   return ml_collections.FieldReference(
-      None, field_type=field_type, required=required
+      default, field_type=field_type, required=required
   )
 
 
