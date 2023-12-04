@@ -29,6 +29,9 @@ import ml_collections
 _T = TypeVar("_T")
 PyTree = Union[_T, Sequence["PyTree[_T]"], Mapping[str, "PyTree[_T]"]]
 
+# Context object is a nested structure (dict, dataclass)
+Context = Any
+
 
 JaxKeyEntry = Union[
     jax.tree_util.SequenceKey,
@@ -108,7 +111,7 @@ class Path(collections.abc.Sequence):
   # TODO(klausg): docstring, annotations and better name
   def get_from(
       self,
-      context,
+      context: Context,
       *,
       default=...,
       err_spec: bool = False,
@@ -158,7 +161,9 @@ def _jax_key_entry_to_kd_path_element(
   raise TypeError(f"Unknown key entry type {type(jax_key_entry)}")
 
 
-def get_by_path(obj: Any, path: str | tuple[str] | Path, default=...) -> Any:
+def get_by_path(
+    obj: Context, path: str | tuple[str] | Path, default=...
+) -> Any:
   """Get (nested) item or attribute by given path.
 
   Args:

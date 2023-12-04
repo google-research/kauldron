@@ -27,7 +27,6 @@ from kauldron import kontext
 from kauldron import metrics
 from kauldron.metrics import base_state
 from kauldron.typing import Array, Float, PyTree  # pylint: disable=g-multiple-import,g-importing-member
-from kauldron.utils import context as context_lib
 
 
 Schedule = Callable[[int], float]
@@ -249,7 +248,7 @@ class Loss(metrics.Metric, abc.ABC):
 
 @jax.named_call
 def compute_losses(
-    losses: PyTree[Loss], context: context_lib.Context
+    losses: PyTree[Loss], context: kontext.Context
 ) -> tuple[Float[""], PyTree[Float[""]]]:
   """Compute all losses based on given context."""
 

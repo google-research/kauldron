@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """LPIPS metric, see https://arxiv.org/abs/1801.03924."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -73,6 +74,12 @@ class _LpipsVgg(nn.Module):
     path = epath.Path(
         "/memfile/lpips_vgg_weights_memfile/lpips_vgg_weights.bin"
     )
+    if not path.exists():
+      raise FileNotFoundError(
+          "Using `LpipsVgg` require to add"
+          " `//third_party/py/kauldron/metrics:lpips_vgg_weights_memfile`"
+          " to your BUILD `deps`"
+      )
     return flax.serialization.from_bytes(params, path.read_bytes())
 
   @nn.compact

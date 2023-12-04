@@ -27,7 +27,7 @@ from kauldron.metrics import base_state
 from kauldron.typing import Float, Integer, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 with epy.lazy_imports():
-  from grand_vision.eval.metrics import clustering as gv_clustering  # pylint: disable=g-import-not-at-top
+  from grand_vision.eval.metrics import clustering as gv_clustering  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)

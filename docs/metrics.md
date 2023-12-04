@@ -12,14 +12,21 @@ See the available metrics:
 
 ### Standalone usage
 
-Metrics can be used outside Kauldron, as standalone module.
+Metrics can be used outside Kauldron, as standalone module (using
+`//third_party/py/kauldron/metrics`,...):
+
+```python
+from kauldron import metrics
+from kauldron import losses
+from kauldron import summaries
+```
 
 Metrics are stateless objects.
 
 Creation:
 
 ```python
-metric1 = kd.metric.Accuracy()
+metric1 = metrics.Accuracy()
 ```
 
 Usage (1-time):
