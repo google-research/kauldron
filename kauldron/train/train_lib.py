@@ -66,20 +66,23 @@ def train_impl(
 
   status.log("Initializing ...")
   trainstep = trainer.trainstep
+  ckptr = trainer.checkpointer
+  latest_step = ckptr.latest_step
+  initial_step = 0 if latest_step is None else latest_step
 
-  state = trainstep.init(trainer.train_ds.element_spec)
+  state = trainstep.init(
+      elem_spec=trainer.train_ds.element_spec,
+      restoring=latest_step is not None,
+  )
 
   # Initialize CheckpointManager and attempt to restore.
-  ckptr = trainer.checkpointer
   state = ckptr.restore(state, noop_if_missing=True)
-  latest_step = ckptr.latest_step
-  initial_step = 0 if not latest_step else latest_step
 
   if initial_step == 0:
     writer.write_config(trainer.raw_cfg)
-  writer.write_param_overview(initial_step, state.params)
-  writer.write_element_spec(initial_step, trainer.train_ds.element_spec)
-  writer.write_context_structure(initial_step, trainer)
+    writer.write_param_overview(initial_step, state.params)
+    writer.write_element_spec(initial_step, trainer.train_ds.element_spec)
+    writer.write_context_structure(initial_step, trainer)
 
   timer = timer_module.PerformanceTimer(
       initial_step_num=initial_step,

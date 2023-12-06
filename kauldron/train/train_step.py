@@ -28,6 +28,7 @@ from kauldron import kontext
 from kauldron import losses as kd_losses
 from kauldron import metrics as kd_metrics
 from kauldron import summaries as kd_summaries
+from kauldron.checkpoints import partial_loader
 import kauldron.data.utils as data_utils
 from kauldron.train import rngs_lib
 from kauldron.typing import ElementSpec, Float, PyTree  # pylint: disable=g-multiple-import,g-importing-member
@@ -281,6 +282,9 @@ class TrainStep(config_util.UpdateFromRootCfg):
   model_with_aux: ModelWithAux = dataclasses.field(default_factory=ModelWithAux)
   optimizer: optax.GradientTransformation = config_util.ROOT_CFG_REF.optimizer
   rng_streams: rngs_lib.RngStreams = config_util.ROOT_CFG_REF.rng_streams
+  init_transforms: Mapping[str, partial_loader.AbstractPartialLoader] = (
+      config_util.ROOT_CFG_REF.init_transforms
+  )
 
   def update_from_root_cfg(self, root_cfg) -> TrainStep:
     new_self = super().update_from_root_cfg(root_cfg)
@@ -296,16 +300,24 @@ class TrainStep(config_util.UpdateFromRootCfg):
       elem_spec: ElementSpec,
       *,
       model_method: Optional[str] = None,
+      restoring: bool = False,
   ) -> TrainState:
     """Initialize the model and return the initial TrainState."""
     self._assert_root_cfg_resolved()
-    return self._init(flax.core.freeze(elem_spec), model_method)
+    elem_spec = flax.core.freeze(elem_spec)
+    state = self._init_model(elem_spec, model_method)
+    if not restoring:
+      # if restoring a checkpoint we can skip the (potentially slow) transforms
+      state = self._init_transforms(state)
+    # state = sharding.device_put(state, sharding.REPLICATED)
+    state = self._init_optimizer(state)
+    return state
 
   @jax_utils.jit(
       out_shardings=lambda: sharding.REPLICATED,
       static_argnames=("self", "elem_spec", "model_method"),
   )
-  def _init(
+  def _init_model(
       self,
       elem_spec: ElementSpec,
       model_method: Optional[str] = None,
@@ -314,13 +326,30 @@ class TrainStep(config_util.UpdateFromRootCfg):
     params = self.model_with_aux.init(
         self.rng_streams.init_rngs(), elem_spec, model_method=model_method
     )
-    opt_state = self.optimizer.init(params)
     return TrainState(
         step=0,
         params=params,
-        opt_state=opt_state,
+        opt_state=None,
         training_time_hours=0.0,
     )
+
+  def _init_transforms(self, state: TrainState) -> TrainState:
+    """Run any additional init transformations and return the updated state."""
+    for init_transf in self.init_transforms.values():
+      state = init_transf.transform(state)
+    return state
+
+  @jax_utils.jit(
+      out_shardings=lambda: sharding.REPLICATED,
+      static_argnames="self",
+  )
+  def _init_optimizer(
+      self,
+      state: TrainState,
+  ) -> TrainState:
+    """Initialize the model and return the initial TrainState."""
+    opt_state = self.optimizer.init(state.params)
+    return state.replace(opt_state=opt_state)
 
   @jax_utils.jit(
       static_argnames=(

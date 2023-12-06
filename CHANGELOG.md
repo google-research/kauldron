@@ -8,6 +8,9 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 ## [Unreleased]
 
+* Changed: removed `Checkpointer.partial_initializer` and instead added
+  `cfg.init_transforms` which can be used to set multiple transformations for
+  the params of the model (i.e. instances of `AbstractPartialLoader`).
 * Changed: `konfig.imports()` are not lazy by default anymore (config don't
   need to be resolved in `with ecolab.adhoc()` anymore!)
 * Added:

@@ -27,12 +27,12 @@ from etils import epath
 import flax
 from flax import linen as nn
 import jax
+from kauldron import checkpoints
 from kauldron import data
 from kauldron import konfig
 from kauldron import losses
 from kauldron import metrics
 from kauldron import summaries
-from kauldron.checkpoints import checkpointer as checkpointer_lib
 from kauldron.data import utils as data_utils
 from kauldron.evals import evaluators
 from kauldron.train import flatboard
@@ -107,6 +107,9 @@ class Trainer(config_util.BaseConfig):
   train_ds: data.Pipeline
   eval_ds: Optional[data.Pipeline] = None
   model: nn.Module
+  init_transforms: Mapping[str, checkpoints.AbstractPartialLoader] = (
+      dataclasses.field(default_factory=flax.core.FrozenDict)
+  )
   num_train_steps: Optional[int] = None
   stop_after_steps: Optional[int] = None
   log_metrics_every: int = 100
@@ -124,8 +127,8 @@ class Trainer(config_util.BaseConfig):
       default_factory=flax.core.FrozenDict
   )
   optimizer: optax.GradientTransformation
-  checkpointer: checkpointer_lib.BaseCheckpointer = dataclasses.field(
-      default_factory=checkpointer_lib.NoopCheckpointer
+  checkpointer: checkpoints.BaseCheckpointer = dataclasses.field(
+      default_factory=checkpoints.NoopCheckpointer
   )
 
   rng_streams: rngs_lib.RngStreams = dataclasses.field(
@@ -164,7 +167,7 @@ class Trainer(config_util.BaseConfig):
     # It's convenient to set `cfg.evals = None` to disable evaluation
     for name, default_factory in {
         'evals': flax.core.FrozenDict,
-        'checkpointer': checkpointer_lib.NoopCheckpointer,
+        'checkpointer': checkpoints.NoopCheckpointer,
         'profiler': profile_utils.NoopProfiler,
     }.items():
       if getattr(self, name) is None:

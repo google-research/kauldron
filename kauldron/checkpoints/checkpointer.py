@@ -25,10 +25,8 @@ from typing import Any, Optional, Sequence, TypeVar
 from etils import epath
 from flax.training import orbax_utils
 import jax
-from kauldron.checkpoints import partial_loader
 from kauldron.checkpoints import pytree_checkpoint
 from kauldron.utils import config_util
-from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-members
 import orbax.checkpoint as ocp
 
 _T = TypeVar("_T")
@@ -94,9 +92,6 @@ class Checkpointer(BaseCheckpointer):
     max_to_keep: See `ocp.CheckpointManagerOptions`
     keep_time_interval: See `ocp.CheckpointManagerOptions`
     keep_period: See `ocp.CheckpointManagerOptions`
-    partial_initializer: If the checkpoint do not exists, `.restore()` will use
-      this loader to update the init state. Allow to load weights from a
-      pre-trained model.
     fast: (internal) Activate some optimizations
   """
 
@@ -106,8 +101,6 @@ class Checkpointer(BaseCheckpointer):
   max_to_keep: Optional[int] = 3
   keep_time_interval: Optional[datetime.timedelta] = None
   keep_period: Optional[int] = None
-
-  partial_initializer: Optional[partial_loader.AbstractPartialLoader] = None
 
   fast: bool = True
 
@@ -154,14 +147,6 @@ class Checkpointer(BaseCheckpointer):
       state = self._ckpt_mgr.restore(
           step, items=initial_state, restore_kwargs=restore_kwargs
       )
-    elif self.partial_initializer is not None:  # No checkpoint
-      if state is None:
-        raise ValueError(
-            "Cannot initialize the checkpoint. Fallback checkpoint loading"
-            " requires an initial state."
-        )
-      state = self.partial_initializer.transform(state)
-      state = sharding.device_put(state, sharding.REPLICATED)
     elif not noop_if_missing:  # No checkpoint
       raise FileNotFoundError(
           f"No checkpoint found in {self.workdir}. Use `noop_if_missing=True`"

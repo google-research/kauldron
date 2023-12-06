@@ -42,6 +42,8 @@ class _NOT_RESTORED:  # pylint: disable=invalid-name
 _NOT_RESTORED = _NOT_RESTORED()
 
 
+# TODO(klausg): maybe rename, since this is now only used in cfg.init_transforms
+# TODO(klausg): move out of checkpoints?
 class AbstractPartialLoader(abc.ABC):
   """Abstract class for partial checkpoint loaders."""
 
