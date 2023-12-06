@@ -47,13 +47,8 @@ from kauldron.utils import inspect
 from kauldron.utils import xmanager as xm
 from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 
-# Register aliases for cleaner config display
-konfig.register_aliases(
-    {
-        'kauldron.kd': 'kd',
-        'kauldron.kxm': 'kxm',
-    }
-)
+# Register the default `ConfigDict` overwrites
+from kauldron.xm._src import default_values as _default_values
 
 # TODO(epot): This could be optional for the top-level module
 # Automated documentation info

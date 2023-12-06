@@ -427,7 +427,9 @@ def register_default_values(default_values: utils.ConfigDictLike[Any]) -> None:
     default_values: The default `ConfigDict` to create.
   """
   qualname = default_values.__qualname__
-  if registered_values := _QUALNAME_TO_DEFAULT_VALUES.get(qualname):
+  if (registered_values := _QUALNAME_TO_DEFAULT_VALUES.get(qualname)) and (
+      default_values != registered_values
+  ):
     raise ValueError(f'{qualname} is already registered: {registered_values}.')
   _QUALNAME_TO_DEFAULT_VALUES[qualname] = default_values
 
