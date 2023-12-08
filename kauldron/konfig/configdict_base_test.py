@@ -42,6 +42,16 @@ def test_cycles():
   """)
 
 
+def test_ref_resolved():
+  cfg = konfig.ConfigDict({'a': 1})
+  cfg.b = (1, cfg.ref.a)
+
+  # Resolve should resolve the FieldReference
+  out = konfig.resolve(cfg)
+  assert isinstance(out.b[-1], int)
+  assert hash(out)
+
+
 def test_deserialize():
   cfg = konfig.ConfigDict({
       'paths': [

@@ -146,6 +146,7 @@ class _ConfigDictVisitor:
     self._types_to_resolver = {
         (dict, ml_collections.ConfigDict): self._resolve_dict,
         (list, tuple): self._resolve_sequence,
+        ml_collections.FieldReference: self._resolve_reference,
     }
 
   def _resolve_value(self, value):
@@ -178,6 +179,9 @@ class _ConfigDictVisitor:
             for k, v in value.items()
         }
     )
+
+  def _resolve_reference(self, value: ml_collections.FieldReference):
+    return self._resolve_value(value.get())
 
   def _resolve_leaf(self, value):
     return value
