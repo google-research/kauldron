@@ -81,6 +81,15 @@ class BaseCheckpointer(config_util.UpdateFromRootCfg, abc.ABC):
   def all_steps(self) -> Sequence[int]:
     return []
 
+  def refresh_cache(self) -> None:
+    """Refresh the cache.
+
+    For performance, the checkpointer caches the directory names. Calling this
+    function resets the cache to allow scanning the checkpoint directory for new
+    checkpoints.
+    """
+    pass
+
 
 @dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
 class Checkpointer(BaseCheckpointer):
@@ -191,6 +200,12 @@ class Checkpointer(BaseCheckpointer):
   @property
   def all_steps(self) -> Sequence[int]:
     return self._ckpt_mgr.all_steps()
+
+  def refresh_cache(self) -> None:
+    # If cache is refreshed, we reset the checkpoint manager by replaying
+    # the cached property.
+    # TODO(b/315316885): Orbax should expose a native method for this
+    object.__setattr__(self, "_ckpt_mgr", type(self)._ckpt_mgr.func(self))
 
   def _absolute_step(self, step: int) -> int:
     """Convert `-1` into the last step."""
