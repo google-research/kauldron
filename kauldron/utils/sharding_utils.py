@@ -111,7 +111,7 @@ class _Sharding:
     return jax.make_array_from_single_device_arrays(
         global_shape,
         sharding,
-        array.device_buffers,
+        [shard.data for shard in array.addressable_shards],
     )
 
 
