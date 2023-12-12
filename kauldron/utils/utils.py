@@ -72,6 +72,7 @@ def enum_iter(
       initial=init_step,
       total=total,
       desc=desc,
+      disable=True,
       **tqdm_kwargs,
   ):
     yield i, ex
