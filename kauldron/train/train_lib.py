@@ -22,10 +22,12 @@ from typing import Optional, Sequence, Tuple
 from absl import logging
 from clu import periodic_actions
 from etils import epath
+from etils import exm
 import jax
 import jax.numpy as jnp
 from kauldron import kontext
 from kauldron import summaries
+from kauldron.evals import eval_impl
 from kauldron.train import config_lib
 from kauldron.train import flatboard
 from kauldron.train import metric_writer
@@ -165,6 +167,10 @@ def train_impl(
 
       for h in hooks:
         h(i)
+
+  # Notify the eval job training is complete
+  if exm.is_running_under_xmanager():
+    exm.current_work_unit().add_tag(eval_impl.TRAIN_COMPLETE_TAG)
 
   sync()
   # Returning the final state is convenient for interactive training in colab

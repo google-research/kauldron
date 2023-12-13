@@ -37,6 +37,12 @@ _CONFIG = config_flags.DEFINE_config_file(
     accept_new_attributes=True,
 )
 _SWEEP_CONFIG = sweep_utils.define_sweep_flag()
+_EVAL_NAMES = flags.DEFINE_list(
+    "eval_names",
+    None,
+    "Evaluation(s) to run. When set, run `.continuous_eval()` rather than"
+    " `.train()`.",
+)
 _POST_MORTEM = flags.DEFINE_boolean(
     "catch_post_mortem",
     False,
@@ -46,12 +52,16 @@ _POST_MORTEM = flags.DEFINE_boolean(
 
 def main(_):
   with _wu_error_handling(_POST_MORTEM.value):
+    eval_names = _EVAL_NAMES.value
     cfg = sweep_utils.update_with_sweep(
         config=_CONFIG.value,
         sweep_kwargs=_SWEEP_CONFIG.value,
     )
     trainer: kd.train.Trainer = kd.konfig.resolve(cfg)
-    trainer.train()
+    if eval_names is None:
+      trainer.train()
+    else:
+      trainer.continuous_eval(eval_names)
 
 
 @contextlib.contextmanager

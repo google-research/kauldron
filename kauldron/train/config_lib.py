@@ -34,6 +34,7 @@ from kauldron import losses
 from kauldron import metrics
 from kauldron import summaries
 from kauldron.data import utils as data_utils
+from kauldron.evals import eval_impl
 from kauldron.evals import evaluators
 from kauldron.train import flatboard
 from kauldron.train import rngs_lib
@@ -224,6 +225,25 @@ class Trainer(config_util.BaseConfig):
       Auxiliaries
     """
     return train_lib.train_impl(self)
+
+  def continuous_eval(
+      self, names: str | list[str]
+  ) -> dict[str, train_step.Auxiliaries]:
+    """Main method that perform auxiliary tasks (evaluation, rendering,...).
+
+    Trigger an evaluation everytime a new checkpoint is detected.
+
+    See https://kauldron.rtfd.io/en/latest/eval.html for details.
+
+    Args:
+      names: Name of the evaluators to run.
+
+    Returns:
+      Auxiliaries: Mapping eval name to auxiliary
+    """
+    if isinstance(names, str):
+      names = [names]
+    return eval_impl.continuous_eval(self, eval_names=names)
 
   @functools.cached_property
   def context_specs(self) -> context_lib.Context:
