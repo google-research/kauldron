@@ -8,6 +8,19 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 ## [Unreleased]
 
+* Added: Eval can now be launched in separate job:
+
+  ```python
+  cfg.evals = {
+      'eval_train': kd.evals.Evaluator(
+          run=kd.evals.RunEvery(100),  # Run along `train`
+      ),
+      'eval_eval': kd.evals.Evaluator(
+          run=kd.evals.RunXM(),  # Run in a separate `eval` job.
+      ),
+  }
+  ```
+
 * Changed: removed `Checkpointer.partial_initializer` and instead added
   `cfg.init_transforms` which can be used to set multiple transformations for
   the params of the model (i.e. instances of `AbstractPartialLoader`).

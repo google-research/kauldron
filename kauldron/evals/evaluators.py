@@ -23,6 +23,7 @@ from typing import Any, Optional, TypeVar
 
 import jax
 from kauldron import data
+from kauldron import konfig
 from kauldron import losses as losses_lib
 from kauldron import metrics as metrics_lib
 from kauldron import summaries as summaries_lib
@@ -35,6 +36,7 @@ from kauldron.utils import config_util
 from kauldron.utils import jax_utils
 from kauldron.utils import utils
 from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
+from kauldron.xm._src import run_strategies
 
 
 _SelfT = TypeVar('_SelfT')
@@ -49,26 +51,42 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
 
   Attributes:
     name: Eval name (collection name for TensorBoard and Datatables)
-    run_every: Run eval every `run_every` train steps
+    run: How/when to run this eval (e.g. `kd.evals.RunEvery(100)` or
+      `kd.evals.RunXM()`)
     base_cfg: reference to the experiment configuration (set automatically).
   """
 
-  name: str = _DEFAULT_EVAL_NAME  # TODO(klausg): change default to None?
+  # Evaluators can be used as standalone, so keep a default name
+  name: str = _DEFAULT_EVAL_NAME
 
-  run_every: int
+  run_every: int = None
+  # Do not resolve the RunStrategy to avoid depending on XManager
+  run: konfig.ConfigDictLike[run_strategies.RunStrategy] = None
 
   base_cfg: config_lib.Trainer = dataclasses.field(
       default=config_util.ROOT_CFG_REF, repr=False
   )
 
+  __konfig_resolve_exclude_fields__ = ('run',)
+
+  def __post_init__(self):
+    if hasattr(super(), '__post_init__'):
+      super().__post_init__()  # pylint: disable=attribute-error  # pytype: disable=attribute-error
+    if self.run is None and self.run_every is None:
+      raise ValueError(f'Missing required `run` kwarg for {type(self)}.')
+    if self.run_every is not None:
+      # TODO(epot): Raise deprecation warning and update existing usage
+      if self.run is not None:
+        raise ValueError('Only one of `run_every` and `run` should be set.')
+      with konfig.mock_modules():
+        cfg = run_strategies.RunEvery(self.run_every)
+      object.__setattr__(self, 'run', cfg)
+      object.__setattr__(self, 'run_every', None)
+
   def maybe_eval(self, *, step: int, state: train_step.TrainState) -> Any:
     """Run or skip the evaluator for the given train-step."""
-    if self.should_eval(step):
+    if self._resolved_run.should_eval_in_train(step):
       return self.evaluate(state, step)
-
-  def should_eval(self, step: int) -> bool:
-    """Whether the evaluator should be run for the given train-step."""
-    return step % self.run_every == 0
 
   def evaluate(self, state: train_step.TrainState, step: int) -> Any:
     """Run this evaluator then write and optionally return the results."""
@@ -80,6 +98,10 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
     return metric_writer.KDMetricWriter(
         workdir=self.base_cfg.workdir, collection=self.name
     )
+
+  @functools.cached_property
+  def _resolved_run(self) -> run_strategies.KauldronRunStrategy:
+    return run_strategies.run_strategy_cfg_to_kauldron_run_info(self.run)
 
 
 class Evaluator(EvaluatorBase):

@@ -10,7 +10,7 @@ Eval can be defined on the `eval` attribute of `kd.train.Trainer`:
 cfg = kd.train.Trainer()
 cfg.evals = {
     'eval': kd.evals.Evaluator(
-        run_every=100,
+        run=kd.evals.RunEvery(100),
         num_batches=None,
         ds=_make_ds(training=False),
         metrics={},
@@ -20,6 +20,8 @@ cfg.evals = {
 
 If `kd.evals.Evaluator` does not define losses, metrics, summaries, those are
 reused from train.
+
+To run eval as a standalone job on XManager, you can use `run=kd.evals.RunXM()`.
 
 ### Train / eval in Module
 

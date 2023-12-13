@@ -14,8 +14,14 @@
 
 """Evaluator."""
 
-# pylint: disable=g-importing-member
+# pylint: disable=g-importing-member,g-import-not-at-top
+
 from kauldron.evals.evaluators import Evaluator
 from kauldron.evals.evaluators import EvaluatorBase
 from kauldron.evals.fewshot_evaluator import FewShotEvaluator
-# pylint: enable=g-importing-member
+
+# RunStrategy are available in both XM and Kauldron side
+from kauldron.xm._src.run_strategies import RunEvery
+from kauldron.xm._src.run_strategies import RunSharedXM
+from kauldron.xm._src.run_strategies import RunStrategy
+from kauldron.xm._src.run_strategies import RunXM
