@@ -12,7 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Minimal example training a simple Autoencoder on MNIST."""
+r"""Minimal example training a simple Autoencoder on MNIST.
+
+```sh
+xmanager launch third_party/py/kauldron/xm/launch.py -- \
+  --cfg=third_party/py/kauldron/examples/mnist_autoencoder.py \
+  --xp.platform=jf=2x2
+```
+
+"""
 
 from kauldron import konfig
 
@@ -79,7 +87,7 @@ def get_config():
 
   cfg.evals = {
       "eval": kd.evals.Evaluator(
-          run_every=100,
+          run=kd.evals.RunEvery(100),
           num_batches=None,
           ds=_make_ds(training=False),
           metrics={},
