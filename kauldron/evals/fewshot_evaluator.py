@@ -61,7 +61,7 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
 
   Usage example:
     "fewshot_i1k": kd.evals.FewShotEvaluator(
-        run_every=10_000,
+        run=kd.evals.RunEvery(10_000),
         metric_prefix="i1k",
         ds_train=_make_i1k_fewshot(split="train[:-10000]", batch_size=4096),
         ds_val=_make_i1k_fewshot(split="train[-10000:]", batch_size=4096),

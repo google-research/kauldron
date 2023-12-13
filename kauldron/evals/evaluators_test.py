@@ -29,11 +29,11 @@ def test_multi(tmp_path: pathlib.Path):
   with kd.konfig.mock_modules():
     cfg.evals = {
         'test_eval': kd.evals.Evaluator(
-            run_every=1,
+            run=kd.evals.RunEvery(1),
             num_batches=1,
         ),
         'eval002': kd.evals.Evaluator(
-            run_every=1,
+            run=kd.evals.RunEvery(1),
             num_batches=1,
         ),
     }

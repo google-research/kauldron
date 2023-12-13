@@ -8,6 +8,8 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 ## [Unreleased]
 
+* Breaking: `Evaluator(run_every=XX)` kwarg is removed. To migrate, use
+  `Evaluator(run=kd.evals.RunEvery(XX))`
 * Added: Eval can now be launched in separate job:
 
   ```python

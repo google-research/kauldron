@@ -59,29 +59,14 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
   # Evaluators can be used as standalone, so keep a default name
   name: str = _DEFAULT_EVAL_NAME
 
-  run_every: int = None
   # Do not resolve the RunStrategy to avoid depending on XManager
-  run: konfig.ConfigDictLike[run_strategies.RunStrategy] = None
+  run: konfig.ConfigDictLike[run_strategies.RunStrategy]
 
   base_cfg: config_lib.Trainer = dataclasses.field(
       default=config_util.ROOT_CFG_REF, repr=False
   )
 
   __konfig_resolve_exclude_fields__ = ('run',)
-
-  def __post_init__(self):
-    if hasattr(super(), '__post_init__'):
-      super().__post_init__()  # pylint: disable=attribute-error  # pytype: disable=attribute-error
-    if self.run is None and self.run_every is None:
-      raise ValueError(f'Missing required `run` kwarg for {type(self)}.')
-    if self.run_every is not None:
-      # TODO(epot): Raise deprecation warning and update existing usage
-      if self.run is not None:
-        raise ValueError('Only one of `run_every` and `run` should be set.')
-      with konfig.mock_modules():
-        cfg = run_strategies.RunEvery(self.run_every)
-      object.__setattr__(self, 'run', cfg)
-      object.__setattr__(self, 'run_every', None)
 
   def maybe_eval(self, *, step: int, state: train_step.TrainState) -> Any:
     """Run or skip the evaluator for the given train-step."""
@@ -105,7 +90,10 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
 
 
 class Evaluator(EvaluatorBase):
-  """Evaluator running `num_batches` times every `run_every` steps.
+  """Evaluator running `num_batches` times.
+
+  Evaluators can be launched as separate XManager jobs (`run=kd.evals.RunXM()`)
+  or along train `run=kd.evals.RunEvery(100)`.
 
   If not provided, losses, metrics, summaries are reused from train.
 
@@ -113,7 +101,7 @@ class Evaluator(EvaluatorBase):
 
   ```
   evaluator = kd.evals.Evaluator(
-      run_every=100,
+      run=kd.evals.RunEvery(100),
       ds=test_ds,
       base_cfg=cfg,
   )
