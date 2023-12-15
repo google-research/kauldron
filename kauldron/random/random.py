@@ -218,7 +218,7 @@ def _normalize_jax_key(fn: _FnT) -> _FnT:
 
   # Support Colab reload
 
-  @functools.wraps(fn)
+  @_internal.wraps_with_reload(fn)
   def new_fn(key, *args, **kwargs):
     scope = sys.modules.get('flax.core.scope')
     if isinstance(key, PRNGKey):
