@@ -119,7 +119,7 @@ def _add_is_training_kwargs(fn: _FnT) -> _FnT:
   """Add the `is_training=` kwargs to `fn`."""
   fn = _internal.unwrap_on_reload(fn)  # pylint: disable=protected-access
 
-  @functools.wraps(fn)
+  @_internal.wraps_with_reload(fn)
   def decorated(*args, is_training_property: bool | None = None, **kwargs):  # pylint: disable=redefined-outer-name
     if is_training_property is not None:
       cm = _set_train_property(is_training_property)
