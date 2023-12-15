@@ -27,7 +27,6 @@ from kauldron.xm._src.kauldron_utils import KauldronJobs
 # Single job info
 from kauldron.xm._src.job_lib import Job
 from kauldron.xm._src.job_params import Debug
-from kauldron.xm._src.requirements import JobRequirements
 
 # Sweep info
 from kauldron.xm._src.sweep_utils import SweepInfo
