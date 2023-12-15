@@ -21,7 +21,15 @@ cfg.evals = {
 If `kd.evals.Evaluator` does not define losses, metrics, summaries, those are
 reused from train.
 
-To run eval as a standalone job on XManager, you can use `run=kd.evals.RunXM()`.
+`kd.evals.Evaluator` can be run along train, or as a standalone XManager job
+through the `run=` kwarg. The `run=` kwarg can be:
+
+*   `kd.evals.RunEvery(100)`: Run eval along train, every x train steps
+*   `kd.evals.RunXM()`: Start the eval in a separate standalone job (can also be
+    customized `kd.evals.RunXM(platform='jf=2x2', requirements=..., ...)`)
+*   `kd.evals.RunSharedXM(shared_name='my_evals')`: All evaluator sharing the
+    same RunSharedXM will be launched together. This allow to launch all evals
+    in a single separated job and save resources.
 
 ### Train / eval in Module
 
