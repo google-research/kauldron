@@ -22,11 +22,16 @@ import contextlib
 
 from absl import app
 from absl import flags
+from etils import epy
 import jax
-from kauldron import kd
-from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
-from kauldron.utils import sweep_utils
 from ml_collections import config_flags
+
+with epy.binary_adhoc():
+  # pylint: disable=g-import-not-at-top
+  from kauldron import kd
+  from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
+  from kauldron.utils import sweep_utils
+  # pylint: enable=g-import-not-at-top
 
 
 _CONFIG = config_flags.DEFINE_config_file(
