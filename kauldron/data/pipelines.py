@@ -13,11 +13,11 @@
 # limitations under the License.
 
 """Data pipelines."""
-
 import dataclasses
 import functools
 from typing import Any, Iterator, Mapping, Optional, TypeAlias
 
+from absl import logging
 from etils import edc
 from etils import enp
 from etils import epy
@@ -213,6 +213,11 @@ class PyGrainPipeline(Pipeline):
       print("Disabling pygrain multi-processing (unsupported in colab).")
       worker_count = 0
 
+    logging.info(
+        "Creating pygrain.Dataloader from %s with %d elements",
+        self.data_source,
+        len(self.data_source),
+    )
     dataloader = pygrain.DataLoader(
         data_source=self.data_source,
         operations=transformations,

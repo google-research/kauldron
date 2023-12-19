@@ -21,6 +21,7 @@ import dataclasses
 import functools
 from typing import Any, Optional, TypeVar
 
+from etils import epy
 import jax
 from kauldron import data
 from kauldron import konfig
@@ -71,7 +72,11 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
   def maybe_eval(self, *, step: int, state: train_step.TrainState) -> Any:
     """Run or skip the evaluator for the given train-step."""
     if self._resolved_run.should_eval_in_train(step):
-      return self.evaluate(state, step)
+      try:
+        return self.evaluate(state, step)
+      except Exception as e:  # pylint: disable=broad-exception-caught
+        # Chain exception so we see the name of the Evaluator that failed.
+        epy.reraise(e, f'Evaluator {self.name} failed at step {step}: ')
 
   def evaluate(self, state: train_step.TrainState, step: int) -> Any:
     """Run this evaluator then write and optionally return the results."""
