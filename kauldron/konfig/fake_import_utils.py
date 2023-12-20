@@ -25,11 +25,13 @@ import inspect
 import types
 from typing import Any, Callable, Iterator, Optional
 
+from etils import edc
+from etils import epy
 from kauldron.konfig import configdict_proxy
 
 
 @contextlib.contextmanager
-def imports() -> Iterator[None]:
+def imports(*, lazy: bool = False) -> Iterator[None]:
   """Contextmanager which replace import statements by configdicts.
 
   Usage:
@@ -44,6 +46,11 @@ def imports() -> Iterator[None]:
   )
   ```
 
+  Args:
+    lazy: If `True`, import won't be directly executed, but only resolved when
+      calling `konfig.resolve`. This allow to import the config even when some
+      dependencies are missing.
+
   Yields:
     None
   """
@@ -52,8 +59,23 @@ def imports() -> Iterator[None]:
       proxy_cls=configdict_proxy.ConfigDictProxyObject,
       origin_import=builtins.__import__,
   )
-  with _fake_imports(new_import=new_import):
-    yield
+  if lazy:
+    lazy_cm = set_lazy_imported_modules()
+  else:
+    lazy_cm = contextlib.nullcontext()
+
+  with lazy_cm, _fake_imports(new_import=new_import):
+    try:
+      yield
+    except ImportError as e:
+      epy.reraise(
+          e,
+          suffix=(
+              '\nIf those imports are not resolved here (e.g. XManager info'
+              ' inside the Kauldron trainer config), those modules should be'
+              ' imported in a separate `with konfig.imports(lazy=True)` scope.'
+          ),
+      )
 
 
 @contextlib.contextmanager
@@ -309,8 +331,21 @@ class ProxyObject:
     raise NotImplementedError('Inherit ProxyObject to support `__call__`.')
 
 
-_LAZY_IMPORTED_MODULES: tuple[str, ...] | None = None
-_EXCEPT_MODULES: tuple[str, ...] | None = None
+@dataclasses.dataclass(frozen=True)
+class _LazyImportState:
+  lazy_imported_modules: tuple[str, ...]
+  except_modules: tuple[str, ...]
+
+
+@edc.dataclass
+@dataclasses.dataclass(frozen=True)
+class _LazyImportStack:
+  stack: edc.ContextVar[list[_LazyImportState]] = dataclasses.field(
+      default_factory=list
+  )
+
+
+_lazy_import_stack = _LazyImportStack()
 
 
 @contextlib.contextmanager
@@ -322,17 +357,17 @@ def set_lazy_imported_modules(
   """Set which modules inside `with konfig.imports()` will be lazy-imported."""
   assert isinstance(lazy_import, (list, tuple))
   assert isinstance(except_, (list, tuple))
-  global _LAZY_IMPORTED_MODULES
-  global _EXCEPT_MODULES
-  assert _LAZY_IMPORTED_MODULES is None
-  assert _EXCEPT_MODULES is None
-  _LAZY_IMPORTED_MODULES = tuple(lazy_import)
-  _EXCEPT_MODULES = tuple(except_)
+
+  _lazy_import_stack.stack.append(
+      _LazyImportState(
+          lazy_imported_modules=tuple(lazy_import),
+          except_modules=tuple(except_),
+      )
+  )
   try:
     yield
   finally:
-    _LAZY_IMPORTED_MODULES = None
-    _EXCEPT_MODULES = None
+    _lazy_import_stack.stack.pop()
 
 
 def _maybe_import(origin_import, module_name: str) -> None:
@@ -340,15 +375,18 @@ def _maybe_import(origin_import, module_name: str) -> None:
   # Restore the original import
   with _fake_imports(new_import=origin_import):
     # Lazy import not set, so import everything
-    if _LAZY_IMPORTED_MODULES is None:
+    if not _lazy_import_stack.stack:
       origin_import(module_name)
       return
 
-    assert _EXCEPT_MODULES is not None  # But might still be empty
-    if _module_name_is_in(module_name, _EXCEPT_MODULES):
+    info = _lazy_import_stack.stack[-1]
+    # TODO(epot): Here, except could overwrite a lazy-import set before in the
+    # stack. Instead, the stack should only contain the most restrictive set
+    # of exclude.
+    if _module_name_is_in(module_name, info.except_modules):
       # Except takes precedence over lazy imports
       origin_import(module_name)
-    elif _module_name_is_in(module_name, _LAZY_IMPORTED_MODULES):
+    elif _module_name_is_in(module_name, info.lazy_imported_modules):
       pass  # Module explicitly set as lazy
     else:
       # By default, import everything that was not explicitly set as lazy

@@ -84,5 +84,19 @@ def test_lazy_imports():
 
       from aaa.ccc import ddd
 
+  with konfig.imports(lazy=True):
+    import import_lazy0
+    from import_lazy1 import bbb
+
+  # Lazy and `set_lazy_imported_modules` can be nested
+  with konfig.set_lazy_imported_modules(except_=['non_lazy_import']):
+    with konfig.imports(lazy=True):
+      import import_lazy0
+      import non_lazy_import  # Inside, is lazy
+
+    with konfig.imports():
+      with pytest.raises(ImportError):
+        import non_lazy_import
+
   # pytype: enable=import-error
   # pylint: enable=g-import-not-at-top,g-multiple-import,unused-import

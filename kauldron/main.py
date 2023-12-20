@@ -87,7 +87,14 @@ def _flags_parser(args: list[str]) -> None:
   """Flag parser."""
   # Import everything, except kxm (XManager not included in the trainer binary)
   with kd.konfig.set_lazy_imported_modules(
-      lazy_import=["kauldron.kxm"],
+      # This is quite fragile if the user try to import some external
+      # XM util/config. In which case user should import this extra module
+      # in `with konfig.imports(lazy=True):`
+      lazy_import=[
+          "kauldron.xm",
+          "kauldron.kxm",
+          "xmanager",
+      ],
   ):
     flags.FLAGS(args)
 

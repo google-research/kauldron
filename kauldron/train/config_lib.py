@@ -45,11 +45,7 @@ from kauldron.utils import context as context_lib
 from kauldron.utils import profile_utils
 import optax
 
-# TODO(epot): Maybe merge like `konfig.imports(lazy=['*'])`
-with (
-    konfig.set_lazy_imported_modules(),
-    konfig.imports(),
-):
+with konfig.imports(lazy=True):
   # Do not resolve job_lib to not link the full XManager API to Kauldron
   from kauldron.xm._src import job_lib  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
 
