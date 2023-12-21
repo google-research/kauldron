@@ -254,7 +254,13 @@ class _FieldReferenceVisitor(_Visitor):
 
   def _recurse(self, obj: ml_collections.FieldReference) -> Any:
     # TODO(epot): Support required=True, op
-    return self.recurse(obj.get())
+    # TODO(epot): Cleaner way to check if `.get()` is empty or nor
+    try:
+      value = obj.get()
+    except Exception:  # pylint: disable=broad-exception-caught
+      return _Repr('<Unresolved>')
+    else:
+      return self.recurse(value)
 
   def _repr(self, obj: ml_collections.FieldReference) -> str:
     # The `&id000` makes it explicit already which fields are references

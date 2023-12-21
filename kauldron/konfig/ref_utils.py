@@ -176,6 +176,14 @@ class _FieldReference(ml_collections.FieldReference):
         op=config_dict._Op(fn, args),  # pylint: disable=protected-access
     )
 
+  def empty(self) -> bool:
+    try:
+      _ = self.get()
+    except Exception:  # pylint: disable=broad-exception-caught
+      return True
+    else:
+      return False
+
   def get(self):
     """Gets the value of the `FieldReference` object.
 
