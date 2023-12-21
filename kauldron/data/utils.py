@@ -16,9 +16,6 @@
 
 from __future__ import annotations
 
-import dataclasses
-import functools
-
 from etils.etree import jax as etree  # pylint: disable=g-importing-member
 import flax.linen as nn
 import jax
@@ -28,30 +25,6 @@ from kauldron import kontext
 from kauldron.typing import ArraySpec, ElementSpec, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import context as context_lib
 import numpy as np
-
-
-@dataclasses.dataclass(frozen=True)
-class BatchSize:
-  """Batch size.
-
-  Attributes:
-    total: The total batch size across all hosts/devices
-    per_process: The batch size for a single host
-  """
-
-  total: int
-
-  def __post_init__(self):
-    num_devices = jax.device_count()
-    if self.total % num_devices != 0:
-      raise ValueError(
-          "batch_size must be divisible by num_devices."
-          f" batch_size={self.total} {num_devices=}"
-      )
-
-  @functools.cached_property
-  def per_process(self) -> int:
-    return self.total // jax.device_count()
 
 
 def array_spec_to_jnp_empty(spec: ArraySpec, batch_dim: int = 17) -> jax.Array:
