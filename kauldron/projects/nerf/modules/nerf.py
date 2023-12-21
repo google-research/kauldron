@@ -12,11 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Public nerf API."""
+"""Nerf module."""
 
-# pylint: disable=unused-import
+import dataclasses
 
-from kauldron.projects.nerf import data
-from kauldron.projects.nerf import math
-from kauldron.projects.nerf import modules as nn
+from flax import linen as nn
+from kauldron import kontext
 from kauldron.projects.nerf.core import structs
+import visu3d as v3d
+
+
+class NerfRender(nn.Module):
+  """."""
+  _: dataclasses.KW_ONLY
+
+  ray: kontext.Key = kontext.REQUIRED
+
+  mlp: nn.Module
+
+  @nn.compact
+  def __call__(self, ray: v3d.Ray) -> structs.RayPreds:
+    # TODO(epot): How to chunk the rays to be given to the model ? Can this
+    # be done inside `jax.jit` ?
+    return self.mlp(ray.pos)
+
+
+class PointRender(nn.Module):
+  """."""
+
+  @nn.compact
+  def __call__(self, point: v3d.Point3d) -> structs.PointPreds:
+    pass

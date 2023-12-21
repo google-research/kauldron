@@ -12,11 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Public nerf API."""
+"""MLP."""
 
-# pylint: disable=unused-import
+from typing import Any
 
-from kauldron.projects.nerf import data
-from kauldron.projects.nerf import math
-from kauldron.projects.nerf import modules as nn
-from kauldron.projects.nerf.core import structs
+from flax import linen as nn
+
+
+class MLP(nn.Module):
+  width: int = 256
+  num_layers: int = 8
+
+  @nn.compact
+  def __call__(self, x) -> Any:
+    for _ in range(self.num_layers):
+      x = nn.Dense(self.width)(x)
+    return x

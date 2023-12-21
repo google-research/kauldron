@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Public nerf API."""
+"""Nerf modules."""
 
-# pylint: disable=unused-import
+# pylint: disable=g-importing-member
 
-from kauldron.projects.nerf import data
-from kauldron.projects.nerf import math
-from kauldron.projects.nerf import modules as nn
-from kauldron.projects.nerf.core import structs
+from kauldron.projects.nerf.modules.mlp import MLP
+from kauldron.projects.nerf.modules.nerf import NerfRender

@@ -15,12 +15,14 @@
 """Colab cache util."""
 
 import collections
+import types
 from typing import Any
 
 import __main__  # pylint: disable=g-bad-import-order
 
 
-def get_cache(obj: Any) -> dict[str, Any]:
-  if not hasattr(__main__, '_colab_cache'):
-    __main__._colab_cache = collections.defaultdict(dict)  # pylint: disable=protected-access
-  return __main__._colab_cache[hash(obj)]  # pylint: disable=protected-access
+def get_cache(obj: Any, module: types.ModuleType | None) -> dict[str, Any]:
+  module = module or __main__
+  if not hasattr(module, '_colab_cache'):
+    module._colab_cache = collections.defaultdict(dict)  # pylint: disable=protected-access
+  return module._colab_cache[hash(obj)]  # pylint: disable=protected-access

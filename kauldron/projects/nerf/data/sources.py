@@ -53,7 +53,8 @@ class RaySampler(base.DataSource):
     # be good.
     ss = np.random.SeedSequence(self.seed)
     seed = ss.spawn(jax.process_count())[jax.process_index()]
-    return np.random.Philox(key=seed)
+    # TODO(epot): `key` should be `seed`, not `seed.entropy`
+    return np.random.Philox(key=seed.entropy)
 
   def __getitem__(self, record_key: int) -> structs.Batch:
     # TODO(epot): because each host call `rng.choice` independently, one
