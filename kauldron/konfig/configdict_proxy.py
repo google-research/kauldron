@@ -125,7 +125,10 @@ def resolve(cfg, *, freeze=True):
   Returns:
     The resolved config.
   """
-  return _ConstructorResolver(freeze=freeze)._resolve_value(cfg)  # pylint: disable=protected-access
+  try:
+    return _ConstructorResolver(freeze=freeze)._resolve_value(cfg)  # pylint: disable=protected-access
+  except Exception as e:  # pylint: disable=broad-exception-caught
+    epy.reraise(e, 'Error resolving the config: ')
 
 
 class _ConfigDictVisitor:
@@ -173,12 +176,10 @@ class _ConfigDictVisitor:
     cls = type(value)
     if self._freeze:
       cls = immutabledict_lib.ImmutableDict
-    return cls(
-        {
-            k: _reraise_with_info(self._resolve_value, k)(v)
-            for k, v in value.items()
-        }
-    )
+    return cls({
+        k: _reraise_with_info(self._resolve_value, k)(v)
+        for k, v in _as_dict(value).items()
+    })
 
   def _resolve_reference(self, value: ml_collections.FieldReference):
     return self._resolve_value(value.get())
@@ -204,7 +205,7 @@ class _ConstructorResolver(_ConfigDictVisitor):
     else:
       return super()._resolve_dict(value)
 
-    kwargs = dict(value.items())
+    kwargs = _as_dict(value)
 
     constructor = import_qualname(kwargs.pop(qualname_key))
     if hasattr(constructor, '__konfig_resolve_exclude_fields__'):
@@ -257,6 +258,13 @@ def num_args(obj: Mapping[str, Any]) -> int:
     if str(arg_id) not in obj:
       break
   return arg_id  # pylint: disable=undefined-loop-variable,undefined-variable
+
+
+def _as_dict(values: Mapping[str, Any]) -> dict[str, Any]:
+  """Convert to dict, reraising error message (for `FieldReference` errors)."""
+  return {
+      k: _reraise_with_info(lambda k: values[k], k)(k) for k in values.keys()
+  }
 
 
 def _reraise_with_info(fn: _FnT, info: str | int) -> _FnT:
