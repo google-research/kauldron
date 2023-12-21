@@ -47,6 +47,7 @@ class Pipeline(data_utils.IterableDataset, config_util.UpdateFromRootCfg):
   Attributes:
     batch_size: Global batch size. Has to be divisible by number of global
       devices. Pipeline should take care of sharding the data between hosts.
+      Setting to `0` disable batching.
     seed: Random seed to be used for things like shuffling and randomness in
       preprocessing. Defaults to the seed from the root config.
   """
@@ -112,7 +113,8 @@ class TFDataPipeline(Pipeline):
       ds = self.loader(seed=self.seed)
     transformations = []
     transformations.extend(self.transformations)
-    transformations.append(self.batch_fn)
+    if self.batch_size:
+      transformations.append(self.batch_fn)
     ds = transforms.apply_transformations(ds, transformations, strict=True)
 
     if self.prefetch_size:
@@ -205,7 +207,8 @@ class PyGrainPipeline(Pipeline):
 
     transformations = []
     transformations.extend(self.transformations)
-    transformations.append(self.batch_fn)
+    if self.batch_size:
+      transformations.append(self.batch_fn)
 
     worker_count = self.worker_count
     if epy.is_notebook():  # in colab worker_count has to be 0
