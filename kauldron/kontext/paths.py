@@ -91,8 +91,11 @@ class Path(collections.abc.Sequence):
 
   @classmethod
   def from_str(cls, str_path: str) -> Path:
-    tree = _path_parser.parse(str_path)
-    new_path = _PathTransformer().transform(tree)
+    try:
+      tree = _path_parser.parse(str_path)
+      new_path = _PathTransformer().transform(tree)
+    except Exception as e:  # pylint: disable=broad-exception-caught
+      epy.reraise(e, f"Could not parse path: {str_path!r}: ")
     return new_path
 
   @classmethod
