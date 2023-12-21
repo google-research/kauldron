@@ -94,10 +94,11 @@ class PartialLoader(AbstractPartialLoader):
   def __post_init__(self):
     # Normalize new_to_old
     # This is required because `ConfigDict({'a.b': ...})` fail
-    new_to_old = {
+    # Use `type()` to propagate the `ImmutableDict`
+    new_to_old = type(self.new_to_old)({
         k.replace('/', '.'): v.replace('/', '.')
         for k, v in self.new_to_old.items()
-    }
+    })
     object.__setattr__(self, 'new_to_old', new_to_old)
 
   @functools.cached_property
