@@ -27,6 +27,7 @@ import grain.python as pygrain
 import grain.tensorflow as grain
 import jax
 from kauldron.data import data_utils
+from kauldron.data import utils
 from kauldron.data.loaders import base as base_data_loader
 from kauldron.typing import PRNGKeyLike, PyTree  # pylint: disable=g-importing-member,g-multiple-import
 from kauldron.utils import config_util
@@ -63,14 +64,7 @@ class Pipeline(data_utils.IterableDataset, config_util.UpdateFromRootCfg):
 
   @functools.cached_property
   def host_batch_size(self) -> int:
-    num_hosts = jax.process_count()
-    num_devices = jax.device_count()
-    if self.batch_size % num_devices != 0:
-      raise ValueError(
-          "batch_size must be divisible by num_devices."
-          f" {self.batch_size=} {num_devices=}"
-      )
-    return self.batch_size // num_hosts
+    return utils.BatchSize(self.batch_size).per_process
 
   __repr__ = edc.repr
 

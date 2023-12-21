@@ -16,7 +16,6 @@
 
 # pylint: disable=g-importing-member
 from kauldron.data import loaders
-from kauldron.data import utils
 from kauldron.data.data_utils import IterableDataset
 from kauldron.data.pipelines import Pipeline
 from kauldron.data.pipelines import PyGrainPipeline
@@ -40,4 +39,5 @@ from kauldron.data.preprocessing import ResizeSmall
 from kauldron.data.preprocessing import TreeFlattenWithPath
 from kauldron.data.preprocessing import ValueRange
 from kauldron.data.preprocessing import VStack
+from kauldron.data.utils import BatchSize
 # pylint: enable=g-importing-member
