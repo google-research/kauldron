@@ -16,6 +16,7 @@
 
 import json
 
+from etils import epy
 from kauldron import konfig
 
 
@@ -120,3 +121,48 @@ def test_ref_copy():
   assert train_ds.src.split == 'eval'
   assert test_ds.src.name == 'mnist'
   assert test_ds.src.split == 'test'
+
+
+def test_ref_future_shared_val():
+  cfg = konfig.ConfigDict()
+
+  cfg.model = {
+      'encoder': {'a': 123},
+      'decoder': {'a': cfg.ref.model.encoder},
+  }
+  # TODO(epot): Fix: `&id001` should appear
+  assert repr(cfg) == epy.dedent("""
+  <ConfigDict[{
+      'model': {
+          'decoder': {'a': None},
+          'encoder': *id001,
+      },
+  }]>
+  """)
+  # TODO(epot): Serialization/deserialization
+  # TODO(epot): Resolve
+
+
+def test_ref_repr():
+  cfg = konfig.ConfigDict({
+      'a': 123,
+  })
+  cfg.b = cfg.ref.a * 2
+  assert repr(cfg) == epy.dedent("""
+  <ConfigDict[{
+      'a': 123,
+      'b': 246,
+  }]>
+  """)
+  # TODO(epot): Serialization
+  # TODO(epot): Resolve
+
+
+def test_ref_repr_future_error():
+  cfg = konfig.ConfigDict({})
+  cfg.a = {'a': cfg.ref.non_existing * 2}
+  assert repr(cfg) == """
+  <ConfigDict[{'a': {'a': <Unresolved>}}]>
+  """
+  # TODO(epot): Serialization
+  # TODO(epot): Resolve should trigger a very good error message
