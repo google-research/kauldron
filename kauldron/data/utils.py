@@ -51,7 +51,7 @@ class BatchSize:
 
   @functools.cached_property
   def per_process(self) -> int:
-    return self.total // jax.device_count()
+    return self.total // jax.process_count()
 
 
 def array_spec_to_jnp_empty(spec: ArraySpec, batch_dim: int = 17) -> jax.Array:
