@@ -8,6 +8,7 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 ## [Unreleased]
 
+* AAA
 * Add `kd.data.BatchSize(XX)` util
 * Breaking: `Evaluator(run_every=XX)` kwarg is removed. To migrate, use
   `Evaluator(run=kd.evals.RunEvery(XX))`
