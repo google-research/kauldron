@@ -8,6 +8,8 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 ## [Unreleased]
 
+* Add `kontext.path_builder_from` to dynamically generate keys for the config
+  with auto-complete and static type checking.
 * Add `kd.data.BatchSize(XX)` util
 * Breaking: `Evaluator(run_every=XX)` kwarg is removed. To migrate, use
   `Evaluator(run=kd.evals.RunEvery(XX))`
@@ -23,6 +25,36 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
       ),
   }
   ```
+
+* New XManager launcher
+
+  ```sh
+  xmanager launch third_party/py/kauldron/xm/launch.py -- \
+        --cfg=third_party/py/kauldron/examples/mnist_autoencoder.py \
+        --cfg.train_ds.batch_size=32 \
+        --xp.sweep \
+        --xp.platform=a100 \
+        --xp.debug.catch_post_mortem
+  ```
+
+  This unlock many new features:
+
+  * Based on `konfig` (so everything can be deeply configured).
+  * Customize the work-unit directory name, default to
+    `{xid}/{wid}-{sweep_kwargs}`, for better TensorBoard
+    work-unit names.
+  * Sweep on XManager architecture:
+
+    ```python
+    def sweep():
+      for platform in ['a100', 'v100']:
+        yield {'cfg.xm_job': kxm.Job(platform=platform)}
+    ```
+
+  * Possibility to launch eval jobs in a separate job
+  * `ml_python` & xreload support for much faster XM iteration cycles
+  * New `kd-xm` colab to quickly launch experiments without even having to open
+    a terminal
 
 * Changed: removed `Checkpointer.partial_initializer` and instead added
   `cfg.init_transforms` which can be used to set multiple transformations for

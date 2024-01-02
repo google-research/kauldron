@@ -467,7 +467,11 @@ def _normalize_config_only_value(value, name) -> Any:
           for i, v in enumerate(value)
       )
     case configdict_proxy.ConfigDictProxyObject():
+      # TODO(epot): Rather than inheriting from dict, `ConfigDictProxyObject`
+      # could simply implement the `ConfigDictConvertible` protocol
       return value
+    case utils.ConfigDictConvertible():
+      return _normalize_config_only_value(value.__as_konfig__(), name)
     case _:
       raise ValueError(
           f'Error setting `cfg.{name}`: To avoid mixing configurable and'
