@@ -26,7 +26,6 @@ from etils import exm
 import jax
 import jax.numpy as jnp
 from kauldron import kontext
-from kauldron import summaries
 from kauldron.evals import eval_impl
 from kauldron.train import config_lib
 from kauldron.train import flatboard
@@ -155,8 +154,7 @@ def train_impl(
         # NOTE: ensure that evaluation metrics are computed from the OLD model
         # state *before* backprop gradients are applied.
         if status.is_lead_host:
-          write_summaries(
-              writer=writer,
+          writer.write_step_metrics(
               step=i,
               aux=aux,
               schedules=trainer.schedules,
@@ -175,86 +173,6 @@ def train_impl(
   sync()
   # Returning the final state is convenient for interactive training in colab
   return state, aux
-
-
-# TODO(epot): Move to separate file
-def write_summaries(
-    *,
-    writer: metric_writer.KDMetricWriter,
-    step,
-    aux: train_step.Auxiliaries,
-    schedules,
-    model_with_aux: train_step.ModelWithAux,
-    log_summaries,
-    performance_stats: Optional[dict[str, float]] = None,
-):
-  """Logs scalar and image summaries."""
-  aux_result = aux.compute(flatten=True)
-
-  # schedules
-  schedule_values = jax.tree_map(
-      lambda s: _compute_schedule(s, step), schedules
-  )
-  schedule_values = kontext.flatten_with_path(
-      schedule_values, prefix="schedules", separator="/"
-  )
-
-  performance_stats = performance_stats or {}
-  with jax.transfer_guard("allow"):
-    writer.write_scalars(
-        step=step,
-        scalars=(
-            aux_result.loss_values
-            | aux_result.metric_values
-            | schedule_values
-            | performance_stats
-        ),
-    )
-
-  if log_summaries:
-    with jax.transfer_guard("allow"):
-      # image summaries  # TODO(klausg): unify with metrics
-      image_summaries = {
-          name: summary.get_images(**aux.summary_kwargs[name])
-          for name, summary in model_with_aux.summaries.items()
-          if isinstance(summary, summaries.ImageSummary)
-      }
-    # Throw an error if empty arrays are given. TB throws very odd errors
-    # and kills Colab runtimes if we don't catch these ourselves.
-    for name, image in image_summaries.items():
-      if image.size == 0:
-        raise ValueError(
-            f"Image summary `{name}` is empty array of shape {image.shape}."
-        )
-    writer.write_images(step=step, images=image_summaries)
-
-    # histograms
-    hist_summaries = {
-        name: summary.get_tensor(**aux.summary_kwargs[name])
-        for name, summary in model_with_aux.summaries.items()
-        if isinstance(summary, summaries.HistogramSummary)
-    }
-    for name, (_, tensor) in hist_summaries.items():
-      if tensor.size == 0:
-        raise ValueError(
-            f"Histogram summary `{name}` is empty array of shape"
-            f" {tensor.shape}."
-        )
-    writer.write_histograms(
-        step=step,
-        arrays={k: tensor for k, (_, tensor) in hist_summaries.items()},
-        num_buckets={
-            k: n_buckets for k, (n_buckets, _) in hist_summaries.items()
-        },
-    )
-
-  writer.flush()
-
-
-def _compute_schedule(sched, step: int):
-  """Evaluate schedule for step and return result."""
-  with jax.transfer_guard("allow"):
-    return sched(step)
 
 
 def get_loss_y_keys(trainer: config_lib.Trainer) -> Sequence[str]:

@@ -31,7 +31,6 @@ from kauldron import summaries as summaries_lib
 from kauldron.train import config_lib
 from kauldron.train import metric_writer
 from kauldron.train import rngs_lib
-from kauldron.train import train_lib
 from kauldron.train import train_step
 from kauldron.utils import config_util
 from kauldron.utils import jax_utils
@@ -198,8 +197,7 @@ class Evaluator(EvaluatorBase):
         merged_aux = merged_aux | aux
     assert merged_aux is not None  # At least one iteration
 
-    train_lib.write_summaries(
-        writer=self.writer,
+    self.writer.write_step_metrics(
         step=step,
         aux=merged_aux,
         schedules={},
