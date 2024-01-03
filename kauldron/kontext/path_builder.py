@@ -29,6 +29,40 @@ _T = TypeVar('_T')
 _PartItem = str | int | slice
 
 
+def path_builder_from(prefix: str, cls: type[_T]) -> _T:
+  """Create a path builder from a class.
+
+  Used to dynamically create the Keys inside the configs from typed-objects (
+  e.g. dataclasses). This adds type-checking and auto-complete (rather than
+  using raw `str`).
+
+  Usage:
+
+  ```python
+  def get_config():
+    batch = kontext.path_builder_from('batch', my_project.Batch)
+    out = kontext.path_builder_from('preds', my_project.ModelOutput)
+
+    cfg.model = my_project.MyModel(
+        input=batch.image
+    )
+    cfg.train_losses = {
+        'loss': kd.losses.L2(pred=out.logits, target=batch.label)
+    }
+  ```
+
+  Args:
+    prefix: Prefix name of the key (e.g. `batch`, `preds`)
+    cls: Class to validate.
+
+  Returns:
+    The path builder
+  """
+  del cls  # Only used for type annotations
+  # Maybe could use a `AnnotatedPathBuilder` when known ?
+  return DynamicPathBuilder(_PathBuilderState(part=_Root(prefix)))
+
+
 @dataclasses.dataclass(kw_only=True)
 class _PathBuilderState:
   """State of `PathBuilder`.
@@ -62,6 +96,9 @@ class _PathBuilderState:
 class _PathBuilder:
   """Base path builder class."""
   _state: _PathBuilderState
+
+  def __as_konfig__(self) -> str:
+    return str(self)
 
   def __str__(self) -> str:
     return f'{self._state.parts_repr}'

@@ -86,7 +86,7 @@ class TypeCheckError(typeguard.TypeCheckError):
 def typechecked(fn):
   """Decorator to enable runtime type-checking and shape-checking."""
 
-  @jaxtyping.jaxtyped
+  @jaxtyping.jaxtyped(typechecker=None)
   @functools.wraps(fn)
   def _reraise_with_shape_info(*args, _typecheck: bool = True, **kwargs):
     if not (TYPECHECKING_ENABLED and _typecheck):

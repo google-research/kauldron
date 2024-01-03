@@ -65,6 +65,14 @@ def placeholder(
   )
 
 
+@typing.runtime_checkable
+class ConfigDictConvertible(typing.Protocol):
+  """Protocol to convert a Python object into it's `konfig.ConfigDict`."""
+
+  def __as_konfig__(self) -> Any:
+    raise NotImplementedError()
+
+
 class DefaultJSONEncoder(json.JSONEncoder):
   """Default JSONEncoder."""
 
