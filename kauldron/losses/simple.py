@@ -85,8 +85,25 @@ class SoftmaxCrossEntropyWithIntLabels(base.Loss):
 
 
 @dataclasses.dataclass(eq=True, frozen=True, kw_only=True)
-class SigmoidBinaryCrossEntropy(base.Loss):
-  """Sigmoid cross-entropy loss with binary labels."""
+class SingleClassSigmoidBinaryCrossEntropy(base.Loss):
+  """Sngle-class sigmoid cross-entropy loss with binary integer labels."""
+
+  logits: kontext.Key = kontext.REQUIRED  # e.g. "preds.logits"
+  labels: kontext.Key = kontext.REQUIRED  # e.g. "batch.label"
+
+  @typechecked
+  def get_values(
+      self, logits: Float["*a 1"], labels: Int["*a 1"]
+  ) -> Float["*a n"]:
+    # Optax uses a single implementation for both single & multi-class, but
+    # always expects float inputs.
+    labels = labels.astype(jnp.float32)
+    return optax.sigmoid_binary_cross_entropy(logits, labels)
+
+
+@dataclasses.dataclass(eq=True, frozen=True, kw_only=True)
+class MultiClassSigmoidBinaryCrossEntropy(base.Loss):
+  """Sigmoid cross-entropy loss with multi-class float labels."""
 
   logits: kontext.Key = kontext.REQUIRED  # e.g. "preds.logits"
   labels: kontext.Key = kontext.REQUIRED  # e.g. "batch.label"

@@ -13,12 +13,14 @@
 # limitations under the License.
 
 """Losses."""
+
 # pylint: disable=g-importing-member
 from kauldron.losses.base import compute_losses
 from kauldron.losses.base import Loss
 from kauldron.losses.simple import L1
 from kauldron.losses.simple import L2
-from kauldron.losses.simple import SigmoidBinaryCrossEntropy
+from kauldron.losses.simple import MultiClassSigmoidBinaryCrossEntropy
+from kauldron.losses.simple import SingleClassSigmoidBinaryCrossEntropy
 from kauldron.losses.simple import SoftmaxCrossEntropy
 from kauldron.losses.simple import SoftmaxCrossEntropyWithIntLabels
 # pylint: enable=g-importing-member
