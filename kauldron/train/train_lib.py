@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import contextlib
-from typing import Optional, Sequence, Tuple
+from typing import Optional, Tuple
 
 from absl import logging
 from clu import periodic_actions
@@ -25,10 +25,9 @@ from etils import epath
 from etils import exm
 import jax
 import jax.numpy as jnp
-from kauldron import kontext
 from kauldron.evals import eval_impl
 from kauldron.train import config_lib
-from kauldron.train import flatboard
+from kauldron.train import flatboard_utils
 from kauldron.train import metric_writer
 from kauldron.train import timer as timer_module
 from kauldron.train import train_step
@@ -49,8 +48,8 @@ def train_impl(
   tf.config.experimental.set_visible_devices([], "GPU")
 
   status.log("Configuring ...")
-  ensure_workdir(trainer.workdir)
-  add_flatboards(trainer)
+  _ensure_workdir(trainer.workdir)
+  flatboard_utils.add_flatboards(trainer)
 
   hooks = []
   if status.is_lead_host:
@@ -170,111 +169,12 @@ def train_impl(
   if exm.is_running_under_xmanager():
     exm.current_work_unit().add_tag(eval_impl.TRAIN_COMPLETE_TAG)
 
-  sync()
+  _sync()
   # Returning the final state is convenient for interactive training in colab
   return state, aux
 
 
-def get_loss_y_keys(trainer: config_lib.Trainer) -> Sequence[str]:
-  """Get a list of loss-keys for a given trainer."""
-  # train losses
-  loss_names = {
-      k for k in kontext.flatten_with_path(trainer.train_losses, separator="/")
-  }
-  # evaluator losses
-  for evaluator in trainer.evals.values():
-    eval_losses = getattr(evaluator, "losses", {})
-    loss_names |= {
-        k for k in kontext.flatten_with_path(eval_losses, separator="/")
-    }
-
-  # If more than one loss, add the total loss
-  if len(loss_names) > 1:
-    loss_names = {"total"} | loss_names
-  return [f"losses/{l.replace('.', '/')}" for l in loss_names]
-
-
-def get_metric_y_keys(trainer: config_lib.Trainer) -> Sequence[str]:
-  """Get a list of metric-keys for a given trainer."""
-  metric_names = {
-      k for k in kontext.flatten_with_path(trainer.train_metrics, separator="/")
-  }
-  # add evaluator metrics
-  for evaluator in trainer.evals.values():
-    eval_metrics = getattr(evaluator, "metrics", {})
-    metric_names |= {
-        k for k in kontext.flatten_with_path(eval_metrics, separator="/")
-    }
-  return [f"metrics/{l.replace('.', '/')}" for l in sorted(metric_names)]
-
-
-def get_schedule_y_keys(trainer: config_lib.Trainer) -> Sequence[str]:
-  """Get a list of schedule-keys for a given trainer."""
-  schedule_names = [
-      k for k in kontext.flatten_with_path(trainer.schedules, separator="/")
-  ]
-  return [f"schedules/{l.replace('.', '/')}" for l in schedule_names]
-
-
-def get_perf_stat_y_keys() -> Sequence[str]:
-  """Get a list of performance statistics keys."""
-  return [
-      f"perf_stats/{y}"  # pylint: disable=g-complex-comprehension
-      for y in [
-          "steps_per_sec",
-          "data_points_per_sec_global",
-          "data_points_per_sec_per_device",
-          "total_training_time_hours",
-      ]
-  ]
-
-
-def get_data_collections(trainer: config_lib.Trainer) -> list[str]:
-  """Return a list of datatable collections for a given resolved trainer."""
-  collections = ["train"]
-  collections.extend(e.name for e in trainer.evals.values())
-  return collections
-
-
-def get_default_dashboards(trainer: config_lib.Trainer):
-  """Return the default set of Flatboard dashboards for given trainer."""
-  data_collections = get_data_collections(trainer)
-  dashboards = {}
-  # losses
-  y_keys = get_loss_y_keys(trainer)
-  if y_keys:
-    dashboards["losses"] = flatboard.DefaultDashboard(
-        title="{xid}: Losses", y_keys=y_keys, collections=data_collections
-    )
-
-  # metric
-  y_keys = get_metric_y_keys(trainer)
-  if y_keys:
-    dashboards["metrics"] = flatboard.DefaultDashboard(
-        title="{xid}: Metrics", y_keys=y_keys, collections=data_collections
-    )
-
-  # schedules
-  y_keys = get_schedule_y_keys(trainer)
-  if y_keys:
-    dashboards["schedules"] = flatboard.DefaultDashboard(
-        title="{xid}: Schedules",
-        y_keys=y_keys,
-        collections=["train"],
-    )
-
-  # perf_stats
-  y_keys = get_perf_stat_y_keys()
-  if y_keys:
-    dashboards["perf_stats"] = flatboard.DefaultDashboard(
-        title="{xid}: Performance Statistics",
-        y_keys=y_keys,
-        collections=["train"],
-    )
-  return dashboards
-
-
-def ensure_workdir(workdir: epath.PathLike):
+def _ensure_workdir(workdir: epath.PathLike):
   """Ensure workdir is set and exists."""
   workdir = epath.Path(workdir) if workdir else epath.Path()
   if workdir == epath.Path():
@@ -284,21 +184,11 @@ def ensure_workdir(workdir: epath.PathLike):
   workdir.mkdir(parents=True, exist_ok=True)
 
 
-def add_flatboards(trainer: config_lib.Trainer):
-  """Add flatboards based on trainer.flatboards or default flatboards."""
-  if not status.on_xmanager or not status.is_lead_host or status.wid != 1:
-    return  # only add flatboards once per experiment
-  dashboard_factories = trainer.flatboards
-  if not dashboard_factories:
-    dashboard_factories = get_default_dashboards(trainer)
-  flatboard.add_flatboard_artifacts(dashboard_factories)
-
-
-def sync():
+def _sync():
   """Syncs hosts and empties async computation queue."""
 
-  def _sync(x):
+  def _psync(x):
     return jax.lax.psum(x, "i")
 
   x = jnp.ones([jax.local_device_count()])
-  return jax.pmap(_sync, "i")(x).block_until_ready()
+  return jax.pmap(_psync, "i")(x).block_until_ready()
