@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 import contextlib
 from typing import Optional, Tuple
 
@@ -98,16 +99,7 @@ def train_impl(
     total_steps = min(total_steps, initial_step + trainer.stop_after_steps)
   aux = None
 
-  if not jax.config.jax_disable_jit:
-    # Prevent implicit device transfer inside the train loop
-    # Doc at: https://jax.readthedocs.io/en/latest/transfer_guard.html
-    # This can be locally changed with `with jax.transfer_guard('allow'):`
-    # TODO(epot): Activate this after https://github.com/google/jax/issues/16002
-    guard = jax.transfer_guard("disallow")
-  else:
-    guard = contextlib.nullcontext()
-
-  with guard:
+  with _transfer_guard():
     for i, batch in utils.enum_iter(
         trainer.train_ds.device_put(),
         init_step=initial_step,
@@ -182,6 +174,25 @@ def _ensure_workdir(workdir: epath.PathLike):
 
   logging.info("Creating workdir: %s", workdir)
   workdir.mkdir(parents=True, exist_ok=True)
+
+
+@contextlib.contextmanager
+def _transfer_guard() -> Iterator[None]:
+  """Prevent implicit device transfer inside the train loop.
+
+  Doc at: https://jax.readthedocs.io/en/latest/transfer_guard.html
+  This can be locally changed with `with jax.transfer_guard('allow'):`
+
+  Yields:
+    None
+  """
+  # Only activate this inside the train loop as there's issues like:
+  # https://github.com/google/jax/issues/16002
+  if not jax.config.jax_disable_jit:
+    with jax.transfer_guard("disallow"):
+      yield
+  else:
+    yield
 
 
 def _sync():
