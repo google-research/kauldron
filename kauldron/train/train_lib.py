@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 import contextlib
-from typing import Optional, Tuple
+from typing import Any, Optional
 
 from absl import logging
 from clu import periodic_actions
@@ -26,6 +26,7 @@ from etils import epath
 from etils import exm
 import jax
 import jax.numpy as jnp
+from kauldron.data import data_utils
 from kauldron.evals import eval_impl
 from kauldron.train import config_lib
 from kauldron.train import flatboard_utils
@@ -33,6 +34,7 @@ from kauldron.train import metric_writer
 from kauldron.train import timer as timer_module
 from kauldron.train import train_step
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
+from kauldron.utils import profile_utils
 from kauldron.utils import utils
 from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 import tensorflow as tf
@@ -44,7 +46,7 @@ jax.config.update("jax_threefry_partitionable", True)
 
 def train_impl(
     trainer: config_lib.Trainer,
-) -> Tuple[train_step.TrainState, Optional[train_step.Auxiliaries]]:
+) -> tuple[train_step.TrainState, Optional[train_step.Auxiliaries]]:
   """Implements of `Trainer.train`."""
   tf.config.experimental.set_visible_devices([], "GPU")
 
@@ -52,15 +54,6 @@ def train_impl(
   _ensure_workdir(trainer.workdir)
   flatboard_utils.add_flatboards(trainer)
 
-  hooks = []
-  if status.is_lead_host:
-    hooks.append(trainer.profiler)
-    if status.on_xmanager:
-      hooks.append(
-          periodic_actions.ReportProgress(
-              num_train_steps=trainer.num_train_steps
-          )
-      )
   writer = metric_writer.KDMetricWriter(
       workdir=trainer.workdir, collection="train"
   )
@@ -91,20 +84,17 @@ def train_impl(
       per_device_batch_size=trainer.train_ds.batch_size / jax.device_count(),
       global_batch_size=trainer.train_ds.batch_size,
   )
-
-  status.log(f"Starting training loop at step {initial_step}")
-  # NOTE: DO *NOT* CHANGE THE ORDER OF OPERATIONS IN THE TRAINING LOOP!
-  total_steps = trainer.num_train_steps + 1
-  if trainer.stop_after_steps is not None:
-    total_steps = min(total_steps, initial_step + trainer.stop_after_steps)
   aux = None
 
+  status.log(f"Starting training loop at step {initial_step}")
   with _transfer_guard():
-    for i, batch in utils.enum_iter(
+    # NOTE: DO *NOT* CHANGE THE ORDER OF OPERATIONS IN THE TRAINING LOOP!
+    for i, batch in _enum_ds_with_hooks(
         trainer.train_ds.device_put(),
-        init_step=initial_step,
-        total_steps=total_steps,
-        desc="train",
+        initial_step=initial_step,
+        num_train_steps=trainer.num_train_steps,
+        stop_after_steps=trainer.stop_after_steps,
+        profiler=trainer.profiler,
     ):
       with timer.exclude_from_step_stats():
         if ckptr.should_save(i):
@@ -118,10 +108,7 @@ def train_impl(
           ckptr.save_state(state, i)
 
         for evaluator in trainer.evals.values():
-          evaluator.maybe_eval(
-              step=i,
-              state=state,
-          )
+          evaluator.maybe_eval(step=i, state=state)
 
       log_summaries = i % trainer.log_summaries_every == 0
       log_metrics = i % trainer.log_metrics_every == 0
@@ -152,9 +139,6 @@ def train_impl(
             log_summaries=log_summaries,
         )
 
-      for h in hooks:
-        h(i)
-
   # Notify the eval job training is complete
   if exm.is_running_under_xmanager():
     exm.current_work_unit().add_tag(eval_impl.TRAIN_COMPLETE_TAG)
@@ -162,6 +146,57 @@ def train_impl(
   _sync()
   # Returning the final state is convenient for interactive training in colab
   return state, aux
+
+
+def _enum_ds_with_hooks(
+    ds: data_utils.IterableDataset,
+    *,
+    initial_step: int,
+    num_train_steps: Optional[int],
+    stop_after_steps: Optional[int],
+    profiler: profile_utils.Profiler,
+) -> Iterator[tuple[int, Any]]:
+  """Enumerate over the train dataset.
+
+  This function:
+
+  * Compute the total number of steps
+  * Add hooks for reporting and profiling the train step
+  * Add tdqm bar
+
+  Args:
+    ds: Train dataset to iterate on
+    initial_step: Initial step (e.g. if restoring the checkpoint)
+    num_train_steps: Same as `trainer.num_train_steps`
+    stop_after_steps: Same as `trainer.stop_after_steps`
+    profiler: Same as `trainer.profiler`
+
+  Yields:
+    step: Step number
+    batch: Example batch
+  """
+  # TODO(epot): Currently, setting `num_train_steps=None` will fail. Instead
+  # should use `len(ds)` or check `num_epoch is not None`
+
+  total_steps = num_train_steps + 1
+  if stop_after_steps is not None:
+    total_steps = min(total_steps, initial_step + stop_after_steps)
+
+  hooks = []
+  if status.is_lead_host:
+    hooks.append(profiler)
+    if status.on_xmanager:
+      hooks.append(periodic_actions.ReportProgress(num_train_steps=total_steps))
+
+  for i, batch in utils.enum_iter(
+      ds,
+      init_step=initial_step,
+      total_steps=total_steps,
+      desc="train",
+  ):
+    yield i, batch
+    for h in hooks:
+      h(i)
 
 
 def _ensure_workdir(workdir: epath.PathLike):
