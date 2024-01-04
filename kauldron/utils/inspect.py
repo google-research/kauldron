@@ -324,16 +324,24 @@ def json_spec_like(obj) -> Any:
   spec = etree.spec_like(obj)
 
   def _to_json(spec):
-    if isinstance(spec, Mapping):
-      return {k: _to_json(v) for k, v in spec.items()}
-    elif isinstance(spec, list):
-      return [_to_json(v) for v in spec]
-    elif isinstance(spec, tuple):
-      return tuple(_to_json(v) for v in spec)
-    elif isinstance(spec, (int, float, bool, type(None))):
-      return spec
-    else:
-      return str(spec)
+    match spec:
+      case Mapping():
+        return {k: _to_json(v) for k, v in spec.items()}
+      case list():
+        return [_to_json(v) for v in spec]
+      case tuple():
+        return tuple(_to_json(v) for v in spec)
+      case int() | float() | bool() | None:
+        return spec
+      case _ if dataclasses.is_dataclass(spec):
+        return {
+            f.name: _to_json(getattr(spec, f.name))
+            for f in dataclasses.fields(spec)
+            # Filter hash to avoid display `v3d.Ray.fig_config`
+            if f.hash is not False  # pylint: disable=g-bool-id-comparison
+        }
+      case _:
+        return str(spec)
 
   json_spec = _to_json(spec)
   if epy.is_notebook():

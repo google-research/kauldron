@@ -304,7 +304,8 @@ class TrainStep(config_util.UpdateFromRootCfg):
   ) -> TrainState:
     """Initialize the model and return the initial TrainState."""
     self._assert_root_cfg_resolved()
-    elem_spec = flax.core.freeze(elem_spec)
+    if isinstance(elem_spec, dict):
+      elem_spec = flax.core.freeze(elem_spec)
     state = self._init_model(elem_spec, model_method)
     if not restoring:
       # if restoring a checkpoint we can skip the (potentially slow) transforms

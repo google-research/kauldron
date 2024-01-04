@@ -207,6 +207,9 @@ class PyGrainPipeline(Pipeline):
     worker_count = self.worker_count
     if epy.is_notebook():  # in colab worker_count has to be 0
       # TODO(klausg): autodetect if Kernel supports multiprocessing
+      # Could check
+      # from multiprocessing import spawn
+      # spawn.get_executable() is not None
       print("Disabling pygrain multi-processing (unsupported in colab).")
       worker_count = 0
 
