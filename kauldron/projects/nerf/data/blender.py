@@ -65,7 +65,7 @@ class Blender(base.SceneBuilder):
     """Load images from disk."""
 
     # Use the Colab cache to keep the dataset in-memory during reloads
-    cache = colab_cache.get_cache(self)
+    cache = colab_cache.get_cache(self, module=v3d)
     if cache:
       return structs.Scene(
           cams=cache['cams'],

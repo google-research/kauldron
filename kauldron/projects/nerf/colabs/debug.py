@@ -42,9 +42,6 @@ with ecolab.adhoc(source, reload='etils'):
 
 v3d.auto_plot_figs()  # Trigger import (before reloading)
 # %%
-# Clear dataset cache
-globals().get('_colab_cache', {}).clear()
-
 with ecolab.adhoc(source, reload='visu3d,dataclass_array'):
   import visu3d as v3d
   import dataclass_array as dca
