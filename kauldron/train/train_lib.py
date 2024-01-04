@@ -125,34 +125,32 @@ def train_impl(
 
       log_summaries = i % trainer.log_summaries_every == 0
       log_metrics = i % trainer.log_metrics_every == 0
-      if not log_summaries and not log_metrics:
-        state, aux = trainstep.step(state, batch)  # pylint: disable=unused-variable
-        timer.finish_step()
-      else:
-        state, aux = trainstep.step(
-            state,
-            batch,
-            return_losses=True,
-            return_metrics=log_metrics,
-            return_summaries=log_summaries,
-        )
+      log_any = log_metrics or log_summaries
 
-        timer.finish_step()
+      state, aux = trainstep.step(
+          state,
+          batch,
+          return_losses=log_any,
+          return_metrics=log_metrics,
+          return_summaries=log_summaries,
+      )
+      timer.finish_step()
+
+      if log_any and status.is_lead_host:
         performance_stats = {
             f"perf_stats/{k}": v for k, v in timer.log_stats(step_num=i).items()
         }
 
         # NOTE: ensure that evaluation metrics are computed from the OLD model
         # state *before* backprop gradients are applied.
-        if status.is_lead_host:
-          writer.write_step_metrics(
-              step=i,
-              aux=aux,
-              schedules=trainer.schedules,
-              model_with_aux=trainstep.model_with_aux,
-              performance_stats=performance_stats,
-              log_summaries=log_summaries,
-          )
+        writer.write_step_metrics(
+            step=i,
+            aux=aux,
+            schedules=trainer.schedules,
+            model_with_aux=trainstep.model_with_aux,
+            performance_stats=performance_stats,
+            log_summaries=log_summaries,
+        )
 
       for h in hooks:
         h(i)
