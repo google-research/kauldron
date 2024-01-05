@@ -25,23 +25,18 @@ non-kauldron projects (`from kauldron import random`).
 ## Advanced sweeps
 
 If your config defines multiple sweeps, you can create multiple `sweep_[NAME]()`
-functions. In the launcher, you can use `--xp.sweep
---xp.sweep_info.names=aaa,bbb` to run the **product** of `sweep_aaa()` and
-`sweep_bbb()`.
+functions. In the launcher, you can use `--xp.sweep_info.names=aaa,bbb` to run
+the **product** of `sweep_aaa()` and `sweep_bbb()`.
 
-*   Launching **any** sweep always requires `--xp.sweep`
-*   `--xp.sweep_info.names=name` specifies **all** sweeps to launch (including
-    the unnamed `sweep` for an empty string)
-
-Examples:
+`--xp.sweep_info.names=name` specifies **all** sweeps to launch, so launching
+the unnamed `def sweep()` require to add an empty `,`. Examples:
 
 *   `--xp.sweep` launches `sweep()`
-*   `--xp.sweep_info.names=lr` launches **NOTHING** (`--xp.sweep` missing)
-*   `--xp.sweep --xp.sweep_info.names=lr` launches `sweep_lr()`
-*   `--xp.sweep --xp.sweep_info.names=lr,` launches the product of `sweep_lr()`,
-    `sweep()` (notice the empty `,`)
-*   `--xp.sweep --xp.sweep_info.names=lr,batch` launches the product of
-    `sweep_lr()`, `sweep_batch()`
+*   `--xp.sweep_info.names=lr` launches `sweep_lr()`
+*   `--xp.sweep_info.names=lr,` launches the product of `sweep_lr()`, `sweep()`
+    (notice the trailing `,`)
+*   `--xp.sweep_info.names=lr,batch` launches the product of `sweep_lr()`,
+    `sweep_batch()`
 
 <!--
 
