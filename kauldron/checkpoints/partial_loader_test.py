@@ -18,7 +18,7 @@ import pathlib
 
 import chex
 from kauldron import kd
-from kauldron.examples import mnist_autoencoder
+from examples import mnist_autoencoder
 from kauldron.utils import assert_utils
 import pytest
 import tensorflow_datasets as tfds

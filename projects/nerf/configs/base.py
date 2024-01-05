@@ -19,7 +19,7 @@ from kauldron import konfig
 with konfig.imports():
   # pylint: disable=g-import-not-at-top
   from kauldron import kd
-  from kauldron.projects.nerf import nerf
+  from projects.nerf import nerf
 
   from flax import linen as nn
   # pylint: enable=g-import-not-at-top

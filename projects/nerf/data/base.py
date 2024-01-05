@@ -22,7 +22,7 @@ import functools
 
 from grain import python as grain
 from kauldron import kd
-from kauldron.projects.nerf.core import structs
+from projects.nerf.core import structs
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)

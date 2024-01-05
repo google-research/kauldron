@@ -18,7 +18,7 @@ import os
 import pathlib
 
 from kauldron import kd
-from kauldron.examples import mnist_autoencoder
+from examples import mnist_autoencoder
 
 
 def test_multi(tmp_path: pathlib.Path):

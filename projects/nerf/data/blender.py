@@ -26,9 +26,9 @@ import dataclass_array as dca
 from etils import edc
 from etils import epath
 from etils import etree
-from kauldron.projects.nerf.core import colab_cache
-from kauldron.projects.nerf.core import structs
-from kauldron.projects.nerf.data import base
+from projects.nerf.core import colab_cache
+from projects.nerf.core import structs
+from projects.nerf.data import base
 import numpy as np
 from PIL import Image
 import visu3d as v3d

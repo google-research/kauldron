@@ -16,7 +16,7 @@
 
 import jax
 import jax.numpy as jnp
-from kauldron.projects.nerf import nerf
+from projects.nerf import nerf
 import pytest
 
 

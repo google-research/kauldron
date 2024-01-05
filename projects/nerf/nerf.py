@@ -16,5 +16,5 @@
 
 # pylint: disable=unused-import
 
-from kauldron.projects.nerf import data
-from kauldron.projects.nerf import math
+from projects.nerf import data
+from projects.nerf import math

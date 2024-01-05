@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Nerf datasets."""
+"""Math utils."""
 
 # pylint: disable=g-importing-member
 
-from kauldron.projects.nerf.data.base import DataSource
-from kauldron.projects.nerf.data.base import Pipeline
-from kauldron.projects.nerf.data.base import SceneBuilder
-from kauldron.projects.nerf.data.blender import Blender
-from kauldron.projects.nerf.data.sources import ImageSampler
-from kauldron.projects.nerf.data.sources import RaySampler
+from projects.nerf.math.volume_rendering import sample_1d
+from projects.nerf.math.volume_rendering import sample_along_rays
+from projects.nerf.math.volume_rendering import sample_piecewise_constant_pdf
+from projects.nerf.math.volume_rendering import SamplingStrategy
+from projects.nerf.math.volume_rendering import volume_rendering

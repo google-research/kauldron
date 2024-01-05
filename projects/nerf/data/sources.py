@@ -20,8 +20,8 @@ import sys
 
 import jax
 from kauldron import kd
-from kauldron.projects.nerf.core import structs
-from kauldron.projects.nerf.data import base
+from projects.nerf.core import structs
+from projects.nerf.data import base
 import numpy as np
 
 

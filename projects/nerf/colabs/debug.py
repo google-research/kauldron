@@ -53,9 +53,9 @@ v3d.auto_plot_figs()
 # %%
 with ecolab.adhoc(source, reload='kauldron', restrict_reload=False):
   from kauldron import kd
-  from kauldron.projects.nerf import nerf
+  from projects.nerf import nerf
 
-  from kauldron.projects.nerf.configs import base
+  from projects.nerf.configs import base
 
 cfg = base.get_config()
 trainer = kd.konfig.resolve(cfg)
