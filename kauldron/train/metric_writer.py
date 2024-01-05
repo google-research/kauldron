@@ -27,6 +27,7 @@ from kauldron import konfig
 from kauldron import kontext
 from kauldron import summaries
 from kauldron.train import config_lib
+from kauldron.train import timer as timer_module
 from kauldron.train import train_step
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 from kauldron.typing import Array, Float, Scalar  # pylint: disable=g-multiple-import
@@ -192,7 +193,7 @@ class KDMetricWriter(metric_writers.MetricWriter):
       model_with_aux: train_step.ModelWithAux,
       schedules: Mapping[str, optax.Schedule],
       log_summaries: bool,
-      performance_stats: Optional[dict[str, float]] = None,
+      timer: Optional[timer_module.PerformanceTimer] = None,
   ):
     """Logs scalar and image summaries."""
     aux_result = aux.compute(flatten=True)
@@ -205,7 +206,13 @@ class KDMetricWriter(metric_writers.MetricWriter):
         schedule_values, prefix="schedules", separator="/"
     )
 
-    performance_stats = performance_stats or {}
+    if timer:
+      performance_stats = {
+          f"perf_stats/{k}": v
+          for k, v in timer.log_stats(step_num=step).items()
+      }
+    else:
+      performance_stats = {}
     with jax.transfer_guard("allow"):
       self.write_scalars(
           step=step,

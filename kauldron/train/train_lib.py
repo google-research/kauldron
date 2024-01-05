@@ -124,10 +124,6 @@ def train_impl(
       timer.finish_step()
 
       if log_any and status.is_lead_host:
-        performance_stats = {
-            f"perf_stats/{k}": v for k, v in timer.log_stats(step_num=i).items()
-        }
-
         # NOTE: ensure that evaluation metrics are computed from the OLD model
         # state *before* backprop gradients are applied.
         writer.write_step_metrics(
@@ -135,7 +131,7 @@ def train_impl(
             aux=aux,
             schedules=trainer.schedules,
             model_with_aux=trainstep.model_with_aux,
-            performance_stats=performance_stats,
+            timer=timer,
             log_summaries=log_summaries,
         )
 
