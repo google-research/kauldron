@@ -12,13 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Wrapper aound `flax.linen.Module` to add torch-like API."""
+"""Convert utils."""
 
-# pylint: disable=g-importing-member
-from kauldron.klinen.convert_utils import convert
-from kauldron.klinen.intermediate import Intermediate
-from kauldron.klinen.layers import Dense
-from kauldron.klinen.layers import Dropout
-from kauldron.klinen.layers import Sequential
-from kauldron.klinen.module import Module
-# pylint: enable=g-importing-member
+import functools
+from typing import TypeVar
+
+from etils import epy
+import flax.linen as nn
+from kauldron.klinen import module
+
+_ClsT = TypeVar('_ClsT', bound=type[nn.Module])
+
+
+@functools.cache
+def convert(cls: _ClsT) -> _ClsT:
+  """Decorator that convert a flax class into klinen."""
+
+  @epy.wraps_cls(cls)
+  class NewModule(cls, module.Module):
+    pass
+
+  return NewModule
