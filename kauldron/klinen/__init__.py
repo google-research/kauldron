@@ -13,7 +13,9 @@
 # limitations under the License.
 
 """Wrapper aound `flax.linen.Module` to add torch-like API."""
+
 # pylint: disable=g-importing-member
+from kauldron.klinen.convert_utils import convert
 from kauldron.klinen.intermediate import Intermediate
 from kauldron.klinen.layers import Dense
 from kauldron.klinen.layers import Dropout

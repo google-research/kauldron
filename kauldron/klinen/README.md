@@ -33,6 +33,9 @@ class AutoEncoder(knn.Module):
 
 * Inside `knn.Module`, any linen modules can be used.
 
+Note: Alternatively, you can convert any existing `flax.linen.Module` to klinen
+with `MyKlinenModule = knn.convert(MyFlaxModule)`
+
 ### Model initialization / usage
 
 To initialize the model, use `model.init_bind()` instead of `model.init()`. It
