@@ -48,6 +48,7 @@ class Psnr(base.Metric):
   mask: Optional[kontext.Key] = None
 
   dynamic_range: float = 1.0
+  in_vrange: Optional[tuple[float, float]] = None
 
   @flax.struct.dataclass
   class State(base_state.AverageState):
@@ -60,7 +61,16 @@ class Psnr(base.Metric):
       target: Float["*b h w c"],
       mask: Optional[Float["*b 1"]] = None,
   ) -> Psnr.State:
-    values = psnr(a=pred, b=target, dynamic_range=self.dynamic_range)
+
+    def rescale(x):
+      if self.in_vrange is not None:  # scale to (0, dynamic_range)
+        vmin, vmax = self.in_vrange
+        x = (x - vmin) / (vmax - vmin) * self.dynamic_range
+      return x
+
+    values = psnr(
+        a=rescale(pred), b=rescale(target), dynamic_range=self.dynamic_range
+    )
     return self.State.from_values(values=values, mask=mask)
 
 
@@ -145,6 +155,7 @@ class Ssim(base.Metric):
   mask: Optional[kontext.Key] = None
 
   max_val: float = 1
+  in_vrange: Optional[tuple[float, float]] = None
   filter_size: int = 11
   filter_sigma: float = 1.5
   k1: float = 0.01
@@ -161,9 +172,16 @@ class Ssim(base.Metric):
       target: Float["*b h w c"],
       mask: Optional[Float["*b 1"]] = None,
   ) -> Ssim.State:
+
+    def rescale(x):
+      if self.in_vrange is not None:  # scale to (0, max_val)
+        vmin, vmax = self.in_vrange
+        x = (x - vmin) / (vmax - vmin) * self.max_val
+      return x
+
     values = _compute_ssim(
-        pred,
-        target,
+        rescale(pred),
+        rescale(target),
         self.max_val,
         self.filter_size,
         self.filter_sigma,
