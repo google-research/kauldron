@@ -20,8 +20,7 @@
 from kauldron.xm._src.experiment import Experiment
 
 # Jobs builder
-from kauldron.xm._src.jobs_info import JobsInfo
-from kauldron.xm._src.jobs_info import Jobs
+from kauldron.xm._src.jobs_info import JobsProvider
 from kauldron.xm._src.kauldron_utils import KauldronJobs
 
 # Single job info
