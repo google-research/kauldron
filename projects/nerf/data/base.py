@@ -25,6 +25,25 @@ from kauldron import kd
 from projects.nerf.core import structs
 
 
+# @dataclasses.dataclass(frozen=True, kw_only=True)
+# class InMemoryPipeline(kd.data.Pipeline):
+#   """."""
+
+#   def __iter__(self) -> Iterator[PyTree[_NpArray]]:
+#     """Iterate over the dataset elements."""
+#     yield from self.loader
+
+#   def __length__(self) -> int:
+#     if self.num_epochs is None:
+#       raise TypeError("Cannot get length of infinite dataset.")
+#     else:
+#       return self.num_epochs * len(self.data_source)
+
+
+# def RandomAccessBatchedDataSource:
+#   pass
+
+
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class Pipeline(kd.data.PyGrainPipeline):
   """Small wrapper around `PyGrainPipeline`.

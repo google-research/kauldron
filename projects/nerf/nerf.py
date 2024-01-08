@@ -18,3 +18,5 @@
 
 from projects.nerf import data
 from projects.nerf import math
+from projects.nerf import modules as nn
+from projects.nerf.core import structs

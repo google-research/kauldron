@@ -12,17 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Colab cache util."""
+"""MLP."""
 
-import collections
-import types
 from typing import Any
 
-import __main__  # pylint: disable=g-bad-import-order
+from flax import linen as nn
 
 
-def get_cache(obj: Any, module: types.ModuleType | None) -> dict[str, Any]:
-  module = module or __main__
-  if not hasattr(module, '_colab_cache'):
-    module._colab_cache = collections.defaultdict(dict)  # pylint: disable=protected-access
-  return module._colab_cache[hash(obj)]  # pylint: disable=protected-access
+class MLP(nn.Module):
+  width: int = 256
+  num_layers: int = 8
+
+  @nn.compact
+  def __call__(self, x) -> Any:
+    for _ in range(self.num_layers):
+      x = nn.Dense(self.width)(x)
+    return x

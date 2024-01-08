@@ -12,17 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Colab cache util."""
+"""Nerf modules."""
 
-import collections
-import types
-from typing import Any
+# pylint: disable=g-importing-member
 
-import __main__  # pylint: disable=g-bad-import-order
-
-
-def get_cache(obj: Any, module: types.ModuleType | None) -> dict[str, Any]:
-  module = module or __main__
-  if not hasattr(module, '_colab_cache'):
-    module._colab_cache = collections.defaultdict(dict)  # pylint: disable=protected-access
-  return module._colab_cache[hash(obj)]  # pylint: disable=protected-access
+from projects.nerf.modules.mlp import MLP
+from projects.nerf.modules.nerf import NerfRender

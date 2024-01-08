@@ -42,6 +42,20 @@ class Batch(dca.DataclassArray, v3d.Visualizable):
     return new_self.ray.make_traces() + points.make_traces()
 
 
+class RayPreds(dca.DataclassArray):
+  """Prediction of the model for a camera ray."""
+
+  rgb: FloatArray['*batch_size c']
+  depth: FloatArray['*batch_size 1']
+
+
+class PointPreds(dca.DataclassArray):
+  """Prediction of the model for a 3d point in space."""
+
+  rgb: FloatArray['*batch_size c']
+  density: FloatArray['*batch_size']
+
+
 class Scene(dca.DataclassArray, v3d.Visualizable):
   """Scene."""
 
