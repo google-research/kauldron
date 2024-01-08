@@ -147,7 +147,7 @@ class Module(nn.Module):  # pytype: disable=invalid-function-definition
 
   def init_bind(
       self: _SelfT,
-      rng: jax.Array,
+      rng: int | jax.Array | dict[str, jax.Array],
       *args,
       streams: tuple[str, ...] = (Collection.DROPOUT,),
       **kwargs,
@@ -512,7 +512,7 @@ def _as_empty(arr: enp.ArraySpec) -> jax.Array:
 
 
 def _normalize_rngs(
-    rng: jax.Array | dict[str, jax.Array],
+    rng: int | jax.Array | dict[str, jax.Array],
     streams: list[str] | tuple[str, ...],
     add_params: bool = False,
 ) -> dict[str, jax.Array]:
