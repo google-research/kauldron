@@ -29,6 +29,7 @@ from jax import numpy as jnp
 from kauldron import kontext
 from kauldron.metrics import base
 from kauldron.metrics import base_state
+from kauldron.metrics import image as image_metrics
 from kauldron.typing import Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 
@@ -96,8 +97,8 @@ class _LpipsVgg(nn.Module):
     Returns:
       A scalar containing the computed loss between images_1 & images_2.
     """
-    # Note that these normalization values include a shift from from 0->1 to
-    # -1->1 in the shift and scale.
+    # Note that these normalization values include a shift from 0->1 to -1->1
+    # in the shift and scale.
     shift = (1.0 + jnp.array([-0.030, -0.088, -0.188])) / 2.0
     scale = jnp.array([0.458, 0.448, 0.450]) / 2.0
     combined = (jnp.stack((images_1, images_2)) - shift) / scale
@@ -136,6 +137,7 @@ class LpipsVgg(base.Metric):
   pred: kontext.Key = kontext.REQUIRED
   target: kontext.Key = kontext.REQUIRED
   mask: Optional[kontext.Key] = None
+  in_vrange: tuple[float, float] = (0.0, 1.0)
 
   @flax.struct.dataclass
   class State(base_state.AverageState):
@@ -154,5 +156,6 @@ class LpipsVgg(base.Metric):
             jax.random.PRNGKey(0), jnp.ones((32, 32, 3)), jnp.ones((32, 32, 3))
         )
     )
-    values = vgg_model.apply(vgg_params, pred, target)
+    rescale = lambda x: image_metrics.rescale_image(x, self.in_vrange)
+    values = vgg_model.apply(vgg_params, rescale(pred), rescale(target))
     return self.State.from_values(values=values, mask=mask)

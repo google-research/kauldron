@@ -30,6 +30,14 @@ from kauldron.metrics import base_state
 from kauldron.typing import Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 
+def rescale_image(
+    x: Float["*b h w c"], in_vrange: tuple[float, float]
+) -> Float["*b h w c"]:
+  """Rescale an image from in_vrange to (0, 1)."""
+  vmin, vmax = in_vrange
+  return (x - vmin) / (vmax - vmin)
+
+
 def psnr(
     a: Float["*b h w c"],
     b: Float["*b h w c"],
@@ -47,7 +55,7 @@ class Psnr(base.Metric):
   target: kontext.Key = kontext.REQUIRED
   mask: Optional[kontext.Key] = None
 
-  dynamic_range: float = 1.0
+  in_vrange: tuple[float, float] = (0.0, 1.0)
 
   @flax.struct.dataclass
   class State(base_state.AverageState):
@@ -60,7 +68,8 @@ class Psnr(base.Metric):
       target: Float["*b h w c"],
       mask: Optional[Float["*b 1"]] = None,
   ) -> Psnr.State:
-    values = psnr(a=pred, b=target, dynamic_range=self.dynamic_range)
+    dynamic_range = self.in_vrange[1] - self.in_vrange[0]
+    values = psnr(a=pred, b=target, dynamic_range=dynamic_range)
     return self.State.from_values(values=values, mask=mask)
 
 
@@ -144,7 +153,7 @@ class Ssim(base.Metric):
   target: kontext.Key = kontext.REQUIRED
   mask: Optional[kontext.Key] = None
 
-  max_val: float = 1
+  in_vrange: tuple[float, float] = (0.0, 1.0)
   filter_size: int = 11
   filter_sigma: float = 1.5
   k1: float = 0.01
@@ -161,13 +170,14 @@ class Ssim(base.Metric):
       target: Float["*b h w c"],
       mask: Optional[Float["*b 1"]] = None,
   ) -> Ssim.State:
+    rescale = lambda x: rescale_image(x, self.in_vrange)
     values = _compute_ssim(
-        pred,
-        target,
-        self.max_val,
-        self.filter_size,
-        self.filter_sigma,
-        self.k1,
-        self.k2,
+        rescale(pred),
+        rescale(target),
+        max_val=1.0,
+        filter_size=self.filter_size,
+        filter_sigma=self.filter_sigma,
+        k1=self.k1,
+        k2=self.k2,
     )
     return self.State.from_values(values=values, mask=mask)
