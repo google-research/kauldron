@@ -22,7 +22,7 @@ from kauldron import kontext
 import regex
 
 
-IDENTIFIER_REGEX = regex.compile(r"[^\d\W]\w*", regex.UNICODE)
+IDENTIFIER_REGEX = regex.compile(r"[^\d\W]\w*")
 identifiers = st.from_regex(IDENTIFIER_REGEX, fullmatch=True)
 strings = st.text(
     alphabet=st.characters(whitelist_categories=["Lu", "Ll", "Lt", "Lo", "Nl"]),
