@@ -200,9 +200,9 @@ class Trainer(config_util.BaseConfig):
     object.__setattr__(self, 'raw_cfg', cfg)
 
   # Do not use property to make it explicit this is recomputed each time
-  def init_state(self) -> train_step.TrainState:
+  def init_state(self, *, restoring: bool = False) -> train_step.TrainState:
     """Create the state: `cfg.trainstep.init(cfg.train_ds.element_spec)`."""
-    return self.trainstep.init(self.train_ds.element_spec)
+    return self.trainstep.init(self.train_ds.element_spec, restoring=restoring)
 
   def train(self) -> tuple[train_step.TrainState, train_step.Auxiliaries]:
     """Main method that train/evaluate the object.
@@ -247,7 +247,11 @@ class Trainer(config_util.BaseConfig):
     elem_spec = self.train_ds.element_spec
     rngs = self.rng_streams.init_rngs()
     mwa = self.trainstep.model_with_aux
-    state_spec = jax.eval_shape(self.init_state)
+
+    # Set `restoring=True` to skip the `init_transforms`. Indeed, restoring
+    # checkpoint (partial loading) will fail inside `jax.eval_shape / `jax.jit`
+    init_fn = functools.partial(self.init_state, restoring=True)
+    state_spec = jax.eval_shape(init_fn)
 
     m_batch = data_utils.mock_batch_from_elem_spec(elem_spec)
     _, context = jax.eval_shape(

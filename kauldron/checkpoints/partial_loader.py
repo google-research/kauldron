@@ -49,7 +49,17 @@ class AbstractPartialLoader(abc.ABC):
 
   @abc.abstractmethod
   def transform(self, state: _T) -> _T:
-    """Transform the state by updating it with pre-trained values."""
+    """Transform the state by updating it with pre-trained values.
+
+    Note: `transform` functions can modify the `state` values but should NOT
+    modify its structure, shape or dtypes.
+
+    Args:
+      state: The `state` object to transform
+
+    Returns:
+      The updated `state`
+    """
     raise NotImplementedError
 
 
