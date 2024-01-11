@@ -19,6 +19,7 @@ import json
 from kauldron import kd
 from examples import mnist_autoencoder
 from kauldron.utils import sweep_utils
+from kauldron.xm._src import kauldron_utils
 
 with kd.konfig.imports():
   from flax import linen as nn  # pylint: disable=g-import-not-at-top
@@ -43,14 +44,15 @@ def sweep_model():
 def test_sweep():
   from kauldron.utils import sweep_utils_test as config_module  # pylint: disable=g-import-not-at-top
 
-  info = sweep_utils.SweepsInfo.make(
-      config_module=config_module, sweep_names=['model', '']
+  all_sweep_info = list(
+      kauldron_utils._sweeps_from_module(
+          module=config_module, names=['model', '']
+      )
   )
-  all_sweep_info = list(info.all_sweep_info)
   assert len(all_sweep_info) == 4  # Cross product
 
   sweep0 = all_sweep_info[0]
-  assert json.loads(sweep0.xm_flags[sweep_utils._FLAG_NAME]) == {
+  assert json.loads(sweep0.job_kwargs[sweep_utils._FLAG_NAME]) == {
       'eval_ds.batch_size': 16,
       'train_ds.batch_size': 16,
       'model': {'__qualname__': 'flax.linen:Dense', '0': 12},
@@ -58,6 +60,8 @@ def test_sweep():
 
 
 def test_sweep_overwrite():
+  assert sweep_utils._FLAG_NAME == kauldron_utils._SWEEP_FLAG_NAME
+
   cfg = mnist_autoencoder.get_config()
   cfg = sweep_utils.update_with_sweep(  # pytype: disable=wrong-arg-types
       config=cfg,
