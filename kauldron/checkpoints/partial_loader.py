@@ -72,20 +72,20 @@ class PartialLoader(AbstractPartialLoader):
   Usage:
 
   ```python
-  checkpoint = kd.ckpt.Checkpointer(
-      partial_initializer=kd.ckpts.PartialLoader(
+  cfg.init_transforms = {
+      'pretrained_init': kd.ckpts.PartialLoader(
           source=kd.ckpts.KauldronSource('/path/to/original/work_unit/'),
-          # Mapping params from <original state> -> <new state>
-          new_to_old={
+          new_to_old={  # Mapping params
               # '<new_path>':            '<source_path>'
-              'params/decoder/layers_0': 'params/encoder',
+              'params/decoder/layers_0': 'params/endoder',
           },
       )
-  )
+  }
 
-  # If the checkpoint do not exists, the `partial_initializer` is used to
-  # initialize the weights
-  init_state = checkpoint.restore(init_state)
+  trainer = konfig.resolve(cfg)
+
+  # When initializing the weights, the `init_transform` is applied
+  init_state = trainer.init_state()
 
   # `init_state.params['decoder']['layers_0']` now contain the previous encoder
   # weights

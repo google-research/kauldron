@@ -3,22 +3,23 @@
 ## Partial loading
 
 To load weights from another checkpoint (e.g. restore pretrained encoder), you
-can use the `partial_initializer` argument of `kd.ckpts.Checkpoint`
+can use the `init_transforms` argument of `kd.train.Trainer`
 
 ```python
-checkpoint = kd.ckpts.Checkpoint(
-    partial_initializer=kd.ckpts.PartialLoader(
+cfg.init_transforms = {
+    'pretrained_init': kd.ckpts.PartialLoader(
         source=kd.ckpts.KauldronSource('/path/to/original/work_unit/'),
-        # Mapping params from <original state> -> <new state>
-        new_to_old={
-            'params.decoder.layers_0': 'params.endoder',
+        new_to_old={  # Mapping params
+            # '<new_path>':            '<source_path>'
+            'params/decoder/layers_0': 'params/endoder',
         },
     )
-)
+}
 
-# If the checkpoint does not exists, the `partial_initializer` is used to
-# initialize the weights
-init_state = checkpoint.restore(init_state)
+trainer = konfig.resolve(cfg)
+
+# When initializing the weights, the `init_transform` is applied
+init_state = trainer.init_state()
 
 # `init_state.params['decoder']['layers_0']` now contains the previous encoder
 # weights

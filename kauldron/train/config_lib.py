@@ -54,6 +54,10 @@ with konfig.imports(lazy=True):
 # `edc`, `ConfigDictLike` and lazy job imports. Should investigate but as it's
 # not critical, just use this workaround.
 if typing.TYPE_CHECKING:
+  # `kxm.Job` is only resolved in the XManager launcher, to avoid depending on
+  # the full XManager binary, we keep the `ConfigDict` even after
+  # `trainer = konfig.resolve(cfg)`
+  # This is specified through `__konfig_resolve_exclude_fields__`
   _JobConfigDict = konfig.ConfigDictLike[job_lib.Job]
 else:
   _JobConfigDict = Any
@@ -82,16 +86,18 @@ class Trainer(config_util.BaseConfig):
     train_losses: x
     train_metrics: x
     train_summaries: x
-    schedules: x
-    optimizer: x
-    checkpointer: x
-    evals: Evaluators to use (e.g. `{'eval': kd.eval.Evaluator()}`)
     flatboards: x
     profiler: Profiler can be customized (see `kd.inspect.Profile`)
-    aux: Arbitrary additional values (e.g. can be set once and referenced
-      elsewhere `cfg.model.num_layer = cfg.ref.aux.num_layers`)
+    schedules: optax schedules (to be used in `optimizer`)
+    optimizer: optax optimizer
+    checkpointer: Checkpoint used to save/restore the state
+    init_transforms: A `dict` for initial state transformation. Used for partial
+      checkpoint loading (re-use pre-trained weights).
     trainstep: Training loop step. Do not set this field unless you need a
       custom training step.
+    evals: Evaluators to use (e.g. `{'eval': kd.eval.Evaluator()}`)
+    aux: Arbitrary additional values (e.g. can be set once and referenced
+      elsewhere `cfg.model.num_layer = cfg.ref.aux.num_layers`)
     xm_job: XManager runtime parameters (e.g. which target is the config using)
     raw_cfg: Original config from which this `Config` was created. Automatically
       set during `konfig.resolve()`
@@ -100,15 +106,20 @@ class Trainer(config_util.BaseConfig):
   seed: int = 0
   # usually set by the launcher
   workdir: edc.AutoCast[epath.Path] = epath.Path()
-  # TODO(epot): Replace by non-TF generic protocol
+
+  # Data pipeline
   train_ds: data.Pipeline
   eval_ds: Optional[data.Pipeline] = None
+
+  # Model
   model: nn.Module
-  init_transforms: Mapping[str, checkpoints.AbstractPartialLoader] = (
-      dataclasses.field(default_factory=flax.core.FrozenDict)
+  rng_streams: rngs_lib.RngStreams = dataclasses.field(
+      default_factory=rngs_lib.RngStreams
   )
   num_train_steps: Optional[int] = None
   stop_after_steps: Optional[int] = None
+
+  # Metrics, losses, summaries
   log_metrics_every: int = 100
   log_summaries_every: int = 1000
   train_losses: Mapping[str, losses.Loss] = dataclasses.field(
@@ -120,21 +131,6 @@ class Trainer(config_util.BaseConfig):
   train_summaries: Mapping[str, summaries.Summary] = dataclasses.field(
       default_factory=flax.core.FrozenDict
   )
-  schedules: Mapping[str, optax.Schedule] = dataclasses.field(
-      default_factory=flax.core.FrozenDict
-  )
-  optimizer: optax.GradientTransformation
-  checkpointer: checkpoints.BaseCheckpointer = dataclasses.field(
-      default_factory=checkpoints.NoopCheckpointer
-  )
-
-  rng_streams: rngs_lib.RngStreams = dataclasses.field(
-      default_factory=rngs_lib.RngStreams
-  )
-
-  evals: Mapping[str, evaluators.EvaluatorBase] = dataclasses.field(
-      default_factory=flax.core.FrozenDict
-  )
   flatboards: Mapping[str, flatboard.DashboardFactory] = dataclasses.field(
       default_factory=flax.core.FrozenDict
   )
@@ -142,20 +138,38 @@ class Trainer(config_util.BaseConfig):
       default_factory=profile_utils.Profiler
   )
 
+  # Optimizer
+  schedules: Mapping[str, optax.Schedule] = dataclasses.field(
+      default_factory=flax.core.FrozenDict
+  )
+  optimizer: optax.GradientTransformation
+
+  # Checkpoints
+  checkpointer: checkpoints.BaseCheckpointer = dataclasses.field(
+      default_factory=checkpoints.NoopCheckpointer
+  )
+  init_transforms: Mapping[str, checkpoints.AbstractPartialLoader] = (
+      dataclasses.field(default_factory=flax.core.FrozenDict)
+  )
+
+  # Train, eval loop
+  trainstep: train_step.TrainStep = dataclasses.field(
+      default_factory=train_step.TrainStep, repr=False
+  )
+  evals: Mapping[str, evaluators.EvaluatorBase] = dataclasses.field(
+      default_factory=flax.core.FrozenDict
+  )
+
+  # Additional arbitrary config values
+  # Should this be renamed `extra` ?
   aux: Mapping[str, Any] = dataclasses.field(
       default_factory=flax.core.FrozenDict
   )
 
-  trainstep: train_step.TrainStep = dataclasses.field(
-      default_factory=train_step.TrainStep, repr=False
-  )
-
   # XManager parameters
-  # This is only resolved in the XManager launcher, so to avoid depending on
-  # the full XManager binary, we keep the `ConfigDict` even after
-  # `trainer = konfig.resolve(cfg)`
   xm_job: _JobConfigDict = dataclasses.field(default_factory=job_lib.Job)
 
+  # Original `konfig.ConfigDict` from which the `Trainer` was created.
   raw_cfg: Optional[konfig.ConfigDict] = dataclasses.field(
       default=None, repr=False
   )
