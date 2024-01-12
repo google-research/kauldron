@@ -106,3 +106,30 @@ context = {
 model_kwargs = kontext.resolve_from_keyed_obj(context, model)
 pred = model.apply(rng, **model_kwargs)
 ```
+
+### Helper
+
+Rather than using string which can be fragile, it is possible to use
+`kontext.path_builder_from` to dynamically generate the paths with auto-complete
+and type checking.
+
+Let's imaging your dataset yield some structured object (e.g.
+`typing.TypedDict`, `dataclass`,...):
+
+```python
+@flax.struct.dataclass
+class Batch:
+  image: jnp.array
+  label: jnp.array
+```
+
+In your config, you can replace the keys `str` by their typed version:
+
+```python
+batch = kontext.path_builder_from('batch', Batch)
+
+model = MyModel(
+  img=batch.image,  # < Auto-complete and attribute checking, rather than `str`
+  label=batch.label,
+)
+```

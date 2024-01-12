@@ -43,7 +43,8 @@ optimizer = konfig.resolve(cfg)  # Resolve the actual object (here optax.adam)
 ```
 
 Note: The `konfig` is a self-contained standalone module that can be imported
-outside in non-kauldron projects (`from kauldron import konfig`).
+outside in non-kauldron projects (`from kauldron import konfig`). See https://kauldron.rtfd.io/en/latest/konfig
+for documentation.
 
 <!--
 
@@ -120,6 +121,9 @@ identifiers.
 Note: Keys can be arbitrary nested (e.g. `preds.cameras[0].pos`). `a.b` can
 match both `a['b']` (index) or `a.b` (attribute).
 
+Note: Rather than hardcoding keys `str`, you can instead use structured objects
+to benefit from type-checking, auto-complete. See: https://kauldron.rtfd.io/en/latest/kontext#helper
+
 The key system makes it very easy to add metrics, losses on arbitrary variables
 (e.g. intermediate model output).
 
@@ -136,4 +140,39 @@ class AutoEncoder(flax.linen.Module):
   @nn.compact
   def __call__(self, input: Float["*b h w c"]) -> Float["*b h w c"]:
     ...
+```
+
+For more info on keys, see https://kauldron.rtfd.io/en/latest/kontext.
+
+### Config vs Trainer
+
+In Kauldron, the root object is a `kd.train.Trainer` dataclass containing all
+attributes to model, metrics, evals,...
+
+While creating the config, the created `kd.train.Trainer` will actually be a
+`kd.konfig.ConfigDict` (like all other config objects).
+
+The config becomes trainer only after the `kd.konfig.resolve` call.
+
+To avoid confusion, the following naming convention is used:
+
+*   `config` / `cfg`: A config is **always** a `kd.konfig.ConfigDict` object. It
+    can always be mutated.
+*   `trainer`: A trainer is **always** a `kd.train.Trainer` object. It can never
+    be mutated.
+
+```python
+from kauldron import kd
+
+with kd.konfig.mock_modules():
+  # Inside mock_modules(), modules become ConfigDict builders
+  # For the IDE, the ConfigDict look like the real object, so we get
+  # all auto-complete and type-checking benefits.
+  cfg = kd.train.Trainer()
+  cfg.workdir = '/tmp/'
+
+trainer = kd.konfig.resolve(cfg)  # ConfigDict becomes Trainer
+
+assert isinstance(cfg, kd.konfig.ConfigDict)
+assert isinstance(trainer, kd.train.Trainer)
 ```
