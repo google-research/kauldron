@@ -300,14 +300,24 @@ class TrainStep(config_util.UpdateFromRootCfg):
       elem_spec: ElementSpec,
       *,
       model_method: Optional[str] = None,
-      restoring: bool = False,
+      skip_transforms: bool = False,
   ) -> TrainState:
-    """Initialize the model and return the initial TrainState."""
+    """Initialize the model and return the initial TrainState.
+
+    Args:
+      elem_spec: Structure of the input batch
+      model_method: Name of the flax model method (default to `__call__`)
+      skip_transforms: If `False`, apply the `init_transform` on the state (e.g.
+        to overwrite the weights with ones from another checkpoint).
+
+    Returns:
+      state: The training state
+    """
     self._assert_root_cfg_resolved()
     if isinstance(elem_spec, dict):
       elem_spec = flax.core.freeze(elem_spec)
-    state = self._init_model(elem_spec, model_method)
-    if not restoring:
+    state = self._init_model(elem_spec, model_method=model_method)
+    if not skip_transforms:
       # if restoring a checkpoint we can skip the (potentially slow) transforms
       state = self._init_transforms(state)
     # state = sharding.device_put(state, sharding.REPLICATED)
@@ -321,6 +331,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
   def _init_model(
       self,
       elem_spec: ElementSpec,
+      *,
       model_method: Optional[str] = None,
   ) -> TrainState:
     """Initialize the model and return the initial TrainState."""

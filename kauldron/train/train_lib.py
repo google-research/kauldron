@@ -66,7 +66,7 @@ def train_impl(
 
   state = trainstep.init(
       elem_spec=trainer.train_ds.element_spec,
-      restoring=latest_step is not None,
+      skip_transforms=latest_step is not None,
   )
 
   # Initialize CheckpointManager and attempt to restore.
