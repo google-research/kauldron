@@ -72,14 +72,15 @@ class _LpipsVgg(nn.Module):
 
   @staticmethod
   def read_params(params):
-    path = epath.Path(
-        "/memfile/lpips_vgg_weights_memfile/lpips_vgg_weights.bin"
+    # For faster colab reloads, should cache data across reload ?
+    path = (
+        epath.resource_path("kauldron") / "metrics/data/lpips_vgg_weights.bin"
     )
     if not path.exists():
       raise FileNotFoundError(
           "Using `LpipsVgg` require to add"
-          " `//third_party/py/kauldron/metrics:lpips_vgg_weights_memfile`"
-          " to your BUILD `deps`"
+          " `//third_party/py/kauldron/metrics:lpips_vgg_weights`"
+          " to your BUILD `data=`"
       )
     return flax.serialization.from_bytes(params, path.read_bytes())
 
