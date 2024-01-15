@@ -68,6 +68,15 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
 
   __konfig_resolve_exclude_fields__ = ('run',)
 
+  def __post_init__(self) -> None:
+    if hasattr(super(), '__post_init__'):
+      super().__post_init__()  # Future proof to run `__post_init__` in parents
+    if not self.name.replace('.', '_').replace('-', '_').isidentifier():
+      raise ValueError(
+          'Evaluator name should be a valid Python identifier. Got:'
+          f' {self.name}'
+      )
+
   def maybe_eval(self, *, step: int, state: train_step.TrainState) -> Any:
     """Run or skip the evaluator for the given train-step."""
     if self._resolved_run.should_eval_in_train(step):
