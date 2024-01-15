@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Nerf modules."""
+"""Activation."""
 
-# pylint: disable=g-importing-member
+from __future__ import annotations
 
-from projects.nerf.modules.mlp import MLP
-from projects.nerf.modules.nerf import NerfRender
-from projects.nerf.modules.nerf import PointHead
-from projects.nerf.modules.nerf import PointNetwork
+from collections.abc import Callable
+
+from kauldron.typing import Array
+
+ActivationFn = Callable[[Array], Array]

@@ -53,7 +53,7 @@ class PointPreds(dca.DataclassArray):
   """Prediction of the model for a 3d point in space."""
 
   rgb: FloatArray['*batch_size c']
-  density: FloatArray['*batch_size']
+  density: FloatArray['*batch_size 1']
 
 
 class Scene(dca.DataclassArray, v3d.Visualizable):

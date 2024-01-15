@@ -34,17 +34,45 @@ def get_config():
   cfg = kd.train.Trainer(
       workdir='/tmp/kd/nerf',
       train_ds=_get_ds(training=True),
-      model=nerf.nn.NerfRender(
-          ray=BATCH.ray,
-          mlp=nerf.nn.MLP(),
-      ),
-      optimizer=optax.adam(learning_rate=0.003),
+      num_train_steps=10_000,  # Use epoch instead ?
+      train_losses={
+          # TODO(epot): Add multi-level losses ? fine and coarse loss ?
+          'loss': kd.losses.L2(
+              preds=PREDS.rgb,
+              targets=BATCH.rgb,
+          ),
+      },
+      # train_metrics={
+      #     # TODO(epot): Should have WeightDecay class ?
+      #     'weight_norm': kd.metrics.TreeReduce(kd.metrics.Norm()),
+      # },
+      model=_get_model(),
+      optimizer=kd.optim.named_chain(**{
+          'adam': optax.scale_by_adam(),
+          # 'decay': optax.add_decayed_weights(weight_decay=0.0),
+          'lr': optax.scale_by_learning_rate(0.003),
+      }),
+      rng_streams=kd.train.RngStreams([
+          kd.train.RngStream(name='samples', eval=True),
+      ]),
       evals={
           'eval_train': _get_eval('train'),
           'eval_test': _get_eval('test'),
+          # Make this public to Kauldron ?
+          # 'render': nerf.RenderEvaluator(),
       },
   )
   return cfg
+
+
+def _get_model() -> nerf.nn.NerfRender:
+  return nerf.nn.NerfRender(
+      ray=BATCH.ray,
+      point_net=nerf.nn.PointNetwork(
+          body=nerf.nn.MLP(),
+          head=nerf.nn.PointHead(),
+      ),
+  )
 
 
 def _get_eval(split: str) -> kd.evals.Evaluator:
@@ -56,6 +84,18 @@ def _get_eval(split: str) -> kd.evals.Evaluator:
           'psnr': kd.metrics.Psnr(pred=PREDS.rgb, target=BATCH.rgb),
           'ssim': kd.metrics.Ssim(pred=PREDS.rgb, target=BATCH.rgb),
           'lpips': kd.metrics.LpipsVgg(pred=PREDS.rgb, target=BATCH.rgb),
+      },
+      summaries={
+          'gt': kd.summaries.ShowImages(images=BATCH.rgb, num_images=3),
+          'pred': kd.summaries.ShowImages(images=PREDS.rgb, num_images=3),
+          'pred_depth': kd.summaries.ShowImages(
+              images=PREDS.depth, num_images=3
+          ),
+          # TODO(epot): Add
+          # 'disp': kd.summaries.ShowImages(images=PREDS.rgb, num_images=3),
+          # 'acc': kd.summaries.ShowImages(images=PREDS.rgb, num_images=3),
+          # TODO(epot): How to write the image output (on disk) ?
+          # E.g. generate video every `x` (custom eval task?)
       },
   )
 

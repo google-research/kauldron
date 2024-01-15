@@ -17,14 +17,21 @@
 from typing import Any
 
 from flax import linen as nn
+from projects.nerf.core.typing import ActivationFn  # pylint: disable=g-importing-member
 
 
 class MLP(nn.Module):
+  """MLP."""
   width: int = 256
   num_layers: int = 8
+  activation: ActivationFn = nn.relu
 
   @nn.compact
   def __call__(self, x) -> Any:
+    # TODO(epot):
+    # * How to choose initialization
+    # * Add skip connections
     for _ in range(self.num_layers):
       x = nn.Dense(self.width)(x)
+      x = self.activation(x)
     return x

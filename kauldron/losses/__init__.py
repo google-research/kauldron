@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Losses."""
+
 # pylint: disable=g-importing-member
 from kauldron.losses.base import compute_losses
 from kauldron.losses.base import Loss

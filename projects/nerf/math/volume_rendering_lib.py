@@ -94,6 +94,7 @@ def sample_1d(
   return jnp.clip(t, 0.0, 1.0 - jnp.finfo(dtype).eps)
 
 
+# @typechecked
 def sample_along_rays(
     *,
     ray_origins: Float["*batch_shape 3"],
@@ -149,6 +150,9 @@ def sample_along_rays(
   )
 
   # Convert to sample depth values along the rays
+  # TODO(epot): Remove once https://github.com/google/jax/issues/19334 is fixed
+  near = jnp.asarray(near)
+  far = jnp.asarray(far)
   near = jnp.broadcast_to(near, batch_shape)[..., None]
   far = jnp.broadcast_to(far, batch_shape)[..., None]
   if use_linear_disparity:
@@ -181,6 +185,7 @@ class VolumeRenderingResult:
   sample_intervals: Float["*batch_shape S"]
 
 
+# TODO(epot): @typechecked bug with `PyTree[]`
 def volume_rendering(
     *,
     sample_values: PyTree[Float["*batch_shape S N"]],

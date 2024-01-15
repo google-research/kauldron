@@ -16,8 +16,8 @@
 
 # pylint: disable=g-importing-member
 
-from projects.nerf.math.volume_rendering import sample_1d
-from projects.nerf.math.volume_rendering import sample_along_rays
-from projects.nerf.math.volume_rendering import sample_piecewise_constant_pdf
-from projects.nerf.math.volume_rendering import SamplingStrategy
-from projects.nerf.math.volume_rendering import volume_rendering
+from projects.nerf.math.volume_rendering_lib import sample_1d
+from projects.nerf.math.volume_rendering_lib import sample_along_rays
+from projects.nerf.math.volume_rendering_lib import sample_piecewise_constant_pdf
+from projects.nerf.math.volume_rendering_lib import SamplingStrategy
+from projects.nerf.math.volume_rendering_lib import volume_rendering
