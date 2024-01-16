@@ -35,7 +35,7 @@ import os
 import pathlib
 import types
 import typing
-from typing import Any, Optional
+from typing import Any
 
 from absl import flags
 from etils import epy
@@ -250,7 +250,9 @@ class KauldronJobs(jobs_info.JobsProvider):
     """Project name."""
     # If the target is explicitly defined in the config, use that
     if target := self.incomplete_trainer_job.target:
-      return _ProjectInfo(target=target, project_name=None)
+      # Extract `//path/to/my_project:trainer` -> `my_project`
+      project_name = target.rpartition(":")[0].rpartition("/")[-1]
+      return _ProjectInfo(target=target, project_name=project_name)
 
     examples_path = _KAULDRON_PATH / "examples"
     projects_path = _KAULDRON_PATH / "projects"
@@ -373,7 +375,7 @@ def _last_index(list_: Sequence[str], key: str) -> int:
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class _ProjectInfo:
   target: str
-  project_name: Optional[str] = None
+  project_name: str
 
 
 class _JsonEncoder(json.JSONEncoder):
