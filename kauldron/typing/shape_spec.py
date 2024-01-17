@@ -23,11 +23,10 @@ import itertools
 import math
 import operator
 import typing
-from typing import Any, List, Optional, Callable
+from typing import Any, Callable, List, Optional
 
 import jaxtyping
 import lark
-
 
 if typing.TYPE_CHECKING:
   Shape = tuple[int, ...]
@@ -283,20 +282,10 @@ class Memo:
   @classmethod
   def from_current_context(cls):
     """Create a Memo from the current typechecking context."""
-    # TODO(klausg): tidy this up once the jaxtyping PR chain is done
     single_memo, variadic_memo, *_ = jaxtyping._storage.get_shape_memo()  # pylint: disable=protected-access
 
-    def _maybe_remove_bool(memo):
-      match memo:
-        case (bool(_), (*dims,)) if all(isinstance(d, int) for d in dims):
-          return tuple(dims)
-        case (*dims,) if all(isinstance(d, int) for d in dims):
-          return tuple(dims)
-        case _:
-          raise ValueError(f"Unexpected variadic memo: {memo!r}")
-
     variadic_memo = {
-        k: _maybe_remove_bool(memo) for k, memo in variadic_memo.items()
+        k: tuple(dim for dim in memo[1]) for k, memo in variadic_memo.items()
     }
     return cls(
         single=single_memo.copy(),
