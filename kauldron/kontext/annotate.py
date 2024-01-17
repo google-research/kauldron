@@ -28,6 +28,7 @@ _key_token = object()
 Key = Annotated[str, _key_token]
 
 REQUIRED = "__KEY_REQUIRED__"
+_MISSING = object()
 
 # Protocol to returns the Keys
 _GET_KEY_PROTOCOL = "__kontext_keys__"
@@ -105,12 +106,13 @@ def _get_values_from_context(
   """Get values for key_paths from context with useful errors when failing."""
   optional_keys = set() if optional_keys is None else optional_keys
   key_values = {
-      key: paths.get_by_path(context, path) for key, path in key_paths.items()
+      key: paths.get_by_path(context, path, default=_MISSING)
+      for key, path in key_paths.items()
   }
   missing_keys = {
       key: key_paths[key]
       for key, value in key_values.items()
-      if value is None and key not in optional_keys
+      if value is _MISSING and key not in optional_keys
   }
   if missing_keys:
     flat_paths = paths.flatten_with_path(context).keys()
@@ -120,7 +122,7 @@ def _get_values_from_context(
     )
     msg = _KeyErrorMessage(f"Missing keys\n{details}")
     raise KeyError(msg)
-  return key_values
+  return {k: None if v is _MISSING else v for k, v in key_values.items()}
 
 
 def _get_missing_key_error_message(
