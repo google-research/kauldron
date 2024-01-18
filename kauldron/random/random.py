@@ -42,6 +42,11 @@ else:
 class PRNGKey(_Base):
   """Small wrapper around `jax.random` key arrays to reduce boilerplate.
 
+  Benefits:
+
+  * Object oriented API (`jax.random.uniform(key)` -> `key.uniform()`)
+  * `fold_in` supports `str` (`key.fold_in('dropout')`)
+
   Usage:
 
   ```
@@ -207,11 +212,13 @@ def _mock_jax():
   from jax._src import random  # pylint: disable=g-import-not-at-top
   from flax.core import scope  # pylint: disable=g-import-not-at-top
 
-  random._check_prng_key = _normalize_jax_key(random._check_prng_key)  # pylint: disable=protected-access
+  random._check_prng_key = _normalize_jax_key(  # pylint: disable=protected-access
+      random._check_prng_key, key_arg_index=1  # pylint: disable=protected-access
+  )
   scope._is_valid_rng = _normalize_jax_key(scope._is_valid_rng)  # pylint: disable=protected-access
 
 
-def _normalize_jax_key(fn: _FnT) -> _FnT:
+def _normalize_jax_key(fn: _FnT, *, key_arg_index: int = 0) -> _FnT:
   """Mock `jax.random` to support custom Key object."""
 
   fn = _internal.unwrap_on_reload(fn)  # pylint: disable=protected-access
@@ -219,15 +226,23 @@ def _normalize_jax_key(fn: _FnT) -> _FnT:
   # Support Colab reload
 
   @_internal.wraps_with_reload(fn)
-  def new_fn(key, *args, **kwargs):
+  def new_fn(*args, **kwargs):
+    nonlocal key_arg_index
+    if len(args) == 1:  # Colab backward compatibility (old kernels)
+      key_arg_index = 0  # TODO(epot): Remove once all kernels are updated
+
+    key = args[key_arg_index]
     scope = sys.modules.get('flax.core.scope')
     if isinstance(key, PRNGKey):
       key = key.rng
     elif scope is not None and isinstance(key, scope.LazyRng):
       key = key.as_jax_rng()
-    return fn(key, *args, **kwargs)
+    new_args = list(args)
+    new_args[key_arg_index] = key
+    return fn(*new_args, **kwargs)
 
   return new_fn
+
 
 # We mock jax for compatibility
 _mock_jax()
