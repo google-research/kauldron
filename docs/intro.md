@@ -32,9 +32,9 @@ with konfig.imports():
 
 cfg = optax.adam(learning_rate=0.003)  # This create a ConfigDict object !!!
 
-assert cfg == konfig.ConfigDict({
+assert cfg == konfig.ConfigDict({  # The config is a simple nested dict
     '__qualname__': 'optax:adam',
-    'learning_rate'  == 0.003,
+    'learning_rate': 0.003,
 })
 
 cfg.learning_rate = 1e-4  # Config can be mutated
@@ -76,7 +76,7 @@ cfg.schedules = {
 }
 ```
 
-When `num_train_steps` is changed (e.g. with `--config.num_train_steps=XX`), the
+When `num_train_steps` is changed (e.g. with `--cfg.num_train_steps=XX`), the
 schedule will automatically adjust to the new value.
 
 `kd.train.Trainer` defines a `cfg.aux = {}` field to store additional variables
@@ -156,8 +156,8 @@ The config becomes trainer only after the `kd.konfig.resolve` call.
 
 To avoid confusion, the following naming convention is used:
 
-*   `config` / `cfg`: A config is **always** a `kd.konfig.ConfigDict` object. It
-    can always be mutated.
+*   `cfg`: A config is **always** a `kd.konfig.ConfigDict` object. It can always
+    be mutated.
 *   `trainer`: A trainer is **always** a `kd.train.Trainer` object. It can never
     be mutated.
 
