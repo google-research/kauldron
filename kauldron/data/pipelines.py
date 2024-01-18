@@ -45,6 +45,17 @@ _NpArray: TypeAlias = Any
 class Pipeline(data_utils.IterableDataset, config_util.UpdateFromRootCfg):
   """Base class for kauldron data pipelines.
 
+  Subclasses should implement:
+
+  * `__iter__`: Yield individual batches
+  * (optionally) `__len__`: Number of iterations
+
+  Subclasses are responsible for:
+
+  * batching
+  * shuflling
+  * sharding: Each host yield different examples
+
   Attributes:
     batch_size: Global batch size. Has to be divisible by number of global
       devices. Pipeline should take care of sharding the data between hosts.

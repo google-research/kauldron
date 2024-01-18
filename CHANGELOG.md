@@ -8,6 +8,7 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 ## [Unreleased]
 
+* Add `kd.data.InMemoryPipeline` for small datasets that fit in memory
 * Add `kd.knn.convert` to convert any Flax module to klinen.
 * Add `kontext.path_builder_from` to dynamically generate keys for the config
   with auto-complete and static type checking.

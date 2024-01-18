@@ -17,6 +17,7 @@
 # pylint: disable=g-importing-member
 from kauldron.data import loaders
 from kauldron.data.data_utils import IterableDataset
+from kauldron.data.in_memory import InMemoryPipeline
 from kauldron.data.pipelines import Pipeline
 from kauldron.data.pipelines import PyGrainPipeline
 from kauldron.data.pipelines import TFDataPipeline
