@@ -13,9 +13,9 @@
 # limitations under the License.
 
 """Data loaders."""
+
 # pylint: disable=g-importing-member
+
 from kauldron.data.loaders.base import DataLoader
 from kauldron.data.loaders.graintfds import GrainTfds
-from kauldron.data.loaders.tfds import ExtractRgbImages
 from kauldron.data.loaders.tfds import Tfds
-# pylint: enable=g-importing-member

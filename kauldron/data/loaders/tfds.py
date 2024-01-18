@@ -109,12 +109,3 @@ class Tfds(base.DataLoader):
     ds = ds.map(_add_dummy_index_and_non_deterministic_seed)
 
     return ds
-
-
-# TODO(msajjadi): remove after we have a proper SunDS loader
-@dataclasses.dataclass
-class ExtractRgbImages:
-
-  def __call__(self, ex):
-    rgb_images = [ex["cameras"][name]["color_image"] for name in ex["cameras"]]
-    return {"image": rgb_images}
