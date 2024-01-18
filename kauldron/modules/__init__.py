@@ -32,7 +32,10 @@ from kauldron.modules.knn_types import TransformerBlock
 # Modules
 from kauldron.modules.adapter import ExternalModule
 from kauldron.modules.misc import Dropout
+from kauldron.modules.misc import DummyModel
 from kauldron.modules.misc import Identity
+from kauldron.modules.misc import Rearrange
+from kauldron.modules.misc import Reduce
 from kauldron.modules.pos_embeddings import AddEmbedding
 from kauldron.modules.pos_embeddings import AddLearnedEmbedding
 from kauldron.modules.pos_embeddings import FourierEmbedding
