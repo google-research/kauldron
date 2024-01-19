@@ -38,6 +38,11 @@ the unnamed `def sweep()` require to add an empty `,`. Examples:
 *   `--xp.sweep_info.names=lr,batch` launches the product of `sweep_lr()`,
     `sweep_batch()`
 
+## Contrib
+
+See https://github.com/google-research/kauldron/tree/HEAD/kauldron/contrib/ for a list of datasets, models,...
+implemented by Kauldron users.
+
 <!--
 
 TODO(epot): Add more docs on the various sub-componenents
