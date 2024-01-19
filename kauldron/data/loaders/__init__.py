@@ -18,4 +18,5 @@
 
 from kauldron.data.loaders.base import DataLoader
 from kauldron.data.loaders.graintfds import GrainTfds
+from kauldron.data.loaders.tfdata import Tfdata
 from kauldron.data.loaders.tfds import Tfds
