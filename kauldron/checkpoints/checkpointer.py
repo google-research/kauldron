@@ -29,20 +29,24 @@ import orbax.checkpoint as ocp
 
 _T = TypeVar("_T")
 
-# TODO(epot): Move to checkpoints/
-
 CHECKPOINT_FOLDER_NAME = "checkpoints"
 
 
 class BaseCheckpointer(config_util.UpdateFromRootCfg, abc.ABC):
-  """Basic checkpointing interface."""
+  """Basic checkpointing interface.
+
+  2 implementations:
+
+  * `Checkpointer`: Wrapper around Orbax CheckpointManager.
+  * `NoopCheckpointer`: Does nothing.
+  """
 
   @abc.abstractmethod
   def restore(
       self,
       initial_state: _T | None = None,
-      step: int = -1,
       *,
+      step: int = -1,
       noop_if_missing: bool = False,
   ) -> _T:
     raise NotImplementedError()
@@ -52,21 +56,21 @@ class BaseCheckpointer(config_util.UpdateFromRootCfg, abc.ABC):
     raise NotImplementedError()
 
   @abc.abstractmethod
-  def save_state(
+  def save(
       self,
       state,
-      step: int,
       *,
+      step: int,
       force: bool = False,
   ) -> bool:
     raise NotImplementedError()
 
   @abc.abstractmethod
-  def maybe_save_state(
+  def maybe_save(
       self,
       state,
-      step: int,
       *,
+      step: int,
       force: bool = False,
   ) -> bool:
     raise NotImplementedError()
@@ -142,8 +146,8 @@ class Checkpointer(BaseCheckpointer):
   def restore(
       self,
       initial_state: _T | None = None,
-      step: int = -1,
       *,
+      step: int = -1,
       noop_if_missing: bool = False,
   ) -> _T:
     """Restore state."""
@@ -168,11 +172,11 @@ class Checkpointer(BaseCheckpointer):
   def should_save(self, step: int) -> bool:
     return self._ckpt_mgr.should_save(step)
 
-  def save_state(
+  def save(
       self,
       state,
-      step: int,
       *,
+      step: int,
       force: bool = False,
   ) -> bool:
     """Save state."""
@@ -183,18 +187,18 @@ class Checkpointer(BaseCheckpointer):
           force=force,
       )
 
-  def maybe_save_state(
+  def maybe_save(
       self,
       state,
-      step: int,
       *,
+      step: int,
       force: bool = False,
   ) -> bool:
     """Save state."""
     if not self.should_save(step):
       return False
 
-    return self.save_state(state, step, force=force)
+    return self.save(state, step=step, force=force)
 
   @property
   def latest_step(self) -> Optional[int]:
@@ -231,7 +235,7 @@ class NoopCheckpointer(BaseCheckpointer):
   """Does nothing."""
 
   def restore(
-      self, initial_state=None, step: int = -1, *, noop_if_missing: bool = False
+      self, initial_state=None, *, step: int = -1, noop_if_missing: bool = False
   ):
     if initial_state is None:
       raise ValueError("`NooCheckpointer.restore` require the state arg.")
@@ -240,10 +244,10 @@ class NoopCheckpointer(BaseCheckpointer):
   def should_save(self, step: int) -> bool:
     return False
 
-  def save_state(self, state, step: int, *, force: bool = False) -> bool:
+  def save(self, state, *, step: int, force: bool = False) -> bool:
     return False
 
-  def maybe_save_state(self, state, step: int, *, force: bool = False) -> bool:
+  def maybe_save(self, state, *, step: int, force: bool = False) -> bool:
     if force:
       raise ValueError("NooCheckpointer cannot be forced to save.")
     return False

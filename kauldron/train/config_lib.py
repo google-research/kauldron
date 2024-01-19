@@ -145,7 +145,7 @@ class Trainer(config_util.BaseConfig):
   optimizer: optax.GradientTransformation
 
   # Checkpoints
-  checkpointer: checkpoints.BaseCheckpointer = dataclasses.field(
+  checkpointer: checkpoints.checkpointer.BaseCheckpointer = dataclasses.field(
       default_factory=checkpoints.NoopCheckpointer
   )
   init_transforms: Mapping[str, checkpoints.AbstractPartialLoader] = (

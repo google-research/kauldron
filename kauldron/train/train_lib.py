@@ -97,6 +97,8 @@ def train_impl(
         profiler=trainer.profiler,
     ):
       with timer.exclude_from_step_stats():
+        # TODO(epot): Use `ckptr.maybe_save` and move `training_time_hours`
+        # in a seprate `metadata` Json checkpoint
         if ckptr.should_save(i):
           # Take the time after executing the last training step so that the
           # times logged and stored with the ckecpoint match.
@@ -105,7 +107,7 @@ def train_impl(
                   timer.total_training_time_hours, sharding.REPLICATED
               )
           )
-          ckptr.save_state(state, i)
+          ckptr.save(state, step=i)
 
         for evaluator in trainer.evals.values():
           evaluator.maybe_eval(step=i, state=state)

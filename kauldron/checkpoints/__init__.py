@@ -16,7 +16,6 @@
 
 # pylint: disable=g-importing-member
 
-from kauldron.checkpoints.checkpointer import BaseCheckpointer
 from kauldron.checkpoints.checkpointer import Checkpointer
 from kauldron.checkpoints.checkpointer import NoopCheckpointer
 from kauldron.checkpoints.partial_loader import AbstractPartialLoader
