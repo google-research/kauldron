@@ -29,6 +29,8 @@ if pytest:
   pytest.register_assert_rewrite('kauldron.utils.assert_utils')
 del pytest, sys
 
+from etils import epy as _epy
+
 # Namespaces
 from kauldron import checkpoints as ckpts
 from kauldron import data
@@ -50,6 +52,12 @@ from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importin
 
 # Register the default `ConfigDict` overwrites
 from kauldron.xm._src import default_values as _default_values
+
+# Import contrib at the end as they can use all
+
+with _epy.lazy_imports(
+):
+  from kauldron import contrib  # pylint: disable=g-bad-import-order  # pytype: disable=import-error
 
 # TODO(epot): This could be optional for the top-level module
 # Automated documentation info
