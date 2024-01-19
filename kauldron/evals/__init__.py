@@ -18,7 +18,6 @@
 
 from kauldron.evals.evaluators import Evaluator
 from kauldron.evals.evaluators import EvaluatorBase
-from kauldron.evals.fewshot_evaluator import FewShotEvaluator
 
 # RunStrategy are available in both XM and Kauldron side
 from kauldron.xm._src.run_strategies import RunEvery
