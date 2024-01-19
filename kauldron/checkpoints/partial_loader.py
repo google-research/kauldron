@@ -24,7 +24,6 @@ from typing import Any, TypeVar
 from etils import epath
 from etils import epy
 from etils.etree import jax as etree  # pylint: disable=g-importing-member
-from flax.training import orbax_utils
 import jax
 from kauldron import kontext
 from kauldron.checkpoints import checkpointer
@@ -191,6 +190,7 @@ class CkptSource(abc.ABC):
     raise NotImplementedError
 
 
+# TODO(epot): Re-write using the ocp transform API.
 @dataclasses.dataclass(frozen=True)
 class KauldronSource(CkptSource):
   """Kauldron loader source for `kd.ckpts.PartialLoader`.
@@ -219,30 +219,18 @@ class KauldronSource(CkptSource):
     )
 
   def metadata(self) -> Any:
-    m = self._ckpt_mgr.item_metadata(self.step)
-    if m is None:
-      # DEPRECATED LEGACY checkpoints
-      # Legacy checkpoints save the flatten structure, so cannot be loaded
-      raise NotImplementedError(
-          f'Partial loading from old checkpoint not supported: {self.workdir}.'
-      )
-    return m
+    # TODO(b/320668278): Remove once fixed
+    self._ckpt_mgr.restore(step=self.step)
+
+    metadata = self._ckpt_mgr.item_metadata(self.step)
+    if metadata is None:
+      raise ValueError(f'No metadata found for step: {self.step}')
+    return metadata
 
   def restore(self, item) -> Any:
     """Loads the params from the checkpoint."""
-
-    state = self._ckpt_mgr.restore(
-        step=self.step,
-        # Use `_NOT_RESTORED` sentinel value as `orbax` will silently
-        # forward the additional values not present in the checkpoint.
-        initial_state=jax.tree_map(lambda _: _NOT_RESTORED, item),
-        restore_kwargs=dict(
-            restore_args=orbax_utils.restore_args_from_target(item),
-            # Set `transforms={}` to indicate `orbax` to drop the keys not
-            # specified in `item`
-            transforms={},
-        ),
-    )
+    # TODO(epot): Should only restore the required params, not everything
+    state = self._ckpt_mgr.restore(step=self.step)
 
     # Validate `state` do not contain `_NOT_RESTORED`
     _assert_all_restored(state)

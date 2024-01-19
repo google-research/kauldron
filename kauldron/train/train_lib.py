@@ -140,6 +140,8 @@ def train_impl(
     exm.current_work_unit().add_tag(eval_impl.TRAIN_COMPLETE_TAG)
 
   _sync()
+  # TODO(b/321010908): Should sync the checkpoints
+  # ckptr.wait_until_finished()
   # Returning the final state is convenient for interactive training in colab
   return state, aux
 

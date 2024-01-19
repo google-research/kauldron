@@ -88,6 +88,7 @@ def _make_loader(
 def test_loader(new_trainer: kd.train.Trainer, old_trainer: kd.train.Trainer):  # pylint: disable=redefined-outer-name
   old_state = old_trainer.init_state()
   old_trainer.checkpointer.save_state(old_state, 0)
+  old_trainer.checkpointer.wait_until_finished()
 
   init_state = new_trainer.init_state()
 

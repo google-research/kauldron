@@ -23,9 +23,7 @@ import functools
 from typing import Any, Optional, Sequence, TypeVar
 
 from etils import epath
-from flax.training import orbax_utils
 import jax
-from kauldron.checkpoints import pytree_checkpoint
 from kauldron.utils import config_util
 import orbax.checkpoint as ocp
 
@@ -90,6 +88,10 @@ class BaseCheckpointer(config_util.UpdateFromRootCfg, abc.ABC):
     """
     pass
 
+  def wait_until_finished(self) -> None:
+    """Synchronizes the asynchronous checkpointing."""
+    pass
+
 
 @dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
 class Checkpointer(BaseCheckpointer):
@@ -133,7 +135,6 @@ class Checkpointer(BaseCheckpointer):
       manager_cls = ocp.CheckpointManager
     ckpt_mgr = manager_cls(
         epath.Path(self.workdir) / CHECKPOINT_FOLDER_NAME,
-        pytree_checkpoint.PyTreeCheckpointer(),
         options=mgr_options,
     )
     return ckpt_mgr
@@ -144,18 +145,19 @@ class Checkpointer(BaseCheckpointer):
       step: int = -1,
       *,
       noop_if_missing: bool = False,
-      restore_kwargs: Optional[dict[str, Any]] = None,
   ) -> _T:
     """Restore state."""
-    restore_kwargs = restore_kwargs or {}
 
     state = initial_state
     if self._ckpt_mgr.latest_step() is not None:
       step = self._absolute_step(step)
 
-      state = self._ckpt_mgr.restore(
-          step, items=initial_state, restore_kwargs=restore_kwargs
-      )
+      if initial_state is None:
+        args = ocp.args.StandardRestore()
+      else:
+        args = ocp.args.StandardRestore(initial_state)
+
+      state = self._ckpt_mgr.restore(step, args=args)
     elif not noop_if_missing:  # No checkpoint
       raise FileNotFoundError(
           f"No checkpoint found in {self.workdir}. Use `noop_if_missing=True`"
@@ -174,10 +176,11 @@ class Checkpointer(BaseCheckpointer):
       force: bool = False,
   ) -> bool:
     """Save state."""
-    save_args = orbax_utils.save_args_from_target(state)
     with jax.transfer_guard("allow"):
       return self._ckpt_mgr.save(
-          step, state, save_kwargs={"save_args": save_args}, force=force
+          step,
+          args=ocp.args.StandardSave(state),
+          force=force,
       )
 
   def maybe_save_state(
@@ -218,6 +221,9 @@ class Checkpointer(BaseCheckpointer):
     """Returns the metadata (tree, shape,...) associated with the step."""
     step = self._absolute_step(step)
     return self._ckpt_mgr.item_metadata(step)
+
+  def wait_until_finished(self) -> None:
+    self._ckpt_mgr.wait_until_finished()
 
 
 @dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
