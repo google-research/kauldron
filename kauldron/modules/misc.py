@@ -62,6 +62,7 @@ class Rearrange(nn.Module):
   """Wrapper around `einops.rearrange` for usage e.g. in `nn.Sequential`.
 
   Example:
+
   ```
   cfg.model = kd.nn.Sequential(
       inputs="batch.image",
@@ -93,6 +94,7 @@ class Reduce(nn.Module):
   """Wrapper around `einops.reduce` for usage e.g. in `nn.Sequential`.
 
   Example:
+
   ```
   cfg.model = kd.nn.Sequential(
       inputs="batch.image",
