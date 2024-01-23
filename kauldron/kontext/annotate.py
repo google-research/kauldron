@@ -21,6 +21,7 @@ import inspect
 import os
 from typing import Annotated, Any, Callable, Iterable, Optional
 
+from etils import epy
 from kauldron.kontext import paths
 from kauldron.kontext import type_utils
 
@@ -97,7 +98,10 @@ def resolve_from_keyed_obj(
             "default value."
         )
 
-  return _get_values_from_context(tree, key_paths, optional_keys)
+  try:
+    return _get_values_from_context(tree, key_paths, optional_keys)
+  except Exception as e:  # pylint: disable=broad-exception-caught
+    epy.reraise(e, f"Error for {type(keyed_obj).__qualname__}: ")
 
 
 def _get_values_from_context(
