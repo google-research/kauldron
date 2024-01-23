@@ -25,7 +25,7 @@ import tensorflow as tf
 
 
 @dataclasses.dataclass(repr=False)
-class Tfdata(base.DataLoader):
+class TFData(base.DataLoader):
   """TF data dataset loader."""
 
   # Function that returns the tf dataset.
