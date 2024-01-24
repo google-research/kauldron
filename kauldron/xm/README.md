@@ -133,8 +133,17 @@ See https://kauldron.rtfd.io/en/latest-xm colab to launch Kauldron experiments f
 
 ### Sweep
 
-Sweeps are defined through the `xp.sweep_info` attribute. Sweep can be passed
-explicitly:
+Note: If you're looking into launch sweep for Kauldron, see https://kauldron.rtfd.io/en/latest/intro.html#sweeps
+
+Sweeps are defined through the `xp.sweep_info` attribute. `SweepInfo` customize
+how to resolve the sweep. Different implementations are provided:
+
+* `SimpleSweep`: Explicitly provide the list of args overwrite
+  (`[{'batch_size': 64}, ...]`)
+* `KauldronSweep`: Load the sweep from the `def sweep()` function from the
+  `config.py`
+
+Example:
 
 ```python
 def sweep_fn():
@@ -148,25 +157,7 @@ xp = kxm.Experiment(
 xp.launch()
 ```
 
-<section class="zippy">
-
-Sweep in Kauldron:
-
-For Kauldron experiments, the `def sweep()` is defined in the `config.py`.
-The when loading the Kauldron kxm config, the sweep can be activated with
-
-```python
-from kauldron.xm.configs import kd_base
-
-
-xp_config = kd_base.get_config()
-xp_config.sweep = True  # Or `--xp.sweep=True` in the CLI
-
-xp = konfig.resolve(xp_config)
-xp.launch()
-```
-
-</section>
+For more flexibility, you can implement your own `SweepInfo`.
 
 ### Set workdir
 
