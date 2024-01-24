@@ -112,6 +112,9 @@ def _is_training(self: nn.Module) -> bool:
 def _mock_flax_to_add_is_training_kwargs() -> None:
   """Add the `is_training=` kwargs to the `.init` / `.apply`."""
   nn.Module.init = _add_is_training_kwargs(nn.Module.init)
+  nn.Module.init_with_output = _add_is_training_kwargs(
+      nn.Module.init_with_output
+  )
   nn.Module.apply = _add_is_training_kwargs(nn.Module.apply)
 
 

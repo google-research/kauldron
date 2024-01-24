@@ -18,6 +18,7 @@
 from kauldron.train.config_lib import Trainer
 from kauldron.train.rngs_lib import RngStream
 from kauldron.train.rngs_lib import RngStreams
+from kauldron.train.train_step import ModelWithAux
 from kauldron.train.train_step import TrainState
 from kauldron.train.train_step import TrainStep
 from kauldron.utils.context import Context  # TODO(epot): Move context to train

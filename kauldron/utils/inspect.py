@@ -239,7 +239,8 @@ def _get_cumulative_params(path: tuple[str, ...], table) -> int:
 
 
 def _get_styled_df(
-    table: nn.summary.Table, model_config: konfig.ConfigDict
+    table: nn.summary.Table,
+    model_config: konfig.ConfigDict | None = None,
 ) -> pd.DataFrame:
   """Return a styled pd.DataFrame for the model-overview table in colab."""
   df_rows = []
@@ -252,11 +253,16 @@ def _get_styled_df(
     # * Inside `MyModel.__call__`: `x = nn.Dense(name='some_value')(x)`
     # Here `get_by_path(, 'some_value')` will extract the `Config()`, instead
     # of returning `None`.
-    m_config = kontext.get_by_path(
-        model_config, ".".join(row.path), default=None
-    )
+
+    if model_config is not None:
+      m_config = kontext.get_by_path(
+          model_config, ".".join(row.path), default=None
+      )
+      m_config_values = {"Cfg": _format_module_config(m_config)}
+    else:
+      m_config_values = {}
     df_rows.append({
-        "Cfg": _format_module_config(m_config),
+        **m_config_values,
         "Path": _format_module_path(row.path),
         "Module": _format_module(row.module_type),
         "Inputs": _format_inputs(args, input_ann),
@@ -296,6 +302,7 @@ def _get_summary_table(
     rngs: dict[str, kd_random.PRNGKey],
 ) -> nn.summary.Table:
   """Return model overview as a `nn.summary.Table`."""
+  # TODO(epot): Replace by get_model_inputs_from_batch_spec
   m_batch = data_utils.mock_batch_from_elem_spec(ds.element_spec)
   model_args, model_kwargs = data_utils.get_model_inputs(
       model, {"batch": m_batch, "step": 0}
@@ -350,9 +357,10 @@ def json_spec_like(obj) -> Any:
 
 
 def get_colab_model_overview(
+    *,
     model: nn.Module,
     train_ds: data.Pipeline,
-    model_config: konfig.ConfigDict,
+    model_config: konfig.ConfigDict | None = None,
     rngs: dict[str, kd_random.PRNGKey],
 ) -> pd.DataFrame:
   """Return `pd.DataFrame` for displaying the model params, inputs,..."""
