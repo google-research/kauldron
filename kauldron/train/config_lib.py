@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import MutableMapping
 import dataclasses
 import functools
 import typing
@@ -61,6 +61,9 @@ if typing.TYPE_CHECKING:
   _JobConfigDict = konfig.ConfigDictLike[job_lib.Job]
 else:
   _JobConfigDict = Any
+
+
+FrozenDict = dict if typing.TYPE_CHECKING else flax.core.FrozenDict
 
 
 class Trainer(config_util.BaseConfig):
@@ -122,25 +125,25 @@ class Trainer(config_util.BaseConfig):
   # Metrics, losses, summaries
   log_metrics_every: int = 100
   log_summaries_every: int = 1000
-  train_losses: Mapping[str, losses.Loss] = dataclasses.field(
-      default_factory=flax.core.FrozenDict
+  train_losses: MutableMapping[str, losses.Loss] = dataclasses.field(
+      default_factory=FrozenDict
   )
-  train_metrics: Mapping[str, metrics.Metric] = dataclasses.field(
-      default_factory=flax.core.FrozenDict
+  train_metrics: MutableMapping[str, metrics.Metric] = dataclasses.field(
+      default_factory=FrozenDict
   )
-  train_summaries: Mapping[str, summaries.Summary] = dataclasses.field(
-      default_factory=flax.core.FrozenDict
+  train_summaries: MutableMapping[str, summaries.Summary] = dataclasses.field(
+      default_factory=FrozenDict
   )
-  flatboards: Mapping[str, flatboard.DashboardFactory] = dataclasses.field(
-      default_factory=flax.core.FrozenDict
+  flatboards: MutableMapping[str, flatboard.DashboardFactory] = (
+      dataclasses.field(default_factory=FrozenDict)
   )
   profiler: profile_utils.Profiler = dataclasses.field(
       default_factory=profile_utils.Profiler
   )
 
   # Optimizer
-  schedules: Mapping[str, optax.Schedule] = dataclasses.field(
-      default_factory=flax.core.FrozenDict
+  schedules: MutableMapping[str, optax.Schedule] = dataclasses.field(
+      default_factory=FrozenDict
   )
   optimizer: optax.GradientTransformation
 
@@ -148,23 +151,21 @@ class Trainer(config_util.BaseConfig):
   checkpointer: checkpoints.checkpointer.BaseCheckpointer = dataclasses.field(
       default_factory=checkpoints.NoopCheckpointer
   )
-  init_transforms: Mapping[str, checkpoints.AbstractPartialLoader] = (
-      dataclasses.field(default_factory=flax.core.FrozenDict)
+  init_transforms: MutableMapping[str, checkpoints.AbstractPartialLoader] = (
+      dataclasses.field(default_factory=FrozenDict)
   )
 
   # Train, eval loop
   trainstep: train_step.TrainStep = dataclasses.field(
       default_factory=train_step.TrainStep, repr=False
   )
-  evals: Mapping[str, evaluators.EvaluatorBase] = dataclasses.field(
-      default_factory=flax.core.FrozenDict
+  evals: MutableMapping[str, evaluators.EvaluatorBase] = dataclasses.field(
+      default_factory=FrozenDict
   )
 
   # Additional arbitrary config values
   # Should this be renamed `extra` ?
-  aux: Mapping[str, Any] = dataclasses.field(
-      default_factory=flax.core.FrozenDict
-  )
+  aux: MutableMapping[str, Any] = dataclasses.field(default_factory=FrozenDict)
 
   # XManager parameters
   xm_job: _JobConfigDict = dataclasses.field(default_factory=job_lib.Job)
@@ -177,7 +178,7 @@ class Trainer(config_util.BaseConfig):
   def __post_init__(self):
     # It's convenient to set `cfg.evals = None` to disable evaluation
     for name, default_factory in {
-        'evals': flax.core.FrozenDict,
+        'evals': FrozenDict,
         'checkpointer': checkpoints.NoopCheckpointer,
         'profiler': profile_utils.NoopProfiler,
     }.items():
