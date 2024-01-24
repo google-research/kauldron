@@ -40,20 +40,23 @@ with epy.binary_adhoc():
   # pylint: enable=g-import-not-at-top
 
 
-_XP = config_flags.DEFINE_config_file(
-    "xp",
-    "third_party/py/kauldron/xm/configs/kd_base.py",
-    "Path to the XManager config to be run.",
-    accept_new_attributes=True,
-    lock_config=False,
-)
-_CONFIG = config_flags.DEFINE_config_file(
-    "cfg",
-    None,
-    "Path to the configuration file to be run.",
-    accept_new_attributes=True,
-    lock_config=False,
-)
+try:
+  _XP = config_flags.DEFINE_config_file(
+      "xp",
+      "third_party/py/kauldron/xm/configs/kd_base.py",
+      "Path to the XManager config to be run.",
+      accept_new_attributes=True,
+      lock_config=False,
+  )
+  _CONFIG = config_flags.DEFINE_config_file(
+      "cfg",
+      None,
+      "Path to the configuration file to be run.",
+      accept_new_attributes=True,
+      lock_config=False,
+  )
+except Exception as e_:  # pylint: disable=broad-exception-caught
+  epy.reraise(e_, suffix="See all flags at")
 
 
 def main(_) -> None:
@@ -69,7 +72,10 @@ def main(_) -> None:
   # Execute resolve within a adhoc import context as it can import
   # additional modules
   with epy.binary_adhoc():
-    xp: kxm.Experiment = konfig.resolve(xp_config)
+    try:
+      xp: kxm.Experiment = konfig.resolve(xp_config)
+    except TypeError as e:
+      epy.reraise(e, suffix="See all flags at")
 
   if kd_config is not None:
     with (
@@ -92,7 +98,10 @@ def _flags_parser(args: list[str]) -> None:
       konfig.set_lazy_imported_modules(),
       epy.binary_adhoc(),
   ):
-    flags.FLAGS(args)
+    try:
+      flags.FLAGS(args)
+    except Exception as e:  # pylint: disable=broad-exception-caught
+      epy.reraise(e, suffix="See all flags at")
 
 
 if __name__ == "__main__":

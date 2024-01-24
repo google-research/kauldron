@@ -50,6 +50,11 @@ class SweepInfo(abc.ABC):
   """
 
   # Automatically set
+  # `_sweep_value` contains the value passed to `--xp.sweep=`
+  _sweep_value: bool | str | list[str] = dataclasses.field(  # pytype: disable=annotation-type-mismatch
+      default=None,
+      repr=False,
+  )
   # Allow the sweep and jobs_provider to play together
   _jobs_provider: jobs_info.JobsProvider = dataclasses.field(  # pytype: disable=annotation-type-mismatch
       default=None,
@@ -69,14 +74,6 @@ class SweepInfo(abc.ABC):
   def tags(self) -> list[str]:
     """XM tags when sweep is activated."""
     return ["🧹"]
-
-  @functools.cached_property
-  def should_run(self) -> bool:
-    """Whether the sweep should run.
-
-    Note that this field can be overwritten with `--xp.sweep` / `--noxp.sweep`.
-    """
-    return True
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)

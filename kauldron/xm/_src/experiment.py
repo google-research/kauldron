@@ -62,9 +62,8 @@ class Experiment(job_params.JobParams):
       `root_dir` can contain `{cell}`, `{author}` placeholders.
     subdir_format: Specify the dirname for the xp and work-unit subfolder.
       Default implementation create `{root_dir}/{xid}/{wid}/`
-    sweep: Whether or not running the sweep, if `True`, run the sweep specified
-      in `sweep_info`. If `None`, the `.sweep_info.should_run` property is used
-      to detect whether to run the sweep.
+    sweep: Whether or not running the sweep. The value here is propagated to the
+      `sweep_info._sweep_value`.
     sweep_info: Sweep kwargs builder. Specify how to get the sweep kwargs.
     orchestrator: Indicate how to launch the jobs (which order,...)
     importance: Experiment importance.
@@ -90,7 +89,7 @@ class Experiment(job_params.JobParams):
       default_factory=dir_utils.SubdirFormat
   )
 
-  sweep: Optional[bool] = None
+  sweep: Optional[bool | str | list[str]] = None
   sweep_info: sweep_utils.SweepInfo = sweep_utils.NoSweep()
 
   orchestrator: orchestrator_lib.Orchestrator = dataclasses.field(
@@ -118,13 +117,16 @@ class Experiment(job_params.JobParams):
     if isinstance(self.tags, str):
       object.__setattr__(self, "tags", self.tags.split(","))
 
-    if not self._should_run_sweep:
+    if self.sweep in (None, False):
       new_sweep = sweep_utils.NoSweep()
     else:
-      # Some sweep require info from the job builder (e.g. to load from config)
-      # So link the sweep to the job
       new_sweep = dataclasses.replace(
-          self.sweep_info, _jobs_provider=self.jobs_provider
+          self.sweep_info,
+          # Some sweep require info from the job builder (e.g. to load from
+          #  config). So link the sweep to the job
+          _jobs_provider=self.jobs_provider,
+          # Propagate the `--xp.sweep=` value.
+          _sweep_value=self.sweep,
       )
     object.__setattr__(self, "sweep_info", new_sweep)
 
@@ -256,13 +258,6 @@ class Experiment(job_params.JobParams):
         unresolved_root_dir=self.root_dir,
         subdir_format=self.subdir_format,
     )
-
-  @functools.cached_property
-  def _should_run_sweep(self) -> bool:
-    if self.sweep is not None:  # Sweep flag explicitly provided
-      return self.sweep
-    else:
-      return self.sweep_info.should_run
 
   @functools.cached_property
   def all_tags(self) -> list[str]:

@@ -43,11 +43,9 @@ def get_config():
           overrides={},
       ),
       # `KauldronSweep` is activated either:
-      # * By setting `--xp.sweep=True`
-      # * By setting `--xp.sweep_info.names=aaa,bbb` (non-unamed sweep)
-      sweep_info=kxm.KauldronSweep(
-          names=[''],  # Empty `''` match the unamed `def sweep()`
-      ),
+      # * By setting `--xp.sweep` (for `def sweep()`)
+      # * By setting `--xp.sweep=aaa,bbb` (named sweep `def sweep_aaa()`,...)
+      sweep_info=kxm.KauldronSweep(),
       debug=kxm.Debug(
           catch_post_mortem=False,
       ),

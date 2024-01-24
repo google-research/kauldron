@@ -50,10 +50,11 @@ konfig.register_default_values(
     )
 )
 
+# TODO(epot): Remove `names` once users have migrated to `--xp.sweep`
 konfig.register_default_values(
     kxm.KauldronSweep(
         # Use `placeholder(object)` to accept both `v0,v1` and `['v0', 'v1']`
-        names=konfig.placeholder(object, default=['']),
+        names=konfig.placeholder(object),
     )
 )
 konfig.register_default_values(
@@ -76,6 +77,8 @@ konfig.register_default_values(
 )
 konfig.register_default_values(
     kxm.Experiment(
+        # Use `object` to support both `--sweep` and `--sweep=lr,batch_size`
+        sweep=konfig.placeholder(object),
         # JobParams attributes
         args={},
         env_vars={},

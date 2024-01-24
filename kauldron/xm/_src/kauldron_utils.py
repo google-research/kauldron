@@ -290,17 +290,23 @@ def _resolve_run_konfig(
 class KauldronSweep(sweep_utils.SweepInfo):
   """Kauldron sweep.
 
+  Run the named sweeps defined by `sweep_[NAME]()` in the config file.
+  If multiple sweep names are given run all their combinations (product).
+  Empty string match `def sweep()` (default).
+
   Attributes:
-    names: Run the named sweeps defined by `sweep_[NAME]()` in the config file.
-      If multiple sweep names are given run all their combinations (product).
-      Empty string match `def sweep()` (default).
+    names: DEPRECATED.
   """
 
-  names: list[str] = dataclasses.field(default_factory=lambda: [""])
+  names: Any = None
 
   def __post_init__(self):
-    if isinstance(self.names, str):
-      object.__setattr__(self, "names", self.names.split(","))
+    if self.names:
+      raise ValueError(
+          "`--xp.sweep_info.names=xx,yy` is deprecated. Please use"
+          " `--xp.sweep=xx,yy`.\n"
+          "See https://kauldron.rtfd.io/en/latest/intro.html#sweeps."
+      )
 
   def __iter__(self) -> Iterable[sweep_utils.SweepItem]:
     if not isinstance(self._jobs_provider, KauldronJobs):
@@ -311,19 +317,26 @@ class KauldronSweep(sweep_utils.SweepInfo):
 
     yield from _sweeps_from_module(
         module=self._jobs_provider.module,  # pylint: disable=attribute-error
-        names=self.names,
+        names=self.sweep_names,
     )
 
   @functools.cached_property
-  def should_run(self) -> bool:
-    # `KauldronSweep` is activated either:
-    # * By setting `--xp.sweep=True` (`--xp.sweep` overwrite `should_run`)
-    # * By setting `--xp.sweep_info.names=aaa,bbb` (non-unamed sweep)
-    return set(self.names) != {""}
+  def sweep_names(self) -> list[str]:
+    match self._sweep_value:
+      case None | False:
+        return []
+      case True:
+        return [""]
+      case str():
+        return self._sweep_value.split(",")
+      case list():
+        return self._sweep_value
+      case _:
+        raise ValueError(f"Unexpected sweep value: {self._sweep_value}")
 
   @functools.cached_property
   def tags(self) -> list[str]:
-    return [f"🧹{name}" for name in self.names]
+    return [f"🧹{name}" for name in self.sweep_names]
 
 
 def _sweeps_from_module(
