@@ -77,7 +77,7 @@ konfig.register_default_values(
 )
 konfig.register_default_values(
     kxm.Experiment(
-        # Use `object` to support both `--sweep` and `--sweep=lr,batch_size`
+        # Use `object` to support both `--xp.sweep` and `--xp.sweep=lr,batch`
         sweep=konfig.placeholder(object),
         # JobParams attributes
         args={},

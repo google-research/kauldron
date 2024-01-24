@@ -8,6 +8,8 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 ## [Unreleased]
 
+* Deprecated: Remove `--xp.sweep_info.names=` flag. Instead, sweep are unified
+  under `--xp.sweep` (see: https://kauldron.rtfd.io/en/latest/intro.html#sweeps)
 * Add `kd.data.loader.TFData` for arbitrary `tf.data` pipelines
 * Add `kd.data.InMemoryPipeline` for small datasets that fit in memory
 * Add `kd.knn.convert` to convert any Flax module to klinen.
