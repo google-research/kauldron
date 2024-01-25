@@ -14,9 +14,10 @@
 
 """Data pipelines."""
 
+import abc
 import dataclasses
 import functools
-from typing import Any, Iterator, Mapping, Optional, TypeAlias
+from typing import Any, Mapping, Optional, TypeAlias
 
 from absl import logging
 from etils import edc
@@ -28,6 +29,7 @@ import grain.python as pygrain
 import grain.tensorflow as grain
 import jax
 from kauldron.data import data_utils
+from kauldron.data import iterators
 from kauldron.data import utils
 from kauldron.data.loaders import base as base_data_loader
 from kauldron.typing import PRNGKeyLike, PyTree  # pylint: disable=g-importing-member,g-multiple-import
@@ -77,6 +79,12 @@ class Pipeline(data_utils.IterableDataset, config_util.UpdateFromRootCfg):
   @functools.cached_property
   def host_batch_size(self) -> int:
     return utils.BatchSize(self.batch_size).per_process
+
+  # Overwrite the base class as the signature change.
+  @abc.abstractmethod
+  def __iter__(self) -> iterators.Iterator:
+    """Iterate over the dataset elements."""
+    raise NotImplementedError()
 
   __repr__ = edc.repr
 
@@ -149,9 +157,11 @@ class TFDataPipeline(Pipeline):
     ds = tfds.as_numpy(ds)
     return ds
 
-  def __iter__(self) -> Iterator[PyTree[_NpArray]]:
+  def __iter__(self) -> iterators.Iterator:
     """Iterate over the dataset elements."""
-    return iter(self._ds_iter)
+    return iterators.NonCheckpointableIterator(
+        source=self, iter=iter(self._ds_iter)
+    )
 
   @property
   def element_spec(self) -> PyTree[enp.ArraySpec]:
@@ -247,9 +257,12 @@ class PyGrainPipeline(Pipeline):
     )
     return dataloader
 
-  def __iter__(self) -> Iterator[PyTree[_NpArray]]:
+  def __iter__(self) -> iterators.Iterator:
     """Iterate over the dataset elements."""
-    yield from self.loader
+    # TODO(epot): return iterable.PyGrainIterator(self.loader)
+    return iterators.NonCheckpointableIterator(
+        source=self, iter=iter(self.loader)
+    )
 
   def __len__(self) -> int:
     if self.num_epochs is None:
