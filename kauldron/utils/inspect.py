@@ -246,7 +246,7 @@ def _get_styled_df(
   df_rows = []
   for row in table:
     args, input_ann, return_ann = _get_args(
-        row.module_type, row.method, row.inputs
+        type(row.module_copy), row.method, row.inputs
     )
     # It's still possible that the module path conflict with an attribute, like
     # * In the config: `model = MyModel(some_value=Config())`
@@ -264,7 +264,7 @@ def _get_styled_df(
     df_rows.append({
         **m_config_values,
         "Path": _format_module_path(row.path),
-        "Module": _format_module(row.module_type),
+        "Module": _format_module(type(row.module_copy)),
         "Inputs": _format_inputs(args, input_ann),
         "Outputs": _format_outputs(row.outputs, return_ann),
         "Parameter Shapes": _format_param_shapes(row.module_variables),
