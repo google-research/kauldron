@@ -26,7 +26,7 @@ from kauldron.kontext import paths
 from kauldron.kontext import type_utils
 
 _key_token = object()
-Key = Annotated[str, _key_token]
+Key = Annotated[Any, _key_token]  # `str` or `path_builder_from()`
 
 REQUIRED = "__KEY_REQUIRED__"
 _MISSING = object()

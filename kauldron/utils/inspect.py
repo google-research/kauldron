@@ -245,9 +245,12 @@ def _get_styled_df(
   """Return a styled pd.DataFrame for the model-overview table in colab."""
   df_rows = []
   for row in table:
-    args, input_ann, return_ann = _get_args(
-        type(row.module_copy), row.method, row.inputs
-    )
+    # TODO(epot): Once changes are stable in flax, remove this condition
+    if hasattr(row, "module_type"):
+      module_type = row.module_type  # pytype: disable=attribute-error
+    else:
+      module_type = type(row.module_copy)  # pytype: disable=attribute-error
+    args, input_ann, return_ann = _get_args(module_type, row.method, row.inputs)
     # It's still possible that the module path conflict with an attribute, like
     # * In the config: `model = MyModel(some_value=Config())`
     # * Inside `MyModel.__call__`: `x = nn.Dense(name='some_value')(x)`
@@ -264,7 +267,7 @@ def _get_styled_df(
     df_rows.append({
         **m_config_values,
         "Path": _format_module_path(row.path),
-        "Module": _format_module(type(row.module_copy)),
+        "Module": _format_module(module_type),
         "Inputs": _format_inputs(args, input_ann),
         "Outputs": _format_outputs(row.outputs, return_ann),
         "Parameter Shapes": _format_param_shapes(row.module_variables),
