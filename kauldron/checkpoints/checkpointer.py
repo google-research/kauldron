@@ -144,9 +144,9 @@ class Checkpointer(BaseCheckpointer):
         # step_format_fixed_length=9,
         create=True,
         # TODO(epot): Add `best_fn` to allow `ckpt_mngr.best_step()`
-        async_options=ocp.AsyncOptions(
-            timeout_secs=60 * 30,  # 30 minutes
-        ),
+        # async_options=ocp.AsyncOptions(
+        #     timeout_secs=60 * 30,  # 30 minutes
+        # ),
     )
     if self.fast:
       manager_cls = FastCheckpointManager
