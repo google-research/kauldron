@@ -21,7 +21,7 @@ import dataclasses
 import jax.numpy as jnp
 from kauldron import kontext
 from kauldron.losses import base
-from kauldron.typing import Float, Int, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Array, Float, Int, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import optax
 
 
@@ -94,6 +94,6 @@ class SigmoidBinaryCrossEntropy(base.Loss):
 
   @typechecked
   def get_values(
-      self, logits: Float["*a n"], labels: Float["*a n"]
+      self, logits: Float["*a n"], labels: Array["*a n"]
   ) -> Float["*a n"]:
     return optax.sigmoid_binary_cross_entropy(logits, labels)
