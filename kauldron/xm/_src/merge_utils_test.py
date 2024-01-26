@@ -49,7 +49,6 @@ def test_merge():
 
 
 def test_merge_error():
-
   @merge_utils.add_merge_support
   @dataclasses.dataclass(frozen=True)
   class A:

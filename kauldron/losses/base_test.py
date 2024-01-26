@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tests."""
+
 import dataclasses
 
 import jax.numpy as jnp

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Collection of standard losses."""
+
 from __future__ import annotations
 
 import dataclasses

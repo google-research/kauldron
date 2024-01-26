@@ -57,6 +57,7 @@ class PRNGKey(_Base):
   x = jax.random.uniform(key)  # Jax API still works
   ```
   """
+
   rng: jax.Array
 
   def __init__(

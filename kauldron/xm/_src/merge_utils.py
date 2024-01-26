@@ -194,6 +194,7 @@ def _wrap_repr(cls: _ClsT) -> _ClsT:
   cls.__repr__ = new_repr
   return cls
 
+
 # ------- Merge logic -------
 
 

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import dataclasses
 from typing import Any
+
 import flax
 from kauldron import kontext
 
@@ -42,8 +43,8 @@ class Context:
       after the backward pass, e.g. for metrics)
     updates: The transformed gradients as returned by the optimizer. (available
       after the backward pass, e.g. for metrics)
-    opt_state: The state of the optimizer prior to the update. (available
-      after the backward pass, e.g. for metrics). The old state is chosen to be
+    opt_state: The state of the optimizer prior to the update. (available after
+      the backward pass, e.g. for metrics). The old state is chosen to be
       consistent with parameters which are also pre-update.
   """
 

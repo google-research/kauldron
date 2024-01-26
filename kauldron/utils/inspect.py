@@ -375,20 +375,18 @@ def get_batch_stats(batch: _Example) -> pd.DataFrame:
   """Return `pd.DataFrame` containing the batch stats."""
   # TODO(epot):
   # * Supports string too
-  return pd.DataFrame(
-      [
-          {
-              "Name": f"batch.{k}",
-              "Dtype": v.dtype,
-              "Shape": v.shape,
-              "Min": np.min(v),
-              "Max": np.max(v),
-              "Mean": np.mean(v),
-              "StdDev": np.std(v),
-          }
-          for k, v in kontext.flatten_with_path(batch).items()
-      ]
-  )
+  return pd.DataFrame([
+      {
+          "Name": f"batch.{k}",
+          "Dtype": v.dtype,
+          "Shape": v.shape,
+          "Min": np.min(v),
+          "Max": np.max(v),
+          "Mean": np.mean(v),
+          "StdDev": np.std(v),
+      }
+      for k, v in kontext.flatten_with_path(batch).items()
+  ])
 
 
 def plot_batch(batch: _Example) -> None:

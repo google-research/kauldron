@@ -31,6 +31,7 @@ _FnT = TypeVar('_FnT')
 @dataclasses.dataclass
 class _Context:
   """`is_training` state."""
+
   is_training_stack: edc.ContextVar[list[bool]] = dataclasses.field(
       default_factory=list
   )

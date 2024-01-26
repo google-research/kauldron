@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tools for string paths such as "cfg.net.layers[0].act_fun"."""
+
 from __future__ import annotations
 
 import ast

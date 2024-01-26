@@ -95,6 +95,7 @@ class _PathBuilderState:
 
 class _PathBuilder:
   """Base path builder class."""
+
   _state: _PathBuilderState
 
   def __as_konfig__(self) -> str:
@@ -131,6 +132,7 @@ class DynamicPathBuilder(_PathBuilder):
 @dataclasses.dataclass
 class _AnnotatedPathBuilderState(_PathBuilderState):
   """State of `AnnotatedPathBuilder`."""
+
   cls: Optional[type[_AnnotatedPathBuilderState]] = None
 
   @functools.cached_property

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Non-default image preprocessing ops (with extra dependencies)."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -21,7 +22,6 @@ from typing import Optional
 import grain.tensorflow as grain
 from kauldron import kontext
 from kauldron.typing import TfFloat, TfUInt8, check_type  # pylint: disable=g-multiple-import,g-importing-member
-
 import tensorflow_models as tfm
 
 

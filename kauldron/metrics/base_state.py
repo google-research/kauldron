@@ -167,6 +167,7 @@ class CollectingState(State):
   *  Because `merge()` keep all values, those metrics uses much more memory and
      can be slow to compute.
   """
+
   # TODO(epot): Could add a more explicit annotation: `x: Accumulated[Float[]]`
   # so a metric can have both accumulated and reduced fields
 
@@ -326,6 +327,7 @@ class CollectFirstState(State):
   assert final_state.compute().images.shape == (5, 16, 16, 3)
   ```
   """
+
   if typing.TYPE_CHECKING:
     keep_first: int
   else:
@@ -336,13 +338,11 @@ class CollectFirstState(State):
 
   @classmethod
   def empty(cls: type[_SelfT]) -> _SelfT:
-    return cls(
-        **{
-            f.name: None
-            for f in dataclasses.fields(cls)
-            if f.name not in {"parent", "keep_first"}
-        }
-    )
+    return cls(**{
+        f.name: None
+        for f in dataclasses.fields(cls)
+        if f.name not in {"parent", "keep_first"}
+    })
 
   @property
   def _accumulated_fields(self) -> dict[str, Array]:

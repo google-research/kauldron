@@ -91,7 +91,7 @@ class NoSweep(SweepInfo):
 # pytype: disable=invalid-function-definition
 @dataclasses.dataclass(frozen=True)
 class SimpleSweep(SweepInfo):
-# pytype: enable=invalid-function-definition
+  # pytype: enable=invalid-function-definition
   """Simple sweep (e.g. on Colab).
 
   Usage:

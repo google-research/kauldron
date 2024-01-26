@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import NamedTuple
 
 import jax.numpy as jnp
-from kauldron.typing.array_types import Bool, Float, Float32, Int, UInt8, UInt32  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing.array_types import Bool, Float, Float32, Int, UInt32, UInt8  # pylint: disable=g-multiple-import,g-importing-member
 import numpy as np
 import pytest
 

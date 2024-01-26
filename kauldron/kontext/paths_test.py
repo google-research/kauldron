@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Property based testing for string paths."""
+
 from typing import Any
 
 import flax.struct
@@ -70,7 +71,6 @@ def test_path_parsing_custom_example():
 
 
 def test_tree_flatten_with_path():
-
   @flax.struct.dataclass
   class MyTree:
     foo: Any

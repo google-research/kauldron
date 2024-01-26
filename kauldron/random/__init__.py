@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Small wrapper around `jax.random` for OO API."""
+
 # pylint: disable=g-importing-member
 from kauldron.random.random import PRNGKey
 # pylint: enable=g-importing-member

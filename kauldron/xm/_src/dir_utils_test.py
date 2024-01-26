@@ -18,8 +18,11 @@ from kauldron.xm._src import dir_utils
 
 
 def test_sweep_kwargs():
-  assert dir_utils._format_sweep_kwargs({
-      'losses.train[0]': 123,
-      'other': [1, 2, 34],
-      'test_invalid': 'som//e\n%'
-  }) == 'losses.train(0)=123,other=(1, 2, 34),test_invalid=some'
+  assert (
+      dir_utils._format_sweep_kwargs({
+          'losses.train[0]': 123,
+          'other': [1, 2, 34],
+          'test_invalid': 'som//e\n%',
+      })
+      == 'losses.train(0)=123,other=(1, 2, 34),test_invalid=some'
+  )

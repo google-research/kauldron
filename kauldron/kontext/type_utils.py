@@ -21,7 +21,7 @@ import dataclasses
 import functools
 import types
 import typing
-from typing import Any, Annotated, TypeVar, Union
+from typing import Annotated, Any, TypeVar, Union
 
 from etils import epy
 import typing_extensions
@@ -159,6 +159,7 @@ class _TypeVisitor:
 @dataclasses.dataclass
 class _AnnotatedCheckVisitor(_TypeVisitor):
   """Type visitor which check the token is present in the tree."""
+
   annotated_token: _Token
   token_present: bool = False
 

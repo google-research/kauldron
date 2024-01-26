@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Interms property."""
+
 from __future__ import annotations
 
 from flax import linen as nn

@@ -39,6 +39,7 @@ _T = TypeVar('_T')
 @dataclasses.dataclass
 class _ModuleProxy:
   """Proxy of a single module exposing the captured intermediates."""
+
   _cls_name: str
   # Fields: `xxx: Intermediate[T]`
   _intermediate_fields: dict[str, intermediate.IntermediateDescriptor]
@@ -213,6 +214,7 @@ def _get_intermediate_fields(
 @jax.tree_util.register_pytree_node_class
 class ModuleIntermediateProxy:
   """Module-like object which contain the intermediate values."""
+
   _proxy: _ModuleProxy
 
   def __init__(self, module: module_lib.Module):
@@ -354,5 +356,6 @@ def _set_intermediate_values(
   proxy = cache[id(module)]
   proxy._set_intermediate(intermediate_dict)  # pylint: disable=protected-access
   return module
+
 
 _Cache: TypeAlias = dict[int, _ModuleProxy]

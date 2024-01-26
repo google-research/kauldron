@@ -174,22 +174,21 @@ class Module(nn.Module):  # pytype: disable=invalid-function-definition
 
     # Initialize the state
     with context.set_in_call_state(self):
-      variables = flax.core.freeze(self.init(
-          rngs,
-          *args,
-          **kwargs,
-          mutable=(Collection.PARAMS, Collection.INTERMEDIATES),
-      ))
+      variables = flax.core.freeze(
+          self.init(
+              rngs,
+              *args,
+              **kwargs,
+              mutable=(Collection.PARAMS, Collection.INTERMEDIATES),
+          )
+      )
 
     return self._replace_state(params=variables.get(Collection.PARAMS, {}))
 
   @_bind_only_method
   def with_rng(
       self: _SelfT,
-      rng: int
-      | jax.Array
-      | dict[str, jax.Array]
-      | None = None,
+      rng: int | jax.Array | dict[str, jax.Array] | None = None,
   ) -> _SelfT:
     """Replace the rngs keys.
 

@@ -104,7 +104,6 @@ class _FieldReference(ml_collections.FieldReference):
     return self._apply_op(operator.attrgetter(name), new_type=object)
 
   def __getitem__(self, name: Any) -> Any:
-
     def fn_flow(value, name):
       return value[name]
 

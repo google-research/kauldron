@@ -18,4 +18,3 @@
 from kauldron.optim.combine import named_chain
 from kauldron.optim.transform import decay_to_init
 # pylint: enable=g-importing-memberfrom
-

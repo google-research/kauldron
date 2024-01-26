@@ -23,7 +23,7 @@ import itertools
 import math
 import operator
 import typing
-from typing import Any, List, Optional, Callable
+from typing import Any, Callable, List, Optional
 
 import jaxtyping
 import lark
@@ -161,6 +161,7 @@ class DimSpec(abc.ABC):
 @dataclasses.dataclass(init=False)
 class ShapeSpec:
   """Parsed shape specification."""
+
   dim_specs: tuple[DimSpec, ...]
 
   def __init__(self, *dim_specs: DimSpec):

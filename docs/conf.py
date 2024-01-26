@@ -22,6 +22,7 @@ pip install -e .[docs]
 sphinx-build -b html docs/ docs/_build
 ```
 """
+
 import sys
 from unittest import mock
 

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Metrics that keep simple statistics about generic values."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -120,9 +121,7 @@ class StdState(base_state.State):
     mask = jnp.broadcast_to(mask, values.shape)
     return cls(
         total=jnp.where(mask, values, jnp.zeros_like(values)).sum(),
-        sum_of_squares=jnp.where(
-            mask, values**2, jnp.zeros_like(values)
-        ).sum(),
+        sum_of_squares=jnp.where(mask, values**2, jnp.zeros_like(values)).sum(),
         count=mask.sum(),
     )
 

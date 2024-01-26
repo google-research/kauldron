@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Timer for measuring training performance."""
+
 import contextlib
 import time
 

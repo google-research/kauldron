@@ -165,12 +165,10 @@ class _ConfigDictVisitor:
       if cls not in (list, tuple):
         raise TypeError(f'Cannot freeze unknown sequence type {type(cls)}')
       cls = tuple
-    return cls(
-        [
-            _reraise_with_info(self._resolve_value, i)(v)
-            for i, v in enumerate(value)
-        ]
-    )
+    return cls([
+        _reraise_with_info(self._resolve_value, i)(v)
+        for i, v in enumerate(value)
+    ])
 
   def _resolve_dict(self, value):
     cls = type(value)

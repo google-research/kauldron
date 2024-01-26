@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Metrics for classification tasks."""
+
 from __future__ import annotations
 
 import dataclasses
@@ -111,6 +112,7 @@ class RocAuc(base.Metric):
   @flax.struct.dataclass
   class State(base_state.CollectingState):
     """RocAuc state."""
+
     labels: Int["*b 1"]
     probs: Float["*b n"]
     mask: Float["*b 1"]

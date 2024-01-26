@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Typing annotation utils."""
+
 from __future__ import annotations
 
 import difflib

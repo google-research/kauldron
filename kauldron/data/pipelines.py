@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Data pipelines."""
+
 import dataclasses
 import functools
 from typing import Any, Iterator, Mapping, Optional, TypeAlias

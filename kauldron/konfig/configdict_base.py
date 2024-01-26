@@ -455,12 +455,10 @@ def _normalize_config_only_value(value, name) -> Any:
     ):
       return value  # Built-ins
     case dict() | ml_collections.ConfigDict():
-      return ConfigDict(  # Convert `dict` -> `ConfigDict`
-          {
-              k: _normalize_config_only_value(v, f'{name}.{k}')
-              for k, v in value.items()
-          }
-      )
+      return ConfigDict({  # Convert `dict` -> `ConfigDict`
+          k: _normalize_config_only_value(v, f'{name}.{k}')
+          for k, v in value.items()
+      })
     case list() | tuple() | set() | frozenset():
       return type(value)(
           _normalize_config_only_value(v, f'{name}[{i}]')

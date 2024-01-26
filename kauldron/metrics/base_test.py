@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tests for metrics base classes."""
+
 from __future__ import annotations
 
 import dataclasses
