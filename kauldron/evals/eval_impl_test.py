@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""End-to-end test."""
+"""Test."""
 
+from collections.abc import Iterator
 import os
+from unittest import mock
 
 from etils import epath
 from kauldron import kd
@@ -22,7 +24,7 @@ from examples import mnist_autoencoder
 import tensorflow_datasets as tfds
 
 
-def test_end2end(tmp_path: epath.Path):
+def test_eval_impl(tmp_path: epath.Path):
   # Load config and reduce size
   cfg = mnist_autoencoder.get_config()
   # TODO(epot): Currently the gain mock data is not working:
@@ -41,6 +43,22 @@ def test_end2end(tmp_path: epath.Path):
 
   trainer = kd.konfig.resolve(cfg)
 
+  def _mocked_iterator(**kwargs) -> Iterator[int]:
+    del kwargs
+
+    # Simulate train saving a step
+    state = trainer.init_state()
+    trainer.checkpointer.save(state, step=0)
+    yield 0
+
   # Launch train
-  with tfds.testing.mock_data():
-    trainer.train()
+  with (
+      tfds.testing.mock_data(),
+      mock.patch(
+          'orbax.checkpoint.checkpoint_utils.checkpoints_iterator',
+          _mocked_iterator,
+      ),
+  ):
+    aux = trainer.continuous_eval('eval')
+    # Ensure at least one checkpoint was computed
+    assert 'recon' in aux['eval'].loss_states

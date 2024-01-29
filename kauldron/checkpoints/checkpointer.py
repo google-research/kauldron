@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import abc
+from collections.abc import Callable, Iterator
 import dataclasses
 import datetime
 import functools
@@ -95,6 +96,17 @@ class BaseCheckpointer(config_util.UpdateFromRootCfg, abc.ABC):
   def wait_until_finished(self) -> None:
     """Synchronizes the asynchronous checkpointing."""
     pass
+
+  def iter_new_checkpoints(
+      self,
+      *,
+      min_interval_secs: int = 0,
+      timeout: Optional[int] = None,
+      timeout_fn: Optional[Callable[[], bool]] = None,
+  ) -> Iterator[int]:
+    """Wrapper around `ocp.checkpoint_utils.checkpoints_iterator`."""
+    del min_interval_secs, timeout, timeout_fn
+    yield from []
 
 
 @dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
@@ -228,6 +240,23 @@ class Checkpointer(BaseCheckpointer):
     """Returns the metadata (tree, shape,...) associated with the step."""
     step = self._absolute_step(step)
     return self._ckpt_mgr.item_metadata(step)
+
+  def iter_new_checkpoints(
+      self,
+      *,
+      min_interval_secs: int = 0,
+      timeout: Optional[int] = None,
+      timeout_fn: Optional[Callable[[], bool]] = None,
+  ) -> Iterator[int]:
+    for step in ocp.checkpoint_utils.checkpoints_iterator(
+        checkpoint_dir=self._ckpt_mgr.directory,
+        step_prefix=self._ckpt_mgr._options.step_prefix,  # pylint: disable=protected-access
+        step_format_fixed_length=self._ckpt_mgr._options.step_format_fixed_length,  # pylint: disable=protected-access
+        min_interval_secs=min_interval_secs,
+        timeout=timeout,
+        timeout_fn=timeout_fn,
+    ):
+      yield step
 
   def wait_until_finished(self) -> None:
     self._ckpt_mgr.wait_until_finished()

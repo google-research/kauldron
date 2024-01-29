@@ -16,8 +16,6 @@
 
 from __future__ import annotations
 
-import time
-
 from absl import logging
 from etils import exm
 from kauldron.train import config_lib
@@ -51,40 +49,33 @@ def continuous_eval(
       raise ValueError(f'Invalid eval name. Available: {list(trainer.evals)}')
 
   logging.info('Initialize the state...')
+  ckpt = trainer.checkpointer
   state = trainer.init_state()
   aux = {eval_name: train_step.Auxiliaries() for eval_name in eval_names}
 
+  # TODO(epot): Checkpoint should save the state ? Otherwise, the last
+  # checkpoint might be re-computed if prehempted ?
+
   logging.info('Start evaluating...')
-  last_step = -1
-  while True:
-    # First check if training is complete to avoid a race condition (training
-    # finishing before the last checkpoint is processed)
-    train_complete = _is_train_complete()
+  for step in ckpt.iter_new_checkpoints(
+      min_interval_secs=10,
+      timeout=10,
+      timeout_fn=_is_train_complete,
+  ):
+    logging.info(f'Processing checkpoint for step {step}...')
 
-    trainer.checkpointer.refresh_cache()
-    # Optimization: Could detect the last step without restoring the checkpoint
-    state = trainer.checkpointer.restore(state, noop_if_missing=True)
+    # Due to b/315316885, we need to explicitly pass the `step` to restore,
+    # as `latest_step` is cached.
+    ckpt.refresh_cache()
 
-    # Detect whether the checkpoint should be processed or not
-    restored_step = int(state.step)
-    if restored_step == last_step:
-      if train_complete:  # Already processed the last step
-        logging.info(
-            f'All checkpoints processed (last: {last_step}). Exiting...'
-        )
-        break
-      else:
-        logging.info(f'Waiting for a new checkpoint (last: {last_step})...')
-        time.sleep(10)
-        continue
-    logging.info(f'Processing checkpoint for step {restored_step}...')
+    state = ckpt.restore(state, step=step, noop_if_missing=True)
+    assert int(state.step) == step
 
     # Processing checkpoint
     aux = {
-        eval_name: trainer.evals[eval_name].evaluate(state, step=restored_step)
+        eval_name: trainer.evals[eval_name].evaluate(state, step=step)
         for eval_name in eval_names
     }
-    last_step = restored_step
 
   # Return the last aux
   return aux
