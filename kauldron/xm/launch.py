@@ -39,6 +39,9 @@ with epy.binary_adhoc():
   from kauldron import konfig  # pylint: disable=unused-import,g-import-not-at-top
   # pylint: enable=g-import-not-at-top
 
+# Required for TQDM
+flags.FLAGS.xm_progress_reporting_use_notes = True
+
 
 try:
   _XP = config_flags.DEFINE_config_file(

@@ -21,7 +21,6 @@ import contextlib
 from typing import Any, Optional
 
 from absl import logging
-from clu import periodic_actions
 from etils import epath
 from etils import exm
 import jax
@@ -185,14 +184,13 @@ def _enum_ds_with_hooks(
   hooks = []
   if status.is_lead_host:
     hooks.append(profiler)
-    if status.on_xmanager:
-      hooks.append(periodic_actions.ReportProgress(num_train_steps=total_steps))
 
   for i, batch in utils.enum_iter(
       ds,
       init_step=initial_step,
       total_steps=total_steps,
       desc="train",
+      log_xm=True
   ):
     yield i, batch
     for h in hooks:

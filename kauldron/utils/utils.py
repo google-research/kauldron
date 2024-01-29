@@ -19,6 +19,7 @@ import itertools
 from typing import Optional, TypeVar
 
 import tqdm
+from xmanager.contrib.internal import xm_tqdm
 
 _T = TypeVar('_T')
 
@@ -40,6 +41,7 @@ def enum_iter(
     init_step: int = 0,
     total_steps: Optional[int] = None,
     desc: Optional[str] = None,
+    log_xm: bool = False,
     **tqdm_kwargs,
 ) -> Iterator[tuple[int, _T]]:
   """Iterable wrapper.
@@ -51,6 +53,7 @@ def enum_iter(
       index `init_step`.
     total_steps: Last step (exclusive)
     desc: tqdm desciption
+    log_xm: Whether to log to XManager
     **tqdm_kwargs: Arguments forwarded to TQDM.
 
   Yields:
@@ -67,7 +70,12 @@ def enum_iter(
     range_ = range(init_step, total_steps)
     total = total_steps
 
-  for i, ex in tqdm.tqdm(
+  if log_xm:
+    tqdm_class = xm_tqdm.tqdm
+  else:
+    tqdm_class = tqdm.tqdm
+
+  for i, ex in tqdm_class(
       zip(range_, iter),
       initial=init_step,
       total=total,

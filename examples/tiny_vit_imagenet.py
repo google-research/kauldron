@@ -12,7 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Runs a ViT-Tiny classifer on Imagenet 64x64."""
+r"""Runs a ViT-Tiny classifer on Imagenet 64x64.
+
+```sh
+xmanager launch third_party/py/kauldron/xm/launch.py -- \
+  --cfg=third_party/py/kauldron/examples/tiny_vit_imagenet.py \
+  --xp.platform=jf=2x2
+```
+
+"""
 
 from kauldron import konfig
 
