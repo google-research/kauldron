@@ -148,6 +148,9 @@ class KDMetricWriter(metric_writers.MetricWriter):
     self.tf_summary_writer.write_hparams(hparams)
 
   def write_config(self, config: konfig.ConfigDict) -> None:
+    if config is None:
+      return
+
     if status.is_lead_host:
       # Save the raw config (for easy re-loading)
       config_path = self.workdir / "config.json"

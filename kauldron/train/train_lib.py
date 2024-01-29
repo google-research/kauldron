@@ -176,6 +176,10 @@ def _enum_ds_with_hooks(
   """
   # TODO(epot): Currently, setting `num_train_steps=None` will fail. Instead
   # should use `len(ds)` or check `num_epoch is not None`
+  if num_train_steps is None:
+    raise ValueError(
+        "`trainer.num_train_steps is None`. Please provide a value."
+    )
 
   total_steps = num_train_steps + 1
   if stop_after_steps is not None:
