@@ -18,7 +18,7 @@ from collections.abc import Iterable, Iterator
 import itertools
 from typing import Optional, TypeVar
 
-import tqdm
+from tqdm import auto as tqdm
 from xmanager.contrib.internal import xm_tqdm
 
 _T = TypeVar('_T')
