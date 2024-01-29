@@ -31,6 +31,15 @@ through the `run=` kwarg. The `run=` kwarg can be:
     same RunSharedXM will be launched together. This allow to launch all evals
     in a single separated job and save resources.
 
+When run as a standalone job, you can use different XManager options between the
+train and eval jobs (defined both in the config or through flags):
+
+*   `--xp.platform`: Set the value globally (for both train and eval)
+*   `--cfg.xm_job.platform`: Set the value for train only
+*   `--xp.evals.<my-eval>.run.platform`: Set the value for eval only
+
+Note: Using `--xp.platfom` and `--cfg.xxx.platform` are mutually exclusive!
+
 ### Train / eval in Module
 
 Model can detect if they are in training / eval mode by using the
