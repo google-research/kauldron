@@ -257,6 +257,8 @@ def _merge(obj0: Any, obj1: Any, *, path: str) -> Any:
     return _merge_obj(obj0, obj1, path=path)
   elif _is_mapping(obj0):
     return _merge_dict(obj0, obj1, path=path)
+  elif obj0 == obj1:
+    return obj0
   else:
     # If value is specified in multiple places, raise an error.
     # TODO(epot): CLI arguments should always overwrite everything !!! (or
