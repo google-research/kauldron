@@ -144,6 +144,21 @@ class Path(collections.abc.Sequence):
           return default
     return result
 
+  def set_in(self, context: Context, value: Any):
+    """Set the object in the path."""
+    root = context
+
+    *parts, target = self.parts
+    for part in parts:
+      root = root[part]
+      if not isinstance(root, (list, dict, ml_collections.ConfigDict)):
+        raise TypeError(
+            f"Cannot overwrite value {self}: {part} is unsuported type"
+            f" {type(root)}. Please open an issue if this should be fixed."
+        )
+
+    root[target] = value
+
 
 def _jax_key_entry_to_kd_path_element(
     jax_key_entry: JaxKeyEntry,
@@ -166,7 +181,7 @@ def _jax_key_entry_to_kd_path_element(
 
 
 def get_by_path(
-    obj: Context, path: str | tuple[str] | Path, default=...
+    obj: Context, path: str | tuple[str, ...] | Path, default=...
 ) -> Any:
   """Get (nested) item or attribute by given path.
 

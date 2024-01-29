@@ -40,6 +40,7 @@ from typing import Any
 from absl import flags
 from etils import epy
 from kauldron import konfig
+from kauldron import kontext
 from kauldron.xm._src import dir_utils
 from kauldron.xm._src import experiment
 from kauldron.xm._src import job_lib
@@ -59,6 +60,8 @@ if typing.TYPE_CHECKING:
 _SWEEP_FLAG_NAME = "sweep_config"
 
 _KAULDRON_PATH = pathlib.Path("third_party/py/kauldron")
+
+# TODO(epot): Support sweep on platform,...
 
 
 @dataclasses.dataclass(frozen=True)
@@ -141,6 +144,10 @@ class KauldronJobs(jobs_info.JobsProvider):
             "work, please reach out."
         )
 
+    # Apply the `overrides` as they can contain info on XM `--cfg.xm_job....`
+    for k, v in self.overrides.items():
+      kontext.Path.from_str(k).set_in(self.config, v)
+
   @functools.cached_property
   def config_path(self) -> pathlib.Path:
     """Config path."""
@@ -194,7 +201,7 @@ class KauldronJobs(jobs_info.JobsProvider):
     # Create the associated job
     return {
         eval_name: merge_utils.merge(
-            self.trainer_job,
+            self.base_job,
             run,
             job_params.JobParams(
                 args={"eval_names": ",".join(eval_names)},
@@ -205,23 +212,17 @@ class KauldronJobs(jobs_info.JobsProvider):
         )
     }
 
-  def experiment_creation(self, xp: xm.Experiment) -> None:
-    if xp.context.annotations.title == experiment.DEFAULT_EXPERIMENT_NAME:
-      xp.context.annotations.set_title(
-          f"{self.project_info.project_name}.{self.config_path.stem}"
-      )
-
-    if self.project_info.project_name:
-      xp.context.annotations.add_tags(self.project_info.project_name)
-
-    xp.context.add_config_file(
-        file_content=inspect.getsource(self.module),
-        description=f"Content of {self.config_path}",
-    )
+  @functools.cached_property
+  def trainer_xm_job(self) -> job_lib.Job:
+    return konfig.resolve(self.config.xm_job)
 
   @functools.cached_property
   def trainer_job(self) -> job_lib.Job:
-    return self.incomplete_trainer_job.replace(
+    return merge_utils.merge(self.base_job, self.trainer_xm_job)
+
+  @functools.cached_property
+  def base_job(self) -> job_lib.Job:
+    return job_lib.Job(  # pytype: disable=wrong-keyword-args
         target=self.project_info.target,
         interpreter_info=job_params.InterpreterInfo(
             # We need to explicitly set the script path because the `:trainer`
@@ -238,18 +239,25 @@ class KauldronJobs(jobs_info.JobsProvider):
         },
     )
 
-  @functools.cached_property
-  def incomplete_trainer_job(self) -> job_lib.Job:
-    if xm_job := self.config.get("xm_job"):
-      return konfig.resolve(xm_job)
-    else:
-      return job_lib.Job()
+  def experiment_creation(self, xp: xm.Experiment) -> None:
+    if xp.context.annotations.title == experiment.DEFAULT_EXPERIMENT_NAME:
+      xp.context.annotations.set_title(
+          f"{self.project_info.project_name}.{self.config_path.stem}"
+      )
+
+    if self.project_info.project_name:
+      xp.context.annotations.add_tags(self.project_info.project_name)
+
+    xp.context.add_config_file(
+        file_content=inspect.getsource(self.module),
+        description=f"Content of {self.config_path}",
+    )
 
   @functools.cached_property
   def project_info(self) -> _ProjectInfo:
     """Project name."""
     # If the target is explicitly defined in the config, use that
-    if target := self.incomplete_trainer_job.target:
+    if target := self.trainer_xm_job.target:
       # Extract `//path/to/my_project:trainer` -> `my_project`
       project_name = target.rpartition(":")[0].rpartition("/")[-1]
       return _ProjectInfo(target=target, project_name=project_name)

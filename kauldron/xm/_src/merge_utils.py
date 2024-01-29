@@ -222,7 +222,11 @@ def merge(*objs):
   """
   final_obj = objs[0]
   for obj in objs[1:]:
-    final_obj = _merge(final_obj, obj, path=type(final_obj).__name__)
+    final_obj = _merge(
+        final_obj,
+        obj,
+        path=f"({type(final_obj).__name__} / {type(obj).__name__})",
+    )
   return final_obj  # pytype: disable=bad-return-type
 
 
@@ -255,9 +259,16 @@ def _merge(obj0: Any, obj1: Any, *, path: str) -> Any:
     return _merge_dict(obj0, obj1, path=path)
   else:
     # If value is specified in multiple places, raise an error.
-    # TODO(epot): CLI arguments should always overwrite everything !!!
+    # TODO(epot): CLI arguments should always overwrite everything !!! (or
+    # actually not for the eval job)
     raise ValueError(
-        f"Cannot merge conflicting values in {path}: {obj0!r} with {obj1!r}"
+        f"Cannot merge conflicting values in {path}: {obj0!r} with {obj1!r}\n"
+        "This likely indicates a conflict between one of:\n"
+        " * `--xp.xxx`: Value set to **all** jobs.\n"
+        " * `--cfg.xm_job.xxx`: Value set to the train job only.\n"
+        " * `--cfg.evals.<my_eval>.run.xxx`: Value set to the eval job only.\n"
+        "Value cannot be defined both globally (`--xp.xxx`) and individually"
+        " (`--cfg.<>.xxx`)."
     )
 
 

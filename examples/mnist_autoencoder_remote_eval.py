@@ -17,7 +17,7 @@ r"""Minimal example training a simple Autoencoder on MNIST.
 ```sh
 xmanager launch third_party/py/kauldron/xm/launch.py -- \
   --cfg=third_party/py/kauldron/examples/mnist_autoencoder_remote_eval.py \
-  --xp.platform=jf=2x2
+  --xp.platform=df=2x2
 ```
 
 """

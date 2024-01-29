@@ -26,7 +26,6 @@ from typing import Any
 from absl import flags
 from kauldron import konfig
 from kauldron.utils import utils
-import ml_collections
 
 # This should match sweep args passed in `kauldron/xm/_src/kauldron_utils.py`
 _FLAG_NAME = "sweep_config"
@@ -76,17 +75,6 @@ def update_with_sweep(
   sweep_kwargs: dict[str, Any] = utils.json_list_to_tuple(sweep_kwargs)
 
   for k, v in sweep_kwargs.items():
-    root = config
-
-    *parts, target = kontext.Path.from_str(k).parts
-    for part in parts:
-      root = root[part]
-      if not isinstance(root, (list, dict, ml_collections.ConfigDict)):
-        raise TypeError(
-            f"Cannot overwrite sweep arg {k}: {part} is unsuported type"
-            f" {type(root)}. Please open an issue if this should be fixed."
-        )
-
-    root[target] = v
+    kontext.Path.from_str(k).set_in(config, v)
 
   return config

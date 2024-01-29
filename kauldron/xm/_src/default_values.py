@@ -36,13 +36,6 @@ with konfig.imports(lazy=True):
 # `__qualname__`
 
 konfig.register_default_values(
-    kd.train.Trainer(
-        workdir=konfig.placeholder(str),
-        evals={},
-    )
-)
-
-konfig.register_default_values(
     xm_abc.Borg(
         scheduling=xm_abc.BorgScheduling(),
         autopilot_params=xm_abc.AutopilotParams(),
@@ -91,6 +84,14 @@ konfig.register_default_values(
         # tags=konfig.placeholder(object), ?
         subdir_format=kxm.SubdirFormat(),
         execution_settings=xm_abc.ExecutionSettings(),
+    )
+)
+
+konfig.register_default_values(
+    kd.train.Trainer(
+        workdir=konfig.placeholder(str),
+        evals={},
+        xm_job=kxm.Job(),
     )
 )
 

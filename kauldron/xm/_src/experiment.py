@@ -133,6 +133,11 @@ class Experiment(job_params.JobParams):
   def launch(self) -> xm_abc.XManagerExperiment:
     """Launch the experiment."""
     with self.create_experiment() as xp:
+      xp.context.add_config_file(
+          file_content=epy.pretty_repr(self.resolved_jobs),
+          description="Jobs",
+      )
+
       # Step 1: Collect and build all jobs
       for job in self.resolved_jobs.values():
         job.queue_build()  # Queue jobs with `xp.package_async()`
@@ -249,6 +254,7 @@ class Experiment(job_params.JobParams):
         )
         for (k, j), r in zip(jobs.items(), requirements)
     }
+
     return jobs
 
   @functools.cached_property
