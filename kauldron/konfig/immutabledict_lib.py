@@ -28,6 +28,7 @@ class ImmutableDict(immutabledict_lib.immutabledict):
   """Immutable dict abstraction with `getattr` access."""
 
   _dca_jax_tree_registered: ClassVar[bool] = False
+  _flax_registered: ClassVar[bool] = False
 
   def __new__(cls, *args: Any, **kwargs: Any) -> ImmutableDict:
     del args, kwargs  # Unused
@@ -36,6 +37,29 @@ class ImmutableDict(immutabledict_lib.immutabledict):
 
       jax.tree_util.register_pytree_with_keys_class(cls)
       cls._dca_jax_tree_registered = True
+
+    if not cls._flax_registered and 'flax' in sys.modules:
+      import flax  # pylint: disable=g-import-not-at-top,g-bad-import-order  # pytype: disable=import-error
+
+      for type_ in list(flax.serialization._STATE_DICT_REGISTRY):  # pylint: disable=undefined-variable
+        match type_:
+          case object(
+              __name__='ImmutableDict',
+              __module__='kauldron.konfig.immutabledict_lib',
+          ):
+            del flax.serialization._STATE_DICT_REGISTRY[type_]  # pylint: disable=undefined-variable
+
+      def restore_immutable_dict(*args, **kwargs):
+        d = flax.serialization._restore_dict(*args, **kwargs)  # pylint: disable=protected-access
+        return cls(d)
+
+      flax.serialization.register_serialization_state(
+          cls,
+          flax.serialization._dict_state_dict,  # pylint: disable=protected-access
+          restore_immutable_dict,
+      )
+      cls._flax_registered = True
+
     return super().__new__(cls)  # pylint: disable=no-value-for-parameter
 
   def __getattr__(self, name: str) -> str:
