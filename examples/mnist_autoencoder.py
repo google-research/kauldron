@@ -14,9 +14,12 @@
 
 r"""Minimal example training a simple Autoencoder on MNIST.
 
+`--xp.use_interpreter` to launch with `ml_python` (no BUILD rules).
+
 ```sh
 xmanager launch third_party/py/kauldron/xm/launch.py -- \
   --cfg=third_party/py/kauldron/examples/mnist_autoencoder.py \
+  --xp.use_interpreter \
   --xp.platform=jf=2x2
 ```
 
