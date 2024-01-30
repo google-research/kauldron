@@ -91,6 +91,10 @@ class Experiment:
       yield
 
   @functools.cached_property
+  def wu(self) -> WorkUnit:
+    return WorkUnit(wu=self.exp.get_work_unit(self.wid))
+
+  @functools.cached_property
   def artifacts(self) -> dict[str, str]:
     """Mapping artifact name -> value."""
     return {a.description: a.artifact for a in self.exp.get_artifacts()}
@@ -98,14 +102,13 @@ class Experiment:
   @functools.cached_property
   def root_dir(self) -> epath.Path:
     """Root directory of the artifact."""
-    path = self.artifacts['Workdir']
-    return epath.Path(path)
+    return _normalize_workdir(self.artifacts['Workdir'])
 
   @functools.cached_property
   def config(self) -> konfig.ConfigDictLike[config_lib.Trainer]:
     """Unresolved `ConfigDict`."""
-    # Use a constant rather than hardcoding `config.json`
-    config_path = self.root_dir / str(self.wid) / 'config.json'
+    # Should use a constant rather than hardcoding `config.json`
+    config_path = self.wu.workdir / 'config.json'
     config = json.loads(config_path.read_text())
     return _json_to_config(config)  # Wrap the dict to ConfigDict  # pytype: disable=bad-return-type
 
@@ -113,6 +116,28 @@ class Experiment:
   def trainer(self) -> config_lib.Trainer:
     """Resolved `ConfigDict`."""
     return konfig.resolve(self.config)
+
+
+@dataclasses.dataclass(frozen=True)
+class WorkUnit:
+  """XManager work unit wrapper."""
+
+  wu: xmanager_api.WorkUnit
+
+  @functools.cached_property
+  def artifacts(self) -> dict[str, str]:
+    """Mapping artifact name -> value."""
+    return {a.description: a.artifact for a in self.wu.get_artifacts()}
+
+  @functools.cached_property
+  def workdir(self) -> epath.Path:
+    """Root directory of the artifact."""
+    return _normalize_workdir(self.artifacts['Workdir'])
+
+
+def _normalize_workdir(path: str) -> epath.Path:
+  """Normalize workdir path."""
+  return epath.Path(path)
 
 
 def _json_to_config(json_value):
