@@ -56,6 +56,7 @@ _POST_MORTEM = flags.DEFINE_boolean(
 
 
 def main(_):
+
   with _wu_error_handling(_POST_MORTEM.value):
     eval_names = _EVAL_NAMES.value
     cfg = sweep_utils.update_with_sweep(
@@ -86,15 +87,18 @@ def _wu_error_handling(post_mortem: bool = False):
 def _flags_parser(args: list[str]) -> None:
   """Flag parser."""
   # Import everything, except kxm (XManager not included in the trainer binary)
-  with kd.konfig.set_lazy_imported_modules(
-      # This is quite fragile if the user try to import some external
-      # XM util/config. In which case user should import this extra module
-      # in `with konfig.imports(lazy=True):`
-      lazy_import=[
-          "kauldron.xm",
-          "kauldron.kxm",
-          "xmanager",
-      ],
+  with (
+      epy.binary_adhoc(),
+      kd.konfig.set_lazy_imported_modules(
+          # This is quite fragile if the user try to import some external
+          # XM util/config. In which case user should import this extra module
+          # in `with konfig.imports(lazy=True):`
+          lazy_import=[
+              "kauldron.xm",
+              "kauldron.kxm",
+              "xmanager",
+          ],
+      ),
   ):
     flags.FLAGS(args)
 
