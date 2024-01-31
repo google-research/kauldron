@@ -198,7 +198,9 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
       model_method: Optional[str] = None,
   ) -> _Params:
     self._assert_root_cfg_resolved()
-    args, kwargs = get_model_inputs_from_batch_spec(self.model, elem_spec)
+    args, kwargs = data_utils.get_model_inputs_from_batch_spec(
+        self.model, elem_spec
+    )
     params = self.model.init(
         init_rngs,
         *args,
@@ -419,23 +421,3 @@ class TrainStep(config_util.UpdateFromRootCfg):
     )
 
     return next_state, aux
-
-
-def get_model_inputs_from_batch_spec(
-    model: nn.Module,
-    batch_spec: ElementSpec,
-) -> tuple[tuple[Any, ...], dict[str, Any]]:
-  """Returns dummy (args, kwargs) to pass to the model input.
-
-  Args:
-    model: Flax model
-    batch_spec: The batch structure from which extract the inputs
-
-  Returns:
-    args: The positional arguments
-    kwargs: The keyword arguments
-  """
-  mock_batch = data_utils.mock_batch_from_elem_spec(batch_spec)
-  context = context_lib.Context(step=0, batch=mock_batch)
-  args, kwargs = data_utils.get_model_inputs(model, context)
-  return args, kwargs

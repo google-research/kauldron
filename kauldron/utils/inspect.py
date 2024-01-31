@@ -305,10 +305,8 @@ def _get_summary_table(
     rngs: dict[str, kd_random.PRNGKey],
 ) -> nn.summary.Table:
   """Return model overview as a `nn.summary.Table`."""
-  # TODO(epot): Replace by get_model_inputs_from_batch_spec
-  m_batch = data_utils.mock_batch_from_elem_spec(ds.element_spec)
-  model_args, model_kwargs = data_utils.get_model_inputs(
-      model, {"batch": m_batch, "step": 0}
+  model_args, model_kwargs = data_utils.get_model_inputs_from_batch_spec(
+      model, ds.element_spec
   )
   table_fn = nn.summary._get_module_table(  # pylint: disable=protected-access
       model,
@@ -437,10 +435,8 @@ def _normalize_height(
 
 def plot_context(trainer: train.Trainer) -> None:
   """Display the context structure."""
-  context = trainer.context_specs
-  context = {
-      f.name: getattr(context, f.name) for f in dataclasses.fields(context)
-  }
-  context["grads"] = "[same as params]"
-  context["updates"] = "[same as params]"
-  json_spec_like(context)
+  ctx = trainer.context_specs
+  ctx = {f.name: getattr(ctx, f.name) for f in dataclasses.fields(ctx)}
+  ctx["grads"] = "[same as params]"
+  ctx["updates"] = "[same as params]"
+  json_spec_like(ctx)
