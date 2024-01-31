@@ -16,7 +16,7 @@
 
 
 import dataclasses
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Mapping, Optional
 
 from grain._src.core import constants
 import jax
@@ -26,7 +26,7 @@ import seqio
 import tensorflow as tf
 
 
-def _get_seqio_dataset(
+def _get_seqio_task_dataset(
     split: str,
     task_name: str,
     shuffle: bool = True,
@@ -48,13 +48,36 @@ def _get_seqio_dataset(
   )
 
 
+def _get_seqio_mixture_dataset(
+    split: str,
+    mixture_name: str,
+    sequence_length: Mapping[str, int] | None = None,
+    shuffle: bool = True,
+    seed: Optional[int] = None,
+) -> tf.data.Dataset:
+  """Loads SeqIO dataset."""
+  # _register_taskcan only be called once.
+  if mixture_name not in seqio.MixtureRegistry.names():
+    raise ValueError(f"Task {mixture_name} not found in seqio.MixtureRegistry.")
+
+  mixture = seqio.MixtureRegistry.get(mixture_name)
+  return mixture.get_dataset(
+      sequence_length=sequence_length,
+      split=split,
+      shuffle=shuffle,
+      seed=seed,
+      num_epochs=None,
+  )
+
+
 @dataclasses.dataclass(repr=False)
 class SeqIO(base.DataLoader):
   """Basic SeqIO dataset loader."""
 
   # seqio parameters.
   split: str
-  task_name: str
+  task_name: str = ""
+  mixture_name: str = ""
   # Post-processing parameters.
   filter_fn: Optional[Callable[[Any], bool]] = None
   # Note: Examples are filtered *before* map_fn is applied.
@@ -63,7 +86,25 @@ class SeqIO(base.DataLoader):
   shuffle: bool = True
   shuffle_buffer_size: int = 10_000
   num_epochs: Optional[int] = None
+  # Feature lengths used for seqio Mixtures.
+  sequence_length: Optional[Mapping[str, int]] = None
   register: Optional[Any] = None
+
+  # Whether this loader loads a seqio mixture or task.
+  _is_mixture: Optional[bool] = None
+
+  def __post_init__(self) -> None:
+    if self.task_name and self.mixture_name:
+      raise ValueError("Only one of task_name and mixture_name can be set."
+                       f"Received {self.task_name=}, {self.mixture_name=}")
+    if not self.task_name and not self.mixture_name:
+      raise ValueError("At least one of task_name and mixture_name must be "
+                       f"set. Received {self.task_name=}, {self.mixture_name=}")
+
+    if self.task_name:
+      self._is_mixture = False
+    else:
+      self._is_mixture = True
 
   def __call__(self, seed: Optional[PRNGKeyLike] = None) -> tf.data.Dataset:
     if self.shuffle and seed is None:
@@ -79,13 +120,22 @@ class SeqIO(base.DataLoader):
       dataset_seed = None
 
     # Load tf.Dataset object
-    ds = _get_seqio_dataset(
-        split=self.split,
-        task_name=self.task_name,
-        seed=dataset_seed,
-        shuffle=self.shuffle,
-        shuffle_buffer_size=self.shuffle_buffer_size,
-    )
+    if self._is_mixture:
+      ds = _get_seqio_mixture_dataset(
+          split=self.split,
+          mixture_name=self.mixture_name,
+          sequence_length=self.sequence_length,
+          seed=dataset_seed,
+          shuffle=self.shuffle,
+      )
+    else:
+      ds = _get_seqio_task_dataset(
+          split=self.split,
+          task_name=self.task_name,
+          seed=dataset_seed,
+          shuffle=self.shuffle,
+          shuffle_buffer_size=self.shuffle_buffer_size,
+      )
 
     if self.filter_fn is not None:
       ds = ds.filter(self.filter_fn)
@@ -109,4 +159,3 @@ class SeqIO(base.DataLoader):
     ds = ds.map(_add_dummy_index_and_non_deterministic_seed)
 
     return ds
-
