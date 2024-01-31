@@ -207,7 +207,7 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
         method=model_method,
         is_training_property=True,
         **kwargs,
-    )["params"]
+    ).get("params", {})
     params = flax.core.unfreeze(params)
     return params
 
