@@ -93,7 +93,7 @@ class Job(job_params.JobParams):
       )
     return xm.bazel_binary(
         label=self.target,
-        dependencies=[self.fileset],
+        dependencies=self.dependencies,
         executor_spec=xm_abc.Borg.Spec(),
         # Need to wait for next build
         bazel_args=bazel_args,
@@ -119,7 +119,7 @@ class Job(job_params.JobParams):
     return xm_abc.interpreter(  # pytype: disable=wrong-arg-types
         script_path=script_path,
         interpreter_mpm=self.interpreter_info.mpm,
-        dependencies=[self.fileset],
+        dependencies=self.dependencies,
         args={
             "adhoc_import_dir": citc_info.g3_dir,
         },
@@ -202,6 +202,13 @@ class Job(job_params.JobParams):
     """Fileset."""
     # Invert key<>value
     return xm_abc.Fileset(files={v: k for k, v in self.files.items()})
+
+  @functools.cached_property
+  def dependencies(self) -> list[xm.BinaryDependency]:
+    if self.fileset.files:
+      return [self.fileset]
+    else:
+      return []
 
 
 def _resolve_and_normalize_arg(
