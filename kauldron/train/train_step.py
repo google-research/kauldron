@@ -244,6 +244,32 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
     )
 
   @jax.named_call
+  def forward_without_losses(
+      self,
+      params,
+      *,
+      batch,
+      rngs: rngs_lib.Rngs,
+      step: int,
+      is_training: bool,
+  ) -> context_lib.Context:
+    """Forward pass of the model including losses."""
+    context = context_lib.Context(step=step, batch=batch, params=params)
+    args, kwargs = data_utils.get_model_inputs(self.model, context)
+    preds, intermediates = self.model.apply(  # TODO(klausg): capture mutables?
+        {"params": params},
+        *args,
+        rngs=rngs,
+        capture_intermediates=True,  # TODO(klausg): check if need a filter here
+        is_training_property=is_training,
+        **kwargs,
+    )
+    context = context.replace(
+        preds=preds, interms=intermediates["intermediates"]
+    )
+    return context
+
+  @jax.named_call
   def get_aux(
       self,
       context: context_lib.Context,
