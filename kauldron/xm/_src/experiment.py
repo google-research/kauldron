@@ -105,7 +105,7 @@ class Experiment(job_params.JobParams):
 
   # Auxiliary units (TB,...)
   add_tensorboard_borg: bool = False
-  add_tensorboard_corp: bool = True
+  add_tensorboard_corp: bool = False
 
   def __post_init__(self):
     super().__post_init__()
