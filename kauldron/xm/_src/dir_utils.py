@@ -90,6 +90,11 @@ class SubdirFormat:
   xp_dirname: str = "{xid}"
   wu_dirname: str = "{wid}"
 
+  def __post_init__(self):
+    # Normalize dirname to support `--xp.subdir_format.xp_dirname=12345`
+    object.__setattr__(self, "xp_dirname", str(self.xp_dirname))
+    object.__setattr__(self, "wu_dirname", str(self.wu_dirname))
+
   # Available at experiment creation
 
   def xid(self, ctx: DirContext) -> int:
