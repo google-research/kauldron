@@ -17,12 +17,13 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Literal
+from typing import Any, Literal, Optional
 
 import einops
 from flax import linen as nn
 import jax.numpy as jnp
-from kauldron.typing import Array, PRNGKey, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron import kontext
+from kauldron.typing import Array, Float, PRNGKey, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import train_property
 
 
@@ -130,13 +131,14 @@ class Reduce(nn.Module):
 
 
 class DummyModel(nn.Module):
-  """Empty model that ignores inputs and always produces the answer 42.
+  """Empty model that ignores inputs and always produces a single logit of 42.
 
   Can be useful as a placeholder model in a config, while working on and testing
   other parts such as the data pipeline.
   """
 
+  inputs: Optional[kontext.Key] = None
+
   @typechecked
-  def __call__(self, *args, **kwargs) -> dict[str, Array['1']]:
-    del args, kwargs
-    return {'answer': jnp.ones((1,)) * 42}
+  def __call__(self, inputs: Any = None) -> dict[str, Float['1']]:
+    return {'logits': jnp.ones((1,)) * 42}
