@@ -25,7 +25,14 @@ from kauldron.typing import Axes, Dtype, Float, Initializer, Shape, typechecked 
 
 
 class AddEmbedding(nn.Module):
-  """Helper Module for adding a PositionEmbedding e.g. in a `knn.Sequential`."""
+  """Helper Module for adding a PositionEmbedding e.g. in a `knn.Sequential`.
+
+  Attributes:
+    emb: The position embedding to be added to the inputs.
+    axis: The axis parameter passed to the position embedding for determining
+      its shape. Usually set to -2, to get embeddings of shape `n d` for inputs
+      of dimension `*b n d`.
+  """
 
   emb: knn_types.PositionEmbedding
   axis: Axes
@@ -37,7 +44,7 @@ class AddEmbedding(nn.Module):
 class FourierEmbedding(nn.Module):
   """Apply Fourier position embedding to a grid of coordinates.
 
-  Attr:
+  Attributes:
     num_fourier_bases: The number of Fourier bases to use. The embedding
       dimensionality is 2 x len(axis) x num_fourier_bases, but the result will
       be projected to match the given shape.
