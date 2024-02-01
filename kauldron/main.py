@@ -25,6 +25,7 @@ from absl import flags
 from etils import epy
 import jax
 from ml_collections import config_flags
+import tensorflow as tf
 
 with epy.binary_adhoc():
   # pylint: disable=g-import-not-at-top
@@ -56,6 +57,7 @@ _POST_MORTEM = flags.DEFINE_boolean(
 
 
 def main(_):
+  tf.config.experimental.set_visible_devices([], "GPU")
 
   with _wu_error_handling(_POST_MORTEM.value):
     eval_names = _EVAL_NAMES.value
