@@ -63,4 +63,6 @@ def get_config():
               task_failure_credit_period=3600,
           ),
       ),
+      # Activate tensorboard.corp
+      add_tensorboard_corp=True,
   )

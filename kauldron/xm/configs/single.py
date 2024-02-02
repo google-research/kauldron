@@ -41,6 +41,4 @@ def get_config():
       target=konfig.placeholder(str),
       platform=None,  # e.g. `cpu` (default), `jf=2x2`, `a100=1`
       cell=None,  # Auto-selected
-      # Disable some options activated by default
-      add_tensorboard_corp=False,
   )
