@@ -19,8 +19,11 @@ Usage:
 ```sh
 xmanager launch third_party/py/kauldron/xm/launch.py -- \
  --xp=third_party/py/kauldron/xm/configs/single.py \
+ --xp.use_interpreter \
  --xp.target=//path/to/my:target
 ```
+
+See for all the available flags.
 """
 
 from kauldron import konfig
@@ -30,15 +33,11 @@ with konfig.imports():
 
 
 def get_config():
+  # Job parameters can be set both in `jobs` or directly at
+  # the top-level.
+  # See for all the o
   return kxm.Experiment(
       jobs={
           'main': kxm.Job(),
       },
-      # Job parameters can be set both in `jobs` or directly at
-      # the top-level.
-      # Parameters set at the top-level are applied as falback values to all
-      # jobs inside `jobs`
-      target=konfig.placeholder(str),
-      platform=None,  # e.g. `cpu` (default), `jf=2x2`, `a100=1`
-      cell=None,  # Auto-selected
   )

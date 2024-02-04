@@ -116,6 +116,10 @@ class Job(job_params.JobParams):
     citc_info = g3_utils.citc_info_from_source_or_piper(self.citc_source)
     citc_info = citc_info.immutable()
 
+    script_full_path = citc_info.g3_path / script_path.removeprefix("//")
+    if not script_full_path.exists():
+      raise ValueError(f"Could not find script {script_full_path}.")
+
     return xm_abc.interpreter(  # pytype: disable=wrong-arg-types
         script_path=script_path,
         interpreter_mpm=self.interpreter_info.mpm,
@@ -247,4 +251,4 @@ def _resolve_and_normalize_arg(
 
 
 def _target_to_script_path(target: str) -> str:
-  return target.replace(":", "/") + ".py"
+  return target.replace(":", "/").removesuffix(".py") + ".py"

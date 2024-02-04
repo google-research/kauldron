@@ -188,9 +188,7 @@ class Experiment(job_params.JobParams):
     if epy.is_notebook():
       citc_info = g3_utils.citc_info_from_source_or_piper(self.citc_source)
       citc_info = citc_info.immutable()
-      g3_dir = citc_info.g3_dir.replace("/google/src", "/google_src", 1)
-
-      os.environ["BUILD_WORKSPACE_DIRECTORY"] = g3_dir
+      os.environ["BUILD_WORKSPACE_DIRECTORY"] = os.fspath(citc_info.g3_path)
 
     # Set experiment-level options
     with xm_abc.create_experiment(
