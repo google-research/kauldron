@@ -107,11 +107,15 @@ class SubdirFormat:
 
   def title(self, ctx: DirContext) -> str:
     """Alias of `{name}`."""
-    return ctx.xp.context.annotations.title
+    return self.name(ctx)
 
   def author(self, ctx: DirContext) -> str:
     """Author of the experiment."""
     return ctx.xp.context.creator
+
+  def user(self, ctx: DirContext) -> str:
+    """Alias for `{author}`."""
+    return self.author(ctx)
 
   def cell(self, ctx: DirContext) -> str:
     """Cell (`jn`, `lu`,...)."""

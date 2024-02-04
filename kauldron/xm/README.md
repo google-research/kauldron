@@ -204,8 +204,8 @@ The `{}` will be automatically replaced by their matching values. The following
 are supported:
 
 * `{cell}`: Cell from the main job
-* `{name}`: Experiment title
-* `{author}`: Author who launched the experiment
+* `{name}` / `{title}`: Experiment title
+* `{user}` / `{author}`: Author who launched the experiment
 * `{xid}`: Experiment id
 * `{wid}`: Work-unit id, padded by the number of work-unit (e.g. `001`,
   `002`,... for 345 work-units)
