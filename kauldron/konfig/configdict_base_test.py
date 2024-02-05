@@ -68,3 +68,12 @@ def test_json_path():
       'path': pathlib.Path('a/b'),
   })
   assert cfg.to_json() == '{"path": "a/b"}'
+
+
+def test_aliases():
+  repr_ = konfig.configdict_base._normalize_qualname
+  assert repr_('tensorflow') == 'tf'
+  assert repr_('tensorflow.gfile:exists') == 'tf.gfile.exists'
+  assert repr_('tensorflow:int64') == 'tf.int64'
+  assert repr_('tensorflow_graphics:Foo') == 'tensorflow_graphics.Foo'
+  assert repr_('tensorflow_datasets:load') == 'tfds.load'

@@ -35,6 +35,7 @@ _SelfT = TypeVar('_SelfT')
 
 _ALIASES = {
     'numpy': 'np',
+    'tensorflow_datasets': 'tfds',
     'tensorflow': 'tf',
     'flax.linen': 'nn',
 }
@@ -432,7 +433,7 @@ class _VisitedTracker:
 def _normalize_qualname(name: str) -> str:
   """Normalize the qualname for nicer display."""
   for key, alias in _ALIASES.items():
-    if name.startswith(key):
+    if name == key or name.startswith((f'{key}.', f'{key}:')):
       name = name.replace(key, alias, 1)
   return name.replace(':', '.')
 
