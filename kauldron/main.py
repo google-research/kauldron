@@ -57,7 +57,7 @@ _POST_MORTEM = flags.DEFINE_boolean(
 
 
 def main(_):
-  tf.config.experimental.set_visible_devices([], "GPU")
+  tf.config.set_visible_devices([], "GPU")
 
   with _wu_error_handling(_POST_MORTEM.value):
     eval_names = _EVAL_NAMES.value
