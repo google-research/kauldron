@@ -24,11 +24,13 @@ from absl import app
 from absl import flags
 from etils import epy
 import jax
+import ml_collections
 from ml_collections import config_flags
 import tensorflow as tf
 
 with epy.binary_adhoc():
   # pylint: disable=g-import-not-at-top
+  from etils import exm
   from kauldron import kd
   from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
   from kauldron.utils import sweep_utils
@@ -65,6 +67,8 @@ def main(_):
         config=_CONFIG.value,
         sweep_kwargs=_SWEEP_CONFIG.value,
     )
+    _update_xm_configuration(cfg)
+
     trainer: kd.train.Trainer = kd.konfig.resolve(cfg)
     if eval_names is None:
       trainer.train()
@@ -84,6 +88,12 @@ def _wu_error_handling(post_mortem: bool = False):
       status.log(f"🚨 {exc_name}: {e!s}")
       status.xp.add_tags(f"🚨 {exc_name} 🚨")
       raise
+
+
+def _update_xm_configuration(cfg: ml_collections.ConfigDict) -> None:
+  """Update the XManager configuration tab with the sweep."""
+  if not exm.is_running_under_xmanager():
+    return
 
 
 def _flags_parser(args: list[str]) -> None:
