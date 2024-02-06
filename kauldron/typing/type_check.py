@@ -22,6 +22,7 @@ import inspect
 import re
 import sys
 import types
+import typing
 from typing import Any, Type, Union
 
 from etils import enp
@@ -65,7 +66,7 @@ class TypeCheckError(typeguard.TypeCheckError):
       if ann is inspect.Parameter.empty:
         key_repr = name
       else:
-        key_repr = f"{name}: {ann}"
+        key_repr = f"{name}: {self._annotation_repr(ann)}"
       val_repr = _format_argument_value(value)
       arg_reprs.append(f"  {key_repr} = {val_repr}")
     args_string = "\n".join(arg_reprs)
@@ -76,11 +77,24 @@ class TypeCheckError(typeguard.TypeCheckError):
       )
     else:
       ret_string = _format_return_values(self.return_value)
+      ret_ann = self._annotation_repr(self.return_annotation)
       return (
           f"{msg}\n\nInputs:\n{args_string}\n\n"
-          f"Return -> {self.return_annotation}:\n{ret_string}\n\n"
+          f"Return -> {ret_ann}:\n{ret_string}\n\n"
           f"Inferred Dims:\n {self.memo!r}\n\n"
       )
+
+  @staticmethod
+  def _annotation_repr(ann: Any) -> str:
+    # TODO(klausg): handle more complex annotations (e.g. TypedDict)
+    # TODO(klausg): cleanup
+    shape_ann = ann
+    if typing.get_origin(ann) == types.UnionType:
+      shape_ann = ann.__args__[0]
+    if hasattr(shape_ann, "_kd_repr"):
+      return shape_ann._kd_repr  # pylint: disable=protected-access
+    else:
+      return repr(ann)
 
 
 def typechecked(fn):
