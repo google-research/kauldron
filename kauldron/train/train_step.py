@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Mapping, Optional
+from typing import Any, List, Mapping, Optional
 
 from etils import epy
 import flax
@@ -35,6 +35,7 @@ from kauldron.typing import ElementSpec, Float, PyTree  # pylint: disable=g-mult
 from kauldron.utils import config_util
 from kauldron.utils import context as context_lib
 from kauldron.utils import jax_utils
+from kauldron.utils import utils
 from kauldron.utils import train_property  # pylint: disable=unused-import
 from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 import optax
@@ -198,16 +199,39 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
       model_method: Optional[str] = None,
   ) -> _Params:
     self._assert_root_cfg_resolved()
-    args, kwargs = data_utils.get_model_inputs_from_batch_spec(
-        self.model, elem_spec
-    )
-    params = self.model.init(
-        init_rngs,
-        *args,
-        method=model_method,
-        is_training_property=True,
-        **kwargs,
-    ).get("params", {})
+    if isinstance(self.model, utils.MultiStepModel):
+      # If we have a multi-step model, run each step in turn and update the
+      # context for the next step with the intermediates of the step before.
+      mock_batch = data_utils.mock_batch_from_elem_spec(elem_spec)
+      context = context_lib.Context(step=0, batch=mock_batch)
+      params = {}
+      all_intermediates = {}
+      for model_name in self.model.order:
+        model = self.model.sub_models[model_name]
+        args, kwargs = data_utils.get_model_inputs(model, context)
+        variables = model.init(
+            init_rngs,
+            *args,
+            method=model_method,
+            is_training_property=True,
+            capture_intermediates=True,
+            **kwargs,
+        )
+        params[model_name] = variables.get("params", {})
+        all_intermediates[model_name] = variables["intermediates"]
+        context = context.replace(interms=all_intermediates)
+    else:
+      args, kwargs = data_utils.get_model_inputs_from_batch_spec(
+          self.model, elem_spec
+      )
+      params = self.model.init(
+          init_rngs,
+          *args,
+          method=model_method,
+          is_training_property=True,
+          capture_intermediates=True,
+          **kwargs,
+      ).get("params", {})
     params = flax.core.unfreeze(params)
     return params
 
@@ -223,18 +247,40 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
   ) -> tuple[float, context_lib.Context]:
     """Forward pass of the model including losses."""
     context = context_lib.Context(step=step, batch=batch, params=params)
-    args, kwargs = data_utils.get_model_inputs(self.model, context)
-    preds, intermediates = self.model.apply(  # TODO(klausg): capture mutables?
-        {"params": params},
-        *args,
-        rngs=rngs,
-        capture_intermediates=True,  # TODO(klausg): check if need a filter here
-        is_training_property=is_training,
-        **kwargs,
-    )
-    context = context.replace(
-        preds=preds, interms=intermediates["intermediates"]
-    )
+    if isinstance(self.model, utils.MultiStepModel):
+      # If we have a multi-step model, run each step in turn and update the
+      # context for the next step with the intermediates of the step before.
+      all_preds = {}
+      all_intermediates = {}
+      for model_name in self.model.order:
+        model = self.model.sub_models[model_name]
+        args, kwargs = data_utils.get_model_inputs(model, context)
+        preds, intermediates = model.apply(
+            {"params": params[model_name]},
+            *args,
+            rngs=rngs,
+            capture_intermediates=True,
+            is_training_property=is_training,
+            **kwargs,
+        )
+        all_preds[model_name] = preds
+        all_intermediates[model_name] = intermediates["intermediates"]
+        context = context.replace(preds=all_preds, interms=all_intermediates)
+    else:
+      args, kwargs = data_utils.get_model_inputs(self.model, context)
+      # TODO(klausg): capture mutables?
+      preds, intermediates = self.model.apply(
+          {"params": params},
+          *args,
+          rngs=rngs,
+          # TODO(klausg): check if need a filter here
+          capture_intermediates=True,
+          is_training_property=is_training,
+          **kwargs,
+      )
+      context = context.replace(
+          preds=preds, interms=intermediates["intermediates"]
+      )
     loss_total, loss_states = kd_losses.compute_losses(
         losses=self.losses, context=context
     )

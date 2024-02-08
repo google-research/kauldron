@@ -34,6 +34,7 @@ from kauldron import train
 from kauldron.data import utils as data_utils
 from kauldron.typing import Float, UInt8  # pylint: disable=g-multiple-import
 from kauldron.utils import pd_utils
+from kauldron.utils import utils
 import mediapy as media
 import ml_collections
 import numpy as np
@@ -305,9 +306,15 @@ def _get_summary_table(
     rngs: dict[str, kd_random.PRNGKey],
 ) -> nn.summary.Table:
   """Return model overview as a `nn.summary.Table`."""
+  if isinstance(model, utils.MultiStepModel):
+    # If we have a multi-step model, generate the table only for the first step.
+    # TODO(mjking): Combine tables for all steps.
+    model = model.sub_models[model.order[0]]
+
   model_args, model_kwargs = data_utils.get_model_inputs_from_batch_spec(
       model, ds.element_spec
   )
+
   table_fn = nn.summary._get_module_table(  # pylint: disable=protected-access
       model,
       depth=None,
@@ -320,6 +327,7 @@ def _get_summary_table(
       rngs,
       *model_args,
       is_training_property=True,
+      capture_intermediates=True,
       **model_kwargs,
   )
   return table
