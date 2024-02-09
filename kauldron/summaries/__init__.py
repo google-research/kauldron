@@ -18,6 +18,7 @@
 from kauldron.summaries.base import HistogramSummary
 from kauldron.summaries.base import ImageSummary
 from kauldron.summaries.base import PerImageChannelPCA
+from kauldron.summaries.base import ShowBoxes
 from kauldron.summaries.base import ShowDifferenceImages
 from kauldron.summaries.base import ShowImages
 from kauldron.summaries.base import ShowSegmentations
