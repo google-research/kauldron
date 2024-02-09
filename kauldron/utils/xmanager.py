@@ -74,6 +74,10 @@ class Experiment:
     """
     return cls(_client().get_experiment(xid), wid=wid)
 
+  def __post_init__(self):
+    # Ensure `wid` is an `int`.
+    object.__setattr__(self, 'wid', int(self.wid))
+
   @contextlib.contextmanager
   def adhoc(self) -> Iterator[None]:
     """Adhoc imports from the experiment snapshot."""
