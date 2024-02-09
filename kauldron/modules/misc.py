@@ -17,14 +17,18 @@
 from __future__ import annotations
 
 import dataclasses
+import typing
 from typing import Any, Literal, Optional
 
 import einops
 from flax import linen as nn
+import flax.core
 import jax.numpy as jnp
 from kauldron import kontext
 from kauldron.typing import Array, Float, PRNGKey, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import train_property
+
+FrozenDict = dict if typing.TYPE_CHECKING else flax.core.FrozenDict
 
 
 class Identity(nn.Module):
@@ -84,7 +88,7 @@ class Rearrange(nn.Module):
   """
 
   pattern: str
-  axes_lengths: dict[str, int] = dataclasses.field(default_factory=dict)
+  axes_lengths: dict[str, int] = dataclasses.field(default_factory=FrozenDict)
 
   @typechecked
   def __call__(self, tensor: Array['...']) -> Array['...']:
@@ -118,7 +122,7 @@ class Reduce(nn.Module):
 
   pattern: str
   reduction: Literal['min', 'max', 'sum', 'mean', 'prod']
-  axes_lengths: dict[str, int] = dataclasses.field(default_factory=dict)
+  axes_lengths: dict[str, int] = dataclasses.field(default_factory=FrozenDict)
 
   @typechecked
   def __call__(self, tensor: Array['...']) -> Array['...']:
