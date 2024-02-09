@@ -16,12 +16,19 @@
 
 from collections.abc import Iterable, Iterator
 import itertools
-from typing import Optional, TypeVar
+import flax.linen as nn
+from typing import Dict, List, Optional, TypeVar
 
 from tqdm import auto as tqdm
 from xmanager.contrib.internal import xm_tqdm
 
 _T = TypeVar('_T')
+
+
+class MultiStepModel(nn.Module):
+
+  sub_models: Dict[str, nn.Module]
+  order: List[str]
 
 
 def json_list_to_tuple(json_value):
