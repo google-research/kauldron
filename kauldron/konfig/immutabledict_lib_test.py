@@ -14,9 +14,13 @@
 
 """Test."""
 
+import pickle
+
+import cloudpickle
 from etils import epy
 import jax
 from kauldron.konfig import immutabledict_lib
+import pytest
 
 
 def test_dict():
@@ -50,3 +54,14 @@ def test_dict_repr():
           'w': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
       })
   """)
+
+
+@pytest.mark.parametrize('pkl', [pickle, cloudpickle])
+def test_dict_pickle(pkl):
+  a = immutabledict_lib.ImmutableDict({
+      'z': 1,
+      'a': 2,
+  })
+  serialized = pkl.dumps(a)
+  b = pkl.loads(serialized)
+  assert a == b

@@ -75,6 +75,8 @@ class ImmutableDict(immutabledict_lib.immutabledict):
         equal=': ',
     )
 
+  # Jax tree_utils protocol
+
   def tree_flatten_with_keys(self) -> tuple[tuple[Any, ...], Hashable]:
     """Flattens this FrozenDict.
 
@@ -96,3 +98,11 @@ class ImmutableDict(immutabledict_lib.immutabledict):
     new_items = ((k, ordered_items[k]) for k in keys)
 
     return cls(new_items)
+
+  # Pickle protocol
+
+  def __getstate__(self):
+    return self._dict
+
+  def __setstate__(self, state):
+    self.__init__(state)
