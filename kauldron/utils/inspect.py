@@ -320,6 +320,7 @@ def _get_summary_table(
       rngs,
       *model_args,
       is_training_property=True,
+      capture_intermediates=True,
       **model_kwargs,
   )
   return table
