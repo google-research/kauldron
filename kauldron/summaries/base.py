@@ -140,7 +140,7 @@ class ShowImages(ImageSummary):
       vmin, vmax = self.in_vrange
       images = (images - vmin) / (vmax - vmin)
     # convert to float
-    images = media.to_type(images, np.float32)
+    images = media.to_type(images.astype(jnp.float32), np.float32)
 
     if self.cmap is not None:
       if not isinstance(images, Float["n h w 1"]):
