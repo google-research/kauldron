@@ -64,6 +64,9 @@ class Metric(abc.ABC):
      computation.
   """
 
+  # Hack to allow config to set `loss.__qualname__ = 'MyLoss'`
+  __qualname__: str
+
   def __init_subclass__(cls, **kwargs):
     super().__init_subclass__(**kwargs)
     cls.get_state = _link_metric_to_state(cls.get_state)

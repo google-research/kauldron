@@ -32,7 +32,7 @@ import matplotlib
 import mediapy as media
 import numpy as np
 import sklearn.decomposition
-import tensorflow.image as tf_image
+import tensorflow as tf
 
 with epy.lazy_imports():
   import jax3d.utils.plot_segmentation as segplot  # pylint: disable=g-import-not-at-top
@@ -356,7 +356,7 @@ class ShowBoxes(ImageSummary):
 
     # draw boxes
     colors = _get_uniform_colors(self.num_colors)
-    images = tf_image.draw_bounding_boxes(images, boxes, colors)
+    images = tf.image.draw_bounding_boxes(images, boxes, colors)
     images = np.reshape(images, images_shape)
 
     # proceed with logic from ShowImages()
