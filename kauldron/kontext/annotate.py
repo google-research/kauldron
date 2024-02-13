@@ -155,7 +155,7 @@ def _get_missing_key_error_message(
   )
 
 
-def get_keypaths(keyed_obj: Any) -> dict[str, str]:
+def get_keypaths(keyed_obj: Any) -> dict[str, str | None]:
   """Return a dictionary mapping Key-annotated fieldnames to their paths."""
   if hasattr(type(keyed_obj), _GET_KEY_PROTOCOL):
     return getattr(keyed_obj, _GET_KEY_PROTOCOL)()

@@ -48,7 +48,7 @@ Python object annotated with special `: Key` annotations:
 
 
 ```python
-@dataclass
+@dataclasses.dataclass
 class A:
   x: Key
   y: Optional[Key]
@@ -56,14 +56,53 @@ class A:
 
 Here `A` defines 2 keys: `x` and `y`.
 
-Those keys can then be resolved with `resolve_from_keyed_obj`:
+Those keys can then be resolved with:
+
+* `kontext.get_keypaths`: Get the key values.
+
+  ```python
+  a = A(x='a[0].b.inner', y=None)
+
+  assert kontext.get_keypaths(a) == {
+      'x': 'a[0].b.inner',
+      'y': None,
+  }
+  ```
+
+* `kontext.resolve_from_keyed_obj`: Get the key values and apply them to get the
+  corresponding values from the tree.
+
+  ```python
+  a = A(x='a[0].b.inner', y='a[1].e')
+
+  assert kontext.resolve_from_keyed_obj(tree, a) == {
+      'x': 123,
+      'y': 789,
+  }
+  ```
+
+### [Advanced] Dynamically extract keys
+
+Rather than hardcoding the available keys as annotations (`x: Key`), it is
+possible to dynamically define keys through the `__kontext_keys__` protocol.
+
+This can be used to propagate keys from an inner objects:
 
 ```python
-a = A(x='a[0].b.inner', y='a[1].e')
+@dataclasses.dataclass
+class B:
+  inner_keyed_obj: A
 
-assert kontext.resolve_from_keyed_obj(tree, a) == {
-    'x': 123,
-    'y': 789,
+  def __kontext_keys__(self) -> dict[str, str | None]:
+    return kontext.get_keypaths(self.inner_keyed_obj)
+
+
+b = B(inner_keyed_obj=A(x='a[0].b.inner', y='a[1].e'))
+
+
+assert kontext.get_keypaths(b) == {
+    'x': 'a[0].b.inner',
+    'y': None,
 }
 ```
 
