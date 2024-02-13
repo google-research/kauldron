@@ -16,7 +16,10 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from flax import linen as nn
+from kauldron import kontext
 
 
 def interms_property():
@@ -45,7 +48,19 @@ def interms_property():
 
       # The above is equivalent to:
       # self.get_variable("intermediates", "hidden")[-1]
-      return out
+
+
+      # access intermediates by path
+      res = nn.Dense(128, name="submod")(h)
+
+      # res can also be accessed by absolute path:
+      self.interms.get_by_path("path.to.my_module.submod.__call__[0]")
+      # by relative path:
+      self.interms.get_by_path(".submod.__call__[0]")
+      # or via the parent
+      self.interms.get_by_path("..my_module.submod.__call__[0])
+
+      return res
   ```
 
   The interms property can only be used within `.init` / `.apply`.
@@ -79,3 +94,27 @@ class _IntermsAccessor:
 
   def __setitem__(self, key, value):
     self.module.sow('intermediates', key, value)
+
+  def get_by_path(self, path: str) -> Any:
+    """Access intermediates of any submodule (even ancestors and children).
+
+    Args:
+      path: a dotted path to the desired intermediate. Paths are absolute by
+        default (e.g. "path.to.module.child1.__call__[0]"). Prepend a "." to
+        make it relative (e.g. ".child1.__call__[0]"). Prepend multiple dots to
+        access ancestors (e.g. "..module.child1.__call__[0]").
+
+    Returns:
+      The pytree or array corresponding to the given path.
+    """
+    if path.startswith('.'):
+      path = path[1:]
+      scope = self.module.scope
+      while path.startswith('.'):
+        # parent
+        path = path[1:]
+        scope = scope.parent
+    else:
+      # global
+      scope = self.module.scope.root
+    return kontext.get_by_path(scope.variables()['intermediates'], path)
