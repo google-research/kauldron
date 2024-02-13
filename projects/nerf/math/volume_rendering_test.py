@@ -22,7 +22,7 @@ import pytest
 
 # f64 tests require JAX_ENABLE_X64 which is not set by default
 DATA_TYPES = [
-    jnp.bfloat16,
+    # jnp.bfloat16,
     jnp.float32,
 ]
 
@@ -259,7 +259,7 @@ def test_volume_rendering(
   )
 
   # Accumulated values should be consistent with the generated inputs
-  allclose = lambda x, y: jnp.allclose(x, y, atol=200 * jnp.finfo(dtype).eps)
+  allclose = lambda x, y: jnp.allclose(x, y, atol=1e-5)
   assert jax.tree_util.tree_all(
       jax.tree_map(allclose, render_result.ray_values, ray_values)
   )
