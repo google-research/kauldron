@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import builtins
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 import copy
 import dataclasses
 import functools
@@ -251,11 +251,9 @@ class _DictVisitor(_Visitor):
   CLS = (dict, ml_collections.ConfigDict)
 
   def _recurse(self, obj: ml_collections.ConfigDict) -> Any:
-    if isinstance(obj, dict):
-      items = obj.items()
-    else:
-      items = obj.items(preserve_field_references=True)
-    return {k: _Repr(self.recurse(v)) for k, v in items}
+    return {
+        k: _Repr(self.recurse(v)) for k, v in _items_preserve_reference(obj)
+    }
 
   def _repr(self, obj: ml_collections.ConfigDict) -> str:
     if configdict_proxy.CONST_KEY in obj:
@@ -523,7 +521,7 @@ def _normalize_config_only_value(value, name) -> Any:
     case dict() | ml_collections.ConfigDict():
       return ConfigDict({  # Convert `dict` -> `ConfigDict`
           k: _normalize_config_only_value(v, f'{name}.{k}')
-          for k, v in value.items()
+          for k, v in _items_preserve_reference(value)
       })
     case list() | tuple() | set() | frozenset():
       return type(value)(
@@ -554,6 +552,17 @@ def _shortn(x: str, max_length: int) -> str:
 
   keep_chars = max_length // 2
   return x[:keep_chars] + '...' + x[-keep_chars:]
+
+
+def _items_preserve_reference(
+    cfg: dict[str, Any] | ml_collections.ConfigDict
+) -> Iterable[tuple[str, Any]]:
+  if isinstance(cfg, dict):
+    return cfg.items()
+  elif isinstance(cfg, ml_collections.ConfigDict):
+    return cfg.items(preserve_field_references=True)
+  else:
+    raise TypeError(f'Invalid config dict: {cfg}')
 
 
 _Field = ml_collections.FieldReference | ConfigDict
