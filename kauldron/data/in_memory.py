@@ -37,6 +37,7 @@ class InMemoryPipeline(pipelines.Pipeline):
   Attributes:
     loader: Callable which returns all examples in a single
       `Tree[Array['num_examples ...']] of `np.array`
+    batch_size: Global batch size
     shuffle: Whether to shuffle the dataset
     num_epochs: Number of epoch (`None` for infinite iteration)
     drop_remainder: Whether to drop the remainer (currently
@@ -44,6 +45,7 @@ class InMemoryPipeline(pipelines.Pipeline):
   """
 
   loader: Callable[[], _ArrayTree]
+  batch_size: int
   shuffle: bool = False
   num_epochs: Optional[int]
   drop_remainder: bool = True

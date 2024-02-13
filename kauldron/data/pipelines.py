@@ -53,19 +53,15 @@ class Pipeline(data_utils.IterableDataset, config_util.UpdateFromRootCfg):
 
   Subclasses are responsible for:
 
-  * batching
-  * shuflling
+  * batching: By convension, pipeline should have a `batch_size` attribute
+  * shuffling: Ideally, global shuffling.
   * sharding: Each host yield different examples
 
   Attributes:
-    batch_size: Global batch size. Has to be divisible by number of global
-      devices. Pipeline should take care of sharding the data between hosts.
-      Setting to `0` disable batching.
     seed: Random seed to be used for things like shuffling and randomness in
       preprocessing. Defaults to the seed from the root config.
   """
 
-  batch_size: int
   seed: Optional[PRNGKeyLike] = config_util.ROOT_CFG_REF.seed
 
   @functools.cached_property
@@ -74,15 +70,27 @@ class Pipeline(data_utils.IterableDataset, config_util.UpdateFromRootCfg):
     first_elem = next(iter(self))
     return etree.spec_like(first_elem)
 
+  __repr__ = edc.repr
+
+
+class _PipelineWithBatch(Pipeline):
+  """Base class for pipelines that batch.
+
+  Attributes:
+    batch_size: Global batch size. Has to be divisible by number of global
+      devices. Pipeline should take care of sharding the data between hosts.
+      Setting to `0` disable batching.
+  """
+
+  batch_size: int
+
   @functools.cached_property
   def host_batch_size(self) -> int:
     return utils.BatchSize(self.batch_size).per_process
 
-  __repr__ = edc.repr
-
 
 @dataclasses.dataclass(frozen=True, kw_only=True, eq=True)
-class TFDataPipeline(Pipeline):
+class TFDataPipeline(_PipelineWithBatch):
   """Basic tf.data pipeline.
 
   Attributes:
@@ -162,7 +170,7 @@ def _drop_grain_meta_features(features: Mapping[str, Any]) -> Mapping[str, Any]:
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True, eq=True)
-class PyGrainPipeline(Pipeline):
+class PyGrainPipeline(_PipelineWithBatch):
   """Basic pygrain pipeline.
 
   Attributes:
