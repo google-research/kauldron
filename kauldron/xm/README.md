@@ -22,6 +22,8 @@ xmanager launch kauldron/xm/launch.py -- \
   --xp.platform=jf=2x2
 ```
 
+See for a list of flags.
+
 ## Usage
 
 ### Direct API
