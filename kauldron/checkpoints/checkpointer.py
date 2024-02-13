@@ -49,6 +49,7 @@ class BaseCheckpointer(config_util.UpdateFromRootCfg, abc.ABC):
       *,
       step: int = -1,
       noop_if_missing: bool = False,
+      donate: bool = False,
   ) -> _T:
     raise NotImplementedError()
 
@@ -164,10 +165,24 @@ class Checkpointer(BaseCheckpointer):
       *,
       step: int = -1,
       noop_if_missing: bool = False,
+      donate: bool = False,
   ) -> _T:
-    """Restore state."""
+    """Restore state.
 
-    state = initial_state
+    Args:
+      initial_state: The `state` object initialized from the trainer.
+      step: The training step of the checkpoint to restore. -1 means last step.
+      noop_if_missing: If False will raise an error when no checkpoint is found.
+      donate: Whether delete the `initial_state` to free up memory when
+        restoring the checkpoint. This avoids 2x memory consumption. It is safe
+        to donate the `initial_state` if you no longer need it after restoring.
+
+    Returns:
+      The restored `state`.
+
+    Raises:
+      FileNotFoundError: An error occurred when no checkpoint is found.
+    """
     if self._ckpt_mgr.latest_step() is not None:
       step = self._absolute_step(step)
 
@@ -175,6 +190,9 @@ class Checkpointer(BaseCheckpointer):
         args = ocp.args.StandardRestore()
       else:
         args = ocp.args.StandardRestore(initial_state)
+        # Delete `initial_state` to free up memory.
+        if donate:
+          jax.tree_map(_release_memory, initial_state)
 
       state = self._ckpt_mgr.restore(step, args=args)
     elif not noop_if_missing:  # No checkpoint
@@ -182,6 +200,8 @@ class Checkpointer(BaseCheckpointer):
           f"No checkpoint found in {self.workdir}. Use `noop_if_missing=True`"
           " to default to initial state."
       )
+    else:
+      state = initial_state
     return state
 
   def should_save(self, step: int) -> bool:
@@ -267,7 +287,12 @@ class NoopCheckpointer(BaseCheckpointer):
   """Does nothing."""
 
   def restore(
-      self, initial_state=None, *, step: int = -1, noop_if_missing: bool = False
+      self,
+      initial_state=None,
+      *,
+      step: int = -1,
+      noop_if_missing: bool = False,
+      donate: bool = False,
   ):
     if initial_state is None:
       raise ValueError("`NooCheckpointer.restore` require the state arg.")
@@ -322,3 +347,10 @@ def _checkpoint_steps(checkpoint_dir: epath.PathLike) -> list[int]:
 
   steps = [get_step_for_dir(step_dir) for step_dir in checkpoint_dir.iterdir()]
   return [step for step in steps if step >= 0]
+
+
+def _release_memory(x):
+  """Deletes and releases the memory of a Jax array."""
+  if isinstance(x, jax.Array):
+    x.delete()
+  return x
