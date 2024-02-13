@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import dataclasses
 
+import einops
 import flax
 import jax.numpy as jnp
 from kauldron import kontext
@@ -50,8 +51,8 @@ class TapOcclusionAccuracy(metrics.Metric):
   """Occlusion accuracy for point tracking."""
 
   query_points: kontext.Key = kontext.REQUIRED  # e.g. "batch.query_points"
-  gt_visible: kontext.Key = kontext.REQUIRED  # e.g. "batch.visible"
-  pred_visible: kontext.Key = kontext.REQUIRED  # e.g. "pred.visible"
+  gt_occluded: kontext.Key = kontext.REQUIRED  # e.g. "batch.visible"
+  pred_occluded_logits: kontext.Key = kontext.REQUIRED  # e.g. "pred.visible"
   query_mode: str  # e.g. "first" or "strided"
 
   @flax.struct.dataclass
@@ -62,11 +63,17 @@ class TapOcclusionAccuracy(metrics.Metric):
   def get_state(
       self,
       query_points: Float["*B Q 3"],
-      gt_visible: Float["*B Q T 1"],
-      pred_visible: Float["*B Q T 1"],
+      gt_occluded: Float["*B T Q 1"],
+      pred_occluded_logits: Float["*B T Q 1"],
   ) -> TapOcclusionAccuracy.State:
-    gt_visible = gt_visible.squeeze(-1).astype(jnp.bool_)
-    pred_visible = pred_visible.squeeze(-1).astype(jnp.bool_)
+    gt_occluded = gt_occluded.squeeze(-1).astype(jnp.bool_)
+    pred_occluded = pred_occluded_logits.squeeze(-1) > 0
+
+    gt_occluded = einops.rearrange(gt_occluded, "... T Q -> ... Q T")
+    pred_occluded = einops.rearrange(pred_occluded, "... T Q -> ... Q T")
+
+    gt_visible = jnp.logical_not(gt_occluded)
+    pred_visible = jnp.logical_not(pred_occluded)
 
     evaluation_frames = get_evaluation_frames(
         query_points, Shape("T")[0], self.query_mode
@@ -86,7 +93,7 @@ class TapPositionAccuracy(metrics.Metric):
   """Position accuracy for visible points only."""
 
   query_points: kontext.Key = kontext.REQUIRED  # e.g. "batch.query_points"
-  gt_visible: kontext.Key = kontext.REQUIRED  # e.g. "batch.visible"
+  gt_occluded: kontext.Key = kontext.REQUIRED  # e.g. "batch.visible"
   gt_tracks: kontext.Key = kontext.REQUIRED  # e.g. "batch.target_points"
   pred_tracks: kontext.Key = kontext.REQUIRED  # e.g. "pred.tracks"
   query_mode: str  # e.g. "first" or "strided"
@@ -99,11 +106,17 @@ class TapPositionAccuracy(metrics.Metric):
   def get_state(
       self,
       query_points: Float["*B Q 3"],
-      gt_visible: Float["*B Q T 1"],
-      gt_tracks: Float["*B Q T 2"],
-      pred_tracks: Float["*B Q T 2"],
+      gt_occluded: Float["*B T Q 1"],
+      gt_tracks: Float["*B T Q 2"],
+      pred_tracks: Float["*B T Q 2"],
   ) -> TapPositionAccuracy.State:
-    gt_visible = gt_visible.squeeze(-1).astype(jnp.bool_)
+    gt_occluded = gt_occluded.squeeze(-1).astype(jnp.bool_)
+
+    gt_occluded = einops.rearrange(gt_occluded, "... T Q -> ... Q T")
+    gt_tracks = einops.rearrange(gt_tracks, "... T Q 2 -> ... Q T 2")
+    pred_tracks = einops.rearrange(pred_tracks, "... T Q 2 -> ... Q T 2")
+
+    gt_visible = jnp.logical_not(gt_occluded)
 
     evaluation_frames = get_evaluation_frames(
         query_points, Shape("T")[0], self.query_mode
@@ -138,9 +151,9 @@ class TapAverageJaccard(metrics.Metric):
   """Average Jaccard considering both location and occlusion accuracy."""
 
   query_points: kontext.Key = kontext.REQUIRED  # e.g. "batch.query_points"
-  gt_visible: kontext.Key = kontext.REQUIRED  # e.g. "batch.visible"
+  gt_occluded: kontext.Key = kontext.REQUIRED  # e.g. "batch.visible"
   gt_tracks: kontext.Key = kontext.REQUIRED  # e.g. "batch.target_points"
-  pred_visible: kontext.Key = kontext.REQUIRED  # e.g. "pred.visible"
+  pred_occluded_logits: kontext.Key = kontext.REQUIRED  # e.g. "pred.visible"
   pred_tracks: kontext.Key = kontext.REQUIRED  # e.g. "pred.tracks"
   query_mode: str  # e.g. "first" or "strided"
 
@@ -152,13 +165,21 @@ class TapAverageJaccard(metrics.Metric):
   def get_state(
       self,
       query_points: Float["*B Q 3"],
-      gt_visible: Float["*B Q T 1"],
-      gt_tracks: Float["*B Q T 2"],
-      pred_visible: Float["*B Q T 1"],
-      pred_tracks: Float["*B Q T 2"],
+      gt_occluded: Float["*B T Q 1"],
+      gt_tracks: Float["*B T Q 2"],
+      pred_occluded_logits: Float["*B T Q 1"],
+      pred_tracks: Float["*B T Q 2"],
   ) -> TapAverageJaccard.State:
-    gt_visible = gt_visible.squeeze(-1).astype(jnp.bool_)
-    pred_visible = pred_visible.squeeze(-1).astype(jnp.bool_)
+    gt_occluded = gt_occluded.squeeze(-1).astype(jnp.bool_)
+    pred_occluded = pred_occluded_logits.squeeze(-1) > 0
+
+    gt_occluded = einops.rearrange(gt_occluded, "... T Q -> ... Q T")
+    pred_occluded = einops.rearrange(pred_occluded, "... T Q -> ... Q T")
+    gt_tracks = einops.rearrange(gt_tracks, "... T Q 2 -> ... Q T 2")
+    pred_tracks = einops.rearrange(pred_tracks, "... T Q 2 -> ... Q T 2")
+
+    gt_visible = jnp.logical_not(gt_occluded)
+    pred_visible = jnp.logical_not(pred_occluded)
 
     evaluation_frames = get_evaluation_frames(
         query_points, Shape("T")[0], self.query_mode
