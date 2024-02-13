@@ -20,6 +20,7 @@ import flax.struct
 import hypothesis
 import hypothesis.strategies as st
 from kauldron import kontext
+import pytest
 import regex
 
 
@@ -58,6 +59,7 @@ def test_python_identifier_regex(x: str):
   assert x.isidentifier()
 
 
+@hypothesis.settings(deadline=None)
 @hypothesis.given(st.lists(simple_literals, min_size=1, max_size=16))
 def test_path_parsing(path_elements):
   p = kontext.Path(*path_elements)
@@ -66,8 +68,25 @@ def test_path_parsing(path_elements):
 
 
 def test_path_parsing_custom_example():
-  path_str = "itermed.encoder.layer_0.MHDP.attention"
+  path_str = "iterm.encoder.layer_0.MHDP.attention[-1].foo"
   assert str(kontext.Path.from_str(path_str)) == path_str
+
+
+def test_path_parsing_tensor_slice():
+  path_str = "iterm.some.tensor[...,:,:1,7:9,::-1,None]"
+  assert str(kontext.Path.from_str(path_str)) == path_str
+
+
+@pytest.mark.parametrize(
+    "path_str",
+    [
+        "tensor[1 ][ True ][ 10 : 2 : -1  ]",
+        "tensor[  :   ,    7  , ::-1 , None ]",
+    ],
+)
+def test_path_parsing_whitespace(path_str):
+  path_without_ws = path_str.replace(" ", "")
+  assert str(kontext.Path.from_str(path_str)) == path_without_ws
 
 
 def test_tree_flatten_with_path():

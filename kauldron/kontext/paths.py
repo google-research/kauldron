@@ -19,6 +19,7 @@ from __future__ import annotations
 import ast
 import collections
 from collections.abc import Mapping, Sequence
+from types import EllipsisType  # pylint: disable=g-importing-member
 from typing import Any, Optional, TypeVar, Union, overload
 
 from etils import epy
@@ -40,7 +41,14 @@ JaxKeyEntry = Union[
     jax.tree_util.GetAttrKey,
     jax.tree_util.FlattenedIndexKey,
 ]
-Part = int | float | complex | slice | str | bool | None
+Part = int | float | complex | slice | str | bool | None | EllipsisType | tuple
+
+
+def _is_valid_part(part: Any) -> bool:
+  if isinstance(part, tuple):
+    return all(_is_valid_part(p) for p in part)
+  else:
+    return isinstance(part, Part)
 
 
 class Path(collections.abc.Sequence):
@@ -49,7 +57,7 @@ class Path(collections.abc.Sequence):
   __slots__ = ("parts",)
 
   def __init__(self, *parts: Part):
-    if not all(isinstance(part, Part) for part in parts):
+    if not _is_valid_part(parts):
       raise ValueError(f"invalid part(s) {parts}")
     self.parts: tuple[Part, ...] = parts
 
@@ -126,7 +134,7 @@ class Path(collections.abc.Sequence):
       try:
         result = result[part]
       except (TypeError, IndexError, KeyError):
-        if hasattr(result, part):
+        if isinstance(part, str) and hasattr(result, part):
           result = getattr(result, part)
         else:
           if default is ...:
@@ -238,16 +246,40 @@ def flatten_with_path(
 
 
 def _format_part(part: Any) -> str:
+  """Format a single part of a path."""
   if isinstance(part, str) and part.isidentifier():
     return "." + part
   elif isinstance(part, slice):
-    fm = [part.start, ":", part.stop]
-    if part.step is not None:
-      fm += [":", part.step]
-    slice_str = "".join(str(f) for f in fm if f is not None)
-    return f"[{slice_str}]"
+    return f"[{_format_slice(part)}]"
+  elif part == ...:
+    return "..."
+  elif isinstance(part, tuple):
+    parts_str = ",".join(_format_axis(ax) for ax in part)
+    return f"[{parts_str}]"
   else:
     return f"[{part!r}]"
+
+
+def _format_axis(axis: Any) -> str:
+  """Format a single axis of a tensor slice."""
+  if isinstance(axis, int):
+    return str(axis)
+  elif isinstance(axis, slice):
+    return _format_slice(axis)
+  elif axis == ...:
+    return "..."
+  elif axis is None:
+    return "None"
+  else:
+    raise ValueError(f"Unknown axis {axis} of type {type(axis)}")
+
+
+def _format_slice(s: slice) -> str:
+  """Format a silce object into a colon-separated string like '::2'."""
+  fm = [s.start, ":", s.stop]
+  if s.step is not None:
+    fm += [":", s.step]
+  return "".join(str(f) for f in fm if f is not None)
 
 
 _path_parser = lark.Lark(
@@ -255,17 +287,18 @@ _path_parser = lark.Lark(
     regex=True,
     grammar=r"""
 // A path is a series of dot-separated identifiers and [] based item-access.
-path: [(identifier | "[" key "]") ("." identifier | "[" key "]")*]
+path: [(identifier | "[" [WS] key [WS] "]") ("." identifier | "[" [WS] key [WS] "]")*]
 ?key: number   // item-access keys can be any hashable python literal
-    | slice_key
     | boolean
     | none
     | string
+    | slice_key
+    | tensor_slice_key
     | tuple_key
 
 tuple_key: "()"
          | "(" key ",)"
-         | "(" key ("," key)+ [","] ")"
+         | "(" key ("," [WS] key)+ [","] [WS]")"
 
 number: DEC_NUMBER
       | HEX_NUMBER
@@ -274,16 +307,20 @@ number: DEC_NUMBER
       | FLOAT_NUMBER
       | COMPLEX_NUMBER
 
-?integer: DEC_NUMBER
+integer: DEC_NUMBER
        | HEX_NUMBER
        | BIN_NUMBER
        | OCT_NUMBER
 
-!slice_key: [integer] ":" [integer]
-          | [integer] ":" [integer] ":" [integer]
+?tensor_axis_key: integer | slice_key | ellipsis | none
+tensor_slice_key: tensor_axis_key ["," [WS]]
+                | tensor_axis_key ("," [WS] tensor_axis_key [WS])+ ["," [WS]]
+!slice_key: [integer [WS]] ":" [WS] [integer]
+          | [integer [WS]] ":" [WS] [integer [WS]] ":" [WS] [integer]
 string: /".*?(?<!\\)(\\\\)*?"/ | /'.*?(?<!\\)(\\\\)*?'/
 !none: "None"
 !boolean: "True" | "False"
+!ellipsis: "..."
 
 identifier: IDENTIFIER
 IDENTIFIER: ID_START ID_CONTINUE*
@@ -298,6 +335,7 @@ FLOAT_NUMBER: /-?((\d+\.\d*|\.\d+|\d+)(e[-+]?\d+)?|\d+(e[-+]?\d+))/i
 IMAG_NUMBER: (DEC_NUMBER | FLOAT_NUMBER) "j"i
 COMPLEX_NUMBER: IMAG_NUMBER
               | "(" (FLOAT_NUMBER | DEC_NUMBER) /[+-]/ IMAG_NUMBER ")"
+WS: (" "|/\t/)+
 """,
 )
 
@@ -314,7 +352,7 @@ class _PathTransformer(lark.Transformer):
     return str(args[0])
 
   @staticmethod
-  def slice_key(args: list[str]) -> slice:
+  def slice_key(args: list[int | str | None]) -> slice:
     sargs: list[Optional[int]] = [None, None, None]
     i = 0
     for a in args:
@@ -325,7 +363,19 @@ class _PathTransformer(lark.Transformer):
     return slice(*sargs)
 
   @staticmethod
+  def ellipsis(_):
+    return ...
+
+  @staticmethod
+  def tensor_slice_key(args: list[Any]) -> Any:
+    return tuple(args)
+
+  @staticmethod
   def number(args: list[str]) -> Union[int, float, complex]:
+    return ast.literal_eval(args[0])
+
+  @staticmethod
+  def integer(args: list[str]) -> int:
     return ast.literal_eval(args[0])
 
   @staticmethod
@@ -343,3 +393,7 @@ class _PathTransformer(lark.Transformer):
   @staticmethod
   def tuple_key(args: list[Any]) -> tuple[Any, ...]:
     return tuple(args)
+
+  def WS(self, _):
+    # discard all whitespace tokens
+    raise lark.Discard()
