@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import dataclasses
 import functools
-from typing import Mapping
+from typing import Mapping, Sequence
 
 import flax
 import jax
@@ -29,7 +29,8 @@ from kauldron.evals import evaluators
 from kauldron.metrics import base
 from kauldron.metrics import base_state
 from kauldron.train import train_step
-from kauldron.typing import Array, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Array  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import typechecked
 from kauldron.utils import utils
 from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 import numpy as np
@@ -54,6 +55,7 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
     repr_names: A dictionary of representations to be evaluated. Keys are names
       to be used to refer to the representations, values are paths in the
       context from which to take the actual features
+    l2_regs: Possible values for L2 regularization.
     label_name: key by which to get the labels from the context
     selected_repr: a key from repr_names for which to put the accuracies to the
       main metrics
@@ -78,10 +80,11 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
   ds_test: data.TFDataPipeline
   metric_prefix: str
   num_classes: int
-  num_shots: tuple[int]
+  num_shots: Sequence[int]
   repr_names: Mapping[str, str] = dataclasses.field(
       default_factory=flax.core.FrozenDict
   )
+  l2_regs: Sequence[float] = (2**6, 2**7, 2**8, 2**9, 2**10)
   label_name: str
   selected_repr: str = 'pre_logits'
   seed: int = 17
@@ -102,7 +105,6 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
     test_features, test_labels = self.compute_features(state, self.ds_test)
 
     fewshot_accuracies = {}
-    l2_regs = 2 ** np.arange(-10, 10, dtype=np.float32)
     for feat_key in train_features.keys():
 
       curr_results_val, curr_results_test = run_fewshot(
@@ -114,7 +116,7 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
           test_labels,
           num_classes=self.num_classes,
           all_shots=self.num_shots,
-          l2_regs=l2_regs,
+          l2_regs=self.l2_regs,
           seed=self.seed,
       )
       for shots in self.num_shots:
@@ -126,7 +128,7 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
         fewshot_accuracies[
             f'z_fewshot_all/{self.metric_prefix}-{feat_key}-{shots}shot'
         ] = curr_results_test[shots][best_reg]
-        for acc, l2_reg in zip(curr_results_test[shots], l2_regs):
+        for acc, l2_reg in zip(curr_results_test[shots], self.l2_regs):
           fewshot_accuracies[
               f'z_fewshot_all/z_{self.metric_prefix}-{feat_key}-{shots}shot-{l2_reg:.5}'
           ] = acc
