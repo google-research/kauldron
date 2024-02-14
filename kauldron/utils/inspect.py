@@ -412,7 +412,7 @@ def plot_batch(batch: _Example) -> None:
       # Dynamically compute the frame-rate, capped at 25 FPS
       _, num_frames, height, _, _ = v.shape
       height = _normalize_height(height)
-      fps = min(num_frames // 5, 25.0)
+      fps = min(num_frames / 5.0, 25.0)
 
       media.show_videos(
           v[:8],
