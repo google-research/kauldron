@@ -20,6 +20,8 @@ import flax.struct
 import hypothesis
 import hypothesis.strategies as st
 from kauldron import kontext
+import numpy as np
+import pytest
 import regex
 
 
@@ -58,6 +60,7 @@ def test_python_identifier_regex(x: str):
   assert x.isidentifier()
 
 
+@hypothesis.settings(deadline=None)
 @hypothesis.given(st.lists(simple_literals, min_size=1, max_size=16))
 def test_path_parsing(path_elements):
   p = kontext.Path(*path_elements)
@@ -66,8 +69,32 @@ def test_path_parsing(path_elements):
 
 
 def test_path_parsing_custom_example():
-  path_str = "itermed.encoder.layer_0.MHDP.attention"
+  path_str = "interm.encoder.layer_0.MHDP.attention[-1].foo"
   assert str(kontext.Path.from_str(path_str)) == path_str
+
+
+def test_path_parsing_tensor_slice():
+  path_str = "interm.some.tensor[...,:,:1,7:9,::-1,None]"
+  path = kontext.Path.from_str(path_str)
+  assert str(path) == path_str
+  assert path.parts == (
+      "interm",
+      "some",
+      "tensor",
+      (..., slice(None), slice(1), slice(7, 9), slice(None, None, -1), None),
+  )
+
+
+@pytest.mark.parametrize(
+    "path_str",
+    [
+        "tensor[1 ][ True ][ 10 : 2 : -1  ]",
+        "tensor[  :   ,    7  , ::-1 , None ]",
+    ],
+)
+def test_path_parsing_whitespace(path_str):
+  path_without_ws = path_str.replace(" ", "")
+  assert str(kontext.Path.from_str(path_str)) == path_without_ws
 
 
 def test_tree_flatten_with_path():
@@ -88,3 +115,38 @@ def test_tree_flatten_with_path():
 
   flat_tree = kontext.flatten_with_path(mt, prefix="cfg", separator="/")
   assert flat_tree == {"cfg/foo/a": 10, "cfg/foo/b/0": 7, "cfg/bar": 9}
+
+
+CTX = {
+    "foo": {
+        "bar": [1, 2, 3],
+        "baz": ["leaf", "list", "of", "strings"],
+    },
+    "seq": [{"one": 1}, {"two": 2}],
+    "tensor": np.zeros((2, 3, 5, 8)),
+}
+
+
+@pytest.mark.parametrize(
+    "path_str, expected",
+    [
+        ("foo", {"bar": [1, 2, 3], "baz": ["leaf", "list", "of", "strings"]}),
+        ("foo.bar", [1, 2, 3]),
+        ("foo.bar[0]", 1),
+        ("foo.baz[-2:]", ["of", "strings"]),
+        ("seq[0].one", 1),
+    ],
+)
+def test_path_get_from(path_str, expected):
+  assert kontext.Path.from_str(path_str).get_from(CTX) == expected
+
+
+def test_path_get_from_tensor_slice():
+  path = kontext.Path.from_str("tensor[0,1,2]")
+  assert path.get_from(CTX).shape == (8,)
+
+  path = kontext.Path.from_str("tensor[None, ..., 1:, ::2]")
+  assert path.get_from(CTX).shape == (1, 2, 3, 4, 4)
+
+  path = kontext.Path.from_str("tensor[0,0].T")
+  assert path.get_from(CTX).shape == (8, 5)

@@ -8,6 +8,10 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 ## [Unreleased]
 
+* `kd.kontext.Path` now supports tensor slicing. So for example using keys like
+  `"interm.tensor[..., 0:10, :, -1]"` will now work as expected.
+* `kd.nn.interm_property` now supports accessing any intermediates from within
+  the model via `self.interm.get_by_path('path.to.any.module.__call__[0]')`.
 * Deprecated: Remove `--xp.sweep_info.names=` flag. Instead, sweep are unified
   under `--xp.sweep` (see: https://kauldron.rtfd.io/en/latest/intro.html#sweeps)
 * Add `kd.data.loader.TFData` for arbitrary `tf.data` pipelines
