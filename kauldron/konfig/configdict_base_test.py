@@ -70,6 +70,26 @@ def test_json_path():
   assert cfg.to_json() == '{"path": "a/b"}'
 
 
+def test_dot():
+  cfg = konfig.ConfigDict({
+      'a.b.c': 123,
+  })
+  assert cfg['a.b.c'] == 123
+
+
+def test_ref():
+  cfg = konfig.ConfigDict()
+  cfg.a = True
+  cfg.b = konfig.ConfigDict({
+      'b': {
+          'a': cfg.ref.a,
+      },
+  })
+
+  cfg.a = False
+  assert cfg.b.b.a is False  # pylint: disable=g-bool-id-comparison
+
+
 def test_aliases():
   repr_ = konfig.configdict_base._normalize_qualname
   assert repr_('tensorflow') == 'tf'
