@@ -176,6 +176,7 @@ class PRNGKey(_Base):
   generalized_normal = jax.random.generalized_normal
   geometric = jax.random.geometric
   gumbel = jax.random.gumbel
+  key_data = jax.random.key_data
   laplace = jax.random.laplace
   logistic = jax.random.logistic
   loggamma = jax.random.loggamma
