@@ -416,7 +416,8 @@ class CenterCrop(ElementWiseTransform):
     target_shape = tf.where(target_shape >= 0, target_shape, shape)
     # compute the offset for the tf.slice
     offset = (shape - target_shape) // 2
-    return tf.slice(element, offset, target_shape)  # crop
+    crop = tf.slice(element, offset, target_shape)
+    return tf.ensure_shape(crop, self.shape)
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
