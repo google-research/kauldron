@@ -17,3 +17,4 @@
 # pylint: disable=g-importing-member
 
 from kauldron.data.kmix.base import Base
+from kauldron.data.kmix.loaders.graintfds import Tfds
