@@ -46,6 +46,7 @@ from kauldron import random
 from kauldron import summaries
 from kauldron import train
 from kauldron import typing
+from kauldron.data import kmix
 from kauldron.utils import inspect
 from kauldron.utils import xmanager as xm
 from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
