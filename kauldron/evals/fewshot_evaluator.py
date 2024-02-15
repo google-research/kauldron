@@ -130,7 +130,7 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
         ] = curr_results_test[shots][best_reg]
         for acc, l2_reg in zip(curr_results_test[shots], self.l2_regs):
           fewshot_accuracies[
-              f'z_fewshot_all/z_{self.metric_prefix}-{feat_key}-{shots}shot-{l2_reg:.5}'
+              f'z_fewshot_all/z_{self.metric_prefix}-{feat_key}-{shots}shot-{l2_reg}'
           ] = acc
 
     with jax.transfer_guard('allow'):
