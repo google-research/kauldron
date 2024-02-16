@@ -63,6 +63,8 @@ class ArrayAliasMeta(type):
 
 Array = ArrayAliasMeta("Array", jaxtyping.Shaped)
 Bool = ArrayAliasMeta("Bool", jaxtyping.Bool)
+Complex = ArrayAliasMeta("Complex", jaxtyping.Complex)
+Complex64 = ArrayAliasMeta("Complex64", jaxtyping.Complex64)
 Float = ArrayAliasMeta("Float", jaxtyping.Float)
 Float32 = ArrayAliasMeta("Float32", jaxtyping.Float32)
 Int = ArrayAliasMeta("Int", jaxtyping.Int)

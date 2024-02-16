@@ -23,6 +23,8 @@ import jax
 from kauldron.typing.array_types import (  # pylint: disable=g-multiple-import
     Array,
     Bool,
+    Complex,
+    Complex64,
     Float,
     Float32,
     Int,
