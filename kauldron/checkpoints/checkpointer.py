@@ -49,7 +49,7 @@ class BaseCheckpointer(config_util.UpdateFromRootCfg, abc.ABC):
       *,
       step: int = -1,
       noop_if_missing: bool = False,
-      donate: bool = False,
+      donate: bool = True,
   ) -> _T:
     raise NotImplementedError()
 
@@ -165,7 +165,7 @@ class Checkpointer(BaseCheckpointer):
       *,
       step: int = -1,
       noop_if_missing: bool = False,
-      donate: bool = False,
+      donate: bool = True,
   ) -> _T:
     """Restore state.
 
@@ -292,7 +292,7 @@ class NoopCheckpointer(BaseCheckpointer):
       *,
       step: int = -1,
       noop_if_missing: bool = False,
-      donate: bool = False,
+      donate: bool = True,
   ):
     if initial_state is None:
       raise ValueError("`NooCheckpointer.restore` require the state arg.")

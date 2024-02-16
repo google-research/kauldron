@@ -65,7 +65,7 @@ def train_impl(
   )
 
   # Initialize CheckpointManager and attempt to restore.
-  state = ckptr.restore(state, noop_if_missing=True, donate=True)
+  state = ckptr.restore(state, noop_if_missing=True)
 
   if initial_step == 0:
     writer.write_config(trainer.raw_cfg)
