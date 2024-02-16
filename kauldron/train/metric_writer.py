@@ -16,6 +16,8 @@
 
 from __future__ import annotations
 
+import dataclasses
+import functools
 from typing import Any, Mapping, Optional
 
 from clu import metric_writers
@@ -31,14 +33,21 @@ from kauldron.train import timer as timer_module
 from kauldron.train import train_step
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 from kauldron.typing import Array, Float, Scalar  # pylint: disable=g-multiple-import
+from kauldron.utils import config_util
 import numpy as np
 import optax
 import pandas as pd
 
 from unittest import mock as _mock ; xmanager_api = _mock.Mock()
 
+COLLECTION_NOT_SET = "$not_set$"
 
-class KDMetricWriter(metric_writers.MetricWriter):
+
+@dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
+class KDMetricWriter(
+    metric_writers.MetricWriter,
+    config_util.UpdateFromRootCfg,
+):
   """Writes summaries to logs, tf_summaries and datatables.
 
   Differs from the clu default metric writer in a few ways:
@@ -49,103 +58,143 @@ class KDMetricWriter(metric_writers.MetricWriter):
    - offers additional methods to write config, param_overview and element_spec
   """
 
-  def __init__(self, workdir: epath.PathLike, collection: str):
-    self.workdir = epath.Path(workdir)
-    self.collection = collection
-    self.log_writer = metric_writers.AsyncWriter(
-        metric_writers.LoggingWriter(collection)
-    )
-    noop = metric_writers.MultiWriter([])
-    if status.is_lead_host:
-      self.tf_summary_writer = metric_writers.SummaryWriter(
-          logdir=str(self.workdir / collection)
-      )
-    else:
-      self.tf_summary_writer = noop
+  workdir: str | epath.Path = config_util.ROOT_CFG_REF.workdir
 
-    if status.on_xmanager and status.is_lead_host:
-      self.scalar_writer = metric_writers.AsyncWriter(
-          metric_writers.DatatableWriter(
-              datatable_name=self.scalar_datatable_name,
-              keys=[("wid", status.wid)],
-          ),
-      )
-      self.array_writer = metric_writers.AsyncWriter(
-          metric_writers.DatatableWriter(
-              datatable_name=self.array_datatable_name,
-              keys=[("wid", status.wid)],
-          ),
-      )
-    else:
-      self.scalar_writer = noop
-      self.array_writer = noop
+  collection: str = COLLECTION_NOT_SET
+  add_artifacts: bool = True
 
-    self.add_artifacts()
+  def _assert_collection_is_set(self) -> None:
+    if self.collection is COLLECTION_NOT_SET:
+      raise ValueError("collection name must be set.")
 
-  @property
-  def scalar_datatable_name(self) -> str:
+  @functools.cached_property
+  def _scalar_datatable_name(self) -> str:
+    self._assert_collection_is_set()
     if not status.on_xmanager:
       raise RuntimeError("Not on XManager.")
     return f"/datatable/xid/{status.xid}/{self.collection}"
 
-  @property
-  def array_datatable_name(self) -> str:
+  @functools.cached_property
+  def _array_datatable_name(self) -> str:
+    self._assert_collection_is_set()
     if not status.on_xmanager:
       raise RuntimeError("Not on XManager.")
     return f"/datatable/xid/{status.xid}/{self.collection}_arrays"
+
+  @functools.cached_property
+  def _noop(self) -> metric_writers.MetricWriter:
+    return metric_writers.MultiWriter([])
+
+  @functools.cached_property
+  def _log_writer(self) -> metric_writers.MetricWriter:
+    self._assert_collection_is_set()
+    return metric_writers.AsyncWriter(
+        metric_writers.LoggingWriter(self.collection)
+    )
+
+  @functools.cached_property
+  def _tf_summary_writer(self) -> metric_writers.MetricWriter:
+    if status.is_lead_host:
+      self._assert_collection_is_set()
+      return metric_writers.SummaryWriter(
+          logdir=str(self.workdir / self.collection)
+      )
+    else:
+      return self._noop
+
+  @functools.cached_property
+  def _scalar_writer(self) -> metric_writers.MetricWriter:
+    if status.on_xmanager and status.is_lead_host:
+      if status.wid == 1 and self.add_artifacts:
+        status.xp.create_artifact(
+            artifact_type=xmanager_api.ArtifactType.ARTIFACT_TYPE_STORAGE2_BIGTABLE,
+            artifact=self._scalar_datatable_name,
+            description=f"Scalars datatable ({self.collection})",
+        )
+
+      return metric_writers.AsyncWriter(
+          metric_writers.DatatableWriter(
+              datatable_name=self._scalar_datatable_name,
+              keys=[("wid", status.wid)],
+          ),
+      )
+    else:
+      return self._noop
+
+  @functools.cached_property
+  def _array_writer(self) -> metric_writers.MetricWriter:
+    if status.on_xmanager and status.is_lead_host:
+      if status.wid == 1 and self.add_artifacts:
+        status.xp.create_artifact(
+            artifact_type=xmanager_api.ArtifactType.ARTIFACT_TYPE_STORAGE2_BIGTABLE,
+            artifact=self._array_datatable_name,
+            description=f"Arrays and images datatable ({self.collection})",
+        )
+      return metric_writers.AsyncWriter(
+          metric_writers.DatatableWriter(
+              datatable_name=self._array_datatable_name,
+              keys=[("wid", status.wid)],
+          ),
+      )
+    else:
+      return self._noop
 
   def write_summaries(
       self,
       step: int,
       values: Mapping[str, Array],
       metadata: Mapping[str, Any] | None = None,
-  ):
-    self.array_writer.write_summaries(step, values, metadata)
-    self.tf_summary_writer.write_summaries(step, values, metadata)
+  ) -> None:
+    self._array_writer.write_summaries(step, values, metadata)
+    self._tf_summary_writer.write_summaries(step, values, metadata)
 
-  def write_scalars(self, step: int, scalars: Mapping[str, Scalar]):
-    self.log_writer.write_scalars(step, scalars)
-    self.scalar_writer.write_scalars(step, scalars)
-    self.tf_summary_writer.write_scalars(step, scalars)
+  def write_scalars(self, step: int, scalars: Mapping[str, Scalar]) -> None:
+    self._log_writer.write_scalars(step, scalars)
+    self._scalar_writer.write_scalars(step, scalars)
+    self._tf_summary_writer.write_scalars(step, scalars)
 
-  def write_images(self, step: int, images: Mapping[str, Array["N H W C"]]):
+  def write_images(
+      self, step: int, images: Mapping[str, Array["n h w c"]]
+  ) -> None:
     images_uint8 = {}
     for key, image in images.items():
-      if isinstance(image, Float["N H W C"]):
+      if isinstance(image, Float["n h w c"]):
         # DatatableUI autoscales float images, so convert to uint8
         image = np.array(np.clip(image * 255.0, 0.0, 255.0), dtype=np.uint8)
       images_uint8[key] = image
 
-    self.array_writer.write_images(step, images_uint8)
-    self.tf_summary_writer.write_images(step, images_uint8)
+    self._array_writer.write_images(step, images_uint8)
+    self._tf_summary_writer.write_images(step, images_uint8)
 
   def write_histograms(
       self,
       step: int,
       arrays: Mapping[str, Array],
       num_buckets: Mapping[str, int] | None = None,
-  ):
-    self.tf_summary_writer.write_histograms(step, arrays, num_buckets)
+  ) -> None:
+    self._tf_summary_writer.write_histograms(step, arrays, num_buckets)
 
-  def write_videos(self, step: int, videos: Mapping[str, Array["N T H W C"]]):
-    self.tf_summary_writer.write_videos(step, videos)
+  def write_videos(
+      self, step: int, videos: Mapping[str, Array["n t h w c"]]
+  ) -> None:
+    self._tf_summary_writer.write_videos(step, videos)
 
   def write_audios(
       self,
       step: int,
-      audios: Mapping[str, Float["N T C"]],
+      audios: Mapping[str, Float["n t c"]],
       *,
       sample_rate: int,
-  ):
-    self.tf_summary_writer.write_audios(step, audios, sample_rate=sample_rate)
+  ) -> None:
+    self._tf_summary_writer.write_audios(step, audios, sample_rate=sample_rate)
 
-  def write_texts(self, step: int, texts: Mapping[str, str]):
-    self.log_writer.write_texts(step, texts)
-    self.tf_summary_writer.write_texts(step, texts)
+  def write_texts(self, step: int, texts: Mapping[str, str]) -> None:
+    self._log_writer.write_texts(step, texts)
+    self._tf_summary_writer.write_texts(step, texts)
 
-  def write_hparams(self, hparams: Mapping[str, Any]):
-    self.log_writer.write_hparams(hparams)
-    self.tf_summary_writer.write_hparams(hparams)
+  def write_hparams(self, hparams: Mapping[str, Any]) -> None:
+    self._log_writer.write_hparams(hparams)
+    self._tf_summary_writer.write_hparams(hparams)
 
   def write_config(self, config: konfig.ConfigDict) -> None:
     if config is None:
@@ -159,11 +208,11 @@ class KDMetricWriter(metric_writers.MetricWriter):
     texts = {"config": f"```python\n{config!r}\n```"}
     self.write_texts(0, texts)
 
-  def write_param_overview(self, step: int, params):
-    texts = {"parameters": get_markdown_param_table(params)}
+  def write_param_overview(self, step: int, params) -> None:
+    texts = {"parameters": _get_markdown_param_table(params)}
     self.write_texts(step, texts)
 
-  def write_element_spec(self, step: int, element_spec):
+  def write_element_spec(self, step: int, element_spec) -> None:
     texts = {"element_spec": f"```python\n{element_spec!s}\n```"}
     self.write_texts(step, texts)
 
@@ -188,6 +237,7 @@ class KDMetricWriter(metric_writers.MetricWriter):
     markdown_table = ctx_df.to_markdown(index=False, tablefmt="github")
     self.write_texts(step, {"context_spec": markdown_table})
 
+  # TODO(klausg): move most of this functionality out of the writer
   def write_step_metrics(
       self,
       *,
@@ -197,7 +247,7 @@ class KDMetricWriter(metric_writers.MetricWriter):
       schedules: Mapping[str, optax.Schedule],
       log_summaries: bool,
       timer: Optional[timer_module.PerformanceTimer] = None,
-  ):
+  ) -> None:
     """Logs scalar and image summaries."""
     aux_result = aux.compute(flatten=True)
 
@@ -266,33 +316,20 @@ class KDMetricWriter(metric_writers.MetricWriter):
 
     self.flush()
 
-  def add_artifacts(self):
-    if not (status.on_xmanager and status.is_lead_host and status.wid == 1):
-      return  # only add artifacts from lead host of first work unit on XM
+  def flush(self) -> None:
+    self._scalar_writer.flush()
+    self._array_writer.flush()
+    self._tf_summary_writer.flush()
 
-    status.xp.create_artifact(
-        artifact_type=xmanager_api.ArtifactType.ARTIFACT_TYPE_STORAGE2_BIGTABLE,
-        artifact=self.array_datatable_name,
-        description=f"Arrays and images datatable ({self.collection})",
-    )
-    status.xp.create_artifact(
-        artifact_type=xmanager_api.ArtifactType.ARTIFACT_TYPE_STORAGE2_BIGTABLE,
-        artifact=self.scalar_datatable_name,
-        description=f"Scalars datatable ({self.collection})",
-    )
+  def close(self) -> None:
+    self._scalar_writer.close()
+    self._array_writer.close()
+    self._tf_summary_writer.close()
 
-  def flush(self):
-    self.scalar_writer.flush()
-    self.array_writer.flush()
-    self.tf_summary_writer.flush()
-
-  def close(self):
-    self.scalar_writer.close()
-    self.array_writer.close()
-    self.tf_summary_writer.close()
+  replace = dataclasses.replace
 
 
-def get_markdown_param_table(params):
+def _get_markdown_param_table(params) -> str:
   param_table = parameter_overview.get_parameter_overview(params)
   # convert to markdown format (Only minor adjustments needed)
   rows = param_table.split("\n")

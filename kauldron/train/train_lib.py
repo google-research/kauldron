@@ -29,7 +29,6 @@ from kauldron.data import data_utils
 from kauldron.evals import eval_impl
 from kauldron.train import config_lib
 from kauldron.train import flatboard_utils
-from kauldron.train import metric_writer
 from kauldron.train import timer as timer_module
 from kauldron.train import train_step
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
@@ -53,13 +52,10 @@ def train_impl(
   _ensure_workdir(trainer.workdir)
   flatboard_utils.add_flatboards(trainer)
 
-  writer = metric_writer.KDMetricWriter(
-      workdir=trainer.workdir, collection="train"
-  )
-
   status.log("Initializing ...")
   trainstep = trainer.trainstep
   ckptr = trainer.checkpointer
+  writer = trainer.writer
   latest_step = ckptr.latest_step
   initial_step = 0 if latest_step is None else latest_step
 

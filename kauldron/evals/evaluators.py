@@ -143,8 +143,18 @@ class Evaluator(EvaluatorBase):
   summaries: dict[str, summaries_lib.Summary] = (
       config_util.ROOT_CFG_REF.train_summaries
   )
+  writer: metric_writer.KDMetricWriter = dataclasses.field(
+      default_factory=metric_writer.KDMetricWriter
+  )
 
   # TODO(klausg): filter out metrics / summaries that access grads/updates
+
+  def __post_init__(self):
+    super().__post_init__()
+    # set the name of the collection to eval name (unless specified otherwise)
+    if self.writer.collection == metric_writer.COLLECTION_NOT_SET:
+      new_writer = self.writer.replace(collection=self.name)
+      object.__setattr__(self, 'writer', new_writer)
 
   def update_from_root_cfg(
       self: _SelfT, root_cfg: config_lib.Trainer
@@ -157,8 +167,10 @@ class Evaluator(EvaluatorBase):
           ' set it either in `kd.train.Trainer.eval_ds` or in'
           ' `Evaluator(ds=...)`.'
       )
+
     return new_self.replace(
         ds=new_self.ds.update_from_root_cfg(root_cfg),
+        writer=new_self.writer.update_from_root_cfg(root_cfg),
     )
 
   @functools.cached_property
@@ -172,13 +184,6 @@ class Evaluator(EvaluatorBase):
         raise ValueError('Can only cache if num_batches is set.')
       ds_iter = ds_iter.cache()
     return ds_iter.device_put()
-
-  @functools.cached_property
-  def writer(self) -> metric_writer.KDMetricWriter:
-    """Metric writer used for this evaluator."""
-    return metric_writer.KDMetricWriter(
-        workdir=self.base_cfg.workdir, collection=self.name
-    )
 
   def evaluate(
       self, state: train_step.TrainState, step: int

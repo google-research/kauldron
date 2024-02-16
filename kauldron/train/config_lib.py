@@ -37,6 +37,7 @@ from kauldron.data import utils as data_utils
 from kauldron.evals import eval_impl
 from kauldron.evals import evaluators
 from kauldron.train import flatboard
+from kauldron.train import metric_writer
 from kauldron.train import rngs_lib
 from kauldron.train import train_lib
 from kauldron.train import train_step
@@ -104,6 +105,7 @@ class Trainer(config_util.BaseConfig):
     xm_job: XManager runtime parameters (e.g. which target is the config using)
     raw_cfg: Original config from which this `Config` was created. Automatically
       set during `konfig.resolve()`
+    writer: Metric writer used for writing to TB, datatable, etc.
   """
 
   seed: int = 0
@@ -155,6 +157,10 @@ class Trainer(config_util.BaseConfig):
       dataclasses.field(default_factory=FrozenDict)
   )
 
+  writer: metric_writer.KDMetricWriter = dataclasses.field(
+      default_factory=metric_writer.KDMetricWriter
+  )
+
   # Train, eval loop
   trainstep: train_step.TrainStep = dataclasses.field(
       default_factory=train_step.TrainStep, repr=False
@@ -193,6 +199,7 @@ class Trainer(config_util.BaseConfig):
         'checkpointer',
         'profiler',
         'trainstep',
+        'writer',
     ):
       if hasattr(self, attr_name):
         object.__setattr__(
@@ -205,6 +212,11 @@ class Trainer(config_util.BaseConfig):
           'evals',
           {k: v.update_from_root_cfg(self) for k, v in evals.items()},
       )
+
+    # set the name of the collection to eval name (unless specified otherwise)
+    if self.writer.collection == metric_writer.COLLECTION_NOT_SET:
+      new_writer = self.writer.replace(collection='train')
+      object.__setattr__(self, 'writer', new_writer)
 
   __konfig_resolve_exclude_fields__ = ('xm_job',)
 
