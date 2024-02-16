@@ -46,9 +46,9 @@ def train_impl(
     trainer: config_lib.Trainer,
 ) -> tuple[train_step.TrainState, Optional[train_step.Auxiliaries]]:
   """Implements of `Trainer.train`."""
-  tf.config.set_visible_devices([], "GPU")
-
   status.log("Configuring ...")
+  utils.add_log_artifacts()
+  tf.config.set_visible_devices([], "GPU")
   _ensure_workdir(trainer.workdir)
   flatboard_utils.add_flatboards(trainer)
 

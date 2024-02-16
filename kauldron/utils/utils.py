@@ -18,6 +18,8 @@ from collections.abc import Iterable, Iterator
 import itertools
 from typing import Optional, TypeVar
 
+from etils import exm
+from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 from tqdm import auto as tqdm
 from xmanager.contrib.internal import xm_tqdm
 
@@ -83,3 +85,9 @@ def enum_iter(
       **tqdm_kwargs,
   ):
     yield i, ex
+
+
+def add_log_artifacts() -> None:
+  """Add XManager artifacts for easy access to the Python logs."""
+  if not status.on_xmanager or not status.is_lead_host:
+    return
