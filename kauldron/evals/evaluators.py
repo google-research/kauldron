@@ -133,7 +133,7 @@ class Evaluator(EvaluatorBase):
     summaries: Summaries
   """
 
-  num_batches: Optional[int]
+  num_batches: Optional[int] = None
   cache: bool = False
   ds: data.Pipeline = config_util.ROOT_CFG_REF.eval_ds
   losses: dict[str, losses_lib.Loss] = config_util.ROOT_CFG_REF.train_losses
