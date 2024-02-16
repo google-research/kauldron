@@ -33,7 +33,7 @@ from projects.nerf.core import structs
 #     """Iterate over the dataset elements."""
 #     yield from self.loader
 
-#   def __length__(self) -> int:
+#   def __len__(self) -> int:
 #     if self.num_epochs is None:
 #       raise TypeError("Cannot get length of infinite dataset.")
 #     else:

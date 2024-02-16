@@ -153,7 +153,7 @@ class TFDataPipeline(Pipeline):
     """Returns the element specs of the dataset."""
     return self._ds_iter.element_spec
 
-  def __length__(self) -> int:
+  def __len__(self) -> int:
     return len(self._ds_iter)
 
 
@@ -244,7 +244,7 @@ class PyGrainPipeline(Pipeline):
     """Iterate over the dataset elements."""
     yield from self.loader
 
-  def __length__(self) -> int:
+  def __len__(self) -> int:
     if self.num_epochs is None:
       raise TypeError("Cannot get length of infinite dataset.")
     else:

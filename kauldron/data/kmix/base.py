@@ -89,7 +89,7 @@ class Base(pipelines.Pipeline, abc.ABC):
     """Returns the element specs of the dataset."""
     return self._root_ds_iter.element_spec
 
-  def __length__(self) -> int:
+  def __len__(self) -> int:
     return len(self._root_ds_iter)
 
   # ======================== Internals ========================
