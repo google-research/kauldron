@@ -10,7 +10,7 @@ pipelines.
 Minimal example:
 
 ```python
-cfg.train_ds = kmix.Tfds(
+cfg.train_ds = kd.kmix.Tfds(
     # TFDS parameters
     name='mnist',
     split='train',
@@ -26,16 +26,16 @@ cfg.train_ds = kmix.Tfds(
 Example of dataset mixture with nested transforms:
 
 ```python
-cfg.train_ds = kmix.SampleFromDatasets(
+cfg.train_ds = kd.kmix.SampleFromDatasets(
     datasets=[
-        kmix.Tfds(
+        kd.kmix.Tfds(
             name='cifar100',
             split='train',
             transforms=[
                 kd.data.Elements(keep=["image", "label"]),
             ],
         ),
-        kmix.Tfds(
+        kd.kmix.Tfds(
             name='imagenet2012',
             split='train',
             transforms=[
@@ -60,6 +60,9 @@ cfg.train_ds = kmix.SampleFromDatasets(
   format)
 * `kmix.SeqIOTask`: SeqIO task
 * `kmix.SeqIOMixture`: SeqIO mixture
+
+Other sources will be added in the future. If your dataset is not yet supported,
+please [contact us](https://kauldron.rtfd.io/en/latest-help#bugs-feedback).
 
 <!--
 
@@ -115,7 +118,7 @@ Like all `kd.data.Pipeline` objects, the dataset can be used directly as a
 standalone iterator.
 
 ```python
-ds = kmix.Tfds(...)
+ds = kd.kmix.Tfds(...)
 ds = ds.device_put(kd.sharding.SHARDED)
 
 for ex in ds:
