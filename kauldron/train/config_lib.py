@@ -90,6 +90,7 @@ class Trainer(config_util.BaseConfig):
     train_losses: x
     train_metrics: x
     train_summaries: x
+    writer: Metric writer used for writing to TB, datatable, etc.
     flatboards: x
     profiler: Profiler can be customized (see `kd.inspect.Profile`)
     schedules: optax schedules (to be used in `optimizer`)
@@ -105,7 +106,6 @@ class Trainer(config_util.BaseConfig):
     xm_job: XManager runtime parameters (e.g. which target is the config using)
     raw_cfg: Original config from which this `Config` was created. Automatically
       set during `konfig.resolve()`
-    writer: Metric writer used for writing to TB, datatable, etc.
   """
 
   seed: int = 0
@@ -136,6 +136,10 @@ class Trainer(config_util.BaseConfig):
   train_summaries: MutableMapping[str, summaries.Summary] = dataclasses.field(
       default_factory=FrozenDict
   )
+
+  writer: metric_writer.KDMetricWriter = dataclasses.field(
+      default_factory=metric_writer.KDMetricWriter
+  )
   flatboards: MutableMapping[str, flatboard.DashboardFactory] = (
       dataclasses.field(default_factory=FrozenDict)
   )
@@ -155,10 +159,6 @@ class Trainer(config_util.BaseConfig):
   )
   init_transforms: MutableMapping[str, checkpoints.AbstractPartialLoader] = (
       dataclasses.field(default_factory=FrozenDict)
-  )
-
-  writer: metric_writer.KDMetricWriter = dataclasses.field(
-      default_factory=metric_writer.KDMetricWriter
   )
 
   # Train, eval loop

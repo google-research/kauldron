@@ -92,7 +92,7 @@ def get_config():
   )
 
   cfg.evals = {
-      "eval_oit": kd.evals.Evaluator(
+      "eval": kd.evals.Evaluator(
           run=kd.evals.RunEvery(1000),
           num_batches=10,
           ds=_make_ds(training=False),

@@ -53,6 +53,7 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
     name: Eval name (collection name for TensorBoard and Datatables)
     run: How/when to run this eval (e.g. `kd.evals.RunEvery(100)` or
       `kd.evals.RunXM()`)
+    writer: Metric writer (set automatically)
     base_cfg: reference to the experiment configuration (set automatically).
   """
 
@@ -62,12 +63,11 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
   # Do not resolve the RunStrategy to avoid depending on XManager
   run: konfig.ConfigDictLike[run_strategies.RunStrategy]
 
-  base_cfg: config_lib.Trainer = dataclasses.field(
-      default=config_util.ROOT_CFG_REF, repr=False
-  )
-
   writer: metric_writer.KDMetricWriter = dataclasses.field(
       default=config_util.ROOT_CFG_REF.writer
+  )
+  base_cfg: config_lib.Trainer = dataclasses.field(
+      default=config_util.ROOT_CFG_REF, repr=False
   )
 
   __konfig_resolve_exclude_fields__ = ('run',)
