@@ -60,7 +60,7 @@ class KDMetricWriter(
 
   workdir: str | epath.Path = config_util.ROOT_CFG_REF.workdir
 
-  collection: str = COLLECTION_NOT_SET
+  collection: str = COLLECTION_NOT_SET  # Will be set by the evaluator / trainer
   add_artifacts: bool = True
 
   def _assert_collection_is_set(self) -> None:

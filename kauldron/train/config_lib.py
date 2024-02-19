@@ -213,10 +213,11 @@ class Trainer(config_util.BaseConfig):
           {k: v.update_from_root_cfg(self) for k, v in evals.items()},
       )
 
-    # set the name of the collection to eval name (unless specified otherwise)
-    if self.writer.collection == metric_writer.COLLECTION_NOT_SET:
-      new_writer = self.writer.replace(collection='train')
-      object.__setattr__(self, 'writer', new_writer)
+    # set the name of the collection to train
+    if isinstance(self.writer, metric_writer.KDMetricWriter):
+      object.__setattr__(
+          self, 'writer', dataclasses.replace(self.writer, collection='train')
+      )
 
   __konfig_resolve_exclude_fields__ = ('xm_job',)
 

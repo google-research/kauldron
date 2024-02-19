@@ -66,6 +66,10 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
       default=config_util.ROOT_CFG_REF, repr=False
   )
 
+  writer: metric_writer.KDMetricWriter = dataclasses.field(
+      default=config_util.ROOT_CFG_REF.writer
+  )
+
   __konfig_resolve_exclude_fields__ = ('run',)
 
   def __post_init__(self) -> None:
@@ -75,6 +79,12 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
       raise ValueError(
           'Evaluator name should be a valid Python identifier. Got:'
           f' {self.name}'
+      )
+
+    # always set the name of the collection to eval name
+    if isinstance(self.writer, metric_writer.KDMetricWriter):
+      object.__setattr__(
+          self, 'writer', dataclasses.replace(self.writer, collection=self.name)
       )
 
   def maybe_eval(self, *, step: int, state: train_step.TrainState) -> Any:
@@ -89,13 +99,6 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
   def evaluate(self, state: train_step.TrainState, step: int) -> Any:
     """Run this evaluator then write and optionally return the results."""
     raise NotImplementedError
-
-  @functools.cached_property
-  def writer(self) -> metric_writer.KDMetricWriter:
-    """Metric writer used for this evaluator."""
-    return metric_writer.KDMetricWriter(
-        workdir=self.base_cfg.workdir, collection=self.name
-    )
 
   @functools.cached_property
   def _resolved_run(self) -> run_strategies.KauldronRunStrategy:
@@ -143,18 +146,8 @@ class Evaluator(EvaluatorBase):
   summaries: dict[str, summaries_lib.Summary] = (
       config_util.ROOT_CFG_REF.train_summaries
   )
-  writer: metric_writer.KDMetricWriter = dataclasses.field(
-      default_factory=metric_writer.KDMetricWriter
-  )
 
   # TODO(klausg): filter out metrics / summaries that access grads/updates
-
-  def __post_init__(self):
-    super().__post_init__()
-    # set the name of the collection to eval name (unless specified otherwise)
-    if self.writer.collection == metric_writer.COLLECTION_NOT_SET:
-      new_writer = self.writer.replace(collection=self.name)
-      object.__setattr__(self, 'writer', new_writer)
 
   def update_from_root_cfg(
       self: _SelfT, root_cfg: config_lib.Trainer
