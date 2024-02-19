@@ -20,7 +20,7 @@ import asyncio
 import dataclasses
 import functools
 import typing
-from typing import Any
+from typing import Any, Optional
 
 import attr
 from etils import etree
@@ -192,7 +192,17 @@ class Job(job_params.JobParams):
     args["xprof_port"] = "%port_xprof%"
     args["g3pdb_port"] = "%port_g3pdb%"
 
-    executor = attr.evolve(self.executor, requirements=self.requirements)
+    # TODO(b/322769542): Remove once XM fix this issue.
+    use_auto_host_resources = _get_use_auto_host_resources(
+        executor=self.executor,
+        requirements=self.requirements,
+    )
+
+    executor = attr.evolve(
+        self.executor,
+        use_auto_host_resources=use_auto_host_resources,
+        requirements=self.requirements,
+    )
     return xm.Job(
         executable=self.executable,
         executor=executor,
@@ -247,6 +257,25 @@ def _resolve_and_normalize_arg(
     arg = str(arg)
 
   return arg
+
+
+def _get_use_auto_host_resources(
+    executor: xm.Executor,
+    requirements: xm.JobRequirements,
+) -> Optional[bool]:
+  """Returns if `use_auto_host_resources` should be used."""
+  if not isinstance(executor, xm_abc.Borg):
+    return None  # `use_auto_host_resources` only exists in Borg
+  # use_auto_host_resources explicitly set
+  if executor.use_auto_host_resources is not None:
+    return executor.use_auto_host_resources
+  if requirements.accelerator not in xm.GpuType:
+    return None  # When not using GPUs, let XM decide
+  return not {
+      xm.ResourceType.CPU,
+      xm.ResourceType.MEMORY,
+      xm.ResourceType.RAM,
+  } & set(requirements.task_requirements.keys())
 
 
 def _target_to_script_path(target: str) -> str:
