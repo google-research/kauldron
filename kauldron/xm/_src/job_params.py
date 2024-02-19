@@ -61,6 +61,24 @@ class Debug:
 
 @merge_utils.add_merge_support
 @dataclasses.dataclass(frozen=True, kw_only=True)
+class MLPython:
+  """Wrapper around `xm_abc.ml_python` that auto-set the accelerator."""
+
+  version: None | str = 'live'  # Set live version because of b/325917292
+  fallback_behavior: str = 'live'
+
+  def get_mpm(
+      self, accelerator: None | xm.ResourceType = None
+  ) -> xm.ExecutableSpec:
+    return xm_abc.ml_python(
+        version=self.version,
+        fallback_behavior=self.fallback_behavior,
+        accelerator=accelerator,
+    )
+
+
+@merge_utils.add_merge_support
+@dataclasses.dataclass(frozen=True, kw_only=True)
 class InterpreterInfo:
   """Interpreter additional configuration.
 
@@ -71,8 +89,8 @@ class InterpreterInfo:
       computed from the `job.target`.
   """
 
-  mpm: xm.ExecutableSpec = dataclasses.field(
-      default_factory=lambda: xm_abc.ml_python()  # pylint: disable=unnecessary-lambda
+  mpm: xm.ExecutableSpec | MLPython = dataclasses.field(
+      default_factory=MLPython
   )
   script_path: str | None = None
 
