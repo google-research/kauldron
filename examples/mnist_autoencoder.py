@@ -101,14 +101,12 @@ def get_config():
 
 
 def _make_ds(training: bool):
-  return kd.data.TFDataPipeline(
-      loader=kd.data.loaders.GrainTfds(
-          name="mnist",
-          split="train" if training else "test",
-          shuffle=True if training else False,
-          num_epochs=None if training else 1,
-      ),
-      transformations=[
+  return kd.kmix.Tfds(
+      name="mnist",
+      split="train" if training else "test",
+      shuffle=True if training else False,
+      num_epochs=None if training else 1,
+      transforms=[
           kd.data.Elements(keep=["image"]),
           kd.data.ValueRange(key="image", vrange=(0, 1)),
       ],

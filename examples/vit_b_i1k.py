@@ -12,7 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Runs a ViT-B/16 classifer on Imagenet 64x64."""
+r"""Runs a ViT-B/16 classifer on Imagenet 64x64.
+
+```sh
+xmanager launch third_party/py/kauldron/xm/launch.py -- \
+  --cfg=third_party/py/kauldron/examples/vit_b_i1k.py \
+  --xp.use_interpreter \
+  --xp.platform=df=2x2
+```
+
+"""
 
 from kauldron import konfig
 
@@ -118,18 +127,15 @@ def _make_ds(training: bool):
         kd.data.Rearrange(key="label", pattern="... -> ... 1"),
     ]
 
-  return kd.data.TFDataPipeline(
-      loader=kd.data.loaders.Tfds(
-          name="imagenet2012",
-          split="train[:99%]"
-          if training
-          else "train[99%:]",  # TODO(klausg) pad instead of drop remainder
-          shuffle=True if training else False,
-          shuffle_buffer_size=250_000,
-          num_epochs=None if training else 1,
-          cache=True,
-      ),
-      transformations=transformations,
+  return kd.kmix.Tfds(
+      name="imagenet2012",
+      split="train[:99%]"
+      if training
+      else "train[99%:]",  # TODO(klausg) pad instead of drop remainder
+      shuffle=True if training else False,
+      num_epochs=None if training else 1,
+      cache=True,
+      transforms=transformations,
       batch_size=4096,
   )
 

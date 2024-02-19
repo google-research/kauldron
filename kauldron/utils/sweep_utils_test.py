@@ -67,12 +67,12 @@ def test_sweep_overwrite():
       config=cfg,
       sweep_kwargs=json.dumps({
           'seed': 12,
-          'train_ds.loader.name': 'imagenet',
-          'train_ds.transformations[0].keep[0]': 'other_image',
+          'train_ds.name': 'imagenet',
+          'train_ds.transforms[0].keep[0]': 'other_image',
           'model': {'__qualname__': 'flax.linen:Dense', '0': 12},
       }),
   )
   assert cfg.seed == 12
-  assert cfg.train_ds.transformations[0].keep == ['other_image']
-  assert cfg.train_ds.loader.name == 'imagenet'
+  assert cfg.train_ds.transforms[0].keep == ['other_image']
+  assert cfg.train_ds.name == 'imagenet'
   assert cfg.model == nn.Dense(12)

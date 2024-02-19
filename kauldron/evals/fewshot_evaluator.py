@@ -75,9 +75,9 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
     )
   """
 
-  ds_train: data.TFDataPipeline
-  ds_val: data.TFDataPipeline
-  ds_test: data.TFDataPipeline
+  ds_train: data.Pipeline
+  ds_val: data.Pipeline
+  ds_test: data.Pipeline
   metric_prefix: str
   num_classes: int
   num_shots: Sequence[int]

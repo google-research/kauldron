@@ -17,6 +17,7 @@ r"""Runs a ViT-Tiny classifer on Imagenet 64x64.
 ```sh
 xmanager launch third_party/py/kauldron/xm/launch.py -- \
   --cfg=third_party/py/kauldron/examples/tiny_vit_imagenet.py \
+  --xp.use_interpreter \
   --xp.platform=jf=2x2
 ```
 
@@ -102,14 +103,12 @@ def get_config():
 
 
 def _make_ds(training: bool):
-  return kd.data.TFDataPipeline(
-      loader=kd.data.loaders.GrainTfds(
-          name="imagenet_resized/64x64",
-          split="train" if training else "validation",
-          shuffle=True if training else False,
-          num_epochs=None if training else 1,
-      ),
-      transformations=[
+  return kd.kmix.Tfds(
+      name="imagenet_resized/64x64",
+      split="train" if training else "validation",
+      shuffle=True if training else False,
+      num_epochs=None if training else 1,
+      transforms=[
           kd.data.Elements(keep=["image", "label"]),
           kd.data.ValueRange(key="image", in_vrange=(0, 255), vrange=(0, 1)),
           kd.data.Rearrange(key="label", pattern="... -> ... 1"),
