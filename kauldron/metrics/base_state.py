@@ -306,6 +306,8 @@ class AverageState(State):
     )
 
   def compute(self) -> Float[""]:
+    if self.count == 0: return 0.0
+
     return self.total / self.count
 
 
