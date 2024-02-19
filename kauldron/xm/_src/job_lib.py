@@ -120,9 +120,13 @@ class Job(job_params.JobParams):
     if not script_full_path.exists():
       raise ValueError(f"Could not find script {script_full_path}.")
 
+    mpm = self.interpreter_info.mpm
+    if isinstance(mpm, job_params.MLPython):
+      mpm = mpm.get_mpm(accelerator=self.requirements.accelerator)
+
     return xm_abc.interpreter(  # pytype: disable=wrong-arg-types
         script_path=script_path,
-        interpreter_mpm=self.interpreter_info.mpm,
+        interpreter_mpm=mpm,
         dependencies=self.dependencies,
         args={
             "adhoc_import_dir": citc_info.g3_dir,
@@ -158,11 +162,6 @@ class Job(job_params.JobParams):
       dir_builder: dir_utils.DirectoryBuilder,
   ) -> xm.Job:
     """Returns the XManager job."""
-    if not isinstance(self.requirements, xm.JobRequirements):
-      raise ValueError(
-          "`job.xm_job` can only be called after requirements were resolved in"
-          " `Experiment.resolved_jobs`"
-      )
 
     # Build up the environment variables:
     env_vars = dict(self.env_vars)

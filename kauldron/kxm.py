@@ -27,6 +27,7 @@ from kauldron.xm._src.kauldron_utils import KauldronJobs
 from kauldron.xm._src.job_lib import Job
 from kauldron.xm._src.job_params import Debug
 from kauldron.xm._src.job_params import InterpreterInfo
+from kauldron.xm._src.job_params import MLPython
 
 # Sweep info
 from kauldron.xm._src.sweep_utils import SweepInfo
