@@ -12,7 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Base config."""
+r"""Base config.
+
+```sh
+xmanager launch third_party/py/kauldron/xm/launch.py -- \
+  --cfg=third_party/py/kauldron/projects/nerf/configs/base.py \
+  --xp.use_interpreter \
+  --xp.platform=jf=2x2
+```
+
+"""
 
 from kauldron import konfig
 from kauldron import kontext

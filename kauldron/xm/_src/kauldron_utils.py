@@ -23,7 +23,7 @@ This can serve as example of how `kxm` can be customized for another project.
 from __future__ import annotations
 
 import collections
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
 import dataclasses
 import functools
 import importlib
@@ -38,6 +38,7 @@ import typing
 from typing import Any
 
 from absl import flags
+from etils import epath
 from etils import epy
 from kauldron import konfig
 from kauldron import kontext
@@ -58,8 +59,6 @@ if typing.TYPE_CHECKING:
 # Flag to send the json-serialized sweep overwrites kwargs
 # If modifying this, also modify the value in `kauldron/utils/sweep_utils.py`
 _SWEEP_FLAG_NAME = "sweep_config"
-
-_KAULDRON_PATH = pathlib.Path("third_party/py/kauldron")
 
 # TODO(epot): Support sweep on platform,...
 
@@ -262,18 +261,17 @@ class KauldronJobs(jobs_info.JobsProvider):
       project_name = target.rpartition(":")[0].rpartition("/")[-1]
       return _ProjectInfo(target=target, project_name=project_name)
 
-    examples_path = _KAULDRON_PATH / "examples"
-    projects_path = _KAULDRON_PATH / "projects"
-    if self.config_path.is_relative_to(projects_path):
-      project_name = self.config_path.relative_to(projects_path).parts[0]
+    path = epath.resource_path(self.module)
+
+    for curr_dir in _iter_parents(path):
+      build_path = curr_dir / "BUILD"
+      if not build_path.exists():
+        continue
+      if "\nkauldron_binary(" not in build_path.read_text():
+        continue
       return _ProjectInfo(
-          target=f"//{_KAULDRON_PATH}/projects/{project_name}:trainer",
-          project_name=project_name,
-      )
-    elif self.config_path.is_relative_to(examples_path):
-      return _ProjectInfo(
-          target=f"//{_KAULDRON_PATH}/examples:trainer",
-          project_name="examples",
+          target=f"//{epath.relative_to_g3(curr_dir)}:trainer",
+          project_name=curr_dir.name,
       )
     else:
       raise ValueError(
@@ -389,10 +387,6 @@ def _get_sweep_fn(module: types.ModuleType, fn_name: str):
   return fn()
 
 
-def _last_index(list_: Sequence[str], key: str) -> int:
-  return next(i for i in reversed(range(len(list_))) if list_[i] == key)
-
-
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class _ProjectInfo:
   target: str
@@ -406,6 +400,12 @@ class _JsonEncoder(json.JSONEncoder):
       return json.loads(o.to_json())
     else:
       return super().default(o)
+
+
+def _iter_parents(path: epath.Path) -> Iterable[epath.Path]:
+  yield path
+  for path in path.parents:
+    yield path
 
 
 def _is_standalone_eval(
