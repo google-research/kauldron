@@ -22,26 +22,15 @@ import flax
 import jax.numpy as jnp
 from kauldron import kontext
 from kauldron import metrics
-from kauldron.typing import Float, Shape, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Bool, Float, Shape, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 
 def get_evaluation_frames(
-    query_points: Float["*B Q 3"], num_frames: int, query_mode: str
+    gt_occluded: Float["*B T Q 1"], num_frames: int, query_mode: str
 ) -> Float["*B T"]:
   """Get which frames to evaluate for point tracking."""
-  eye = jnp.eye(num_frames, dtype=jnp.int32)
-  if query_mode == "first":
-    # evaluate frames after the query frame
-    query_frame_to_eval_frames = jnp.cumsum(eye, axis=1) - eye
-  elif query_mode == "strided":
-    # evaluate all frames except the query frame
-    query_frame_to_eval_frames = 1 - eye
-  else:
-    raise ValueError("Unknown query mode " + query_mode)
-
-  query_frame = query_points[..., 0]
-  query_frame = jnp.round(query_frame).astype(jnp.int32)
-  evaluation_frames = query_frame_to_eval_frames[query_frame] > 0
+  evaluation_frames = jnp.ones(gt_occluded.shape, dtype=jnp.bool_)
+  evaluation_frames.at[:, 0].set(False)  # do not evaluate first frame
   return evaluation_frames
 
 
@@ -49,9 +38,9 @@ def get_evaluation_frames(
 class TapOcclusionAccuracy(metrics.Metric):
   """Occlusion accuracy for point tracking."""
 
-  query_points: kontext.Key = kontext.REQUIRED  # e.g. "batch.query_points"
-  gt_visible: kontext.Key = kontext.REQUIRED  # e.g. "batch.visible"
-  pred_visible: kontext.Key = kontext.REQUIRED  # e.g. "pred.visible"
+  gt_occluded: kontext.Key = kontext.REQUIRED  # e.g. "batch.visible"
+  pred_occluded_logits: kontext.Key = kontext.REQUIRED  # e.g. "pred.visible"
+  mask: kontext.Key = kontext.REQUIRED  # e.g. "batch.mask"
   query_mode: str  # e.g. "first" or "strided"
 
   @flax.struct.dataclass
@@ -61,22 +50,27 @@ class TapOcclusionAccuracy(metrics.Metric):
   @typechecked
   def get_state(
       self,
-      query_points: Float["*B Q 3"],
-      gt_visible: Float["*B Q T 1"],
-      pred_visible: Float["*B Q T 1"],
+      gt_occluded: Bool["*B T Q 1"],
+      pred_occluded_logits: Float["*B T Q 1"],
+      mask: Float["*B T Q 1"],
   ) -> TapOcclusionAccuracy.State:
-    gt_visible = gt_visible.squeeze(-1).astype(jnp.bool_)
-    pred_visible = pred_visible.squeeze(-1).astype(jnp.bool_)
+    gt_occluded = gt_occluded.squeeze(-1).astype(jnp.bool_)
+    pred_occluded = pred_occluded_logits.squeeze(-1) > 0
+    mask = mask.squeeze(-1)
+
+    gt_visible = jnp.logical_not(gt_occluded)
+    pred_visible = jnp.logical_not(pred_occluded)
 
     evaluation_frames = get_evaluation_frames(
-        query_points, Shape("T")[0], self.query_mode
+        gt_occluded, Shape("T")[0], self.query_mode
     )
 
     # Occlusion accuracy is simply how often the predicted occlusion equals the
     # ground truth.
-    values = jnp.sum(
-        jnp.equal(pred_visible, gt_visible) & evaluation_frames, axis=(-2, -1)
-    ) / jnp.sum(evaluation_frames, axis=(-2, -1))
+    values = jnp.equal(pred_visible, gt_visible) & evaluation_frames
+    values = jnp.sum(values, axis=-2) * mask[:, 0]
+    count = jnp.sum(evaluation_frames, axis=-2) * mask[:, 0]
+    values = (values.sum(axis=-1) + 1e-8) / (count.sum(axis=-1) + 1e-8)
 
     return self.State.from_values(values=values)
 
@@ -85,10 +79,10 @@ class TapOcclusionAccuracy(metrics.Metric):
 class TapPositionAccuracy(metrics.Metric):
   """Position accuracy for visible points only."""
 
-  query_points: kontext.Key = kontext.REQUIRED  # e.g. "batch.query_points"
-  gt_visible: kontext.Key = kontext.REQUIRED  # e.g. "batch.visible"
+  gt_occluded: kontext.Key = kontext.REQUIRED  # e.g. "batch.visible"
   gt_tracks: kontext.Key = kontext.REQUIRED  # e.g. "batch.target_points"
   pred_tracks: kontext.Key = kontext.REQUIRED  # e.g. "pred.tracks"
+  mask: kontext.Key = kontext.REQUIRED  # e.g. "batch.mask"
   query_mode: str  # e.g. "first" or "strided"
 
   @flax.struct.dataclass
@@ -98,15 +92,18 @@ class TapPositionAccuracy(metrics.Metric):
   @typechecked
   def get_state(
       self,
-      query_points: Float["*B Q 3"],
-      gt_visible: Float["*B Q T 1"],
-      gt_tracks: Float["*B Q T 2"],
-      pred_tracks: Float["*B Q T 2"],
+      gt_occluded: Bool["*B T Q 1"],
+      gt_tracks: Float["*B T Q 2"],
+      pred_tracks: Float["*B T Q 2"],
+      mask: Float["*B T Q 1"],
   ) -> TapPositionAccuracy.State:
-    gt_visible = gt_visible.squeeze(-1).astype(jnp.bool_)
+    gt_occluded = gt_occluded.squeeze(-1).astype(jnp.bool_)
+    mask = mask.squeeze(-1)
+
+    gt_visible = jnp.logical_not(gt_occluded)
 
     evaluation_frames = get_evaluation_frames(
-        query_points, Shape("T")[0], self.query_mode
+        gt_occluded, Shape("T")[0], self.query_mode
     )
 
     all_frac_within = []
@@ -121,11 +118,13 @@ class TapPositionAccuracy(metrics.Metric):
       # Compute the frac_within_threshold, which is the fraction of points
       # within the threshold among points that are visible in the ground truth,
       # ignoring whether they're predicted to be visible.
-      count_correct = jnp.sum(is_correct & evaluation_frames, axis=(-2, -1))
-      count_visible_points = jnp.sum(
-          gt_visible & evaluation_frames, axis=(-2, -1)
-      )
-      frac_correct = count_correct / count_visible_points
+      count_correct = jnp.sum(is_correct & evaluation_frames, axis=-2)
+      count_visible_points = jnp.sum(gt_visible & evaluation_frames, axis=-2)
+      count_correct = count_correct * mask[:, 0]
+      count_visible_points = count_visible_points * mask[:, 0]
+      count_correct = count_correct.sum(axis=-1)
+      count_visible_points = count_visible_points.sum(axis=-1)
+      frac_correct = (count_correct +  + 1e-8) / (count_visible_points + 1e-8)
       all_frac_within.append(frac_correct)
 
     values = jnp.mean(jnp.stack(all_frac_within, axis=-1), axis=-1)
@@ -137,11 +136,11 @@ class TapPositionAccuracy(metrics.Metric):
 class TapAverageJaccard(metrics.Metric):
   """Average Jaccard considering both location and occlusion accuracy."""
 
-  query_points: kontext.Key = kontext.REQUIRED  # e.g. "batch.query_points"
-  gt_visible: kontext.Key = kontext.REQUIRED  # e.g. "batch.visible"
+  gt_occluded: kontext.Key = kontext.REQUIRED  # e.g. "batch.visible"
   gt_tracks: kontext.Key = kontext.REQUIRED  # e.g. "batch.target_points"
-  pred_visible: kontext.Key = kontext.REQUIRED  # e.g. "pred.visible"
+  pred_occluded_logits: kontext.Key = kontext.REQUIRED  # e.g. "pred.visible"
   pred_tracks: kontext.Key = kontext.REQUIRED  # e.g. "pred.tracks"
+  mask: kontext.Key = kontext.REQUIRED  # e.g. "batch.mask"
   query_mode: str  # e.g. "first" or "strided"
 
   @flax.struct.dataclass
@@ -151,17 +150,21 @@ class TapAverageJaccard(metrics.Metric):
   @typechecked
   def get_state(
       self,
-      query_points: Float["*B Q 3"],
-      gt_visible: Float["*B Q T 1"],
-      gt_tracks: Float["*B Q T 2"],
-      pred_visible: Float["*B Q T 1"],
-      pred_tracks: Float["*B Q T 2"],
+      gt_occluded: Bool["*B T Q 1"],
+      gt_tracks: Float["*B T Q 2"],
+      pred_occluded_logits: Float["*B T Q 1"],
+      pred_tracks: Float["*B T Q 2"],
+      mask: Float["*B T Q 1"],
   ) -> TapAverageJaccard.State:
-    gt_visible = gt_visible.squeeze(-1).astype(jnp.bool_)
-    pred_visible = pred_visible.squeeze(-1).astype(jnp.bool_)
+    gt_occluded = gt_occluded.squeeze(-1).astype(jnp.bool_)
+    pred_occluded = pred_occluded_logits.squeeze(-1) > 0
+    mask = mask.squeeze(-1)
+
+    gt_visible = jnp.logical_not(gt_occluded)
+    pred_visible = jnp.logical_not(pred_occluded)
 
     evaluation_frames = get_evaluation_frames(
-        query_points, Shape("T")[0], self.query_mode
+        gt_occluded, Shape("T")[0], self.query_mode
     )
 
     all_jaccard = []
@@ -174,7 +177,7 @@ class TapAverageJaccard(metrics.Metric):
       is_correct = jnp.logical_and(within_dist, gt_visible)
 
       true_positives = jnp.sum(
-          is_correct & pred_visible & evaluation_frames, axis=(-2, -1)
+          is_correct & pred_visible & evaluation_frames, axis=-2
       )
 
       # The denominator of the Jaccard metric is the true positives plus
@@ -186,13 +189,19 @@ class TapAverageJaccard(metrics.Metric):
       #
       # False positives are simply points that are predicted to be visible,
       # but the ground truth is not visible or too far from the prediction.
-      gt_positives = jnp.sum(gt_visible & evaluation_frames, axis=(-2, -1))
+      gt_positives = jnp.sum(gt_visible & evaluation_frames, axis=-2)
       false_positives = (~gt_visible) & pred_visible
       false_positives = false_positives | ((~within_dist) & pred_visible)
-      false_positives = jnp.sum(
-          false_positives & evaluation_frames, axis=(-2, -1)
+      false_positives = jnp.sum(false_positives & evaluation_frames, axis=-2)
+      true_positives = true_positives * mask[:, 0]
+      gt_positives = gt_positives * mask[:, 0]
+      false_positives = false_positives * mask[:, 0]
+      true_positives = true_positives.sum(axis=-1)
+      gt_positives = gt_positives.sum(axis=-1)
+      false_positives = false_positives.sum(axis=-1)
+      jaccard = (true_positives + 1e-8) / (
+          gt_positives + false_positives + 1e-8
       )
-      jaccard = true_positives / (gt_positives + false_positives)
       all_jaccard.append(jaccard)
 
     values = jnp.mean(jnp.stack(all_jaccard, axis=-1), axis=-1)
