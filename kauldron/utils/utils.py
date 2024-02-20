@@ -87,7 +87,7 @@ def enum_iter(
     yield i, ex
 
 
-def add_log_artifacts() -> None:
+def add_log_artifacts(add_experiment_artifact: bool = False) -> None:
   """Add XManager artifacts for easy access to the Python logs."""
   if not status.on_xmanager or not status.is_lead_host:
     return

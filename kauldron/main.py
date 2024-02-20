@@ -33,6 +33,7 @@ with epy.binary_adhoc():
   from etils import exm
   from kauldron import kd
   from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
+  from kauldron.utils import utils
   from kauldron.utils import sweep_utils
   # pylint: enable=g-import-not-at-top
 
@@ -87,6 +88,8 @@ def _wu_error_handling(post_mortem: bool = False):
       exc_name = type(e).__name__
       status.log(f"🚨 {exc_name}: {e!s}")
       status.xp.add_tags(f"🚨 {exc_name} 🚨")
+      # Add links to the logs of the failing work units.
+      utils.add_log_artifacts(add_experiment_artifact=True)
       raise
 
 
