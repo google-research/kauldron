@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import abc
 import dataclasses
-from typing import Any, Callable, ClassVar, Optional
+from typing import Any, Callable, ClassVar, Literal, Optional
 
 import flax
 import jax
@@ -49,6 +49,7 @@ class AllReduceMean(base_state.State):
       values: jnp.ndarray,
       mask: jnp.ndarray | None = None,
       weight: float = 1.0,
+      normalize_by: Literal["mask", "values"] = "mask",
   ) -> AllReduceMean:
     if mask is None:
       value = jnp.sum(values)
@@ -62,7 +63,10 @@ class AllReduceMean(base_state.State):
             f" {values.shape}."
         ) from e
       value = jnp.sum(values * mask)
-      count = jnp.sum(mask)
+      if normalize_by == "mask":
+        count = jnp.sum(mask)
+      else:
+        count = values.size
     return cls(value=value * weight, count=count)
 
   def merge(self, other: AllReduceMean) -> AllReduceMean:
@@ -113,11 +117,15 @@ class Loss(metrics.Metric, abc.ABC):
       to the __call__ method. 2. using `apply_to_context` to automatically
       gather the arguments from a given context. This takes into account the
       weight of the loss.
+    normalize_by: Whether to divide the total loss over the number of mask
+      elements (normalize_by = "mask"), or over the total number of values
+      (normalize_by = "values"). Defaults to "mask".
   """
 
   step: kontext.Key = "step"
   mask: Optional[kontext.Key] = None
   weight: int | float | Schedule = 1.0
+  normalize_by: Literal["mask", "values"] = "mask"
 
   State: ClassVar[type[AllReduceMean]] = (  # pylint: disable=invalid-name
       AllReduceMean
@@ -170,7 +178,9 @@ class Loss(metrics.Metric, abc.ABC):
 
     values = self.get_values(*args, **kwargs)
     weight = self.get_weight(step=step)
-    return self.State.from_values(values=values, mask=mask, weight=weight)
+    return self.State.from_values(
+        values=values, mask=mask, weight=weight, normalize_by=self.normalize_by
+    )
 
   def get_state_from_context(self, context: Any) -> Loss.State:
     """Compute the loss-state by auto-filling args from given context.
@@ -195,7 +205,9 @@ class Loss(metrics.Metric, abc.ABC):
     step = kwargs.pop("step", None)
     values = self.get_values(**kwargs)
     weight = self.get_weight(step=step)
-    return self.State.from_values(values=values, mask=mask, weight=weight)
+    return self.State.from_values(
+        values=values, mask=mask, weight=weight, normalize_by=self.normalize_by
+    )
 
   def get_weight(self, step: Optional[int] = None) -> Float[""]:
     """Return the weight of this loss at the given step number.
