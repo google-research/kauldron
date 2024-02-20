@@ -63,7 +63,7 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
   # Do not resolve the RunStrategy to avoid depending on XManager
   run: konfig.ConfigDictLike[run_strategies.RunStrategy]
 
-  writer: metric_writer.KDMetricWriter = dataclasses.field(
+  writer: metric_writer.WriterBase = dataclasses.field(
       default=config_util.ROOT_CFG_REF.writer
   )
   base_cfg: config_lib.Trainer = dataclasses.field(
@@ -82,7 +82,7 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
       )
 
     # always set the name of the collection to eval name
-    if isinstance(self.writer, metric_writer.KDMetricWriter):
+    if isinstance(self.writer, metric_writer.WriterBase):
       object.__setattr__(
           self, 'writer', dataclasses.replace(self.writer, collection=self.name)
       )

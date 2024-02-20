@@ -137,7 +137,7 @@ class Trainer(config_util.BaseConfig):
       default_factory=FrozenDict
   )
 
-  writer: metric_writer.KDMetricWriter = dataclasses.field(
+  writer: metric_writer.WriterBase = dataclasses.field(
       default_factory=metric_writer.KDMetricWriter
   )
   flatboards: MutableMapping[str, flatboard.DashboardFactory] = (

@@ -44,10 +44,193 @@ COLLECTION_NOT_SET = "$not_set$"
 
 
 @dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
-class KDMetricWriter(
-    metric_writers.MetricWriter,
-    config_util.UpdateFromRootCfg,
-):
+class WriterBase(metric_writers.MetricWriter, config_util.UpdateFromRootCfg):
+  """Base class for metric writers."""
+
+  workdir: str | epath.Path = config_util.ROOT_CFG_REF.workdir
+
+  collection: str = COLLECTION_NOT_SET  # Will be set by the evaluator / trainer
+
+  def write_summaries(
+      self,
+      step: int,
+      values: Mapping[str, Array],
+      metadata: Mapping[str, Any] | None = None,
+  ) -> None:
+    raise NotImplementedError()
+
+  def write_images(
+      self, step: int, images: Mapping[str, Array["n h w c"]]
+  ) -> None:
+    raise NotImplementedError()
+
+  def write_histograms(
+      self,
+      step: int,
+      arrays: Mapping[str, Array],
+      num_buckets: Mapping[str, int] | None = None,
+  ) -> None:
+    raise NotImplementedError()
+
+  def write_videos(
+      self, step: int, videos: Mapping[str, Array["n t h w c"]]
+  ) -> None:
+    raise NotImplementedError()
+
+  def write_audios(
+      self,
+      step: int,
+      audios: Mapping[str, Float["n t c"]],
+      *,
+      sample_rate: int,
+  ) -> None:
+    raise NotImplementedError()
+
+  def write_texts(self, step: int, texts: Mapping[str, str]) -> None:
+    raise NotImplementedError()
+
+  def write_hparams(self, hparams: Mapping[str, Any]) -> None:
+    raise NotImplementedError()
+
+  def write_config(self, config: konfig.ConfigDict) -> None:
+    self._assert_collection_is_set()
+    if config is None:
+      return
+
+    if status.is_lead_host:
+      # Save the raw config (for easy re-loading)
+      config_path = self.workdir / "config.json"
+      config_path.write_text(config.to_json())
+
+    texts = {"config": f"```python\n{config!r}\n```"}
+    self.write_texts(0, texts)
+
+  def write_param_overview(self, step: int, params) -> None:
+    self._assert_collection_is_set()
+    texts = {"parameters": _get_markdown_param_table(params)}
+    self.write_texts(step, texts)
+
+  def write_element_spec(self, step: int, element_spec) -> None:
+    self._assert_collection_is_set()
+    texts = {"element_spec": f"```python\n{element_spec!s}\n```"}
+    self.write_texts(step, texts)
+
+  def write_context_structure(
+      self, step: int, trainer: config_lib.Trainer
+  ) -> None:
+    self._assert_collection_is_set()
+    # do a lightweight shape-eval for the context
+    context = trainer.context_specs
+    # create a flat spec for the context
+    context_spec = kontext.flatten_with_path(context)
+    context_spec = etree.spec_like(context_spec)
+    context_spec["grads"] = "<<same structure as params>>"
+    context_spec["updates"] = "<<same structure as params>>"
+
+    # convert flat spec into a pandas dataframe
+    ctx_df = pd.DataFrame(
+        # wrap entries in backticks to avoid interpreting __x__ as markdown bold
+        [(f"`{k}`", f"`{v}`") for k, v in context_spec.items()],
+        columns=["Path", "Spec"],
+    )
+    # export pandas dataframe as markdown text
+    markdown_table = ctx_df.to_markdown(index=False, tablefmt="github")
+    self.write_texts(step, {"context_spec": markdown_table})
+
+  # TODO(klausg): move most of this functionality out of the writer
+  def write_step_metrics(
+      self,
+      *,
+      step: int,
+      aux: train_step.Auxiliaries,
+      model_with_aux: train_step.ModelWithAux,
+      schedules: Mapping[str, optax.Schedule],
+      log_summaries: bool,
+      timer: Optional[timer_module.PerformanceTimer] = None,
+  ) -> None:
+    """Logs scalar and image summaries."""
+    aux_result = aux.compute(flatten=True)
+
+    # schedules
+    schedule_values = jax.tree_map(
+        lambda s: _compute_schedule(s, step), schedules
+    )
+    schedule_values = kontext.flatten_with_path(
+        schedule_values, prefix="schedules", separator="/"
+    )
+
+    if timer:
+      performance_stats = {
+          f"perf_stats/{k}": v
+          for k, v in timer.log_stats(step_num=step).items()
+      }
+    else:
+      performance_stats = {}
+    with jax.transfer_guard("allow"):
+      self.write_scalars(
+          step=step,
+          scalars=(
+              aux_result.loss_values
+              | aux_result.metric_values
+              | schedule_values
+              | performance_stats
+          ),
+      )
+
+    if log_summaries:
+      with jax.transfer_guard("allow"):
+        # image summaries  # TODO(klausg): unify with metrics
+        image_summaries = {
+            name: summary.get_images(**aux.summary_kwargs[name])
+            for name, summary in model_with_aux.summaries.items()
+            if isinstance(summary, summaries.ImageSummary)
+        }
+      # Throw an error if empty arrays are given. TB throws very odd errors
+      # and kills Colab runtimes if we don't catch these ourselves.
+      for name, image in image_summaries.items():
+        if image.size == 0:
+          raise ValueError(
+              f"Image summary `{name}` is empty array of shape {image.shape}."
+          )
+      self.write_images(step=step, images=image_summaries)
+
+      # histograms
+      hist_summaries = {
+          name: summary.get_tensor(**aux.summary_kwargs[name])
+          for name, summary in model_with_aux.summaries.items()
+          if isinstance(summary, summaries.HistogramSummary)
+      }
+      for name, (_, tensor) in hist_summaries.items():
+        if tensor.size == 0:
+          raise ValueError(
+              f"Histogram summary `{name}` is empty array of shape"
+              f" {tensor.shape}."
+          )
+      self.write_histograms(
+          step=step,
+          arrays={k: tensor for k, (_, tensor) in hist_summaries.items()},
+          num_buckets={
+              k: n_buckets for k, (n_buckets, _) in hist_summaries.items()
+          },
+      )
+
+    self.flush()
+
+  def flush(self) -> None:
+    pass
+
+  def close(self) -> None:
+    pass
+
+  def _assert_collection_is_set(self) -> None:
+    if self.collection is COLLECTION_NOT_SET:
+      raise ValueError("collection name must be set.")
+
+  replace = dataclasses.replace
+
+
+@dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
+class KDMetricWriter(WriterBase):
   """Writes summaries to logs, tf_summaries and datatables.
 
   Differs from the clu default metric writer in a few ways:
@@ -58,14 +241,7 @@ class KDMetricWriter(
    - offers additional methods to write config, param_overview and element_spec
   """
 
-  workdir: str | epath.Path = config_util.ROOT_CFG_REF.workdir
-
-  collection: str = COLLECTION_NOT_SET  # Will be set by the evaluator / trainer
   add_artifacts: bool = True
-
-  def _assert_collection_is_set(self) -> None:
-    if self.collection is COLLECTION_NOT_SET:
-      raise ValueError("collection name must be set.")
 
   @functools.cached_property
   def _scalar_datatable_name(self) -> str:
@@ -196,126 +372,6 @@ class KDMetricWriter(
     self._log_writer.write_hparams(hparams)
     self._tf_summary_writer.write_hparams(hparams)
 
-  def write_config(self, config: konfig.ConfigDict) -> None:
-    if config is None:
-      return
-
-    if status.is_lead_host:
-      # Save the raw config (for easy re-loading)
-      config_path = self.workdir / "config.json"
-      config_path.write_text(config.to_json())
-
-    texts = {"config": f"```python\n{config!r}\n```"}
-    self.write_texts(0, texts)
-
-  def write_param_overview(self, step: int, params) -> None:
-    texts = {"parameters": _get_markdown_param_table(params)}
-    self.write_texts(step, texts)
-
-  def write_element_spec(self, step: int, element_spec) -> None:
-    texts = {"element_spec": f"```python\n{element_spec!s}\n```"}
-    self.write_texts(step, texts)
-
-  def write_context_structure(
-      self, step: int, trainer: config_lib.Trainer
-  ) -> None:
-    # do a lightweight shape-eval for the context
-    context = trainer.context_specs
-    # create a flat spec for the context
-    context_spec = kontext.flatten_with_path(context)
-    context_spec = etree.spec_like(context_spec)
-    context_spec["grads"] = "<<same structure as params>>"
-    context_spec["updates"] = "<<same structure as params>>"
-
-    # convert flat spec into a pandas dataframe
-    ctx_df = pd.DataFrame(
-        # wrap entries in backticks to avoid interpreting __x__ as markdown bold
-        [(f"`{k}`", f"`{v}`") for k, v in context_spec.items()],
-        columns=["Path", "Spec"],
-    )
-    # export pandas dataframe as markdown text
-    markdown_table = ctx_df.to_markdown(index=False, tablefmt="github")
-    self.write_texts(step, {"context_spec": markdown_table})
-
-  # TODO(klausg): move most of this functionality out of the writer
-  def write_step_metrics(
-      self,
-      *,
-      step: int,
-      aux: train_step.Auxiliaries,
-      model_with_aux: train_step.ModelWithAux,
-      schedules: Mapping[str, optax.Schedule],
-      log_summaries: bool,
-      timer: Optional[timer_module.PerformanceTimer] = None,
-  ) -> None:
-    """Logs scalar and image summaries."""
-    aux_result = aux.compute(flatten=True)
-
-    # schedules
-    schedule_values = jax.tree_map(
-        lambda s: _compute_schedule(s, step), schedules
-    )
-    schedule_values = kontext.flatten_with_path(
-        schedule_values, prefix="schedules", separator="/"
-    )
-
-    if timer:
-      performance_stats = {
-          f"perf_stats/{k}": v
-          for k, v in timer.log_stats(step_num=step).items()
-      }
-    else:
-      performance_stats = {}
-    with jax.transfer_guard("allow"):
-      self.write_scalars(
-          step=step,
-          scalars=(
-              aux_result.loss_values
-              | aux_result.metric_values
-              | schedule_values
-              | performance_stats
-          ),
-      )
-
-    if log_summaries:
-      with jax.transfer_guard("allow"):
-        # image summaries  # TODO(klausg): unify with metrics
-        image_summaries = {
-            name: summary.get_images(**aux.summary_kwargs[name])
-            for name, summary in model_with_aux.summaries.items()
-            if isinstance(summary, summaries.ImageSummary)
-        }
-      # Throw an error if empty arrays are given. TB throws very odd errors
-      # and kills Colab runtimes if we don't catch these ourselves.
-      for name, image in image_summaries.items():
-        if image.size == 0:
-          raise ValueError(
-              f"Image summary `{name}` is empty array of shape {image.shape}."
-          )
-      self.write_images(step=step, images=image_summaries)
-
-      # histograms
-      hist_summaries = {
-          name: summary.get_tensor(**aux.summary_kwargs[name])
-          for name, summary in model_with_aux.summaries.items()
-          if isinstance(summary, summaries.HistogramSummary)
-      }
-      for name, (_, tensor) in hist_summaries.items():
-        if tensor.size == 0:
-          raise ValueError(
-              f"Histogram summary `{name}` is empty array of shape"
-              f" {tensor.shape}."
-          )
-      self.write_histograms(
-          step=step,
-          arrays={k: tensor for k, (_, tensor) in hist_summaries.items()},
-          num_buckets={
-              k: n_buckets for k, (n_buckets, _) in hist_summaries.items()
-          },
-      )
-
-    self.flush()
-
   def flush(self) -> None:
     self._scalar_writer.flush()
     self._array_writer.flush()
@@ -326,7 +382,63 @@ class KDMetricWriter(
     self._array_writer.close()
     self._tf_summary_writer.close()
 
-  replace = dataclasses.replace
+
+@dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
+class NoopWriter(WriterBase):
+  """Writer that writes nothing. Useful for deactivating the writer."""
+
+  def write_summaries(
+      self,
+      step: int,
+      values: Mapping[str, Array],
+      metadata: Mapping[str, Any] | None = None,
+  ) -> None:
+    pass
+
+  def write_images(
+      self, step: int, images: Mapping[str, Array["n h w c"]]
+  ) -> None:
+    pass
+
+  def write_histograms(
+      self,
+      step: int,
+      arrays: Mapping[str, Array],
+      num_buckets: Mapping[str, int] | None = None,
+  ) -> None:
+    pass
+
+  def write_videos(
+      self, step: int, videos: Mapping[str, Array["n t h w c"]]
+  ) -> None:
+    pass
+
+  def write_audios(
+      self,
+      step: int,
+      audios: Mapping[str, Float["n t c"]],
+      *,
+      sample_rate: int,
+  ) -> None:
+    pass
+
+  def write_texts(self, step: int, texts: Mapping[str, str]) -> None:
+    pass
+
+  def write_hparams(self, hparams: Mapping[str, Any]) -> None:
+    pass
+
+  def write_step_metrics(
+      self,
+      *,
+      step: int,
+      aux: train_step.Auxiliaries,
+      model_with_aux: train_step.ModelWithAux,
+      schedules: Mapping[str, optax.Schedule],
+      log_summaries: bool,
+      timer: Optional[timer_module.PerformanceTimer] = None,
+  ) -> None:
+    pass
 
 
 def _get_markdown_param_table(params) -> str:
