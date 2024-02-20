@@ -248,6 +248,7 @@ def basic_eval_step(
       rngs=rng_streams.eval_rngs(eval_step),
       step=state.step,  # Step is train step, NOT eval
       is_training=False,
+      collections=state.collections,
   )
   aux = model_with_aux.get_aux(
       ctx,

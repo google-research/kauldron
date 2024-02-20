@@ -292,6 +292,7 @@ class Trainer(config_util.BaseConfig):
         batch=m_batch,
         rngs=rngs,
         step=0,
+        collections=state_spec.collections,
     )
     context = context.replace(opt_state=state_spec.opt_state)
     return context

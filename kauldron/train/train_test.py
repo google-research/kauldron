@@ -17,6 +17,7 @@
 import os
 
 from etils import epath
+from flax import linen as nn
 from kauldron import kd
 from examples import mnist_autoencoder
 
@@ -26,7 +27,10 @@ def test_end2end(tmp_path: epath.Path):
   cfg = mnist_autoencoder.get_config()
   cfg.train_ds.batch_size = 2
   cfg.evals.eval.ds.batch_size = 1  # pytype: disable=attribute-error
-  cfg.model.encoder.features = 3
+  with kd.konfig.mock_modules():
+    cfg.model.encoder = nn.Sequential(
+        [nn.Dense(features=3), nn.BatchNorm(use_running_average=False)]
+    )
   cfg.num_train_steps = 1
   cfg.workdir = os.fspath(tmp_path)
 

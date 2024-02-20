@@ -31,6 +31,7 @@ class Context:
     step: The global step number. Used for evaluating schedules etc.
     batch: The input batch as returned from the data iterator.
     params: The parameters of the model. (available after the init)
+    collections: Other variable collections (such as batch norm statistics).
     preds: The output of the model. (available after the model has been applied,
       e.g. for losses and metrics)
     interms: The intermediate outputs of the model as returned by
@@ -53,6 +54,7 @@ class Context:
   batch: Any
   # Becomes available after model.init:
   params: Any = None
+  collections: Any = None
   # Become available after model.apply:
   preds: Any = None
   interms: Any = None

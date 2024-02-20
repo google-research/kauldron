@@ -40,6 +40,7 @@ from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importin
 import optax
 
 _Params = PyTree[Float["..."]]
+_Collections = Mapping[str, PyTree[Float["..."]]]
 
 
 @flax.struct.dataclass
@@ -52,17 +53,22 @@ class TrainState:
 
   params: Optional[_Params]
   opt_state: Optional[PyTree[Float["..."]]]
+  collections: Optional[_Collections]
 
   training_time_hours: float
 
-  def next(self, new_params=None, new_opt_state=None) -> TrainState:
+  def next(
+      self, new_params=None, new_opt_state=None, new_collections=None
+  ) -> TrainState:
     step = self.step + 1
     new_params = new_params or self.params
     new_opt_state = new_opt_state or self.opt_state
+    new_collections = new_collections or self.collections
     return self.replace(
         step=step,
         params=new_params,
         opt_state=new_opt_state,
+        collections=new_collections,
     )
 
   def replace(self, **changes: Any) -> TrainState:
@@ -196,21 +202,24 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
       init_rngs: rngs_lib.Rngs,
       elem_spec: ElementSpec,
       model_method: Optional[str] = None,
-  ) -> _Params:
+  ) -> tuple[_Params, _Collections]:
     self._assert_root_cfg_resolved()
     args, kwargs = data_utils.get_model_inputs_from_batch_spec(
         self.model, elem_spec
     )
-    params = self.model.init(
+    collections = self.model.init(
         init_rngs,
         *args,
         method=model_method,
         is_training_property=True,
         capture_intermediates=True,
         **kwargs,
-    ).get("params", {})
-    params = flax.core.unfreeze(params)
-    return params
+    )
+    collections = flax.core.unfreeze(collections)
+    params = collections.pop("params", {})
+    collections.pop("intermediates", None)  # Remove intermediates
+
+    return params, collections
 
   @jax.named_call
   def forward(
@@ -221,20 +230,25 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
       rngs: rngs_lib.Rngs,
       step: int,
       is_training: bool,
+      collections: Optional[_Collections] = None,
   ) -> tuple[float, context_lib.Context]:
     """Forward pass of the model including losses."""
-    context = context_lib.Context(step=step, batch=batch, params=params)
+    context = context_lib.Context(
+        step=step, batch=batch, params=params, collections=collections
+    )
     args, kwargs = data_utils.get_model_inputs(self.model, context)
-    preds, intermediates = self.model.apply(  # TODO(klausg): capture mutables?
-        {"params": params},
+    preds, collections = self.model.apply(  # TODO(klausg): capture mutables?
+        {"params": params} | (collections or {}),
         *args,
         rngs=rngs,
+        mutable=True,
         capture_intermediates=True,  # TODO(klausg): check if need a filter here
         is_training_property=is_training,
         **kwargs,
     )
+    interms = collections.pop("intermediates")
     context = context.replace(
-        preds=preds, interms=intermediates["intermediates"]
+        preds=preds, interms=interms, collections=collections
     )
     loss_total, loss_states = kd_losses.compute_losses(
         losses=self.losses, context=context
@@ -336,7 +350,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
       model_method: Optional[str] = None,
   ) -> TrainState:
     """Initialize the model and return the initial TrainState."""
-    params = self.model_with_aux.init(
+    params, collections = self.model_with_aux.init(
         self.rng_streams.init_rngs(), elem_spec, model_method=model_method
     )
     return TrainState(
@@ -344,6 +358,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
         params=params,
         opt_state=None,
         training_time_hours=0.0,
+        collections=collections,
     )
 
   def _init_transforms(self, state: TrainState) -> TrainState:
@@ -400,12 +415,18 @@ class TrainStep(config_util.UpdateFromRootCfg):
         rngs=self.rng_streams.train_rngs(state.step),
         step=state.step,
         is_training=True,
+        collections=state.collections,
     )
     updates, new_opt_state = jax.named_call(self.optimizer.update)(
         grads, state.opt_state, state.params
     )
     new_params = jax.named_call(optax.apply_updates)(state.params, updates)
-    next_state = state.next(new_params=new_params, new_opt_state=new_opt_state)
+
+    next_state = state.next(
+        new_params=new_params,
+        new_opt_state=new_opt_state,
+        new_collections=updates,
+    )
 
     # add the gradients, computed updates, and *old* optimizer state to context
     context = context.replace(
