@@ -31,6 +31,7 @@ from kauldron.modules.knn_types import TransformerBlock
 
 # Modules
 from kauldron.modules.adapter import ExternalModule
+from kauldron.modules.misc import get_model_from_xid
 from kauldron.modules.misc import Dropout
 from kauldron.modules.misc import DummyModel
 from kauldron.modules.misc import Identity

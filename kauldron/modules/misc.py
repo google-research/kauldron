@@ -27,6 +27,7 @@ import jax.numpy as jnp
 from kauldron import kontext
 from kauldron.typing import Array, Float, PRNGKey, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import train_property
+from kauldron.utils import xmanager
 
 FrozenDict = dict if typing.TYPE_CHECKING else flax.core.FrozenDict
 
@@ -146,3 +147,16 @@ class DummyModel(nn.Module):
   @typechecked
   def __call__(self, inputs: Any = None) -> dict[str, Float['1']]:
     return {'logits': jnp.ones((1,)) * 42}
+
+
+def get_model_from_xid(xid: int, wid: int = 1) -> nn.Module:
+  """Returns the model from an xmanager experiment.
+
+  Resolves the config from the xmanager experiment using the current version of
+  the code (not the same as used in the experiment).
+
+  Args:
+    xid: The XID of the experiment to load the config from.
+    wid: ID of the worker to load the config from. Defaults to 1.
+  """
+  return xmanager.Experiment.from_xid(xid=xid, wid=wid).trainer.model

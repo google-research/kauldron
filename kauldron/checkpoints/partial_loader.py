@@ -27,6 +27,7 @@ from etils.etree import jax as etree  # pylint: disable=g-importing-member
 import jax
 from kauldron import kontext
 from kauldron.checkpoints import checkpointer
+from kauldron.utils import xmanager
 import numpy as np
 import orbax.checkpoint as ocp
 
@@ -201,8 +202,6 @@ class KauldronSource(CkptSource):
     step: Which step to load (default to last one)
   """
 
-  # TODO(epot): Could potentially have more ways to load the checkpoint (e.g.
-  # from xid). Or `workdir=kd.xm.workdir_from_xid()` ?
   workdir: epath.PathLike
 
   _: dataclasses.KW_ONLY
@@ -211,6 +210,16 @@ class KauldronSource(CkptSource):
 
   def __post_init__(self):
     object.__setattr__(self, 'workdir', epath.Path(self.workdir))
+
+  @classmethod
+  def from_xid(
+      cls, xid: int, wid: int = 1, *, step: int = -1
+  ) -> KauldronSource:
+    """Creates a KauldronSource from an xid."""
+    return cls(
+        workdir=xmanager.Experiment.from_xid(xid=xid, wid=wid).wu.workdir,
+        step=step,
+    )
 
   @functools.cached_property
   def _ckpt_mgr(self) -> checkpointer.Checkpointer:
