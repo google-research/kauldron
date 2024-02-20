@@ -185,7 +185,7 @@ class Evaluator(EvaluatorBase):
     self._assert_root_cfg_resolved()
 
     merged_aux = None
-    for eval_step, batch in utils.enum_iter(self.ds_iter, desc='eval'):
+    for eval_step, batch in utils.enum_iter(self.ds_iter, desc=self.name):
       eval_step = sharding.device_put(eval_step, sharding.REPLICATED)
       aux = basic_eval_step(
           model_with_aux=self.model_with_aux,
