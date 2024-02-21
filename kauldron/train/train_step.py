@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import dataclasses
+import typing
 from typing import Any, Mapping, Optional
 
 from etils import epy
@@ -45,7 +46,15 @@ _Collections = Mapping[str, PyTree[Float["..."]]]
 
 @flax.struct.dataclass
 class TrainState:
-  """Data structure for checkpointing the model."""
+  """Data structure for checkpointing the model.
+
+  Attributes:
+    step: Current training step.
+    params: Model parameters.
+    opt_state: Optimizer state.
+    collections: Mutable flax collections (e.g. `'batch_stats'`).
+    training_time_hours: Training time in hours.
+  """
 
   _: dataclasses.KW_ONLY
 
@@ -56,20 +65,6 @@ class TrainState:
   collections: Optional[_Collections]
 
   training_time_hours: float
-
-  def next(
-      self, new_params=None, new_opt_state=None, new_collections=None
-  ) -> TrainState:
-    step = self.step + 1
-    new_params = new_params or self.params
-    new_opt_state = new_opt_state or self.opt_state
-    new_collections = new_collections or self.collections
-    return self.replace(
-        step=step,
-        params=new_params,
-        opt_state=new_opt_state,
-        collections=new_collections,
-    )
 
   def replace(self, **changes: Any) -> TrainState:
     return dataclasses.replace(self, **changes)
@@ -230,18 +225,18 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
       rngs: rngs_lib.Rngs,
       step: int,
       is_training: bool,
-      collections: Optional[_Collections] = None,
+      collections: _Collections,
   ) -> tuple[float, context_lib.Context]:
     """Forward pass of the model including losses."""
     context = context_lib.Context(
         step=step, batch=batch, params=params, collections=collections
     )
     args, kwargs = data_utils.get_model_inputs(self.model, context)
-    preds, collections = self.model.apply(  # TODO(klausg): capture mutables?
-        {"params": params} | (collections or {}),
+    preds, collections = self.model.apply(
+        {"params": params} | collections,
         *args,
         rngs=rngs,
-        mutable=True,
+        mutable=list(collections),
         capture_intermediates=True,  # TODO(klausg): check if need a filter here
         is_training_property=is_training,
         **kwargs,
@@ -417,15 +412,17 @@ class TrainStep(config_util.UpdateFromRootCfg):
         is_training=True,
         collections=state.collections,
     )
+    context = typing.cast(context_lib.Context, context)
     updates, new_opt_state = jax.named_call(self.optimizer.update)(
         grads, state.opt_state, state.params
     )
     new_params = jax.named_call(optax.apply_updates)(state.params, updates)
 
-    next_state = state.next(
-        new_params=new_params,
-        new_opt_state=new_opt_state,
-        new_collections=updates,
+    next_state = state.replace(
+        step=state.step + 1,
+        params=new_params,
+        opt_state=new_opt_state,
+        collections=context.collections,
     )
 
     # add the gradients, computed updates, and *old* optimizer state to context
