@@ -100,13 +100,13 @@ def resolve_from_keyed_obj(
         )
 
   try:
-    return _get_values_from_context(tree, key_paths, optional_keys)
+    return resolve_from_keypaths(tree, key_paths, optional_keys=optional_keys)
   except Exception as e:  # pylint: disable=broad-exception-caught
     epy.reraise(e, f"Error for {type(keyed_obj).__qualname__}: ")
 
 
-def _get_values_from_context(
-    context: Any, key_paths: dict[str, str], optional_keys=Optional[set[str]]
+def resolve_from_keypaths(
+    context: Any, key_paths: dict[str, str], *, optional_keys=Optional[set[str]]
 ) -> dict[str, Any]:
   """Get values for key_paths from context with useful errors when failing."""
   optional_keys = set() if optional_keys is None else optional_keys
