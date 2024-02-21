@@ -51,6 +51,9 @@ class WriterBase(metric_writers.MetricWriter, config_util.UpdateFromRootCfg):
 
   collection: str = COLLECTION_NOT_SET  # Will be set by the evaluator / trainer
 
+  def write_scalars(self, step: int, scalars: Mapping[str, Scalar]) -> None:
+    raise NotImplementedError()
+
   def write_summaries(
       self,
       step: int,
@@ -386,6 +389,9 @@ class KDMetricWriter(WriterBase):
 @dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
 class NoopWriter(WriterBase):
   """Writer that writes nothing. Useful for deactivating the writer."""
+
+  def write_scalars(self, step: int, scalars: Mapping[str, Scalar]) -> None:
+    pass
 
   def write_summaries(
       self,
