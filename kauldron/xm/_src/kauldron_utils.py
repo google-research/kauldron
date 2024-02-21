@@ -40,6 +40,7 @@ from typing import Any
 from absl import flags
 from etils import epath
 from etils import epy
+from etils import exm
 from kauldron import konfig
 from kauldron import kontext
 from kauldron.xm._src import dir_utils
@@ -251,6 +252,15 @@ class KauldronJobs(jobs_info.JobsProvider):
         file_content=inspect.getsource(self.module),
         description=f"Content of {self.config_path}",
     )
+
+    module_name = self.module.__name__
+
+    template_params = {
+        "SOURCE": f"xid/{xp.experiment_id}",
+        "CONFIG_IMPORT": module_name,
+    }
+    url = f"http://https://kauldron.rtfd.io/en/latest-test#templateParams={json.dumps(template_params)}"
+    exm.add_experiment_artifact("https://kauldron.rtfd.io/en/latest-test (Colab)", url)
 
   @functools.cached_property
   def project_info(self) -> _ProjectInfo:

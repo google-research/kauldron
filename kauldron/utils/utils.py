@@ -98,12 +98,14 @@ def add_colab_artifacts() -> None:
   """Add a link to the kd-infer colab."""
   if not status.on_xmanager or not status.is_lead_host:
     return
+
+  exm.add_work_unit_artifact('https://kauldron.rtfd.io/en/latest-infer (Colab)', _get_kd_infer_url())
+
+
+def _get_kd_infer_url() -> str:
   wu = exm.current_work_unit()
   template_params = {
       'XID': wu.experiment_id,
       'WID': wu.id,
   }
-  url = f'http://https://kauldron.rtfd.io/en/latest-infer#templateParams={json.dumps(template_params)}'
-  exm.add_work_unit_artifact('https://kauldron.rtfd.io/en/latest-infer (Colab)', url)
-
-  # Should also add a link to kd-test ?
+  return f'http://https://kauldron.rtfd.io/en/latest-infer#templateParams={json.dumps(template_params)}'
