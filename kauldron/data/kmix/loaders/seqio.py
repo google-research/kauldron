@@ -69,7 +69,7 @@ class SeqIOTask(_SeqIO):
   name: str
   shuffle_buffer_size: Optional[int] = None
 
-  def __call__(self, rng: random.PRNGKey) -> tf.data.Dataset:
+  def ds_for_current_process(self, rng: random.PRNGKey) -> tf.data.Dataset:
     if self.name not in seqio.TaskRegistry.names():
       raise ValueError(f"Task {self.name!r} not found in seqio.TaskRegistry.")
 
@@ -99,7 +99,7 @@ class SeqIOMixture(_SeqIO):
 
   sequence_length: Optional[Mapping[str, int]] = None
 
-  def __call__(self, rng: random.PRNGKey) -> tf.data.Dataset:
+  def ds_for_current_process(self, rng: random.PRNGKey) -> tf.data.Dataset:
     if self.name not in seqio.MixtureRegistry.names():
       raise ValueError(f"Task {self.name} not found in seqio.MixtureRegistry.")
 

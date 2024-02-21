@@ -43,7 +43,7 @@ class Tfds(base.Base):
   shard_drop_remainder: bool = True
   num_epochs: Optional[int] = None
 
-  def __call__(self, rng: random.PRNGKey) -> tf.data.Dataset:
+  def ds_for_current_process(self, rng: random.PRNGKey) -> tf.data.Dataset:
     source = grain.TfdsDataSource.from_name(
         self.name,
         split=self.split,

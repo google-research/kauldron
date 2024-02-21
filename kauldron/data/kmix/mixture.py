@@ -31,10 +31,11 @@ class SampleFromDatasets(base.Base):
   stop_on_empty_dataset: bool = False
   rerandomize_each_iteration: bool = True
 
-  def __call__(self, rng: random.PRNGKey) -> tf.data.Dataset:
+  def ds_for_current_process(self, rng: random.PRNGKey) -> tf.data.Dataset:
     # We make sure each nested dataset get a different seed
     datasets = [
-        ds.make_ds(rng.fold_in(i)) for i, ds in enumerate(self.datasets)
+        ds.ds_with_transforms(rng.fold_in(i))
+        for i, ds in enumerate(self.datasets)
     ]
 
     ds = tf.data.Dataset.sample_from_datasets(

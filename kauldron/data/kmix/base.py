@@ -47,8 +47,8 @@ _ROOT_ONLY: Any = object()
 class Base(pipelines.Pipeline, abc.ABC):
   """Base classes for all `tf.data` pipeline.
 
-  Subclasses should only implement the `__call__` method which returns a
-  `tf.data.Dataset`.
+  Subclasses should only implement the `ds_for_current_process` method which
+  returns the `tf.data.Dataset` for the current process.
 
   Attributes:
     batch_size: Batch size.
@@ -75,8 +75,31 @@ class Base(pipelines.Pipeline, abc.ABC):
   # ======================== Protocol ========================
 
   @abc.abstractmethod
-  def __call__(self, rng: random.PRNGKey) -> tf.data.Dataset:
+  def ds_for_current_process(self, rng: random.PRNGKey) -> tf.data.Dataset:
+    """Returns the dataset for the current process.
+
+    Args:
+      rng: A PRNGKey used to sample the dataset. The `rng` is the same for all
+        processes, so it's the users responsibility to call
+        `rng.fold_in(jax.process_index())` if required.
+
+    Returns:
+      The `tf.data.Dataset` for the current process. Each process should yield
+        non-overlapping examples.
+    """
     raise NotImplementedError
+
+  def transform_ds(
+      self, ds: tf.data.Dataset, *, rng: random.PRNGKey
+  ) -> tf.data.Dataset:
+    """Eventually apply transforms to the dataset."""
+    ds = _maybe_add_grain_meta_features(
+        ds,
+        rng=rng,
+    )
+
+    ds = self._apply_transforms(ds)
+    return ds
 
   # ======================== Public API ========================
 
@@ -116,18 +139,13 @@ class Base(pipelines.Pipeline, abc.ABC):
       self, rng: random.PRNGKey, *, _is_root: bool = False
   ) -> tf.data.Dataset:
     """Create the `tf.data.Dataset` and apply all the transforms."""
-    ds = self(rng)
+    ds = self.ds_for_current_process(rng)
+    ds = self.transform_ds(ds, rng=rng)
 
-    ds = _maybe_add_grain_meta_features(
-        ds,
-        rng=rng,
-    )
-
-    ds = self._apply_transforms(ds)
-
+    # Additional transformations applied only at the top level
     ds = self._apply_options(ds, is_root=_is_root)
 
-    # Only apply `prefetch` at the top level in case of dataset mixture.
+    # Only apply `prefetch` at the end of the pipeline.
     prefetch_size = _get_if_root(
         self.prefetch_size,
         default=tf.data.AUTOTUNE,

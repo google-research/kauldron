@@ -14,6 +14,8 @@
 
 """Tests."""
 
+import dataclasses
+import functools
 from unittest import mock
 
 from kauldron.data import kmix
@@ -22,10 +24,30 @@ import pytest
 import tensorflow_datasets as tfds
 
 
-# TODO(epot): Parametrize over Tfds, SeqIO,...
-# Test:
+# TODO(epot): Test:
 # * Deterministic random transforms (even when shuffle == False)
 # * Test mixtures
+
+
+with_ds_cls = pytest.mark.parametrize(
+    'ds_cls',
+    [
+        functools.partial(
+            kmix.Tfds,
+            name='dummy_dataset',
+            split='train',
+            seed=0,
+        ),
+        functools.partial(
+            kmix.TfdsLegacy,
+            name='dummy_dataset',
+            split='train',
+            seed=0,
+            shuffle_buffer_size=100,
+        ),
+        # TODO(epot): Add SeqIO
+    ],
+)
 
 
 class DummyDataset(tfds.core.GeneratorBasedBuilder):
@@ -64,67 +86,69 @@ def dummy_builder(tmp_path_factory: pytest.TempPathFactory):
   yield builder
 
 
-def test_no_shuffle(dummy_builder: tfds.core.GeneratorBasedBuilder):  # pylint: disable=redefined-outer-name
-  ds = kmix.Tfds(  # pytype: disable=wrong-keyword-args
-      name='dummy_dataset',
-      split='train',
+@with_ds_cls
+def test_no_shuffle(
+    ds_cls: type[kmix.Base], dummy_builder: tfds.core.GeneratorBasedBuilder
+):  # pylint: disable=redefined-outer-name
+  ds = ds_cls(  # pytype: disable=wrong-keyword-args
       data_dir=dummy_builder.data_dir_root,
       num_epochs=2,
       shuffle=False,
-      seed=0,
   )
   assert len(ds) == 200
   assert list(ds.element_spec.keys()) == ['id']  # pytype: disable=attribute-error
   assert _ids(ds) == list(range(100)) + list(range(100))
 
 
-def test_shuffle(dummy_builder: tfds.core.GeneratorBasedBuilder):  # pylint: disable=redefined-outer-name
-  ds = kmix.Tfds(  # pytype: disable=wrong-keyword-args
-      name='dummy_dataset',
-      split='train',
+@with_ds_cls
+def test_shuffle(
+    ds_cls: type[kmix.Base], dummy_builder: tfds.core.GeneratorBasedBuilder
+):  # pylint: disable=redefined-outer-name
+  ds = ds_cls(  # pytype: disable=wrong-keyword-args
       data_dir=dummy_builder.data_dir_root,
       num_epochs=1,
       shuffle=True,
-      seed=0,
   )
   assert len(ds) == 100
 
   # Iterating twice on the dataset yields the same results.
   ids = _ids(ds)
+  if isinstance(ds, kmix.WithShuffleBuffer):
+    # When `ds.shuffle` is used, the dataset has to be re-created as
+    # `reshuffle_each_iteration` is persistent on the cached iterator.
+    ds = dataclasses.replace(ds)
   assert _ids(ds) == ids
 
-  ds = kmix.Tfds(  # pytype: disable=wrong-keyword-args
-      name='dummy_dataset',
-      split='train',
+  ds = ds_cls(  # pytype: disable=wrong-keyword-args
       data_dir=dummy_builder.data_dir_root,
       num_epochs=2,
       shuffle=True,
-      seed=0,
   )
   ids2 = _ids(ds)
   assert len(ids2) == 200
   assert ids2[:100] == ids  # First epoch is the same
   assert ids2 != ids + ids  # The second epoch has different shuffling.
 
-  ds = kmix.Tfds(  # pytype: disable=wrong-keyword-args
-      name='dummy_dataset',
-      split='train',
+  ds = ds_cls(  # pytype: disable=wrong-keyword-args
       data_dir=dummy_builder.data_dir_root,
       num_epochs=1,
       shuffle=True,
       seed=1,  # Different seed
   )
-  assert _ids(ds) != ids  # Seed change the shuffling
+  ids_new_seed = _ids(ds)
+  assert len(ids_new_seed) == len(ids)
+  assert ids_new_seed != ids  # Seed change the shuffling
 
 
-def test_sharding(dummy_builder: tfds.core.GeneratorBasedBuilder):  # pylint: disable=redefined-outer-name
+@with_ds_cls
+def test_sharding(
+    ds_cls: type[kmix.Base], dummy_builder: tfds.core.GeneratorBasedBuilder
+):  # pylint: disable=redefined-outer-name
   all_ids = set()
   with mock.patch('jax.process_count', return_value=4):
     for process_index in range(4):
       with mock.patch('jax.process_index', return_value=process_index):
-        ds = kmix.Tfds(  # pytype: disable=wrong-keyword-args
-            name='dummy_dataset',
-            split='train',
+        ds = ds_cls(  # pytype: disable=wrong-keyword-args
             data_dir=dummy_builder.data_dir_root,
             num_epochs=1,
             shuffle=True,

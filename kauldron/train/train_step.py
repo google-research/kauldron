@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import dataclasses
-import typing
 from typing import Any, Mapping, Optional
 
 from etils import epy
@@ -412,7 +411,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
         is_training=True,
         collections=state.collections,
     )
-    context = typing.cast(context_lib.Context, context)
+    assert isinstance(context, context_lib.Context)
     updates, new_opt_state = jax.named_call(self.optimizer.update)(
         grads, state.opt_state, state.params
     )

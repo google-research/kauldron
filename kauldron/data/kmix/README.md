@@ -58,6 +58,8 @@ cfg.train_ds = kd.kmix.SampleFromDatasets(
 
 * `kmix.Tfds`: TFDS dataset (note this require the dataset to be ArrayRecord
   format)
+* `kmix.TfdsLegacy`: TFDS dataset for datasets not supporting random access (
+   e.g. in `tfrecord` format)
 * `kmix.SeqIOTask`: SeqIO task
 * `kmix.SeqIOMixture`: SeqIO mixture
 
@@ -82,23 +84,28 @@ All kmix classes inherit from this simple protocol.
 class Base(kd.data.Pipeline):
 
   @abc.abstractmethod
-  def __call__(self) -> tf.data.Dataset:
+  def ds_for_current_process(self) -> tf.data.Dataset:
     ...
 ```
 
 ### Implementing a source dataset
 
-Important: Sources should take care of:
-
-* **Sharding**: Each host should yield non-overlapping examples.
-* **Deterministic shuffling** (usually with a `shuffle: bool` kwargs). Ideally using
-  random-access shuffling (provided by TFGrain, ArrayRecord,...).
-* **`num_epoch`**: Repeating the dataset for a given number of epochs (while
+> Important: Sources should take care of:
+>
+> * **Sharding**: Each host should yield non-overlapping examples.
+> * **Deterministic shuffling** (usually with a `shuffle: bool` kwargs). Ideally using
+>   random-access shuffling (provided by TFGrain, ArrayRecord,...).
+> * **`num_epoch`**: Repeating the dataset for a given number of epochs (while
   making sure each epoch reshuffle the data).
 
 `transforms`, `batch_size`,... are automatically taken cared of.
 
 See `kmix.Tfds` for an example.
+
+If your dataset does not support random access, you can inherit from `kmix.WithShuffleBuffer` that will automatically take care of adding `ds.cache`,
+`ds.shuffle`, `ds.repeat`. Note that the source dataset should still make sure
+each process yields non-overlapping examples. See `kmix.TfdsLegacy` for an
+example.
 
 ### Implementing a mixture transformation
 
@@ -107,8 +114,8 @@ Mixtures should take care of:
 * **Splitting the rng** on each of the sub-dataset. To ensure sub-dataset yields
   examples in different order.
 * **Calling `sub_ds.ds_with_transforms()`** to access the sub-datasets. You
-should **not** call `sub_ds.__call__()` directly as this would skip the
-transformations from the sub dataset.
+should **not** call `sub_ds.ds_for_current_process()` directly as this would
+skip the transformations from the sub dataset.
 
 See `kmix.SampleFromDatasets` for an example.
 
