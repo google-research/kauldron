@@ -28,9 +28,10 @@ def test_end2end(tmp_path: epath.Path):
   cfg.train_ds.batch_size = 2
   cfg.evals.eval.ds.batch_size = 1  # pytype: disable=attribute-error
   with kd.konfig.mock_modules():
-    cfg.model.encoder = nn.Sequential(
-        [nn.Dense(features=3), nn.BatchNorm(use_running_average=False)]
-    )
+    cfg.model.encoder = nn.Sequential([
+        nn.Dense(features=3),
+        nn.BatchNorm(use_running_average=False),
+    ])
   cfg.num_train_steps = 1
   cfg.workdir = os.fspath(tmp_path)
 
@@ -38,4 +39,6 @@ def test_end2end(tmp_path: epath.Path):
 
   # Launch train
   with kd.kmix.testing.mock_data(num_examples=10):
-    trainer.train()
+    state, _ = trainer.train()
+
+  assert list(state.collections) == ['batch_stats']
