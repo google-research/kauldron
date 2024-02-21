@@ -90,6 +90,9 @@ class TapPositionAccuracy(metrics.Metric):
   gt_tracks: kontext.Key = kontext.REQUIRED  # e.g. "batch.target_points"
   pred_tracks: kontext.Key = kontext.REQUIRED  # e.g. "pred.tracks"
   query_mode: str  # e.g. "first" or "strided"
+  # pixel radius to compute accuracy
+  thresholds: list[int] = dataclasses.field(
+      default_factory=lambda: [1, 2, 4, 8, 16])
 
   @flax.struct.dataclass
   class State(metrics.AverageState):
@@ -110,7 +113,7 @@ class TapPositionAccuracy(metrics.Metric):
     )
 
     all_frac_within = []
-    for thresh in [1, 2, 4, 8, 16]:
+    for thresh in self.thresholds:
       # True positives are points that are within the threshold and where both
       # the prediction and the ground truth are listed as visible.
       within_dist = jnp.sum(
@@ -143,6 +146,9 @@ class TapAverageJaccard(metrics.Metric):
   pred_visible: kontext.Key = kontext.REQUIRED  # e.g. "pred.visible"
   pred_tracks: kontext.Key = kontext.REQUIRED  # e.g. "pred.tracks"
   query_mode: str  # e.g. "first" or "strided"
+  # pixel radius to compute accuracy
+  thresholds: list[int] = dataclasses.field(
+      default_factory=lambda: [1, 2, 4, 8, 16])
 
   @flax.struct.dataclass
   class State(metrics.AverageState):
@@ -165,7 +171,7 @@ class TapAverageJaccard(metrics.Metric):
     )
 
     all_jaccard = []
-    for thresh in [1, 2, 4, 8, 16]:
+    for thresh in self.thresholds:
       # True positives are points that are within the threshold and where both
       # the prediction and the ground truth are listed as visible.
       within_dist = jnp.sum(
