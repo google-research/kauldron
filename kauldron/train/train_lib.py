@@ -47,7 +47,10 @@ def train_impl(
 ) -> tuple[train_step.TrainState, Optional[train_step.Auxiliaries]]:
   """Implements of `Trainer.train`."""
   status.log("Configuring ...")
+  # TODO(epot): Should allow user to customize the setup (e.g. to add
+  # custom artifacts,...)
   utils.add_log_artifacts()
+  utils.add_colab_artifacts()
   tf.config.set_visible_devices([], "GPU")
   _ensure_workdir(trainer.workdir)
   flatboard_utils.add_flatboards(trainer)
