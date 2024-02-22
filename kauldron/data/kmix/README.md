@@ -2,6 +2,8 @@
 
 https://kauldron.rtfd.io/en/latest-kmix
 
+[TOC]
+
 Kmix is a small wrapper around `kd.data.Pipeline` to build flexible data
 pipelines.
 
@@ -104,8 +106,7 @@ See `kmix.Tfds` for an example.
 
 If your dataset does not support random access, you can inherit from `kmix.WithShuffleBuffer` that will automatically take care of adding `ds.cache`,
 `ds.shuffle`, `ds.repeat`. Note that the source dataset should still make sure
-each process yields non-overlapping examples. See `kmix.TfdsLegacy` for an
-example.
+each process yields non-overlapping examples.
 
 ### Implementing a mixture transformation
 
