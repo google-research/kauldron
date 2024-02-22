@@ -225,22 +225,27 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
       step: int,
       is_training: bool,
       collections: _Collections,
+      capture_intermediates: bool = True,
   ) -> tuple[float, context_lib.Context]:
     """Forward pass of the model including losses."""
     context = context_lib.Context(
         step=step, batch=batch, params=params, collections=collections
     )
     args, kwargs = data_utils.get_model_inputs(self.model, context)
+    # TODO(klausg): Check if we need a filter for intermediates.
     preds, collections = self.model.apply(
         {"params": params} | collections,
         *args,
         rngs=rngs,
         mutable=list(collections),
-        capture_intermediates=True,  # TODO(klausg): check if need a filter here
+        capture_intermediates=capture_intermediates,
         is_training_property=is_training,
         **kwargs,
     )
-    interms = collections.pop("intermediates")
+    if capture_intermediates:
+      interms = collections.pop("intermediates")
+    else:
+      interms = None
     context = context.replace(
         preds=preds, interms=interms, collections=collections
     )
