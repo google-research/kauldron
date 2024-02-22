@@ -120,7 +120,8 @@ class Auxiliaries:
 
     if not isinstance(loss_values, dict):
       loss_values = dict(loss_values)  # Convert FrozenDict, ImmutableDict
-    loss_values["total"] = total_loss
+    if loss_values.values():  # if there are any losses also add a total
+      loss_values["total"] = total_loss
 
     # train metrics
     metric_values = jax.tree_map(
