@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 import dataclasses
 
 import flax
@@ -91,8 +92,7 @@ class TapPositionAccuracy(metrics.Metric):
   pred_tracks: kontext.Key = kontext.REQUIRED  # e.g. "pred.tracks"
   query_mode: str  # e.g. "first" or "strided"
   # pixel radius to compute accuracy
-  thresholds: list[int] = dataclasses.field(
-      default_factory=lambda: [1, 2, 4, 8, 16])
+  thresholds: Sequence[int] = (1, 2, 4, 8, 16)
 
   @flax.struct.dataclass
   class State(metrics.AverageState):
@@ -147,8 +147,7 @@ class TapAverageJaccard(metrics.Metric):
   pred_tracks: kontext.Key = kontext.REQUIRED  # e.g. "pred.tracks"
   query_mode: str  # e.g. "first" or "strided"
   # pixel radius to compute accuracy
-  thresholds: list[int] = dataclasses.field(
-      default_factory=lambda: [1, 2, 4, 8, 16])
+  thresholds: Sequence[int] = (1, 2, 4, 8, 16)
 
   @flax.struct.dataclass
   class State(metrics.AverageState):
