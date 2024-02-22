@@ -39,7 +39,6 @@ def get_config():
   """Get the default hyperparameter configuration."""
   cfg = kd.train.Trainer()
   cfg.seed = 42
-  cfg.workdir = konfig.placeholder(str)  # will be overwritten by launcher
 
   # Dataset
   cfg.train_ds = _make_ds(training=True)
