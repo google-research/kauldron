@@ -27,7 +27,7 @@ from etils import epy
 import flax
 import jax
 import jax.numpy as jnp
-from kauldron.typing import Array, Bool, Float, Integer  # pylint: disable=g-multiple-import
+from kauldron.typing import Array, Bool, Float  # pylint: disable=g-multiple-import
 import numpy as np
 
 
@@ -252,7 +252,7 @@ class AverageState(State):
   """
 
   total: Float[""]
-  count: Integer[""]
+  count: Float[""]
 
   @classmethod
   def from_values(
@@ -281,18 +281,14 @@ class AverageState(State):
     mask = mask.astype(bool)
     return cls(
         total=jnp.where(mask, values, jnp.zeros_like(values)).sum(),
-        count=jnp.where(
-            mask,
-            jnp.ones_like(values, dtype=jnp.int32),
-            jnp.zeros_like(values, dtype=jnp.int32),
-        ).sum(),
+        count=jnp.broadcast_to(mask, values.shape).sum(dtype=jnp.float32),
     )
 
   @classmethod
   def empty(cls) -> AverageState:
     return cls(
         total=jnp.array(0.0, jnp.float32),
-        count=jnp.array(0.0, jnp.int32),
+        count=jnp.array(0.0, jnp.float32),
     )
 
   def merge(self, other: AverageState) -> AverageState:

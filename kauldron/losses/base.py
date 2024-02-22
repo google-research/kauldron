@@ -41,7 +41,7 @@ class AllReduceMean(base_state.State):
 
   @classmethod
   def empty(cls) -> AllReduceMean:
-    return cls(value=jnp.array(0, jnp.float32), count=jnp.array(0, jnp.int32))
+    return cls(value=jnp.array(0, jnp.float32), count=jnp.array(0, jnp.float32))
 
   @classmethod
   def from_values(
@@ -53,7 +53,7 @@ class AllReduceMean(base_state.State):
   ) -> AllReduceMean:
     if mask is None:
       value = jnp.sum(values)
-      count = jnp.array(values.size, dtype=jnp.int32)
+      count = jnp.array(values.size, dtype=jnp.float32)
     else:
       try:
         mask = jnp.broadcast_to(mask, values.shape)
@@ -64,9 +64,9 @@ class AllReduceMean(base_state.State):
         ) from e
       value = jnp.sum(values * mask)
       if normalize_by == "mask":
-        count = jnp.sum(mask)
+        count = jnp.sum(mask, dtype=jnp.float32)
       else:
-        count = values.size
+        count = jnp.array(values.size, dtype=jnp.float32)
     return cls(value=value * weight, count=count)
 
   def merge(self, other: AllReduceMean) -> AllReduceMean:
