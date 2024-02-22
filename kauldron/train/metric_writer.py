@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import abc
 import dataclasses
 import functools
 from typing import Any, Mapping, Optional
@@ -44,37 +45,51 @@ COLLECTION_NOT_SET = "$not_set$"
 
 
 @dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
-class WriterBase(metric_writers.MetricWriter, config_util.UpdateFromRootCfg):
+class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
   """Base class for metric writers."""
 
   workdir: str | epath.Path = config_util.ROOT_CFG_REF.workdir
 
   collection: str = COLLECTION_NOT_SET  # Will be set by the evaluator / trainer
 
+  @abc.abstractmethod
+  def write_scalars(self, step: int, scalars: Mapping[str, Scalar]) -> None:
+    """Write scalar values for the step."""
+
   def write_summaries(
       self,
       step: int,
       values: Mapping[str, Array],
+      *,
       metadata: Mapping[str, Any] | None = None,
   ) -> None:
+    """Write arbitrary tensor summaries for the step."""
     raise NotImplementedError()
 
+  @abc.abstractmethod
   def write_images(
-      self, step: int, images: Mapping[str, Array["n h w c"]]
+      self,
+      step: int,
+      images: Mapping[str, Array["n h w c"]],
   ) -> None:
-    raise NotImplementedError()
+    """Write images for the step."""
 
+  @abc.abstractmethod
   def write_histograms(
       self,
       step: int,
       arrays: Mapping[str, Array],
+      *,
       num_buckets: Mapping[str, int] | None = None,
   ) -> None:
-    raise NotImplementedError()
+    """Write histograms for the step."""
 
   def write_videos(
-      self, step: int, videos: Mapping[str, Array["n t h w c"]]
+      self,
+      step: int,
+      videos: Mapping[str, Array["n t h w c"]],
   ) -> None:
+    """Write videos for the step."""
     raise NotImplementedError()
 
   def write_audios(
@@ -84,15 +99,28 @@ class WriterBase(metric_writers.MetricWriter, config_util.UpdateFromRootCfg):
       *,
       sample_rate: int,
   ) -> None:
+    """Write audio samples for the step."""
     raise NotImplementedError()
 
-  def write_texts(self, step: int, texts: Mapping[str, str]) -> None:
-    raise NotImplementedError()
+  @abc.abstractmethod
+  def write_texts(
+      self,
+      step: int,
+      texts: Mapping[str, str],
+  ) -> None:
+    """Write text summaries for the step."""
 
-  def write_hparams(self, hparams: Mapping[str, Any]) -> None:
-    raise NotImplementedError()
+  @abc.abstractmethod
+  def write_hparams(
+      self,
+      hparams: Mapping[str, Any],
+  ) -> None:
+    """Write hyper parameters."""
 
-  def write_config(self, config: konfig.ConfigDict) -> None:
+  def write_config(
+      self,
+      config: konfig.ConfigDict,
+  ) -> None:
     self._assert_collection_is_set()
     if config is None:
       return
@@ -386,6 +414,9 @@ class KDMetricWriter(WriterBase):
 @dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
 class NoopWriter(WriterBase):
   """Writer that writes nothing. Useful for deactivating the writer."""
+
+  def write_scalars(self, step: int, scalars: Mapping[str, Scalar]) -> None:
+    pass
 
   def write_summaries(
       self,
