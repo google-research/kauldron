@@ -79,7 +79,7 @@ def imports(*, lazy: bool = False) -> Iterator[None]:
 
 
 @contextlib.contextmanager
-def mock_modules(*module_names: str):
+def mock_modules():
   """Contextmanager which replaces list of modules with ConfigDictProxyObjects.
 
   Meant for updating configs in an interactive environments where
@@ -101,12 +101,6 @@ def mock_modules(*module_names: str):
   # l1 is still a kd.losses.L1 instance
   ```
 
-  Args:
-    *module_names: (optional) if given, only modules given here will be mocked
-      to act like in `konfig.imports()` context. By default mock all modules.
-      Imported alias should be givel (rather than the full name of the module).
-      E.g. should be `np` instead of `numpy` if using `import numpy as np`.
-
   Yields:
     None
   """
@@ -114,28 +108,22 @@ def mock_modules(*module_names: str):
   # contextlib decorator)
   frame = inspect.stack()[2].frame
   with (
-      _mock_modules(*module_names, frame=frame, property_name='f_globals'),
-      _mock_modules(*module_names, frame=frame, property_name='f_locals'),
+      _mock_modules(frame=frame, property_name='f_globals'),
+      _mock_modules(frame=frame, property_name='f_locals'),
   ):
     yield
 
 
 @contextlib.contextmanager
-def _mock_modules(
-    *module_names: str, frame: types.FrameType, property_name: str
-):
+def _mock_modules(frame: types.FrameType, property_name: str):
   """Mock module implementation."""
   global_ns: dict[str, Any] = getattr(frame, property_name)
 
-  if not module_names:
-    modules = {  # By default, replace all modules
-        name: module
-        for name, module in global_ns.items()
-        if isinstance(module, types.ModuleType)
-    }
-  else:
-    modules = {name: global_ns[name] for name in module_names}
-
+  modules = {  # By default, replace all modules
+      name: module
+      for name, module in global_ns.items()
+      if isinstance(module, types.ModuleType)
+  }
   # Do not replace `konfig` (note that `kd.konfig` will be mocked)
   # Filter `ecolab` for `xxx;` compatibility
   for name in ['konfig', 'ecolab']:
@@ -143,10 +131,9 @@ def _mock_modules(
 
   # Create the new fake modules
   new_modules = {
-      k: configdict_proxy.ConfigDictProxyObject.from_module_name(
-          _get_module_name(m)
-      )
+      k: configdict_proxy.ConfigDictProxyObject.from_module_name(module_name)
       for k, m in modules.items()
+      if (module_name := _get_module_name(m))
   }
   try:
     global_ns.update(new_modules)
@@ -172,15 +159,18 @@ def _force_locals_update(frame, property_name):
   )
 
 
-def _get_module_name(module: types.ModuleType) -> str:
+def _get_module_name(module: types.ModuleType) -> str | None:
   """Returns the name of the module."""
-  try:
-    name = module.__dict__['__name__']  # Do not trigger lazy-imports
-  except KeyError:  # Likely a lazy_imports
-    if module.__module__ != 'etils.ecolab.lazy_utils':
-      raise ValueError(f'Unexpected module: {module}') from None
-    name = module._etils_state.module_name  # pylint: disable=protected-access
-  return name
+  getattr_ = inspect.getattr_static
+  if module_name := getattr_(module, '__name__', None):
+    return module_name
+  # Otherwise the module don't have a `__name__`
+  if getattr_(module, '__module__', '') == 'etils.ecolab.lazy_utils':
+    return module._etils_state.module_name  # lazy_imports  # pylint: disable=protected-access
+  if getattr_(module, '__etils_invalidated__', False):
+    return None  # Invalidated module, do not return
+
+  raise ValueError(f'Cannot mock unexpected module: {module}')
 
 
 @contextlib.contextmanager
