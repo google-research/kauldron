@@ -106,7 +106,10 @@ def resolve_from_keyed_obj(
 
 
 def resolve_from_keypaths(
-    context: Any, key_paths: dict[str, str], *, optional_keys=Optional[set[str]]
+    context: Any,
+    key_paths: dict[str, str],
+    *,
+    optional_keys: Optional[set[str]] = None,
 ) -> dict[str, Any]:
   """Get values for key_paths from context with useful errors when failing."""
   optional_keys = set() if optional_keys is None else optional_keys
