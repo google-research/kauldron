@@ -184,8 +184,10 @@ class PyGrainPipeline(Pipeline):
   # * `cfg.train_ds.loader.num_epochs` (for `kd.data.loader.GrainTfds`)
   # * `cfg.evals[].num_batches`
   num_epochs: Optional[int] = None
-  transformations: grain.Transformations = dataclasses.field(
-      default_factory=list
+  # TODO(epot): Should only be `pygrain.Transformations`, but some pygrain
+  # transforms currently inherit from tfgrain.Transformations
+  transformations: grain.Transformations | pygrain.Transformations = (
+      dataclasses.field(default_factory=list)
   )
   worker_count: int = 16
   num_prefetch_elements: int = 1
