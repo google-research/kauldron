@@ -236,11 +236,15 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
         {"params": params} | collections,
         *args,
         rngs=rngs,
-        mutable=list(collections),
+        mutable=True,
         capture_intermediates=True,  # TODO(klausg): check if need a filter here
         is_training_property=is_training,
         **kwargs,
     )
+    # Note the params can be mutable if the model call the same sub-model
+    # internally but with different params. However, the updates are never
+    # propagated
+    collections.pop("params", None)
     interms = collections.pop("intermediates")
     context = context.replace(
         preds=preds, interms=interms, collections=collections
