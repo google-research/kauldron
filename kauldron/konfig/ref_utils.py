@@ -142,6 +142,11 @@ class _FieldReference(ml_collections.FieldReference):
   def __le__(self, other):
     return self._apply_op(operator.le, other)
 
+  def __iter__(self):
+    # ml_collections.FieldReference implement `__getitem__` so is automatically
+    # iterable, but this lead to infinite loop.
+    raise TypeError(f'{type(self).__name__} object is not iterable')
+
   # =========== Other functions ===========
 
   def __init__(
