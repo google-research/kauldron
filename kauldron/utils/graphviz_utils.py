@@ -16,7 +16,9 @@
 
 from __future__ import annotations
 
+import collections
 from collections.abc import Iterable
+import dataclasses
 
 from etils import epy
 from kauldron import kontext
@@ -28,61 +30,103 @@ with epy.lazy_imports():
 
 def get_connection_graph(trainer: config_lib.Trainer) -> graphviz.Digraph:
   """Build the graphviz."""
-  dot = graphviz.Digraph()
+  nodes = _extract_graph(trainer)
+  return _make_graph(nodes)
 
-  ctx = trainer.context_specs
 
-  # TODO(epot): How to better style the graph ?
-  dot.attr(rankdir='LR')
-  dot.attr('node', shape='none')
+@dataclasses.dataclass(kw_only=True)
+class _Node:
+  """Graph node."""
 
-  with dot.subgraph(name='cluster_train') as subgraph:
-    # Make a node for the batch
-    batch = list(kontext.flatten_with_path(ctx.batch).keys())
-    subgraph.node('batch', label=_make_node('batch', batch))
+  name: str = None  # pytype: disable=annotation-type-mismatch
+  group: str = None  # pytype: disable=annotation-type-mismatch
+  inputs: dict[str, str] = dataclasses.field(default_factory=dict)
+  outputs: set[str] = dataclasses.field(default_factory=set)
 
-    # Make a node for the model
-    model_inputs = kontext.get_keypaths(trainer.model)
-    subgraph.node('model', label=_make_node('model', model_inputs.keys()))
-    for k, v in model_inputs.items():
-      if v is None:
+  @property
+  def html_table(self) -> str:
+    rows = self.inputs.keys() | self.outputs
+    rows = sorted(rows - {'step'})
+    return _make_node(self.name, rows)
+
+  @property
+  def edges(self) -> Iterable[tuple[str, str]]:
+    for k, v in self.inputs.items():
+      if v == 'step':
         continue
-      subgraph.edge(f'{_path_to_graphviz_path(v)}', f'model:{k}')
+      yield f'{_path_to_graphviz_path(v)}', f'{self.name}:{k}'
 
-    # Make a node for the model preds
-    preds = list(kontext.flatten_with_path(ctx.preds).keys())
-    subgraph.node('preds', label=_make_node('preds', preds))
-    subgraph.edge('model', 'preds')
 
+def _extract_graph(trainer: config_lib.Trainer) -> list[_Node]:
+  """Extract the nodes from the trainer."""
   # TODO(epot): Would be nice to add links to the source code.
-  # TODO(epot): Filter optional values (mask)
+  # TODO(epot): Filter optional values (mask, step)
 
-  # Make a node for each losses, metrics, summaries,...
+  nodes = []
   for group_name, group_objs in {
       'train': {'model': trainer.model},
       'losses': dict(trainer.train_losses),
       'metrics': dict(trainer.train_metrics),
       'summaries': dict(trainer.train_summaries),
   }.items():
-    with dot.subgraph(name=f'cluster_{group_name}') as subgraph:
-      subgraph.attr(label=group_name)
+    for obj_name, keyed_obj in group_objs.items():
+      obj_inputs = kontext.get_keypaths(keyed_obj)
+      # Should likely flatten here to support nested kontext
+      node = _Node(
+          name=obj_name,
+          group=group_name,
+          inputs={k: v for k, v in obj_inputs.items() if v is not None},
+      )
+      nodes.append(node)
+
+  additional_nodes = collections.defaultdict(_Node)
+  for node in nodes:
+    for k, v in node.inputs.items():
+      if '.' in v:
+        node_name, rest = v.split('.', 1)
+      else:
+        node_name, rest = k, None
+      additional_nodes[node_name].name = node_name
+      additional_nodes[node_name].group = 'train'
+      if rest is not None:
+        additional_nodes[node_name].outputs.add(rest)
+  additional_nodes.pop('step', None)
+
+  nodes.extend(additional_nodes.values())
+  return nodes
+
+
+def _make_graph(nodes: list[_Node]) -> graphviz.Digraph:
+  """Build the graphviz object."""
+  group_to_node = epy.groupby(nodes, key=lambda x: x.group)
+
+  dot = graphviz.Digraph()
+
+  # TODO(epot): How to better style the graph ?
+  dot.attr(rankdir='LR')
+  dot.attr('node', shape='none')
+
+  for group, nodes in group_to_node.items():
+    with dot.subgraph(name=f'cluster_{group}') as subgraph:
+      subgraph.attr(label=group)
       subgraph.attr(rankdir='TB')
-      for obj_name, keyed_obj in group_objs.items():
-        obj_inputs = kontext.get_keypaths(keyed_obj)
-        subgraph.node(obj_name, label=_make_node(obj_name, obj_inputs.keys()))
-        for k, v in obj_inputs.items():
-          if v is None:
-            continue
-          subgraph.edge(f'{_path_to_graphviz_path(v)}', f'{obj_name}:{k}')
 
-  # Connect everything together
+      for node in nodes:
+        # Make a node for the current object
+        subgraph.node(node.name, label=node.html_table)
 
+        # Make a node for the model
+        for from_, to in node.edges:
+          subgraph.edge(from_, to)
+
+      if group == 'train':
+        subgraph.edge('model', 'preds')
   return dot
 
 
 def _make_node(title: str, rows: Iterable[str]) -> str:
   lines = [H.tr(H.td(H.b(title)))]
-  lines.extend(H.tr(H.td(k, port=k)) for k in rows)
+  lines.extend(H.tr(H.td(k, port=_normalize_label(k))) for k in rows)
   table = H.table(
       *lines,
       border='0',
@@ -97,7 +141,13 @@ def _path_to_graphviz_path(k: str) -> str:
   if '.' not in k:
     return k
   prefix, suffix = k.split('.', 1)
-  return f'{prefix}:{suffix}'
+  return f'{prefix}:{_normalize_label(suffix)}'
+
+
+def _normalize_label(label: str) -> str:
+  for invalid_char in ',: []':
+    label = label.replace(invalid_char, '_')
+  return label
 
 
 # ------------ Mini HTML helper lib ------------
