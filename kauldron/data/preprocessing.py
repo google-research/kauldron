@@ -217,6 +217,30 @@ class TreeFlattenWithPath(_ElementWise, grain.MapTransform):
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class UnFlattenOneLevel(_ElementWise, grain.MapTransform):
+  """Unflattens specified key(s).
+
+  For example, using 'a_c_d' as `key`, with:
+    features = {'a_b': 2, 'a_c_d': 3, 'e': 5, 'f': {'g': 6}}
+
+  becomes:
+    features = {'a_b': 2, 'a_c': {'d': 3}, 'e': 5, 'f': {'g': 6}}
+  """
+
+  separator: str = "_"
+
+  def map(self, features):
+    output = {}
+    for key, element, should_transform in self._per_element(features):
+      if should_transform:
+        new_key, new_child_key = key.rsplit(self.separator, maxsplit=1)
+        output[new_key] = {new_child_key: element}
+      else:
+        output[key] = element
+    return output
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class ElementWiseTransform(_ElementWise, grain.MapTransform):
   """Base class for elementwise transforms."""
 
