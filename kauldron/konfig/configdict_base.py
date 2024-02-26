@@ -64,6 +64,7 @@ class ConfigDict(ml_collections.ConfigDict):
         initial_dictionary=init_dict,
         type_safe=True,
         convert_dict=True,
+        sort_keys=False,  # Keep original key order
         allow_dotted_keys=True,
     )
 
