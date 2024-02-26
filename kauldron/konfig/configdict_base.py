@@ -64,78 +64,17 @@ class ConfigDict(ml_collections.ConfigDict):
         initial_dictionary=init_dict,
         type_safe=True,
         convert_dict=True,
+        allow_dotted_keys=True,
     )
 
   def __getitem__(self, key: str | int) -> Any:
     key = self._normalize_arg_key(key)
-    # TODO(epot): Use `super().__setitem__` after there's an option to disable
-    # `.` checking !!
-    # return super().__setitem__(key, value)
-    # return super().__getitem__(key)
-    return self.__super_getitem__(key)
-
-  def __super_getitem__(self, key: str):
-    from ml_collections.config_dict import config_dict  # pylint: disable=g-import-not-at-top
-
-    try:
-      field = self._fields[key]
-      if isinstance(field, config_dict.FieldReference):
-        return field.get()
-      else:
-        return field
-    except KeyError as e:
-      raise KeyError(self._generate_did_you_mean_message(key, str(e))) from None
+    return super().__getitem__(key)
 
   def __setitem__(self, key: str | int, value: Any) -> None:
     key = self._normalize_arg_key(key, can_append=True)
     value = _normalize_config_only_value(value, key)
-    # TODO(epot): Use `super().__setitem__` after there's an option to disable
-    # `.` checking !!
-    # return super().__setitem__(key, value)
-    return self.__super_setitem__(key, value)
-
-  def __super_setitem__(self, key, value):
-    from ml_collections.config_dict import config_dict  # pylint: disable=g-import-not-at-top
-
-    if self.is_locked and key not in self._fields:
-      error_msg = (
-          'Key "{}" does not exist and cannot be added since the '
-          'config is locked. Other fields present: "{}"'
-      )
-      raise KeyError(
-          self._generate_did_you_mean_message(
-              key, error_msg.format(key, self._fields)
-          )
-      )
-
-    if key in self._fields:
-      field = self._fields[key]
-      try:
-        if isinstance(field, config_dict.FieldReference):
-          field.set(value, self._type_safe)
-          return
-        # Skip type checking if the value is a FieldReference of the same type.
-        if not isinstance(
-            value, config_dict.FieldReference
-        ) or value.get_type() is not type(field):
-          if isinstance(value, dict) and self._convert_dict:
-            value = type(self)(value, self._type_safe)
-          value = config_dict._safe_cast(value, type(field), self._type_safe)  # pylint: disable=protected-access
-      except TypeError as e:
-        raise TypeError(
-            "Could not override field '{}' (reference). {}".format(key, str(e))
-        ) from e
-
-    if isinstance(value, dict) and self._convert_dict:
-      value = ConfigDict(value, self._type_safe)
-    elif isinstance(value, config_dict.FieldReference):
-      # TODO(sergomez): We should consider using value.get_type().
-      ref_type = config_dict._NoneType if value.empty() else type(value.get())  # pylint: disable=protected-access
-      if ref_type is dict or ref_type is config_dict.FrozenConfigDict:
-        value_cd = ConfigDict(value.get(), self._type_safe)
-        value.set(value_cd, False)
-
-    self._fields[key] = value
+    return super().__setitem__(key, value)
 
   def __repr__(self) -> str:
     visited = _VisitedTracker()
