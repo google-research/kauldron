@@ -29,8 +29,7 @@ from kauldron.evals import evaluators
 from kauldron.metrics import base
 from kauldron.metrics import base_state
 from kauldron.train import train_step
-from kauldron.typing import Array  # pylint: disable=g-multiple-import,g-importing-member
-from kauldron.typing import typechecked
+from kauldron.typing import Array, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import utils
 from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 import numpy as np
@@ -100,9 +99,13 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
     """Run one full evaluation."""
     self._assert_root_cfg_resolved()
 
-    train_features, train_labels = self.compute_features(state, self.ds_train)
-    val_features, val_labels = self.compute_features(state, self.ds_val)
-    test_features, test_labels = self.compute_features(state, self.ds_test)
+    train_features, train_labels = self.compute_features(
+        state, self.ds_train, 'train'
+    )
+    val_features, val_labels = self.compute_features(state, self.ds_val, 'val')
+    test_features, test_labels = self.compute_features(
+        state, self.ds_test, 'test'
+    )
 
     fewshot_accuracies = {}
     for feat_key in train_features.keys():
@@ -141,9 +144,12 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
       )
     return None
 
-  def compute_features(self, state, ds: data.IterableDataset):
+  def compute_features(self, state, ds: data.IterableDataset, split: str):
     merged_aux = None
-    for eval_step, batch in utils.enum_iter(ds.device_put()):
+    for eval_step, batch in utils.enum_iter(
+        ds.device_put(),
+        desc=f'{self.name}_{split}',
+    ):
       eval_step = sharding.device_put(eval_step, sharding.REPLICATED)
       aux = evaluators.basic_eval_step(  # pylint: disable=protected-access
           model_with_aux=self.model_with_aux,
