@@ -51,13 +51,7 @@ class ConfigDict(ml_collections.ConfigDict):
   def __init__(
       self,
       init_dict: dict[str, Any] | ml_collections.ConfigDict | None = None,
-      # Internally, `ConfigDict` call `type(self)(d, self.type_safe)`, so we
-      # have to keep this, but this should never be changed
-      type_safe: bool = True,
-      convert_dict: bool = True,
   ) -> None:
-    assert type_safe
-    assert convert_dict
     init_dict = dict(init_dict or {})
     init_dict = _maybe_update_init_dict(init_dict)  # pytype: disable=name-error
     super().__init__(
