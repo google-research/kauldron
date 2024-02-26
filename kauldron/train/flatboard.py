@@ -185,20 +185,29 @@ def create_dashboard(
   coll_facet = "collection" in facets
   if coll_facet:
     coll_set = {c: " train" if c == "train" else c for c in collections}
+    data_groups = [
+        fb.DataGroup(  # pylint: disable=g-complex-comprehension
+            name="",
+            queries=[
+                fb.DataQuery(
+                    query=f"/datatable/xid/{xp.id}/{coll}",
+                    set={"collection": coll_set[coll]},
+                )
+                for coll in collections
+            ],
+        )
+    ]
   else:
-    coll_set = {}
-  data_groups = [
-      fb.DataGroup(  # pylint: disable=g-complex-comprehension
-          name="" if coll_facet else coll,
-          queries=[
-              fb.DataQuery(
-                  query=f"/datatable/xid/{xp.id}/{coll}",
-                  set={"collection": coll_set[coll]} if coll_facet else {},
-              )
-          ],
-      )
-      for coll in collections
-  ]
+    # We are not faceting over collections, so we add one data group per
+    # collection with the appropriate name. That way the labels will be
+    # "train", "eval" etc.
+    data_groups = [
+        fb.DataGroup(  # pylint: disable=g-complex-comprehension
+            name=coll,
+            queries=[fb.DataQuery(query=f"/datatable/xid/{xp.id}/{coll}")],
+        )
+        for coll in collections
+    ]
 
   return fb.Dashboard(
       title=title,
