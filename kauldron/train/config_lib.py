@@ -44,6 +44,7 @@ from kauldron.train import train_step
 from kauldron.utils import config_util
 from kauldron.utils import context as context_lib
 from kauldron.utils import profile_utils
+from kauldron.utils import sharding_utils
 import optax
 
 with konfig.imports(lazy=True):
@@ -79,6 +80,7 @@ class Trainer(config_util.BaseConfig):
     rng_streams: Flax rng streams to use **in addition** of the default
       (`params`, `dropout`, `default`). If any of `params`, `dropout`, `default`
       is set here, it will overwrite the default value.
+    sharding: Model sharding (by default, use replicated sharding)
     num_train_steps: Number of training steps. If `None`, train on the full
       dataset for the number of epoch specified in `train_ds`
     stop_after_steps: Optionally stop already after running this many steps. If
@@ -120,6 +122,9 @@ class Trainer(config_util.BaseConfig):
   model: nn.Module
   rng_streams: rngs_lib.RngStreams = dataclasses.field(
       default_factory=rngs_lib.RngStreams
+  )
+  sharding: sharding_utils.Sharding = dataclasses.field(
+      default_factory=sharding_utils.Sharding
   )
   num_train_steps: Optional[int] = None
   stop_after_steps: Optional[int] = None

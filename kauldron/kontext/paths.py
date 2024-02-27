@@ -29,7 +29,7 @@ import lark
 import ml_collections
 
 _T = TypeVar("_T")
-PyTree = Union[_T, Sequence["PyTree[_T]"], Mapping[str, "PyTree[_T]"]]
+PyTree = Union[_T, Sequence["PyTree[_T]"], Mapping[str, "PyTree[_T]"], Any]
 
 # Context object is a nested structure (dict, dataclass)
 Context = Any

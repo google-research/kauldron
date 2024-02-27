@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import dataclasses
+import functools
 from typing import Any, Mapping, Optional
 
 from etils import epy
@@ -34,10 +35,10 @@ from kauldron.train import rngs_lib
 from kauldron.typing import ElementSpec, Float, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import config_util
 from kauldron.utils import context as context_lib
-from kauldron.utils import jax_utils
+from kauldron.utils.sharding_utils import sharding as sharding_lib  # pylint: disable=g-bad-import-order,g-importing-member
 from kauldron.utils import train_property  # pylint: disable=unused-import
-from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 import optax
+
 
 _Params = PyTree[Float["..."]]
 _Collections = Mapping[str, PyTree[Float["..."]]]
@@ -60,8 +61,8 @@ class TrainState:
   step: int
 
   params: Optional[_Params]
-  opt_state: Optional[PyTree[Float["..."]]]
   collections: Optional[_Collections]
+  opt_state: Optional[PyTree[Float["..."]]]
 
   training_time_hours: float
 
@@ -296,6 +297,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
   model_with_aux: ModelWithAux = dataclasses.field(default_factory=ModelWithAux)
   optimizer: optax.GradientTransformation = config_util.ROOT_CFG_REF.optimizer
   rng_streams: rngs_lib.RngStreams = config_util.ROOT_CFG_REF.rng_streams
+  sharding: sharding_lib.Sharding = config_util.ROOT_CFG_REF.sharding
   init_transforms: Mapping[str, partial_loader.AbstractPartialLoader] = (
       config_util.ROOT_CFG_REF.init_transforms
   )
@@ -338,8 +340,8 @@ class TrainStep(config_util.UpdateFromRootCfg):
     state = self._init_optimizer(state)
     return state
 
-  @jax_utils.jit(
-      out_shardings=lambda: sharding.REPLICATED,
+  @functools.partial(
+      jax.jit,
       static_argnames=("self", "elem_spec", "model_method"),
   )
   def _init_model(
@@ -352,13 +354,14 @@ class TrainStep(config_util.UpdateFromRootCfg):
     params, collections = self.model_with_aux.init(
         self.rng_streams.init_rngs(), elem_spec, model_method=model_method
     )
-    return TrainState(
-        step=0,
+    state = TrainState(  # pytype: disable=wrong-arg-types
+        step=jnp.asarray(0),
         params=params,
         opt_state=None,
-        training_time_hours=0.0,
+        training_time_hours=jnp.asarray(0.0),
         collections=collections,
     )
+    return sharding_lib.with_sharding_constraint(state, self.sharding.state)
 
   def _init_transforms(self, state: TrainState) -> TrainState:
     """Run any additional init transformations and return the updated state."""
@@ -366,8 +369,8 @@ class TrainStep(config_util.UpdateFromRootCfg):
       state = init_transf.transform(state)
     return state
 
-  @jax_utils.jit(
-      out_shardings=lambda: sharding.REPLICATED,
+  @functools.partial(
+      jax.jit,
       static_argnames="self",
   )
   def _init_optimizer(
@@ -376,9 +379,11 @@ class TrainStep(config_util.UpdateFromRootCfg):
   ) -> TrainState:
     """Initialize the model and return the initial TrainState."""
     opt_state = self.optimizer.init(state.params)
-    return state.replace(opt_state=opt_state)
+    state = state.replace(opt_state=opt_state)
+    return sharding_lib.with_sharding_constraint(state, self.sharding.state)
 
-  @jax_utils.jit(
+  @functools.partial(
+      jax.jit,
       static_argnames=(
           "self",
           "return_losses",
@@ -386,11 +391,6 @@ class TrainStep(config_util.UpdateFromRootCfg):
           "return_summaries",
       ),
       donate_argnames=("state",),
-      # in_shardings=lambda: dict(  # pylint: disable=g-long-lambda
-      #     state=sharding.REPLICATED,
-      #     batch=sharding.SHARDED,
-      # ),
-      out_shardings=lambda: sharding.REPLICATED,
   )
   @jax.named_call
   def step(
@@ -443,4 +443,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
         return_summaries=return_summaries,
     )
 
-    return next_state, aux
+    return sharding_lib.with_sharding_constraint(
+        (next_state, aux),
+        (self.sharding.state, self.sharding.aux),
+    )

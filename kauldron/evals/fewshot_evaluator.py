@@ -157,6 +157,7 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
           eval_step=eval_step,
           state=state,
           batch=batch,
+          sharding=self.base_cfg.sharding,
       )
       # Merge/accumulate all states
       if merged_aux is None:

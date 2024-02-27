@@ -33,9 +33,8 @@ from kauldron.train import metric_writer
 from kauldron.train import rngs_lib
 from kauldron.train import train_step
 from kauldron.utils import config_util
-from kauldron.utils import jax_utils
 from kauldron.utils import utils
-from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
+from kauldron.utils.sharding_utils import sharding as sharding_lib  # pylint: disable=g-importing-member
 from kauldron.xm._src import run_strategies
 
 
@@ -186,13 +185,14 @@ class Evaluator(EvaluatorBase):
 
     merged_aux = None
     for eval_step, batch in utils.enum_iter(self.ds_iter, desc=self.name):
-      eval_step = sharding.device_put(eval_step, sharding.REPLICATED)
+      eval_step = sharding_lib.device_put(eval_step, sharding_lib.REPLICATED)
       aux = basic_eval_step(
           model_with_aux=self.model_with_aux,
           rng_streams=self.base_cfg.rng_streams,
           eval_step=eval_step,
           state=state,
           batch=batch,
+          sharding=self.base_cfg.sharding,
       )
       # Merge/accumulate all states
       # By default, cross-process communication is only allowed inside
@@ -224,14 +224,9 @@ class Evaluator(EvaluatorBase):
     )
 
 
-@jax_utils.jit(
-    static_argnames=('model_with_aux', 'rng_streams'),
-    # in_shardings=lambda: dict(  # pylint: disable=g-long-lambda
-    #     eval_step=sharding.REPLICATED,
-    #     state=sharding.REPLICATED,
-    #     batch=sharding.SHARDED,
-    # ),
-    out_shardings=lambda: sharding.REPLICATED,
+@functools.partial(
+    jax.jit,
+    static_argnames=('model_with_aux', 'rng_streams', 'sharding'),
 )
 def basic_eval_step(
     *,
@@ -240,6 +235,7 @@ def basic_eval_step(
     eval_step: int,
     state: train_step.TrainState,
     batch,
+    sharding: sharding_lib.Sharding,
 ) -> train_step.Auxiliaries:
   """Call the model (pmap version)."""
   _, ctx = model_with_aux.forward(
@@ -256,7 +252,7 @@ def basic_eval_step(
       return_metrics=True,
       return_summaries=True,
   )
-  return aux
+  return sharding_lib.with_sharding_constraint(aux, sharding.aux)
 
 
 def normalize_evaluators(
