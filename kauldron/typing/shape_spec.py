@@ -70,12 +70,12 @@ shape_spec: (_WS_INLINE* dim_spec)? (_WS_INLINE+ dim_spec)*
 // to account for operator precedence:
 // expr (lowest precedence): sum operations (+, -)
 ?expr: term
-     | term SUM_OP expr    -> binary_op
+     | expr SUM_OP term    -> binary_op
 SUM_OP: "+" | "-"
 
 // multiplication operations (*, /, //, %)
 ?term: unary
-     | unary MUL_OP term   -> binary_op
+     | term MUL_OP unary   -> binary_op
 MUL_OP: "*" | "/" | "//" | "%"
 
 // unary operators (we only support "-", not "+" or "~")
@@ -318,7 +318,7 @@ class FunctionDim(DimSpec):
   fn: Callable[..., int]
   arguments: list[DimSpec]
 
-  def evaluate(self, memo: Memo) -> tuple[int]:
+  def evaluate(self, memo: Memo) -> tuple[int]:  # pylint: disable=g-one-element-tuple
     vals = itertools.chain.from_iterable(
         arg.evaluate(memo) for arg in self.arguments
     )
@@ -340,7 +340,7 @@ class BinaryOpDim(DimSpec):
   left: DimSpec
   right: DimSpec
 
-  def evaluate(self, memo: Memo) -> tuple[int]:
+  def evaluate(self, memo: Memo) -> tuple[int]:  # pylint: disable=g-one-element-tuple
     (left,) = self.left.evaluate(memo)  # unpack tuple (has to be 1-dim)
     (right,) = self.right.evaluate(memo)  # unpack tuple (has to be 1-dim)
     return (self.op.fn(left, right),)
@@ -369,7 +369,7 @@ class NegDim(DimSpec):
 
   child: DimSpec
 
-  def evaluate(self, memo: Memo) -> tuple[int]:
+  def evaluate(self, memo: Memo) -> tuple[int]:  # pylint: disable=g-one-element-tuple
     return (-self.child.evaluate(memo)[0],)
 
   @property

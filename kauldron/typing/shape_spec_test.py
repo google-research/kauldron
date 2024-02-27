@@ -87,7 +87,7 @@ def test_shape_parser(spec_str, expected_spec):
 
 
 def test_shape_eval():
-  assert Shape("2 5*6+2 8//2") == (2, 32, 4)
+  assert Shape("2 5*6+2 8//2 5-4+1 12/3*2") == (2, 32, 4, 2, 8)
 
   @typechecked
   def _foo(_: Float["*b h w c"]):
