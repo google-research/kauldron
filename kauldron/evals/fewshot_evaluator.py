@@ -142,6 +142,7 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
           step=step,
           scalars=fewshot_accuracies,
       )
+      self.writer.flush()
     return None
 
   def compute_features(self, state, ds: data.IterableDataset, split: str):
