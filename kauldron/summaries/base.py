@@ -42,6 +42,7 @@ Images = Float["*b h w c"] | UInt8["*b h w c"]
 Masks = Bool["*b h w 1"]
 Segmentations = Integer["*b h w 1"] | Float["*b h w k"]
 Boxes = Float["*b k #4"]
+BoxesMask = Bool["*b k 1"]
 
 
 class Summary(abc.ABC):
@@ -320,7 +321,7 @@ class ShowBoxes(ImageSummary):
 
   images: kontext.Key
   boxes: kontext.Key
-  masks: Optional[kontext.Key] = None  # padding masks.
+  boxes_mask: Optional[kontext.Key] = None
 
   num_images: int
   num_colors: int = 16
@@ -337,17 +338,25 @@ class ShowBoxes(ImageSummary):
     kwargs = kontext.resolve_from_keyed_obj(context, self)
     images = kwargs["images"]
     boxes = kwargs["boxes"]
+    boxes_mask = kwargs["boxes_mask"]
 
     return {
         "images": images[: self.num_images],
         "boxes": boxes[: self.num_images],
+        "boxes_mask": (
+            boxes_mask[: self.num_images] if boxes_mask is not None else None
+        ),
     }
 
   @typechecked
-  def get_images(self, images: Images, boxes: Boxes) -> Float["n _h _w _c"]:
+  def get_images(
+      self, images: Images, boxes: Boxes, boxes_mask: BoxesMask | None
+  ) -> Float["n _h _w _c"]:
     # convert to numpy
-    images = np.array(images).astype(np.float32)
-    boxes = np.array(boxes).astype(np.float32)
+    images = np.array(images, dtype=np.float32)
+    boxes = np.array(boxes, dtype=np.float32)
+    if boxes_mask is not None:
+      boxes = boxes * np.array(boxes_mask, dtype=np.float32)
 
     # first draw boxes on images, before any additional processing takes place
     images_shape = images.shape
