@@ -51,7 +51,8 @@ class _MockedDataSource(grain.TfDataSource):
     # TODO(b/325610230): Could be simplified if Grain changes its API.
     return tf.nest.map_structure(
         lambda x: tf.broadcast_to(
-            tf.constant(x), tf.concat([tf.shape(record_keys), x.shape], axis=0)
+            tf.constant(x),
+            tf.concat([tf.shape(record_keys), tf.shape(x)], axis=0),
         ),
         self.ex,
     )
