@@ -40,7 +40,7 @@ from kauldron.typing.array_types import (  # pylint: disable=g-multiple-import
     UInt32,
     UInt8,
 )
-from kauldron.typing.shape_spec import Memo, Shape  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing.shape_spec import Dim, Memo, Shape  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.typing.type_check import TypeCheckError, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import numpy as np
 import typeguard as _typeguard

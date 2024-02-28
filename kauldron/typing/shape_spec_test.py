@@ -16,6 +16,7 @@
 from kauldron.typing import Float, Shape, typechecked  # pylint: disable=g-multiple-import
 from kauldron.typing.shape_spec import (  # pylint: disable=g-multiple-import
     BinaryOpDim,
+    Dim,
     FunctionDim,
     IntDim,
     Memo,
@@ -94,6 +95,14 @@ def test_shape_eval():
     return Shape("sum(*b,h) h//2 min(w,4) c+1")
 
   assert _foo(np.zeros((1, 2, 3, 4))) == (3, 1, 3, 5)
+
+
+def test_dim():
+  @typechecked
+  def _foo(_: Float["*b h w c"]):
+    return Dim("*b"), Dim("h"), Dim("w"), Dim("c")
+
+  assert _foo(np.zeros((1, 2, 3, 4))) == (1, 2, 3, 4)
 
 
 def test_shape_eval_with_batch_dim():

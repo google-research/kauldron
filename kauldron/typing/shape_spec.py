@@ -53,6 +53,16 @@ else:
       return spec.evaluate(memo)
 
 
+def Dim(spec_str: str) -> int:  # pylint: disable=invalid-name
+  """Helper to construct concrete Dim (for single-axis Shape)."""
+  ret = Shape(spec_str)
+  if len(ret) != 1:
+    raise ShapeError(
+        f"Dim expects a single-axis string, but got : {ret!r}"
+    )
+  return ret[0]  # pytype: disable=bad-return-type
+
+
 # try grammar online: https://www.lark-parser.org/ide/#
 shape_parser = lark.Lark(
     start="shape_spec",
