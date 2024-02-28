@@ -127,7 +127,7 @@ standalone iterator.
 
 ```python
 ds = kd.kmix.Tfds(...)
-ds = ds.device_put(kd.sharding.SHARDED)
+ds = ds.device_put(kd.sharding.FIRST_DIM)
 
 for ex in ds:
   ...

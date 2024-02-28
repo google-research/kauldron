@@ -36,7 +36,7 @@ class Sharding:
   """Sharding informations."""
 
   ds: _ShardingValue = dataclasses.field(
-      default_factory=lambda: sharding.SHARDED  # pytype: disable=name-error
+      default_factory=lambda: sharding.FIRST_DIM  # pytype: disable=name-error
   )
 
   params: _ShardingValue = dataclasses.field(
@@ -99,7 +99,7 @@ class _ShardingAPI:
     )
 
   @functools.cached_property
-  def SHARDED(self) -> jax.sharding.NamedSharding:  # pylint: disable=invalid-name
+  def FIRST_DIM(self) -> jax.sharding.NamedSharding:  # pylint: disable=invalid-name
     return jax.sharding.NamedSharding(
         self._global_mesh, jax.sharding.PartitionSpec('devices')
     )
@@ -111,7 +111,7 @@ class _ShardingAPI:
     )
 
   @functools.cached_property
-  def _LOCAL_SHARDED(self) -> jax.sharding.NamedSharding:  # pylint: disable=invalid-name
+  def _LOCAL_FIRST_DIM(self) -> jax.sharding.NamedSharding:  # pylint: disable=invalid-name
     return jax.sharding.NamedSharding(
         self._local_mesh, jax.sharding.PartitionSpec('devices')
     )
@@ -126,7 +126,7 @@ class _ShardingAPI:
     Args:
       arrays: The nested tree of array to shard/replicate
       sharding: How to shard the array. Currently, only `kd.sharding.REPLICATED`
-        and `kd.sharding.SHARDED` are supported.
+        and `kd.sharding.FIRST_DIM` are supported.
 
     Returns:
       The replicated nested tree of array
@@ -142,8 +142,8 @@ class _ShardingAPI:
       sharding: jax.sharding.NamedSharding,  # pylint: disable=redefined-outer-name
   ) -> _T:
     """Shard single element."""
-    if sharding is self.SHARDED:
-      array = jax.device_put(array, self._LOCAL_SHARDED)
+    if sharding is self.FIRST_DIM:
+      array = jax.device_put(array, self._LOCAL_FIRST_DIM)
       global_shape = (array.shape[0] * self._process_count,) + array.shape[1:]
     elif sharding is self.REPLICATED:
       array = jax.device_put(array, self._LOCAL_REPLICATED)

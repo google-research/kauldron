@@ -123,7 +123,7 @@ for batch in trainer.train_ds.device_put(trainer.sharding.ds):
 ```
 
 The `.device_put()` is chained with the dataset to put examples on devices (
-default to `kd.sharding.SHARDED`).
+default to `kd.sharding.FIRST_DIM`).
 
 ## Randomness
 

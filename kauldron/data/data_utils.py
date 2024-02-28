@@ -74,14 +74,14 @@ class IterableDataset(abc.ABC):  # Could be generic for better return value
 
     Args:
       sharding: How to shard the elements among devices. Will likely be either
-        REPLICATED or SHARDED. Defaults to SHARDED.
+        REPLICATED or FIRST_DIM. Defaults to FIRST_DIM.
 
     Returns:
       A _DevicePutDataset which wraps the original IterableDataset and copies
       all elements onto device.
     """
     if sharding is None:
-      sharding = sharding_utils.sharding.SHARDED
+      sharding = sharding_utils.sharding.FIRST_DIM
     return _DevicePutDataset(parent=self, sharding=sharding)
 
 
