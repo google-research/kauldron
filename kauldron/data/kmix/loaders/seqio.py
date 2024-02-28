@@ -74,16 +74,14 @@ class SeqIOTask(_SeqIO):
       raise ValueError(f"Task {self.name!r} not found in seqio.TaskRegistry.")
 
     task = seqio.TaskRegistry.get(self.name)
-    ds = task.get_dataset(
+    return task.get_dataset(
         split=self.split,
         shuffle=self.shuffle,
         shuffle_buffer_size=self.shuffle_buffer_size,
         seed=int(rng.bits()),
         shard_info=self.shard_info,
-        num_epochs=None,
+        num_epochs=self.num_epochs,
     )
-    ds = ds.repeat(self.num_epochs)
-    return ds
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -104,14 +102,11 @@ class SeqIOMixture(_SeqIO):
       raise ValueError(f"Task {self.name} not found in seqio.MixtureRegistry.")
 
     mixture = seqio.MixtureRegistry.get(self.name)
-    ds = mixture.get_dataset(
+    return mixture.get_dataset(
         sequence_length=self.sequence_length,
         split=self.split,
         shuffle=self.shuffle,
         seed=int(rng.bits()),
-        num_epochs=None,
+        num_epochs=self.num_epochs,
         shard_info=self.shard_info,
     )
-
-    ds = ds.repeat(self.num_epochs)
-    return ds
