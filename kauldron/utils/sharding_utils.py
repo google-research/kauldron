@@ -35,7 +35,9 @@ _T = TypeVar('_T')
 class Sharding:
   """Sharding informations."""
 
-  # TODO(epot): Define the dataset sharding at the level ?
+  ds: _ShardingValue = dataclasses.field(
+      default_factory=lambda: sharding.SHARDED  # pytype: disable=name-error
+  )
 
   params: _ShardingValue = dataclasses.field(
       default_factory=lambda: sharding.REPLICATED  # pytype: disable=name-error

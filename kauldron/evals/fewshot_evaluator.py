@@ -148,7 +148,7 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
   def compute_features(self, state, ds: data.IterableDataset, split: str):
     merged_aux = None
     for eval_step, batch in utils.enum_iter(
-        ds.device_put(),
+        ds.device_put(self.base_cfg.sharding.ds),
         desc=f'{self.name}_{split}',
     ):
       eval_step = sharding.device_put(eval_step, sharding.REPLICATED)

@@ -108,7 +108,7 @@ The `Config` can be run by calling the `.train()` method. It will take care of
 everything (checkpoint, eval, summaries,...).
 
 ```python
-cfg.train()
+trainer.train()
 ```
 
 ### Mid level API
@@ -116,10 +116,10 @@ cfg.train()
 If you only need to run the training loop:
 
 ```python
-state = cfg.init_state()
+state = trainer.init_state()
 
-for batch in cfg.train_ds.device_put():
-  state, aux = cfg.trainstep.step(state, batch)
+for batch in trainer.train_ds.device_put(trainer.sharding.ds):
+  state, aux = trainer.trainstep.step(state, batch)
 ```
 
 The `.device_put()` is chained with the dataset to put examples on devices (

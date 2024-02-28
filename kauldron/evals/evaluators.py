@@ -175,7 +175,7 @@ class Evaluator(EvaluatorBase):
       if self.num_batches is None:
         raise ValueError('Can only cache if num_batches is set.')
       ds_iter = ds_iter.cache()
-    return ds_iter.device_put()
+    return ds_iter.device_put(self.base_cfg.sharding.ds)
 
   def evaluate(
       self, state: train_step.TrainState, step: int

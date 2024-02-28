@@ -88,7 +88,7 @@ def train_impl(
   with _transfer_guard():
     # NOTE: DO *NOT* CHANGE THE ORDER OF OPERATIONS IN THE TRAINING LOOP!
     for i, batch in _enum_ds_with_hooks(
-        trainer.train_ds.device_put(),
+        trainer.train_ds.device_put(trainer.sharding.ds),
         initial_step=initial_step,
         num_train_steps=trainer.num_train_steps,
         stop_after_steps=trainer.stop_after_steps,
