@@ -115,7 +115,7 @@ class TapPositionAccuracy(metrics.Metric):
   query_mode: str  # e.g. "first" or "strided"
   axis_order: Literal["BQTC", "BTQC"] = "BQTC"  # TODO(yiya) remove this
   # pixel radius to compute accuracy
-  thresholds: Sequence[int] = (1, 2, 4, 8, 16)
+  thresholds: Sequence[float] = (1.0, 2.0, 4.0, 8.0, 16.0)
 
   @flax.struct.dataclass
   class State(metrics.AverageState):
@@ -188,7 +188,7 @@ class TapAverageJaccard(metrics.Metric):
   axis_order: Literal["BQTC", "BTQC"] = "BQTC"  # TODO(yiya) remove this
   pred_is_logits: bool = False  # TODO(yiya) remove this
   # pixel radius to compute accuracy
-  thresholds: Sequence[int] = (1, 2, 4, 8, 16)
+  thresholds: Sequence[float] = (1.0, 2.0, 4.0, 8.0, 16.0)
 
   @flax.struct.dataclass
   class State(metrics.AverageState):
