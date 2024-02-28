@@ -103,6 +103,11 @@ class TFDataPipeline(Pipeline):
   tf_data_options: Optional[tf.data.Options] = None
   prefetch_size: Optional[int] = tf.data.AUTOTUNE
 
+  def __post_init__(self):
+    print(
+        "TFDataPipeline is deprecated."
+    )
+
   @functools.cached_property
   def batch_fn(self) -> BatchFn:
     """Batch transformaton."""

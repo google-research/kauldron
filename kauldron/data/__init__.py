@@ -15,13 +15,14 @@
 """Data modules."""
 
 # pylint: disable=g-importing-member
-from kauldron.data import loaders
+from kauldron.data import deprecated
 from kauldron.data.data_utils import IterableDataset
+from kauldron.data.deprecated import loaders
+from kauldron.data.deprecated import TFDataPipeline
 from kauldron.data.grain_utils import MapTransform
 from kauldron.data.in_memory import InMemoryPipeline
 from kauldron.data.pipelines import Pipeline
 from kauldron.data.pipelines import PyGrainPipeline
-from kauldron.data.pipelines import TFDataPipeline
 from kauldron.data.preprocessing import Cast
 from kauldron.data.preprocessing import CenterCrop
 from kauldron.data.preprocessing import Elements
