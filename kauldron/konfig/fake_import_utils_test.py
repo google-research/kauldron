@@ -56,6 +56,11 @@ def test_fake_imports():
   assert c01 is c00
   assert c02 is c00
 
+  with pytest.raises(ValueError, match="You're trying to inherit from a"):
+
+    class A(a0.A):  # pylint: disable=unused-variable
+      pass
+
 
 def test_lazy_imports():
   # pylint: disable=g-import-not-at-top,g-multiple-import,unused-import

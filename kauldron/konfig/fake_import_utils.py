@@ -23,7 +23,7 @@ import dataclasses
 import functools
 import inspect
 import types
-from typing import Any, Callable, Iterator, Optional
+from typing import Any, Callable, Iterator, NoReturn, Optional
 
 from etils import edc
 from etils import epy
@@ -319,6 +319,14 @@ class ProxyObject:
 
   def __call__(self, *args, **kwargs):
     raise NotImplementedError('Inherit ProxyObject to support `__call__`.')
+
+  @property
+  def __mro_entries__(self) -> NoReturn:
+    raise ValueError(
+        "You're trying to inherit from a `konfig` object, rather than an"
+        f' actual Python class: {self.qualname!r}. Likely because the module '
+        'was imported inside a `konfig.imports()` context.'
+    )
 
 
 @dataclasses.dataclass(frozen=True)
