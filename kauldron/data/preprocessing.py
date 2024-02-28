@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import abc
 import dataclasses
-from typing import Any, Dict, Iterable, Mapping, Optional, Sequence
+from typing import Any, Iterable, Mapping, Optional, Sequence
 
 import einops
 import flax.core
@@ -142,7 +142,7 @@ class _ElementWise:
   ElementWiseRandomTransform.
   """
 
-  key: kontext.Key | Sequence[kontext.Key] | Dict[kontext.Key, kontext.Key]
+  key: kontext.Key | Sequence[kontext.Key] | dict[kontext.Key, kontext.Key]
 
   def __post_init__(self):
     if not self.key:

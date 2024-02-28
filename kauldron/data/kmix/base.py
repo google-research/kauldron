@@ -22,12 +22,11 @@ import sys
 from typing import Any, Iterator, Optional, TypeAlias
 
 from etils import enp
-from etils import epy
-from etils.etree import nest as etree  # pylint: disable=g-importing-member
 from grain._src.tensorflow import transforms as grain_transforms
 import grain.tensorflow as grain
 import jax
 from kauldron import random
+from kauldron.data import grain_utils
 from kauldron.data import pipelines
 from kauldron.typing import PyTree  # pylint: disable=g-importing-member,g-multiple-import
 import tensorflow as tf
@@ -130,7 +129,8 @@ class Base(pipelines.Pipeline, abc.ABC):
       rng = rng.fold_in("kmix")
       ds = self.ds_with_transforms(rng, _is_root=True)
 
-    ds = ds.map(_drop_grain_meta_features)
+    # Drop grain meta features
+    ds = ds.map(lambda ex: grain_utils.split_grain_meta_features(ex)[1])
 
     ds = tfds.as_numpy(ds)
     return ds
@@ -223,26 +223,8 @@ def _maybe_add_grain_meta_features(
   )
   index_ds = sampler.get_index_dataset(grain.FirstIndex())
   ds = tf.data.Dataset.zip(index_ds, ds)
-  ds = ds.map(_merge_grain_meta_features)
+  ds = ds.map(grain_utils.merge_grain_meta_features)
   return ds
-
-
-def _merge_grain_meta_features(index_ex, ex):
-  index_ex[grain.RECORD] = ex
-  return index_ex
-
-
-def _drop_grain_meta_features(ex: Any) -> Any:
-  """Drop grain meta features."""
-  if not isinstance(ex, dict):
-    return ex
-  elif grain.RECORD in ex:
-    if any(not k.startswith("_") for k in ex):
-      spec = epy.pretty_repr(etree.spec_like(ex))
-      raise ValueError(f"Unexpected example structure: {spec}")
-    return ex[grain.RECORD]
-  else:
-    return {k: v for k, v in ex.items() if k not in grain.META_FEATURES}
 
 
 def _get_if_root(value, *, default, is_root: bool):
