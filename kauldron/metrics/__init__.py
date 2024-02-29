@@ -30,9 +30,6 @@ from kauldron.metrics.clustering import Ari
 from kauldron.metrics.image import Psnr
 from kauldron.metrics.image import Ssim
 from kauldron.metrics.lpips import LpipsVgg
-from kauldron.metrics.point_tracking import TapAverageJaccard
-from kauldron.metrics.point_tracking import TapOcclusionAccuracy
-from kauldron.metrics.point_tracking import TapPositionAccuracy
 from kauldron.metrics.stats import Norm
 from kauldron.metrics.stats import SingleDimension
 from kauldron.metrics.stats import Std
