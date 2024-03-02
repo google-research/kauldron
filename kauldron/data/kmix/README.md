@@ -108,6 +108,27 @@ If your dataset does not support random access, you can inherit from `kmix.WithS
 `ds.shuffle`, `ds.repeat`. Note that the source dataset should still make sure
 each process yields non-overlapping examples.
 
+Transformations should be added using `transforms=` kwargs, rather than
+hardcoded in the implementation.
+
+<code class="lang-python"><pre>def ds_for_current_process(self, rng: kd.random.PRNGKey) -> tf.data.Dataset:
+  ...<del>
+  ds = _common_transform(ds)
+  ds = ds.map(_resize_image)</del>
+  return ds
+</pre></code>
+
+<code class="lang-python"><pre>cfg.train_ds = MyDataset(
+    transforms=[<ins>
+        MyDatatsetTransform(),
+        kd.data.Resize(key='image', height=32, width=32),</ins>
+    ],
+)
+</pre></code>
+
+Please comment on b/284152266 if you need your transformation to be added
+before the shuffle buffer so this get prioritized.
+
 ### Implementing a mixture transformation
 
 Mixtures should take care of:
