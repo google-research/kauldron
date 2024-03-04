@@ -16,38 +16,57 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 import dataclasses
 import functools
 import typing
-from typing import Any, Optional, TypeVar
+from typing import TypeVar
 
 import jax
+from kauldron.typing import PyTree  # pylint: disable=g-importing-member
 import numpy as np
 
 if typing.TYPE_CHECKING:
   from kauldron.train import train_step  # pylint: disable=g-bad-import-order
 
-_ShardingValue = Any
+# Sharding value can be:
+# * None: Propagate current sharding
+# * jax.sharding.Sharding: Use this sharding for all sub-tree
+# * Callable: Lazily compute the sharding from the array sub-tree
+_ShardingTree = PyTree[
+    None
+    | jax.sharding.Sharding
+    | Callable[[PyTree[jax.Array]], '_ShardingTree']
+]
 _T = TypeVar('_T')
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class Sharding:
-  """Sharding informations."""
+class ShardingStrategy:
+  """Sharding strategy.
 
-  ds: _ShardingValue = dataclasses.field(
+  This class defines the sharding for the dataset, params, optimizer, etc...
+
+  Each sharding can be a PyTree with leafs being one of:
+
+  * None: No sharding specified, `jax.jit` will auto-compute the sharding
+  * jax.sharding.Sharding: Use this sharding for all sub-tree
+  * Callable: Lazily compute the sharding from the array sub-tree
+  """
+
+  ds: _ShardingTree = dataclasses.field(
       default_factory=lambda: sharding.FIRST_DIM  # pytype: disable=name-error
   )
 
-  params: _ShardingValue = dataclasses.field(
+  params: _ShardingTree = dataclasses.field(
       default_factory=lambda: sharding.REPLICATED  # pytype: disable=name-error
   )
-  collections: Optional[_ShardingValue] = None
+  collections: _ShardingTree = None
   # Use `None` to auto-propagate the sharding from model sharding
-  optimizer: Optional[_ShardingValue] = None
+  optimizer: _ShardingTree = None
   # TODO(epot): Should auto-propagate sharding for auxiliaries, but currently
   # image summaries propagate the wrong sharding, like: xid/97663348
-  aux: Optional[_ShardingValue] = dataclasses.field(
+  aux: _ShardingTree = dataclasses.field(
       default_factory=lambda: sharding.REPLICATED  # pytype: disable=name-error
   )
 
@@ -160,19 +179,25 @@ class _ShardingAPI:
   def with_sharding_constraint(
       self,
       x: _T,
-      shardings: _ShardingValue,
+      shardings: _ShardingTree,
   ) -> _T:
     """Like `jax.lax.with_sharding_constraint` but support forwarding sharding.
 
     Supports:
 
     * Better typing annotations
-    * Support optional sharding
+    * Support optional or lazy sharding
+
+    Each leaf of the sharding pytree can be:
+
+    * None: Propagate current sharding (auto-inferred by jax)
+    * jax.sharding.Sharding: Use this sharding for all sub-tree
+    * Callable: Lazily compute the sharding from the array sub-tree
 
     Args:
       x: PyTree of jax.Arrays which will have their shardings constrained
-      shardings: PyTree of sharding specifications. If `None`, `x` sharding is
-        unmodified.
+      shardings: PyTree of sharding specifications. Each leaf can be None,
+        sharding or Callable
 
     Returns:
       The sharded array.
@@ -181,6 +206,8 @@ class _ShardingAPI:
     def _merge(s, x_):
       if s is None:  # No sharding provided, forward the original sharding
         return x_
+      elif callable(s):  # Lazy sharding, resolving & recurse
+        return self.with_sharding_constraint(x_, s(x_))
       else:
         return jax.lax.with_sharding_constraint(x_, s)
 
@@ -191,7 +218,8 @@ class _ShardingAPI:
         is_leaf=lambda x: x is None,
     )
 
-  Sharding = Sharding  # pylint: disable=invalid-name
+  # TODO(epot): Rename to `ShardingStrategy`
+  Sharding = ShardingStrategy  # pylint: disable=invalid-name
 
 
 sharding = _ShardingAPI()

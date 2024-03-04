@@ -17,6 +17,8 @@
 import os
 
 from etils import epath
+from etils.etree import jax as etree  # pylint: disable=g-importing-member
+from jax import numpy as jnp
 from kauldron import kd
 from examples import mnist_autoencoder
 
@@ -39,3 +41,26 @@ def test_sharding(tmp_path: epath.Path):
   # TODO(epot): How to test this is actually working?
   # for k, v in kd.kontext.flatten_with_path(state).items():
   #   assert v.sharding == kd.sharding.REPLICATED, k
+
+
+def test_with_sharding_constraint():
+
+  def _shard(x):
+    etree.backend.assert_same_structure(x, {'inner': 0})
+    return kd.sharding.REPLICATED
+
+  x = {
+      'a': {'inner': jnp.ones((1, 2))},
+      'b': {'inner': jnp.ones((2, 3))},
+      'c': {'inner': jnp.ones((2, 3))},
+  }
+  sharding = {
+      'a': kd.sharding.REPLICATED,
+      'b': None,
+      'c': _shard,
+  }
+  sharded_x = kd.sharding.with_sharding_constraint(x, sharding)
+
+  etree.backend.assert_same_structure(sharded_x, x)
+
+  # TODO(epot): Test the actual values (should mock the devices)

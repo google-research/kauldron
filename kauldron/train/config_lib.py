@@ -44,7 +44,7 @@ from kauldron.train import train_step
 from kauldron.utils import config_util
 from kauldron.utils import context as context_lib
 from kauldron.utils import profile_utils
-from kauldron.utils import sharding_utils
+from kauldron.utils.sharding_utils import sharding as sharding_utils  # pylint: disable=g-importing-member
 import optax
 
 with konfig.imports(lazy=True):
