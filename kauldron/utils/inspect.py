@@ -441,3 +441,14 @@ def plot_context(trainer: train.Trainer) -> None:
   ctx["grads"] = "[same as params]"
   ctx["updates"] = "[same as params]"
   json_spec_like(ctx)
+
+
+def lower_trainstep(trainer: train.Trainer) -> str:
+  """Returns lowered trainerstep.step."""
+  state = trainer.trainstep.init(
+      elem_spec=trainer.train_ds.element_spec,
+      skip_transforms=False,
+  )
+  return trainer.trainstep.step.lower(
+      trainer.trainstep, state, trainer.train_ds.element_spec
+  )
