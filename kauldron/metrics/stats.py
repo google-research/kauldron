@@ -24,7 +24,7 @@ import jax.numpy as jnp
 from kauldron import kontext
 from kauldron.metrics import base
 from kauldron.metrics import base_state
-from kauldron.typing import Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Bool, Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -93,7 +93,7 @@ class Norm(base.Metric):
   def get_state(
       self,
       tensor: Float["*any"],
-      mask: Optional[Float["*#any"]] = None,
+      mask: Optional[Bool["*#any"] | Float["*#any"]] = None,
   ) -> Norm.State:
     norm = jnp.linalg.norm(tensor, ord=self.ord, axis=self.axis, keepdims=True)
 
@@ -170,6 +170,6 @@ class Std(base.Metric):
   def get_state(
       self,
       values: Float["*b n"],
-      mask: Optional[Float["*b 1"]] = None,
+      mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> Std.State:
     return self.State.from_values(values=values, mask=mask)

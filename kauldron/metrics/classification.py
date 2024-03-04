@@ -25,7 +25,7 @@ import jax.numpy as jnp
 from kauldron import kontext
 from kauldron.metrics import base
 from kauldron.metrics import base_state
-from kauldron.typing import Float, Int, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Bool, Float, Int, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import numpy as np
 import sklearn.metrics
 
@@ -47,7 +47,7 @@ class Accuracy(base.Metric):
       self,
       logits: Float["*b n"],
       labels: Int["*b 1"],
-      mask: Optional[Float["*b 1"]] = None,
+      mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> Accuracy.State:
     correct = logits.argmax(axis=-1, keepdims=True) == labels
     return self.State.from_values(values=correct, mask=mask)
@@ -70,7 +70,7 @@ class Precision1(base.Metric):
       self,
       logits: Float["*b n"],
       labels: Float["*b n"],
-      mask: Optional[Float["*b 1"]] = None,
+      mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> Precision1.State:
     pred_argmax = logits.argmax(axis=-1, keepdims=True)
     correct = jnp.take_along_axis(labels, pred_argmax, -1)
@@ -93,7 +93,7 @@ class BinaryAccuracy(base.Metric):
       self,
       logits: Float["*any"],
       labels: Int["*any"],
-      mask: Optional[Float["*#any"]] = None,
+      mask: Optional[Bool["*#any"] | Float["*#any"]] = None,
   ):
     correct = (logits > 0) == labels
     return self.State.from_values(values=correct, mask=mask)
@@ -115,7 +115,7 @@ class RocAuc(base.Metric):
 
     labels: Int["*b 1"]
     probs: Float["*b n"]
-    mask: Float["*b 1"]
+    mask: Bool["*b 1"] | Float["*b 1"]
 
     @typechecked
     def compute(self) -> float:
@@ -146,7 +146,7 @@ class RocAuc(base.Metric):
       self,
       logits: Float["*b n"],
       labels: Int["*b 1"],
-      mask: Optional[Float["*b 1"]] = None,
+      mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> RocAuc.State:
     # simply collect the given values
     mask = jnp.ones_like(labels) if mask is None else mask

@@ -30,7 +30,7 @@ from kauldron import kontext
 from kauldron.metrics import base
 from kauldron.metrics import base_state
 from kauldron.metrics import image as image_metrics
-from kauldron.typing import Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Bool, Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 
 # Should be private, but changing the name of the class breaks ckpt loading...
@@ -84,19 +84,26 @@ class _LpipsVgg(nn.Module):
       )
     return flax.serialization.from_bytes(params, path.read_bytes())
 
+  @typechecked
   @nn.compact
-  def __call__(self, images_1, images_2, epsilon: float = 1e-5):
+  def __call__(
+      self,
+      images_1: Float["*b h w c"],
+      images_2: Float["*b h w c"],
+      epsilon: float = 1e-5,
+  ) -> Float["*b 1"]:
     """Compute the loss between inputs[0] and inputs[1].
 
     Both images must have height & width of at least 16 pixels.
 
     Args:
-      images_1: A [h, w, 3] float array, assumed to range between 0 and 1.
-      images_2: A [h, w, 3] float array, assumed to range between 0 and 1.
+      images_1: A [*b, h, w, 3] float array, assumed to range between 0 and 1.
+      images_2: A [*b, h, w, 3] float array, assumed to range between 0 and 1.
       epsilon: Used for numerical stability to avoid NaNs.
 
     Returns:
-      A scalar containing the computed loss between images_1 & images_2.
+      A [*b, 1] float array containing the computed loss between images_1 &
+      images_2.
     """
     # Note that these normalization values include a shift from 0->1 to -1->1
     # in the shift and scale.
@@ -118,10 +125,10 @@ class _LpipsVgg(nn.Module):
           kernel_size=(1, 1),
           padding="SAME",
           use_bias=False,
-      )(squared_diff[jnp.newaxis])
+      )(squared_diff)
       # The mean over all pixels is set to float32 to avoid precision issues.
       out += jnp.mean(res, axis=(-3, -2, -1), dtype=jnp.float32)
-    return out
+    return out[..., jnp.newaxis]
 
 
 @functools.cache
@@ -149,7 +156,7 @@ class LpipsVgg(base.Metric):
       self,
       pred: Float["*b h w c"],
       target: Float["*b h w c"],
-      mask: Optional[Float["*b 1"]] = None,
+      mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> LpipsVgg.State:
     vgg_model = _get_vgg_model()
     vgg_params = _LpipsVgg.read_params(

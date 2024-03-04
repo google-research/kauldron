@@ -24,7 +24,7 @@ import flax.struct
 from kauldron import kontext
 from kauldron.metrics import base
 from kauldron.metrics import base_state
-from kauldron.typing import Float, Integer, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Bool, Float, Integer, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 with epy.lazy_imports():
   from grand_vision.eval.metrics import clustering as gv_clustering  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
@@ -64,7 +64,7 @@ class Ari(base.Metric):
       self,
       predictions: Integer["*b t h w 1"],
       labels: Integer["*b t h w 1"],
-      mask: Optional[Float["*b 1"]] = None,
+      mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> Ari.State:
     # TODO(svansteenkiste): support non video inputs.
     # TODO(svansteenkiste): Support video padding mask.

@@ -27,7 +27,7 @@ import jax.scipy as jsp
 from kauldron import kontext
 from kauldron.metrics import base
 from kauldron.metrics import base_state
-from kauldron.typing import Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Bool, Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 
 def rescale_image(
@@ -67,7 +67,7 @@ class Psnr(base.Metric):
       self,
       pred: Float["*b h w c"],
       target: Float["*b h w c"],
-      mask: Optional[Float["*b 1"]] = None,
+      mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> Psnr.State:
     dynamic_range = self.in_vrange[1] - self.in_vrange[0]
     values = psnr(a=pred, b=target, dynamic_range=dynamic_range)
@@ -170,7 +170,7 @@ class Ssim(base.Metric):
       self,
       pred: Float["*b h w c"],
       target: Float["*b h w c"],
-      mask: Optional[Float["*b 1"]] = None,
+      mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> Ssim.State:
     rescale = lambda x: rescale_image(x, self.in_vrange)
     values = _compute_ssim(

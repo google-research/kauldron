@@ -259,7 +259,7 @@ class AverageState(State):
       cls,
       values: Float["b *any"],
       *,
-      mask: Bool["b *#any"] | None = None,
+      mask: Bool["b *#any"] | Float["b *#any"] | None = None,
   ) -> AverageState:
     """Factory to create the state from an array."""
     if values.ndim == 0:
@@ -278,9 +278,8 @@ class AverageState(State):
       mask = jnp.expand_dims(
           mask, axis=tuple(np.arange(mask.ndim, values.ndim))
       )
-    mask = mask.astype(bool)
     return cls(
-        total=jnp.where(mask, values, jnp.zeros_like(values)).sum(),
+        total=(values * mask).sum(),
         count=jnp.broadcast_to(mask, values.shape).sum(dtype=jnp.float32),
     )
 
