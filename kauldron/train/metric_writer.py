@@ -473,7 +473,9 @@ class NoopWriter(WriterBase):
 
 
 def _get_markdown_param_table(params) -> str:
-  param_table = parameter_overview.get_parameter_overview(params)
+  param_table = parameter_overview.get_parameter_overview(
+      params, include_stats="global"
+  )
   # convert to markdown format (Only minor adjustments needed)
   rows = param_table.split("\n")
   header = rows[1]
