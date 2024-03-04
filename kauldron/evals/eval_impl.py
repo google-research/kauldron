@@ -20,6 +20,7 @@ from absl import logging
 from etils import exm
 from kauldron.train import config_lib
 from kauldron.train import train_step
+from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 
 # pylint: disable=logging-fstring-interpolation
 
@@ -42,7 +43,13 @@ def continuous_eval(
 
   Returns:
     Auxiliaries: Dict eval name -> last auxiliaries
+
+  Raises:
+    Exception: Re-raises any exception thrown by underlying evaluators.
   """
+  eval_names = list(eval_names)  # Copy as this get mutated afterward
+  exception = None  # Keeps track of any exceptions we might encounter.
+
   # Validation
   for eval_name in eval_names:
     if eval_name not in trainer.evals:
@@ -72,10 +79,21 @@ def continuous_eval(
     assert int(state.step) == step
 
     # Processing checkpoint
-    aux = {
-        eval_name: trainer.evals[eval_name].evaluate(state, step=step)
-        for eval_name in eval_names
-    }
+    aux = dict()
+    for name in list(eval_names):
+      try:
+        aux[name] = trainer.evals[name].evaluate(state=state, step=step)
+      except Exception as e:  # pylint: disable=broad-exception-caught
+        exception = e
+        logging.exception('Failed to evaluate %s at step %s', name, step)
+        exc_name = type(e).__name__
+        status.xp.add_tags(f'🚨 Eval {name}: {exc_name} 🚨')
+        eval_names.remove(name)
+        if not eval_names:
+          raise  # All evaluator have failed, re-raise the exception
+
+  if exception is not None:
+    raise exception
 
   # Return the last aux
   return aux
