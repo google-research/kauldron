@@ -38,6 +38,7 @@ def rescale_image(
   return (x - vmin) / (vmax - vmin)
 
 
+@typechecked
 def psnr(
     a: Float["*b h w c"],
     b: Float["*b h w c"],
@@ -74,6 +75,7 @@ class Psnr(base.Metric):
 
 
 # https://github.com/google-research/google-research/blob/abe03104c849ca228af386d785027809d7976a8c/jaxnerf/nerf/utils.py#L278
+@typechecked
 def _compute_ssim(
     img0: Float["*b h w c"],
     img1: Float["*b h w c"],
@@ -142,7 +144,7 @@ def _compute_ssim(
   denom = (mu00 + mu11 + c1) * (sigma00 + sigma11 + c2)
   ssim_map = numer / denom
   ssim = jnp.mean(ssim_map, list(range(num_dims - 3, num_dims)))
-  return ssim
+  return ssim[..., None]
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
