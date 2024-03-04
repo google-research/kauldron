@@ -33,10 +33,10 @@ if typing.TYPE_CHECKING:
 # * None: Propagate current sharding
 # * jax.sharding.Sharding: Use this sharding for all sub-tree
 # * Callable: Lazily compute the sharding from the array sub-tree
-_ShardingTree = PyTree[
+ShardingTree = PyTree[
     None
     | jax.sharding.Sharding
-    | Callable[[PyTree[jax.Array]], '_ShardingTree']
+    | Callable[[PyTree[jax.Array]], 'ShardingTree']
 ]
 _T = TypeVar('_T')
 
@@ -54,19 +54,19 @@ class ShardingStrategy:
   * Callable: Lazily compute the sharding from the array sub-tree
   """
 
-  ds: _ShardingTree = dataclasses.field(
+  ds: ShardingTree = dataclasses.field(
       default_factory=lambda: sharding.FIRST_DIM  # pytype: disable=name-error
   )
 
-  params: _ShardingTree = dataclasses.field(
+  params: ShardingTree = dataclasses.field(
       default_factory=lambda: sharding.REPLICATED  # pytype: disable=name-error
   )
-  collections: _ShardingTree = None
+  collections: ShardingTree = None
   # Use `None` to auto-propagate the sharding from model sharding
-  optimizer: _ShardingTree = None
+  opt_state: ShardingTree = None
   # TODO(epot): Should auto-propagate sharding for auxiliaries, but currently
   # image summaries propagate the wrong sharding, like: xid/97663348
-  aux: _ShardingTree = dataclasses.field(
+  aux: ShardingTree = dataclasses.field(
       default_factory=lambda: sharding.REPLICATED  # pytype: disable=name-error
   )
 
@@ -79,7 +79,7 @@ class ShardingStrategy:
         step=sharding.REPLICATED,
         params=self.params,
         collections=self.collections,
-        opt_state=self.optimizer,
+        opt_state=self.opt_state,
         # TODO(epot): Remove.
         training_time_hours=sharding.REPLICATED,
     )
@@ -179,14 +179,14 @@ class _ShardingAPI:
   def with_sharding_constraint(
       self,
       x: _T,
-      shardings: _ShardingTree,
+      shardings: ShardingTree,
   ) -> _T:
-    """Like `jax.lax.with_sharding_constraint` but support forwarding sharding.
+    """Wrapper around `jax.lax.with_sharding_constraint`.
 
     Supports:
 
+    * Optional (`None`) or lazy sharding (`Callable`)
     * Better typing annotations
-    * Support optional or lazy sharding
 
     Each leaf of the sharding pytree can be:
 
@@ -219,6 +219,9 @@ class _ShardingAPI:
     )
 
   ShardingStrategy = ShardingStrategy  # pylint: disable=invalid-name
+
+  # Typing annotation to annotate sharding pytree
+  ShardingTree = ShardingTree  # pylint: disable=invalid-name
 
 
 sharding = _ShardingAPI()
