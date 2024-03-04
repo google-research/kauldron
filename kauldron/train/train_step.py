@@ -297,7 +297,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
   model_with_aux: ModelWithAux = dataclasses.field(default_factory=ModelWithAux)
   optimizer: optax.GradientTransformation = config_util.ROOT_CFG_REF.optimizer
   rng_streams: rngs_lib.RngStreams = config_util.ROOT_CFG_REF.rng_streams
-  sharding: sharding_lib.Sharding = config_util.ROOT_CFG_REF.sharding
+  sharding: sharding_lib.ShardingStrategy = config_util.ROOT_CFG_REF.sharding
   init_transforms: Mapping[str, partial_loader.AbstractPartialLoader] = (
       config_util.ROOT_CFG_REF.init_transforms
   )

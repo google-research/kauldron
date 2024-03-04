@@ -37,7 +37,7 @@ def get_config():
   cfg = mnist_autoencoder.get_config()
 
   # TODO(epot): Use more complicated sharding.
-  cfg.sharding = kd.sharding.Sharding(
+  cfg.sharding = kd.sharding.ShardingStrategy(
       params=kd.sharding.REPLICATED,
   )
 

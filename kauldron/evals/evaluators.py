@@ -235,7 +235,7 @@ def basic_eval_step(
     eval_step: int,
     state: train_step.TrainState,
     batch,
-    sharding: sharding_lib.Sharding,
+    sharding: sharding_lib.ShardingStrategy,
 ) -> train_step.Auxiliaries:
   """Call the model (pmap version)."""
   _, ctx = model_with_aux.forward(

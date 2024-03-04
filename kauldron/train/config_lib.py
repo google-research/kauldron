@@ -123,8 +123,8 @@ class Trainer(config_util.BaseConfig):
   rng_streams: rngs_lib.RngStreams = dataclasses.field(
       default_factory=rngs_lib.RngStreams
   )
-  sharding: sharding_utils.Sharding = dataclasses.field(
-      default_factory=sharding_utils.Sharding
+  sharding: sharding_utils.ShardingStrategy = dataclasses.field(
+      default_factory=sharding_utils.ShardingStrategy
   )
   num_train_steps: Optional[int] = None
   stop_after_steps: Optional[int] = None

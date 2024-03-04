@@ -218,8 +218,7 @@ class _ShardingAPI:
         is_leaf=lambda x: x is None,
     )
 
-  # TODO(epot): Rename to `ShardingStrategy`
-  Sharding = ShardingStrategy  # pylint: disable=invalid-name
+  ShardingStrategy = ShardingStrategy  # pylint: disable=invalid-name
 
 
 sharding = _ShardingAPI()
