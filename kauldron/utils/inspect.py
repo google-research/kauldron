@@ -443,6 +443,26 @@ def plot_context(trainer: train.Trainer) -> None:
   json_spec_like(ctx)
 
 
+class _Repr(str):
+  """Display `str.__repr__` without quotes `'`."""
+
+  def __repr__(self):
+    return str(self)
+
+
+def plot_sharding(trainer: train.Trainer) -> None:
+  """Plot sharding."""
+  # TODO(epot): Better display (expandable, dataset, auxiliary, etc.)
+  # TODO(epot): When testing sharding on CPU kernel, should use jax config
+  # to simulate multi-host (cpu device 0, 1, ...)
+  # TODO(epot): More compact representation (e.g.
+  # `SingleDeviceSharding(device=CpuDevice(id=0))` is too long)
+  state = trainer.init_state()
+  spec = etree.spec_like(state)
+  state = jax.tree_map(lambda x, s: _Repr(f"{s} {x.sharding}"), state, spec)
+  epy.pprint(state)
+
+
 def lower_trainstep(trainer: train.Trainer) -> str:
   """Returns lowered trainerstep.step."""
   state = trainer.trainstep.init(
