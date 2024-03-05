@@ -34,6 +34,8 @@ from kauldron.data.preprocessing import InceptionCrop
 from kauldron.data.preprocessing import OneHot
 from kauldron.data.preprocessing import OneMinus
 from kauldron.data.preprocessing import PadFirstDimensionToFixedSize
+from kauldron.data.preprocessing import PadImage
+from kauldron.data.preprocessing import PadImageEdgeVal
 from kauldron.data.preprocessing import RandomCrop
 from kauldron.data.preprocessing import RandomFlipLeftRight
 from kauldron.data.preprocessing import Rearrange

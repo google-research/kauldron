@@ -638,3 +638,40 @@ class PadFirstDimensionToFixedSize(ElementWiseTransform):
             else []
         ),
     )
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class PadImage(ElementWiseTransform):
+  """Pad image."""
+
+  pad: int
+  mode: str
+
+  @typechecked
+  def map_element(self, element: TfArray["*b H W C"]) -> TfArray["*b H2 W2 C"]:
+    batch_dims = len(element.shape[:-3])
+    padding = ((0, 0),) * batch_dims + (
+        (self.pad, self.pad),
+        (self.pad, self.pad),
+        (0, 0),
+    )
+    return tf.pad(element, padding, mode=self.mode)
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class PadImageEdgeVal(ElementWiseTransform):
+  """Pad image using edge values.
+
+  tf.pad has no edge mode, so use SYMMETRIC mode n times to pad n pixels.
+  """
+
+  pad: int
+
+  @typechecked
+  def map_element(self, element: TfArray["*b H W C"]) -> TfArray["*b H2 W2 C"]:
+    batch_dims = len(element.shape[:-3])
+    padding = ((0, 0),) * batch_dims + ((1, 1), (1, 1), (0, 0))
+
+    for _ in range(self.pad):
+      element = tf.pad(element, padding, mode="SYMMETRIC")
+    return element
