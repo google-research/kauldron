@@ -27,6 +27,7 @@ import jax
 import jax.numpy as jnp
 from kauldron.data import data_utils
 from kauldron.evals import eval_impl
+from kauldron.train import checkpoint_state
 from kauldron.train import config_lib
 from kauldron.train import flatboard_utils
 from kauldron.train import timer as timer_module
@@ -34,7 +35,6 @@ from kauldron.train import train_step
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 from kauldron.utils import profile_utils
 from kauldron.utils import utils
-from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 import tensorflow as tf
 
 # Jax config options
@@ -67,8 +67,19 @@ def train_impl(
       skip_transforms=latest_step is not None,
   )
 
-  # Initialize CheckpointManager and attempt to restore.
-  state = ckptr.restore(state, noop_if_missing=True)
+  timer = timer_module.PerformanceTimer(
+      initial_step_num=initial_step,
+      initial_training_time_hours=0.0,
+      per_device_batch_size=trainer.train_ds.batch_size / jax.device_count(),
+      global_batch_size=trainer.train_ds.batch_size,
+  )
+
+  # Initialize CheckpointManager and attempt to restore state.
+  # TODO(epot): pipeline=self.pipeline,
+  state, timer = ckptr.restore(
+      checkpoint_state.CheckpointState(state, timer),
+      noop_if_missing=True,
+  )
 
   if initial_step == 0:
     writer.write_config(trainer.raw_cfg)
@@ -76,12 +87,6 @@ def train_impl(
     writer.write_element_spec(initial_step, trainer.train_ds.element_spec)
     writer.write_context_structure(initial_step, trainer)
 
-  timer = timer_module.PerformanceTimer(
-      initial_step_num=initial_step,
-      initial_training_time_hours=float(state.training_time_hours),
-      per_device_batch_size=trainer.train_ds.batch_size / jax.device_count(),
-      global_batch_size=trainer.train_ds.batch_size,
-  )
   aux = None
 
   status.log(f"Starting training loop at step {initial_step}")
@@ -95,17 +100,10 @@ def train_impl(
         profiler=trainer.profiler,
     ):
       with timer.exclude_from_step_stats():
-        # TODO(epot): Use `ckptr.maybe_save` and move `training_time_hours`
-        # in a seprate `metadata` Json checkpoint
         if ckptr.should_save(i):
-          # Take the time after executing the last training step so that the
-          # times logged and stored with the ckecpoint match.
-          state = state.replace(
-              training_time_hours=sharding.device_put(
-                  timer.total_training_time_hours, sharding.REPLICATED
-              )
-          )
-          ckptr.save(state, step=i)
+          # Take the time after executing the last training step so
+          # that the times logged and stored with the checkpoint match.
+          ckptr.save(checkpoint_state.CheckpointState(state, timer), step=i)
 
         for evaluator in trainer.evals.values():
           evaluator.maybe_eval(step=i, state=state)

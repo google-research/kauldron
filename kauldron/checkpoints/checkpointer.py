@@ -25,10 +25,13 @@ from typing import Any, Optional, Sequence, TypeVar
 
 from etils import epath
 import jax
+from kauldron.checkpoints import checkpoint_items
+from kauldron.checkpoints import lazy_checkpoint_manager
 from kauldron.utils import config_util
 import orbax.checkpoint as ocp
 
-_T = TypeVar("_T")
+_State = checkpoint_items.CheckpointItem
+_StateT = TypeVar("_StateT", bound=_State)
 
 CHECKPOINT_FOLDER_NAME = "checkpoints"
 
@@ -45,12 +48,12 @@ class BaseCheckpointer(config_util.UpdateFromRootCfg, abc.ABC):
   @abc.abstractmethod
   def restore(
       self,
-      initial_state: _T | None = None,
+      state: _StateT,
       *,
       step: int = -1,
       noop_if_missing: bool = False,
       donate: bool = True,
-  ) -> _T:
+  ) -> _StateT:
     raise NotImplementedError()
 
   @abc.abstractmethod
@@ -60,7 +63,7 @@ class BaseCheckpointer(config_util.UpdateFromRootCfg, abc.ABC):
   @abc.abstractmethod
   def save(
       self,
-      state,
+      state: _State,
       *,
       step: int,
       force: bool = False,
@@ -70,7 +73,7 @@ class BaseCheckpointer(config_util.UpdateFromRootCfg, abc.ABC):
   @abc.abstractmethod
   def maybe_save(
       self,
-      state,
+      state: _State,
       *,
       step: int,
       force: bool = False,
@@ -133,7 +136,7 @@ class Checkpointer(BaseCheckpointer):
   fast: bool = True
 
   @functools.cached_property
-  def _ckpt_mgr(self) -> ocp.CheckpointManager:
+  def _ckpt_mgr(self) -> lazy_checkpoint_manager.LazyCheckpointManager:
     """Returns checkpoint manager instance (initialized and cached)."""
     mgr_options = ocp.CheckpointManagerOptions(
         save_interval_steps=self.save_interval_steps,
@@ -149,28 +152,27 @@ class Checkpointer(BaseCheckpointer):
             timeout_secs=60 * 30,  # 30 minutes
         ),
     )
-    if self.fast:
-      manager_cls = FastCheckpointManager
-    else:
-      manager_cls = ocp.CheckpointManager
-    ckpt_mgr = manager_cls(
-        epath.Path(self.workdir) / CHECKPOINT_FOLDER_NAME,
+
+    return lazy_checkpoint_manager.LazyCheckpointManager(
+        directory=epath.Path(self.workdir) / CHECKPOINT_FOLDER_NAME,
         options=mgr_options,
+        fast=self.fast,
     )
-    return ckpt_mgr
 
   def restore(
       self,
-      initial_state: _T | None = None,
+      state: _StateT,
       *,
       step: int = -1,
       noop_if_missing: bool = False,
       donate: bool = True,
-  ) -> _T:
+  ) -> _StateT:
     """Restore state.
 
     Args:
-      initial_state: The `state` object initialized from the trainer.
+      state: The `state` object initialized from the trainer. If the state is
+        not known, you can pass `kd.ckpt.items.StandardCheckpointItem()` to
+        restore the nested `dict` of weights.
       step: The training step of the checkpoint to restore. -1 means last step.
       noop_if_missing: If False will raise an error when no checkpoint is found.
       donate: Whether delete the `initial_state` to free up memory when
@@ -186,22 +188,18 @@ class Checkpointer(BaseCheckpointer):
     if self._ckpt_mgr.latest_step() is not None:
       step = self._absolute_step(step)
 
-      if initial_state is None:
-        args = ocp.args.StandardRestore()
-      else:
-        args = ocp.args.StandardRestore(initial_state)
-        # Delete `initial_state` to free up memory.
-        if donate:
-          jax.tree_map(_release_memory, initial_state)
+      # Delete `state` to free up memory.
+      if donate:
+        jax.tree_map(_release_memory, state)
 
-      state = self._ckpt_mgr.restore(step, args=args)
+      state = self._ckpt_mgr.restore(state, step=step)
     elif not noop_if_missing:  # No checkpoint
       raise FileNotFoundError(
           f"No checkpoint found in {self.workdir}. Use `noop_if_missing=True`"
           " to default to initial state."
       )
-    else:
-      state = initial_state
+    # Otherwise returns the unchanged state (noop_if_missing == True)
+
     return state
 
   def should_save(self, step: int) -> bool:
@@ -209,7 +207,7 @@ class Checkpointer(BaseCheckpointer):
 
   def save(
       self,
-      state,
+      state: _State,
       *,
       step: int,
       force: bool = False,
@@ -217,8 +215,8 @@ class Checkpointer(BaseCheckpointer):
     """Save state."""
     with jax.transfer_guard("allow"):
       return self._ckpt_mgr.save(
-          step,
-          args=ocp.args.StandardSave(state),
+          state,
+          step=step,
           force=force,
       )
 
@@ -244,10 +242,7 @@ class Checkpointer(BaseCheckpointer):
     return self._ckpt_mgr.all_steps()
 
   def refresh_cache(self) -> None:
-    # If cache is refreshed, we reset the checkpoint manager by replaying
-    # the cached property.
-    # TODO(b/315316885): Orbax should expose a native method for this
-    object.__setattr__(self, "_ckpt_mgr", type(self)._ckpt_mgr.func(self))
+    self._ckpt_mgr.reload()
 
   def _absolute_step(self, step: int) -> int:
     """Convert `-1` into the last step."""
@@ -268,10 +263,7 @@ class Checkpointer(BaseCheckpointer):
       timeout: Optional[int] = None,
       timeout_fn: Optional[Callable[[], bool]] = None,
   ) -> Iterator[int]:
-    for step in ocp.checkpoint_utils.checkpoints_iterator(
-        checkpoint_dir=self._ckpt_mgr.directory,
-        step_prefix=self._ckpt_mgr._options.step_prefix,  # pylint: disable=protected-access
-        step_format_fixed_length=self._ckpt_mgr._options.step_format_fixed_length,  # pylint: disable=protected-access
+    for step in self._ckpt_mgr.iter_new_checkpoints(
         min_interval_secs=min_interval_secs,
         timeout=timeout,
         timeout_fn=timeout_fn,
@@ -288,15 +280,15 @@ class NoopCheckpointer(BaseCheckpointer):
 
   def restore(
       self,
-      initial_state=None,
+      state,
       *,
       step: int = -1,
       noop_if_missing: bool = False,
       donate: bool = True,
   ):
-    if initial_state is None:
+    if state is None:
       raise ValueError("`NooCheckpointer.restore` require the state arg.")
-    return initial_state
+    return state
 
   def should_save(self, step: int) -> bool:
     return False
@@ -308,45 +300,6 @@ class NoopCheckpointer(BaseCheckpointer):
     if force:
       raise ValueError("NooCheckpointer cannot be forced to save.")
     return False
-
-
-class FastCheckpointManager(ocp.CheckpointManager):
-  """Wrapper around Checkpointmanager that speeds up loading."""
-
-  def all_steps(self, read: bool = False) -> Sequence[int]:
-    """Returns all steps tracked by the manager.
-
-    Args:
-      read: If True, forces a read directly from the storage location.
-        Otherwise, a cached result can be returned.
-
-    Returns:
-      A sequence of steps (integers)
-    """
-    if read:
-      return _checkpoint_steps(self.directory)
-    return [ckpt.step for ckpt in self._checkpoints]
-
-
-def _checkpoint_steps(checkpoint_dir: epath.PathLike) -> list[int]:
-  """Returns a list of all steps for which a checkpoint exists in dir."""
-  # Speeds up the original implementation by skipping the exists() and
-  # is_directory() checks which trigger a CNS read for each checkpoint.
-  checkpoint_dir = epath.Path(checkpoint_dir)
-
-  def get_step_for_dir(step_dir: epath.Path) -> int:
-    name = step_dir.name
-    if ocp.utils.TMP_DIR_SUFFIX in name:
-      return -1
-    if name.isdigit():
-      return int(name)
-    _, _, suffix = name.rpartition("_")
-    if suffix.isdigit():
-      return int(suffix)
-    return -1  # silently ignore directory/file
-
-  steps = [get_step_for_dir(step_dir) for step_dir in checkpoint_dir.iterdir()]
-  return [step for step in steps if step >= 0]
 
 
 def _release_memory(x):

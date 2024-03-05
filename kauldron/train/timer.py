@@ -14,11 +14,16 @@
 
 """Timer for measuring training performance."""
 
+from __future__ import annotations
+
 import contextlib
 import time
 
+from kauldron import checkpoints
+from orbax import checkpoint as ocp
 
-class PerformanceTimer:
+
+class PerformanceTimer(checkpoints.items.CheckpointItem):
   """Timer for measuring training performance."""
 
   def __init__(
@@ -35,6 +40,7 @@ class PerformanceTimer:
     self.global_batch_size = global_batch_size
 
     # We assume that training (re)starts NOW.
+    self.initial_training_time_hours = initial_training_time_hours
     self.time_when_finished_last_step = time.monotonic()
     self.time_when_last_logged = self.time_when_finished_last_step
     # offest by the time already elapsed
@@ -97,3 +103,24 @@ class PerformanceTimer:
     finally:
       section_time = time.monotonic() - section_start_time
       self.skip_time_total += section_time
+
+  # Handle orbax checkpointing
+
+  def __kd_ocp_handlers__(self) -> ocp.CheckpointHandler:
+    return ocp.JsonCheckpointHandler()
+
+  def __kd_ocp_save_args__(self) -> ocp.args.CheckpointArgs:
+    return ocp.args.JsonSave({
+        'training_time_hours': self.total_training_time_hours,
+    })
+
+  def __kd_ocp_restore_args__(self) -> ocp.args.CheckpointArgs:
+    return ocp.args.JsonRestore()
+
+  def __kd_ocp_restore_post__(self, value) -> PerformanceTimer:
+    return type(self)(
+        initial_step_num=self.step_num_when_last_logged,
+        initial_training_time_hours=value['training_time_hours'],
+        per_device_batch_size=self.per_device_batch_size,
+        global_batch_size=self.global_batch_size,
+    )

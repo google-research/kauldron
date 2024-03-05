@@ -80,8 +80,6 @@ class ShardingStrategy:
         params=self.params,
         collections=self.collections,
         opt_state=self.opt_state,
-        # TODO(epot): Remove.
-        training_time_hours=sharding.REPLICATED,
     )
 
 

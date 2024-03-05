@@ -26,6 +26,7 @@ from etils import epy
 from etils.etree import jax as etree  # pylint: disable=g-importing-member
 import jax
 from kauldron import kontext
+from kauldron.checkpoints import checkpoint_items
 from kauldron.checkpoints import checkpointer
 from kauldron.utils import xmanager
 import numpy as np
@@ -124,6 +125,8 @@ class PartialLoader(AbstractPartialLoader):
     # Deep copy (mutable)
     # `orbax` uses nested `dict`, rather than PyTree
     to_state = ocp.utils.serialize_tree(state, keep_empty_nodes=True)
+
+    # TODO(epot): Should refactor once Orbax support the new transform API
 
     from_state = self.source.metadata()
 
@@ -229,9 +232,6 @@ class KauldronSource(CkptSource):
     )
 
   def metadata(self) -> Any:
-    # TODO(b/320668278): Remove once fixed
-    self._ckpt_mgr.restore(step=self.step)
-
     metadata = self._ckpt_mgr.item_metadata(self.step)
     if metadata is None:
       raise ValueError(f'No metadata found for step: {self.step}')
@@ -240,7 +240,9 @@ class KauldronSource(CkptSource):
   def restore(self, item) -> Any:
     """Loads the params from the checkpoint."""
     # TODO(epot): Should only restore the required params, not everything
-    state = self._ckpt_mgr.restore(step=self.step)
+    state = self._ckpt_mgr.restore(
+        checkpoint_items.StandardCheckpointItem(), step=self.step
+    )
 
     # Validate `state` do not contain `_NOT_RESTORED`
     _assert_all_restored(state)

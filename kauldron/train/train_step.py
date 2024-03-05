@@ -29,6 +29,7 @@ from kauldron import kontext
 from kauldron import losses as kd_losses
 from kauldron import metrics as kd_metrics
 from kauldron import summaries as kd_summaries
+from kauldron.checkpoints import checkpoint_items
 from kauldron.checkpoints import partial_loader
 import kauldron.data.utils as data_utils
 from kauldron.train import rngs_lib
@@ -45,7 +46,7 @@ _Collections = Mapping[str, PyTree[Float["..."]]]
 
 
 @flax.struct.dataclass
-class TrainState:
+class TrainState(checkpoint_items.StandardCheckpointItem):
   """Data structure for checkpointing the model.
 
   Attributes:
@@ -63,8 +64,6 @@ class TrainState:
   params: Optional[_Params]
   collections: Optional[_Collections]
   opt_state: Optional[PyTree[Float["..."]]]
-
-  training_time_hours: float
 
   def replace(self, **changes: Any) -> TrainState:
     return dataclasses.replace(self, **changes)
@@ -358,7 +357,6 @@ class TrainStep(config_util.UpdateFromRootCfg):
         step=jnp.asarray(0),
         params=params,
         opt_state=None,
-        training_time_hours=jnp.asarray(0.0),
         collections=collections,
     )
     return sharding_lib.with_sharding_constraint(state, self.sharding.state)
