@@ -93,8 +93,8 @@ def get_config():
 
 
 def _make_ds(training: bool):
-  return kd.data.TFDataPipeline(
-      loader=kd.data.loaders.GrainTfds(
+  return kd.data.deprecated.TFDataPipeline(
+      loader=kd.data.deprecated.loaders.GrainTfds(
           name="mnist",
           split="train" if training else "test",
           shuffle=True if training else False,
