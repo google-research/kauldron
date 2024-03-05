@@ -21,7 +21,7 @@ import functools
 import hashlib
 import sys
 import typing
-from typing import Any, TypeVar
+from typing import Any, Optional, TypeVar
 
 from etils.epy import _internal
 import jax
@@ -156,7 +156,8 @@ class PRNGKey(_Base):
       rng = cls(array_field_values)
       return rng
 
-  def __array__(self) -> np.ndarray:
+  def __array__(self, dtype: Optional[np.dtype] = None,
+                copy: Optional[bool] = None) -> np.ndarray:
     """Support np.array conversion `np.asarray(key)`."""
     return np.asarray(self.rng)
 
