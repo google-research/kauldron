@@ -469,6 +469,8 @@ def lower_trainstep(trainer: train.Trainer) -> str:
       elem_spec=trainer.train_ds.element_spec,
       skip_transforms=False,
   )
-  return trainer.trainstep.step.lower(
-      trainer.trainstep, state, trainer.train_ds.element_spec
-  )
+  # Take sharding of dataset into account.
+  # Note: train_ds.element_spec does not contain the sharding information,
+  # hence we need to explicitly load an element from the dataset.
+  (element,) = trainer.train_ds.take(1).device_put(trainer.sharding.ds)
+  return trainer.trainstep.step.lower(trainer.trainstep, state, element)
