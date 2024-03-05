@@ -97,7 +97,7 @@ class Base(pipelines.Pipeline, abc.ABC):
         rng=rng,
     )
 
-    ds = self._apply_transforms(ds)
+    ds = self._apply_transforms(ds, self.batch_size)
     return ds
 
   # ======================== Public API ========================
@@ -156,7 +156,9 @@ class Base(pipelines.Pipeline, abc.ABC):
 
     return ds
 
-  def _apply_transforms(self, ds: tf.data.Dataset) -> tf.data.Dataset:
+  def _apply_transforms(
+      self, ds: tf.data.Dataset, batch_size: int | None
+  ) -> tf.data.Dataset:
     """Apply transforms to the dataset."""
 
     transforms = []
@@ -164,7 +166,7 @@ class Base(pipelines.Pipeline, abc.ABC):
       transforms.extend(self.transforms.values())
     else:
       transforms.extend(self.transforms)
-    if self.batch_size:
+    if batch_size:
       transforms.append(
           grain.TfBatch(
               batch_size=self.host_batch_size,
