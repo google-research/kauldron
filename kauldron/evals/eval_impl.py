@@ -71,9 +71,9 @@ def continuous_eval(
   ):
     logging.info(f'Processing checkpoint for step {step}...')
 
-    # Due to b/315316885, we need to explicitly pass the `step` to restore,
-    # as `latest_step` is cached.
-    ckpt.refresh_cache()
+    # Refresh the checkpoint manager cache used by `.all_steps()`
+    # (b/315316885#6)
+    ckpt.reload()
 
     state = ckpt.restore(state, step=step, noop_if_missing=True)
     assert int(state.step) == step

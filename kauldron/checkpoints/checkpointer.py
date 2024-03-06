@@ -88,7 +88,7 @@ class BaseCheckpointer(config_util.UpdateFromRootCfg, abc.ABC):
   def all_steps(self) -> Sequence[int]:
     return []
 
-  def refresh_cache(self) -> None:
+  def reload(self) -> None:
     """Refresh the cache.
 
     For performance, the checkpointer caches the directory names. Calling this
@@ -241,7 +241,7 @@ class Checkpointer(BaseCheckpointer):
   def all_steps(self) -> Sequence[int]:
     return self._ckpt_mgr.all_steps()
 
-  def refresh_cache(self) -> None:
+  def reload(self) -> None:
     self._ckpt_mgr.reload()
 
   def _absolute_step(self, step: int) -> int:
