@@ -94,10 +94,10 @@ class TopLevelCheckpointItem(CheckpointItem):
   @functools.cached_property
   def _items_fields(self) -> dict[str, CheckpointItem]:
     fields = {name: getattr(self, name) for name in type(self)._fields}  # pytype: disable=attribute-error
-    # if self.DEFAULT_ITEM is not None:
-    #   fields[ocp.checkpoint_manager.DEFAULT_ITEM_NAME] = fields.pop(
-    #       self.DEFAULT_ITEM
-    #   )
+    if self.DEFAULT_ITEM is not None:
+      fields[ocp.checkpoint_manager.DEFAULT_ITEM_NAME] = fields.pop(
+          self.DEFAULT_ITEM
+      )
     return fields
 
   def __kd_ocp_handlers__(self) -> Any:  # -> ocp.CheckpointHandler
@@ -124,10 +124,10 @@ class TopLevelCheckpointItem(CheckpointItem):
         k: obj.__kd_ocp_restore_post__(val)
         for k, (obj, val) in epy.zip_dict(self._items_fields, value)
     }
-    # if self.DEFAULT_ITEM is not None:
-    #   init_kwargs[self.DEFAULT_ITEM] = init_kwargs.pop(
-    #       ocp.checkpoint_manager.DEFAULT_ITEM_NAME
-    #   )
+    if self.DEFAULT_ITEM is not None:
+      init_kwargs[self.DEFAULT_ITEM] = init_kwargs.pop(
+          ocp.checkpoint_manager.DEFAULT_ITEM_NAME
+      )
     return type(self)(**init_kwargs)
 
 
