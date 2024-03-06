@@ -120,7 +120,7 @@ hardcoded in the implementation.
 
 <code class="lang-python"><pre>cfg.train_ds = MyDataset(
     transforms=[<ins>
-        MyDatatsetTransform(),
+        MyDatasetTransform(),
         kd.data.Resize(key='image', height=32, width=32),</ins>
     ],
 )
