@@ -41,6 +41,9 @@ import ml_collections
 import numpy as np
 import pandas as pd
 
+with epy.lazy_imports():
+  from etils import ecolab  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+
 _Example = Any
 
 
@@ -323,8 +326,6 @@ def _get_summary_table(
 
 def json_spec_like(obj) -> Any:
   """Convert `etree.spec_like` output to json and displays it in colab form."""
-  from etils import ecolab  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
-
   spec = etree.spec_like(obj)
 
   def _to_json(spec):
@@ -455,7 +456,7 @@ def plot_sharding(trainer: train.Trainer) -> None:
   state = trainer.init_state()
   spec = etree.spec_like(state)
   state = jax.tree_map(lambda x, s: _Repr(f"{s} {x.sharding}"), state, spec)
-  epy.pprint(state)
+  ecolab.disp(state, mode="ph")
 
 
 def lower_trainstep(trainer: train.Trainer) -> str:

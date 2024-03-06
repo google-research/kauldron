@@ -26,3 +26,4 @@ from kauldron.inspect.inspect import plot_context
 from kauldron.inspect.inspect import plot_sharding
 from kauldron.inspect.plotting import plot_schedules
 from kauldron.inspect.profile_utils import Profiler
+from kauldron.inspect.trainer_visu import show_trainer_info
