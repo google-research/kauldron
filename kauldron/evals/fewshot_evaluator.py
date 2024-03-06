@@ -21,6 +21,7 @@ import functools
 from typing import Mapping, Sequence
 
 import flax
+import flax.struct
 import jax
 from jax import numpy as jnp
 from kauldron import data
@@ -29,7 +30,7 @@ from kauldron.evals import evaluators
 from kauldron.metrics import base
 from kauldron.metrics import base_state
 from kauldron.train import train_step
-from kauldron.typing import Array, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Array, Float, Int, Scalar, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import utils
 from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 import numpy as np
@@ -89,7 +90,7 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
   seed: int = 17
 
   @property
-  def metrics(self):
+  def metrics(self) -> dict[str, str]:
     # This is a hack to make the metrics show up on Flatboard
     return {
         f'{self.metric_prefix}-{shots}shot': 'blah' for shots in self.num_shots
@@ -145,7 +146,12 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
       self.writer.flush()
     return None
 
-  def compute_features(self, state, ds: data.IterableDataset, split: str):
+  def compute_features(
+      self,
+      state: train_step.TrainState,
+      ds: data.IterableDataset,
+      split: str,
+  ) -> tuple[dict[str, Array['...']], Array['...']]:
     merged_aux = None
     for eval_step, batch in utils.enum_iter(
         ds.device_put(self.base_cfg.sharding.ds),
@@ -160,17 +166,13 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
           batch=batch,
           sharding=self.base_cfg.sharding,
       )
-      # Merge/accumulate all states
-      if merged_aux is None:
-        merged_aux = aux
-      else:
-        # By default, cross-process communication is only allowed inside
-        # `jax.jit` but clu metric do not support `jax.jit`:
-        # https://github.com/google/CommonLoopUtils/tree/HEAD/clu/metrics.py;l=383;rcl=559340497
-        # So we locally allow cross-process communication for merging the
-        # metrics
-        with jax.spmd_mode('allow_all'), jax.transfer_guard('allow'):
-          merged_aux = merged_aux.merge(aux)
+      # By default, cross-process communication is only allowed inside
+      # `jax.jit` but clu metric do not support `jax.jit`:
+      # https://github.com/google/CommonLoopUtils/tree/HEAD/clu/metrics.py;l=383;rcl=559340497
+      # So we locally allow cross-process communication for merging the
+      # metrics
+      with jax.spmd_mode('allow_all'), jax.transfer_guard('allow'):
+        merged_aux = merged_aux | aux
     assert merged_aux is not None  # At least one iteration
     merged_summaries = merged_aux.compute()
     features = {
@@ -208,7 +210,7 @@ class ComputeFeaturesMetric(base.Metric):
     features: Array['...']
 
     @typechecked
-    def compute(self):
+    def compute(self) -> Array['...']:
       return np.array(super().compute().features)
 
   @typechecked
@@ -223,22 +225,23 @@ class ComputeFeaturesMetric(base.Metric):
 BIAS_CONSTANT = 100.0
 
 
-def to_cpu(x):
+def to_cpu(x: Array['any*']) -> Array['any*']:
   return jax.device_put(x, jax.local_devices(backend='cpu')[0])
 
 
+@typechecked
 def run_fewshot(
-    x_train_all,
-    y_train_all,
-    x_val,
-    y_val,
-    x_test,
-    y_test,
-    num_classes=None,
-    all_shots=tuple(),
-    l2_regs=tuple(),
-    seed=17,
-):
+    x_train_all: Float['n_tr d'],
+    y_train_all: Int['n_tr'],
+    x_val: Float['n_v d'],
+    y_val: Int['n_v'],
+    x_test: Float['n_t d'],
+    y_test: Int['n_t'],
+    num_classes: int,
+    all_shots: tuple[int, ...],
+    l2_regs: tuple[float, ...],
+    seed: int = 17,
+) -> tuple[dict[int, Float['r']], dict[int, Float['r']]]:
   """Run few-shot evaluation."""
   rng = np.random.default_rng(seed)
 
@@ -282,8 +285,13 @@ def run_fewshot(
 
 
 # Setup function for few-shot regression on CPU to avoid "polluting" the TPU.
+@typechecked
 @functools.partial(jax.jit, backend='cpu', static_argnums=(2,))
-def _precompute_cache(x, y, num_classes):
+def _precompute_cache(
+    x: Float['n d'],
+    y: Int['n'],
+    num_classes: int,
+) -> _FewShotCache:
   """Cache quantities to speed-up the computation of L2-regularized least-sq."""
   # Whiten
   mean = jnp.mean(x, axis=0, keepdims=True)
@@ -324,25 +332,35 @@ def _precompute_cache(x, y, num_classes):
     rhs = q.T @ y
     lhs = x.T @ q
 
-  cache = {'eigs': eigs, 'rhs': rhs, 'lhs': lhs, 'mean': mean, 'std': std}
-  return cache
+  return _FewShotCache(eigs=eigs, rhs=rhs, lhs=lhs, mean=mean, std=std)
 
 
+@flax.struct.dataclass
+class _FewShotCache:
+  eigs: Float['d'] | Float['n']
+  rhs: Float['d d'] | Float['n n']
+  lhs: Float['n n'] | Float['d d']
+  mean: Float['1 d']
+  std: Float['1 d']
+
+
+@typechecked
 @functools.partial(jax.jit, backend='cpu')
-def _eig_fewshot_acc_fn(cache, x_test, y_test, l2_reg):
+def _eig_fewshot_acc_fn(
+    cache: _FewShotCache,
+    x_test: Float['m d'],
+    y_test: Int['m'],
+    l2_reg: float,
+) -> Scalar:
   """Computes (x,y) linear regression accuracy on (x_test, y_test)."""
 
-  x_test = (x_test - cache['mean']) / cache['std']
+  x_test = (x_test - cache.mean) / cache.std
   x_test = jnp.pad(x_test, ((0, 0), (0, 1)), constant_values=BIAS_CONSTANT)
 
-  rhs = cache['rhs']
-  lhs = cache['lhs']
-  eigs = cache['eigs']
-
   # See comments in _precompute_cache for context about the formula.
-  scaling = 1.0 / (eigs + l2_reg * jnp.ones_like(eigs))
+  scaling = 1.0 / (cache.eigs + l2_reg * jnp.ones_like(cache.eigs))
   scaling = scaling.reshape((1, -1))
-  w = (lhs * scaling) @ rhs
+  w = (cache.lhs * scaling) @ cache.rhs
   # Predict test-set values and measure their accuracy
   preds = jnp.argmax(x_test @ w, axis=1)
   return jnp.mean(preds == y_test)
