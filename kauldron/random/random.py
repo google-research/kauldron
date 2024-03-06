@@ -156,8 +156,10 @@ class PRNGKey(_Base):
       rng = cls(array_field_values)
       return rng
 
-  def __array__(self) -> np.ndarray:
+  def __array__(self, dtype=None, copy=None) -> np.ndarray:
     """Support np.array conversion `np.asarray(key)`."""
+    assert dtype is None
+    assert copy is None
     return np.asarray(self.rng)
 
   ball = jax.random.ball
