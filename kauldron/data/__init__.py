@@ -17,8 +17,6 @@
 # pylint: disable=g-importing-member
 from kauldron.data import deprecated
 from kauldron.data.data_utils import IterableDataset
-from kauldron.data.deprecated import loaders
-from kauldron.data.deprecated import TFDataPipeline
 from kauldron.data.grain_utils import MapTransform
 from kauldron.data.in_memory import InMemoryPipeline
 from kauldron.data.pipelines import Pipeline
