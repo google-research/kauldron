@@ -33,6 +33,8 @@ class _MultiState(typing.NamedTuple):
   state: MyState
   timer: timer_module.PerformanceTimer
 
+  DEFAULT_ITEM = 'state'
+
 
 class MultiState(_MultiState, checkpoints.items.TopLevelCheckpointItem):
   pass
