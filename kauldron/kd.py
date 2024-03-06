@@ -35,6 +35,7 @@ from etils import epy as _epy
 from kauldron import checkpoints as ckpts
 from kauldron import data
 from kauldron import evals
+from kauldron import inspect
 from kauldron import klinen as knn
 from kauldron import konfig
 from kauldron import kontext
@@ -47,7 +48,6 @@ from kauldron import summaries
 from kauldron import train
 from kauldron import typing
 from kauldron.data import kmix
-from kauldron.utils import inspect
 from kauldron.utils import xmanager as xm
 from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 

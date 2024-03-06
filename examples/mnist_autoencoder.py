@@ -83,10 +83,6 @@ def get_config():
       save_interval_steps=500,
   )
 
-  cfg.profiler = kd.inspect.Profiler(
-      all_host=True,
-  )
-
   cfg.evals = {
       "eval": kd.evals.Evaluator(
           run=kd.evals.RunEvery(100),

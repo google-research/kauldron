@@ -27,13 +27,13 @@ import jax
 import jax.numpy as jnp
 from kauldron.data import data_utils
 from kauldron.evals import eval_impl
+from kauldron.inspect import profile_utils
 from kauldron.train import checkpoint_state
 from kauldron.train import config_lib
 from kauldron.train import flatboard_utils
 from kauldron.train import timer as timer_module
 from kauldron.train import train_step
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
-from kauldron.utils import profile_utils
 from kauldron.utils import utils
 import tensorflow as tf
 
@@ -191,7 +191,7 @@ def _enum_ds_with_hooks(
       init_step=initial_step,
       total_steps=total_steps,
       desc="train",
-      log_xm=True
+      log_xm=True,
   ):
     yield i, batch
     for h in hooks:

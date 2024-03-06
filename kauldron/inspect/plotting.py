@@ -16,13 +16,16 @@
 
 from __future__ import annotations
 
-import altair as alt
+from etils import epy
 import jax
 from kauldron import kontext
 from kauldron.typing import PyTree, Schedule  # pylint: disable=g-multiple-import,g-importing-member
 import ml_collections
 import numpy as np
 import pandas as pd
+
+with epy.lazy_imports():
+  import altair as alt  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
 
 
 def plot_schedules(schedules: PyTree[Schedule], num_steps: int) -> alt.Chart:

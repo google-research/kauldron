@@ -14,6 +14,8 @@
 
 """Helpers to inspect kd models."""
 
+# TODO(epot): Refactor in multiple files
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -38,13 +40,6 @@ import mediapy as media
 import ml_collections
 import numpy as np
 import pandas as pd
-
-# API import `kd.inspect.Profiler`
-# pylint: disable=unused-import,g-bad-import-order,g-importing-member
-from kauldron.utils.plotting import plot_schedules
-from kauldron.utils.profile_utils import Profiler
-from kauldron.utils.graphviz_utils import get_connection_graph
-# pylint: enable=unused-import,g-bad-import-order,g-importing-member
 
 _Example = Any
 
@@ -111,7 +106,7 @@ def _format_annotation(annotation: Any) -> str:
     return str(annotation).removeprefix("typing.")
 
 
-def undo_process_input(inputs):
+def _undo_process_input(inputs):
   # need to undo the `flax.linen.summary.process_inputs` function:
   # Note that contains some uncertainty, so we yield all different possibilities
   # in descending order of specificity. That way we can try to bind them to
@@ -149,7 +144,7 @@ def _get_args(
   sig = inspect.signature(method)
 
   inputs = jax.tree_map(_convert_to_array_spec, inputs)
-  for args, kwargs in undo_process_input(inputs):
+  for args, kwargs in _undo_process_input(inputs):
     try:
       ba = sig.bind("self", *args, **kwargs)
       args = ba.arguments
