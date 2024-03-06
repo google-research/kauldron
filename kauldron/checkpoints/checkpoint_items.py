@@ -59,10 +59,9 @@ class CheckpointItem(abc.ABC):
     """Args passed to `ocp.CheckpointManager.restore(args=)`."""
     raise NotImplementedError()
 
-  @abc.abstractmethod
   def __kd_ocp_restore_post__(self, value: Any) -> Self:
     """Post-processing after `ocp.CheckpointManager.restore(args=)`."""
-    raise NotImplementedError()
+    return value
 
 
 class TopLevelCheckpointItem(CheckpointItem):
@@ -159,6 +158,3 @@ class StandardCheckpointItem(CheckpointItem):
     else:
       struct = self
     return ocp.args.StandardRestore(struct)
-
-  def __kd_ocp_restore_post__(self, value: Any) -> Self:
-    return value
