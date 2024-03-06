@@ -29,7 +29,7 @@ def test_dict():
       'a': 2,
       'w': 3,
   })
-  d = jax.tree_map(lambda x: x * 10, d)
+  d = jax.tree.map(lambda x: x * 10, d)
   assert d == immutabledict_lib.ImmutableDict({
       'z': 10,
       'a': 20,

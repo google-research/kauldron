@@ -86,13 +86,13 @@ def test_foldin():
 
 
 def test_tree_map():
-  out = jax.tree_util.tree_map(lambda x: None, {'x': random.PRNGKey(0)})
+  out = jax.tree.map(lambda x: None, {'x': random.PRNGKey(0)})
   assert out == {'x': None}
 
   key = random.PRNGKey(0)
   key = key.split(3)
   assert isinstance(key, random.PRNGKey)
-  key2 = jax.tree_util.tree_map(lambda x: x, key)
+  key2 = jax.tree.map(lambda x: x, key)
   np.testing.assert_array_equal(key.rng, key2.rng)
 
   np_key = np.asarray(key)

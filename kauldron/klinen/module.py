@@ -516,7 +516,7 @@ def _normalize_rngs(
     add_params: bool = False,
 ) -> dict[str, jax.Array]:
   """Normalize the rngs keys."""
-  rng = jax.tree_util.tree_map(random.PRNGKey, rng)
+  rng = jax.tree.map(random.PRNGKey, rng)
   if isinstance(rng, dict):
     return rng
   elif isinstance(rng, random.PRNGKey):

@@ -136,8 +136,8 @@ class PartialLoader(AbstractPartialLoader):
       from_state_inner = from_path.get_from(from_state, err_spec=True)
 
       # TODO(epot): Restore once flax `save_args_from_target` are removed.
-      to_specs = jax.tree_map(lambda x: ..., to_state_inner)
-      from_specs = jax.tree_map(lambda x: ..., from_state_inner)
+      to_specs = jax.tree.map(lambda x: ..., to_state_inner)
+      from_specs = jax.tree.map(lambda x: ..., from_state_inner)
       # to_specs = etree.spec_like(to_state_inner)
       # from_specs = etree.spec_like(from_state_inner)
 
@@ -299,7 +299,7 @@ class KauldronSourceLegacy(CkptSource):
     step = self._absolute_step(self.step)
     restore_args = lambda _: ocp.RestoreArgs(restore_type=np.ndarray)
     metadata = self._ckpt_mgr.item_metadata(step)
-    restore_args = jax.tree_util.tree_map(restore_args, metadata)
+    restore_args = jax.tree.map(restore_args, metadata)
     args = ocp.args.PyTreeRestore(restore_args=restore_args)
     state = self._ckpt_mgr.restore(step, args=args)
 
@@ -317,7 +317,7 @@ def _assert_all_restored(state: Any) -> None:
     if v is _NOT_RESTORED:
       has_non_restored = True
 
-  jax.tree_map(_check_is_restored, state)
+  jax.tree.map(_check_is_restored, state)
   if has_non_restored:
     raise ValueError(
         'Restored structure do not match expected:'

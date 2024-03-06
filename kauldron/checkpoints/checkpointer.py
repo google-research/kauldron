@@ -190,7 +190,7 @@ class Checkpointer(BaseCheckpointer):
 
       # Delete `state` to free up memory.
       if donate:
-        jax.tree_map(_release_memory, state)
+        jax.tree.map(_release_memory, state)
 
       state = self._ckpt_mgr.restore(state, step=step)
     elif not noop_if_missing:  # No checkpoint

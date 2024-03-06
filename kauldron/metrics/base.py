@@ -145,7 +145,7 @@ class TreeState(base_state.State):
     if not other.tree:
       return self
 
-    merged_tree = jax.tree_map(
+    merged_tree = jax.tree.map(
         lambda x, y: x.merge(y),
         self.tree,
         other.tree,
@@ -155,7 +155,7 @@ class TreeState(base_state.State):
 
   def compute(self) -> PyTree[Any]:  # pytype: disable=signature-mismatch  # jnp-array
     """Calls compute for all metric states in tree."""
-    return jax.tree_map(
+    return jax.tree.map(
         lambda x: x.compute(), self.tree, is_leaf=base_state.State.isinstance
     )
 
@@ -198,12 +198,12 @@ class TreeMap(Metric):
 
 
 def _tree_map_with_kwargs(fun, **kwargs):
-  """Same as jax.tree_map but taking and passing trees to fun as kwargs."""
+  """Same as jax.tree.map but taking and passing trees to fun as kwargs."""
   # This function will be passed the keyword arguments meant for the inner
   # metric. Except that the these args are now pytrees instead of tensors.
   # So all that is left to do is to tree-map the metric.get_state function
   # over a zip of these trees.
-  # jax.tree_map supports this but only as pos-args and not with kw-args.
+  # jax.tree.map supports this but only as pos-args and not with kw-args.
   # So we serialize the kwargs into a tuple of positional args, call tree_map
   # and for each function call turn them back into kwargs
   argnames = [k for k, v in kwargs.items() if v is not None]
@@ -213,7 +213,7 @@ def _tree_map_with_kwargs(fun, **kwargs):
     kwargs = dict(zip(argnames, args))
     return fun(**kwargs)
 
-  return jax.tree_map(
+  return jax.tree.map(
       _fun_with_posargs, *posargs, is_leaf=base_state.State.isinstance
   )
 
@@ -226,7 +226,7 @@ class TreeReduce(Metric):
 
   def get_state(self, **kwargs) -> base_state.State:
     state_tree = _tree_map_with_kwargs(self.metric.get_state, **kwargs)
-    reduced_state = jax.tree_util.tree_reduce(
+    reduced_state = jax.tree.reduce(
         lambda x, y: x.merge(y),
         state_tree,
         initializer=self.metric.empty(),

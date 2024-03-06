@@ -264,16 +264,16 @@ def compute_losses(
 ) -> tuple[Float[""], PyTree[Float[""]]]:
   """Compute all losses based on given context."""
 
-  loss_states = jax.tree_util.tree_map(
+  loss_states = jax.tree.map(
       lambda loss: loss.get_state_from_context(context), losses
   )
-  loss_values = jax.tree_util.tree_map(
+  loss_values = jax.tree.map(
       lambda state: state.compute(),
       loss_states,
       is_leaf=base_state.State.isinstance,
   )
 
-  total_loss = jax.tree_util.tree_reduce(
+  total_loss = jax.tree.reduce(
       jnp.add,
       loss_values,
       initializer=0.0,

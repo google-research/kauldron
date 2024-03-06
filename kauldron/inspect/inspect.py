@@ -146,7 +146,7 @@ def _get_args(
   method = getattr(module_type, method_name)
   sig = inspect.signature(method)
 
-  inputs = jax.tree_map(_convert_to_array_spec, inputs)
+  inputs = jax.tree.map(_convert_to_array_spec, inputs)
   for args, kwargs in _undo_process_input(inputs):
     try:
       ba = sig.bind("self", *args, **kwargs)
@@ -207,7 +207,7 @@ def _format_param_shapes(module_variables) -> str:
   params = module_variables.get("params", {})
   if not params:
     return ""
-  tree = jax.tree_map(_convert_to_array_spec, params)
+  tree = jax.tree.map(_convert_to_array_spec, params)
   flat_tree = kontext.flatten_with_path(tree)
   return "<br>".join(f"<b>{k}</b>: {_nbsp(v)}" for k, v in flat_tree.items())
 
@@ -218,7 +218,7 @@ def _get_num_params(module_variables) -> int:
   def add_num_params(x, y) -> int:
     return x + np.prod(y.shape)
 
-  num_params = jax.tree_util.tree_reduce(add_num_params, params, initializer=0)
+  num_params = jax.tree.reduce(add_num_params, params, initializer=0)
   return num_params
 
 
@@ -455,7 +455,7 @@ def plot_sharding(trainer: train.Trainer) -> None:
   # `SingleDeviceSharding(device=CpuDevice(id=0))` is too long)
   state = trainer.init_state()
   spec = etree.spec_like(state)
-  state = jax.tree_map(lambda x, s: _Repr(f"{s} {x.sharding}"), state, spec)
+  state = jax.tree.map(lambda x, s: _Repr(f"{s} {x.sharding}"), state, spec)
   ecolab.disp(state, mode="ph")
 
 

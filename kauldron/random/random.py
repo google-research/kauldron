@@ -147,7 +147,7 @@ class PRNGKey(_Base):
     # Support tree_map when the output is None or array normalization
     # e.g.
     # * `chex.assert_trees_all_close` normalize to `np.ndarray`
-    # * `jax.tree_util.tree_map(np.testing.assert_allclose)`
+    # * `jax.tree.map(np.testing.assert_allclose)`
     if array_field_values is None:
       return None
     elif isinstance(array_field_values, np.ndarray):

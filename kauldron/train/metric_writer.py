@@ -180,7 +180,7 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
     aux_result = aux.compute(flatten=True)
 
     # schedules
-    schedule_values = jax.tree_map(
+    schedule_values = jax.tree.map(
         lambda s: _compute_schedule(s, step), schedules
     )
     schedule_values = kontext.flatten_with_path(

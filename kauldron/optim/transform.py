@@ -59,7 +59,7 @@ def decay_to_init(
     def _leaf_update(grad, params, init_params):
       return grad + weight_decay * (params - init_params)
 
-    updates = jax.tree_util.tree_map(
+    updates = jax.tree.map(
         _leaf_update, updates, params, state.init_params
     )
     # no need to update the state

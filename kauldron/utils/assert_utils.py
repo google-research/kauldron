@@ -23,4 +23,4 @@ def assert_trees_all_same_type(a, b) -> None:
   def _assert_same_type(a, b):
     assert type(a) == type(b)  # pylint: disable=unidiomatic-typecheck
 
-  jax.tree_util.tree_map(_assert_same_type, a, b)
+  jax.tree.map(_assert_same_type, a, b)

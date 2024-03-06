@@ -53,7 +53,7 @@ class InMemoryPipeline(pipelines.Pipeline):
   def __iter__(self) -> Iterator[_ArrayTree]:
     """Iterator."""
     for indices in self.sampler:
-      yield jax.tree_map(lambda x: x[indices], self.examples)  # pylint: disable=cell-var-from-loop
+      yield jax.tree.map(lambda x: x[indices], self.examples)  # pylint: disable=cell-var-from-loop
 
   def __len__(self):
     return len(self.sampler)

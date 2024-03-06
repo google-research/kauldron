@@ -212,7 +212,7 @@ def test_rng():
   np.testing.assert_allclose(y, model(x))
 
   # rng is constant between train/eval
-  jax.tree_util.tree_map(
+  jax.tree.map(
       np.testing.assert_allclose, model.rngs, model.eval().rngs
   )
 

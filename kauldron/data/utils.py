@@ -24,7 +24,6 @@ from etils.etree import jax as etree  # pylint: disable=g-importing-member
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
-import jax.tree_util
 from kauldron import kontext
 from kauldron.typing import ArraySpec, ElementSpec, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import context as context_lib
@@ -80,7 +79,7 @@ def array_spec_to_jnp_empty(spec: ArraySpec, batch_dim: int = 17) -> jax.Array:
 def mock_batch_from_elem_spec(elem_spec: ElementSpec) -> PyTree[jax.Array]:
   """Create a mock batch from the element_spec of a data iterator."""
   elem_spec = etree.spec_like(elem_spec)
-  mock_batch = jax.tree_util.tree_map(array_spec_to_jnp_empty, elem_spec)
+  mock_batch = jax.tree.map(array_spec_to_jnp_empty, elem_spec)
   return mock_batch
 
 

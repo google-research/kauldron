@@ -111,7 +111,7 @@ class Auxiliaries:
   def compute(self, *, flatten: bool = True) -> AuxiliariesOutput:
     """Compute losses and metrics."""
     # train losses
-    loss_values = jax.tree_map(
+    loss_values = jax.tree.map(
         _compute_metric, self.loss_states, is_leaf=kd_metrics.State.isinstance
     )
     # Multi-process communication
@@ -124,7 +124,7 @@ class Auxiliaries:
       loss_values["total"] = total_loss
 
     # train metrics
-    metric_values = jax.tree_map(
+    metric_values = jax.tree.map(
         _compute_metric, self.metric_states, is_leaf=kd_metrics.State.isinstance
     )
 
@@ -274,7 +274,7 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
 
     if return_metrics:
       aux = aux.replace(
-          metric_states=jax.tree_util.tree_map(
+          metric_states=jax.tree.map(
               lambda m: m.get_state_from_context(context), self.metrics
           )
       )

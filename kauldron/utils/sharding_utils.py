@@ -148,7 +148,7 @@ class _ShardingAPI:
     Returns:
       The replicated nested tree of array
     """
-    return jax.tree_map(
+    return jax.tree.map(
         functools.partial(self._put_device_single, sharding=sharding), arrays
     )
 
@@ -209,7 +209,7 @@ class _ShardingAPI:
       else:
         return jax.lax.with_sharding_constraint(x_, s)
 
-    return jax.tree_map(
+    return jax.tree.map(
         _merge,
         shardings,
         x,
