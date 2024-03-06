@@ -395,7 +395,7 @@ def plot_batch(batch: _Example) -> None:
   VideosRGB = Float["b t h w 3"] | UInt8["b t h w 3"]
   # pylint: enable=invalid-name
 
-  for k, v in batch.items():
+  for k, v in kontext.flatten_with_path(batch).items():
     if isinstance(v, Images):
       _, height, _, _ = v.shape
       height = _normalize_height(height)
