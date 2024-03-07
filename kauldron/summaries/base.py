@@ -42,7 +42,7 @@ Images = Float["*b h w c"] | UInt8["*b h w c"]
 Masks = Bool["*b h w 1"]
 Segmentations = Integer["*b h w 1"] | Float["*b h w k"]
 Boxes = Float["*b k #4"]
-BoxesMask = Bool["*b k 1"]
+BoxesMask = Bool["*b k 1"] | Float["*b k 1"]
 
 
 class Summary(abc.ABC):
