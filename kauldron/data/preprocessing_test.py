@@ -14,6 +14,7 @@
 
 """Basic tests for preprocessing ops."""
 
+from etils import enp
 from kauldron.data import preprocessing
 import numpy as np
 import pytest
@@ -66,17 +67,18 @@ def test_elements_rename_overwrite_raises():
     el.map(before)
 
 
-def test_value_range():
+@enp.testing.parametrize_xnp(restrict=["np", "tnp"])
+def test_value_range(xnp: enp.NpModule):
   vr = preprocessing.ValueRange(
       key="values",
       in_vrange=(0.0, 255.0),
       vrange=(0.0, 1.0),
       clip_values=True,
   )
-  before = {"values": tf.constant([-100, 0.0, 255.0, 400.0]), "other": 42}
+  before = {"values": xnp.array([-100, 0.0, 255.0, 400.0]), "other": 42}
   after = vr.map(before)
   assert after["other"] == before["other"]
-  tf.debugging.assert_near(after["values"], tf.constant([0.0, 0.0, 1.0, 1.0]))
+  xnp.allclose(after["values"], xnp.array([0.0, 0.0, 1.0, 1.0]))
 
 
 def test_center_crop():

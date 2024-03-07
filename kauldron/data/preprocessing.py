@@ -21,10 +21,11 @@ import dataclasses
 from typing import Any, Iterable, Mapping, Optional, Sequence
 
 import einops
+from etils import enp
 import flax.core
 import grain.tensorflow as grain
 from kauldron import kontext
-from kauldron.typing import TfArray, TfFloat, TfInt, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import TfArray, TfFloat, TfInt, XArray, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import tensorflow as tf
 
 
@@ -305,17 +306,16 @@ class ValueRange(ElementWiseTransform):
   clip_values: bool = True
 
   @typechecked
-  def map_element(self, element: TfArray["*dims"]) -> TfFloat["*dims"]:
-    in_min_t = tf.constant(self.in_vrange[0], tf.float32)
-    in_max_t = tf.constant(self.in_vrange[1], tf.float32)
-    vmax = tf.constant(self.vrange[1], tf.float32)
-    vmin = tf.constant(self.vrange[0], tf.float32)
-
-    element = tf.cast(element, self.dtype)
-    element = (element - in_min_t) / (in_max_t - in_min_t)
-    element = element * (vmax - vmin) + vmin
+  def map_element(self, element: XArray["*any"]) -> XArray["*any"]:
+    xnp = enp.lazy.get_xnp(element)
+    dtype = enp.lazy.as_np_dtype(self.dtype)
+    element = xnp.asarray(element, dtype=dtype)
+    in_min, in_max = self.in_vrange
+    out_min, out_max = self.vrange
+    element = (element - in_min) / (in_max - in_min)
+    element = element * (out_max - out_min) + out_min
     if self.clip_values:
-      element = tf.clip_by_value(element, vmin, vmax)
+      element = xnp.clip(element, out_min, out_max)
     return element
 
 

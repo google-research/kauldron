@@ -86,3 +86,8 @@ TfFloat32 = ArrayAliasMeta(
 )
 TfInt = ArrayAliasMeta("TfInt", jaxtyping.Int, array_types=(tf.Tensor,))
 TfUInt8 = ArrayAliasMeta("TfUInt8", jaxtyping.UInt8, array_types=(tf.Tensor,))
+
+
+_tf_np_jnp = (tf.Tensor, np.ndarray, jaxtyping.Array)
+
+XArray = ArrayAliasMeta("XArray", jaxtyping.Shaped, array_types=_tf_np_jnp)
