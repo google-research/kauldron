@@ -17,7 +17,7 @@ from __future__ import annotations
 from typing import NamedTuple
 
 import jax.numpy as jnp
-from kauldron.typing.array_types import Bool, Float, Float32, Int, UInt32, UInt8  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing.array_types import Array, Bool, Float, Float32, Int, UInt32, UInt8  # pylint: disable=g-multiple-import,g-importing-member
 import numpy as np
 import pytest
 
@@ -138,3 +138,12 @@ _FLAT_JNP_DTYPES = [
 def test_jnp_dtypes(SpecType, dtype):  # pylint: disable=invalid-name
   jx = jnp.zeros((1,), dtype=dtype)
   assert isinstance(jx, SpecType["x"])
+
+
+def test_plain_array_isinstance():
+  a = np.zeros((1,), dtype=np.float32)
+  assert isinstance(a, Array)
+  assert isinstance(a, Float)
+  assert isinstance(a, Float32)
+  assert not isinstance(a, Bool)
+  assert not isinstance(a, Int)

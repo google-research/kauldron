@@ -50,6 +50,9 @@ class ArrayAliasMeta(type):
     del name, dtype, array_types
     super().__init__(cls)
 
+  def __instancecheck__(cls, inst: Any):
+    return isinstance(inst, cls["..."])
+
   def __getitem__(cls, item):
     # We construct Shaped[arr_type1, item] | Shaped[arr_type2, item] rather than
     # Shaped[Union[array_types], item] because of this issue:
