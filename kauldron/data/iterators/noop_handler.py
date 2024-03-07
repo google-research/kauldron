@@ -18,12 +18,36 @@
 
 from __future__ import annotations
 
+import collections.abc
 import dataclasses
 from typing import Any
 
 from etils import epath
+from kauldron.data.iterators import iterators
 from orbax import checkpoint as ocp
 import tensorflow as tf
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class NonCheckpointableIterator(iterators.Iterator):
+  """Handler that is not-checkpointable."""
+
+  iter: collections.abc.Iterator[Any]
+
+  def __next__(self):
+    return next(self.iter)
+
+  # ================ Implement the checkpoint protocol ================
+
+  def __kd_ocp_handlers__(self) -> ocp.CheckpointHandler:
+    return NoopHandler()
+
+  def __kd_ocp_save_args__(self) -> ocp.args.CheckpointArgs:
+    return NoopArg(self)
+
+  def __kd_ocp_restore_args__(self) -> ocp.args.CheckpointArgs:
+    # Note: The `ds_iter` is mutated in-place !!! (because TF)
+    return NoopArg(self)
 
 
 class NoopHandler(ocp.CheckpointHandler):
