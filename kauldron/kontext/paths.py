@@ -20,7 +20,7 @@ import ast
 import collections
 from collections.abc import Mapping, Sequence
 from types import EllipsisType  # pylint: disable=g-importing-member
-from typing import Any, Optional, TypeVar, Union, overload
+from typing import Any, Callable, Optional, TypeVar, Union, overload
 
 from etils import epy
 from etils.etree import jax as etree  # pylint: disable=g-importing-member
@@ -227,12 +227,15 @@ def flatten_with_path(
     *,
     prefix: str = "",
     separator: str | None = None,
+    is_leaf: Callable[[Any], bool] | None = None,
 ) -> dict[str, _T]:
   """Flatten any PyTree / ConfigDict into a dict with 'keys.like[0].this'."""
   if isinstance(pytree, ml_collections.ConfigDict):
     # Normalize ConfigDict to dict
     pytree = pytree.to_dict()
-  flat_tree_items, _ = jax.tree_util.tree_flatten_with_path(pytree)
+  flat_tree_items, _ = jax.tree_util.tree_flatten_with_path(
+      pytree, is_leaf=is_leaf
+  )
   prefix = (jax.tree_util.GetAttrKey(prefix),) if prefix else ()
 
   def _format_path(jax_path):
