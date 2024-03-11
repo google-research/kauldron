@@ -34,11 +34,12 @@ FrozenDict = dict if typing.TYPE_CHECKING else flax.core.FrozenDict
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class Elements(grain.MapTransform):
-  """Modify the elements by keeping xor dropping and/or renaming."""
+  """Modify the elements by keeping xor dropping and/or renaming and/or copying."""
 
   keep: Iterable[str] = ()
   drop: Iterable[str] = ()
   rename: Mapping[str, str] = flax.core.FrozenDict()
+  copy: Mapping[str, str] = flax.core.FrozenDict()
 
   def __post_init__(self):
     if self.keep and self.drop:
@@ -79,11 +80,49 @@ class Elements(grain.MapTransform):
           "explicitly kept (happens automatically)."
       )
 
+    copy_values = set(self.copy.values())
+    if len(copy_values) != len(self.copy.values()):
+      raise ValueError("Copy values must be unique.")
+
+    overlap_keys = copy_values & (keep | drop | rename_keys | rename_values)
+    if overlap_keys:
+      raise KeyError(
+          f"Keys: {overlap_keys} present in both copy and "
+          "keep or drop or rename (key or value) collections."
+      )
+
+    copy_meta = copy_values & grain.META_FEATURES
+    if copy_meta:
+      raise KeyError(
+          f"Keys: {copy_meta} are internal keys should not be "
+          "overwritten by copying."
+      )
+
     object.__setattr__(self, "keep", keep)
     object.__setattr__(self, "drop", drop)
 
   def map(self, features):
     feature_keys = set(features.keys())
+
+    # first handle copying because some elements might be dropped/renamed
+    copy_output = {}
+    if self.copy:
+      copy_keys = set(self.copy.keys())
+      missing_copy_keys = copy_keys - feature_keys
+      if missing_copy_keys:
+        raise KeyError(
+            f"copy-key(s) {missing_copy_keys} not found in batch. "
+            f"Available keys are {sorted(feature_keys)!r}."
+        )
+      copy_values = set(self.copy.values())
+      overlap_keys = copy_values & feature_keys
+      if overlap_keys:
+        raise KeyError(
+            f"copy-value(s) {overlap_keys} will overwrite existing values in "
+            f"batch. Existing keys are {sorted(feature_keys)!r}."
+        )
+      copy_output = {v: features[k] for k, v in self.copy.items()}
+
     # resolve keep or drop
     if self.keep:
       keep_keys = set(self.keep)
@@ -109,6 +148,7 @@ class Elements(grain.MapTransform):
       }
     else:  # only rename
       output = {k: v for k, v in features.items() if k not in self.rename}
+    output.update(copy_output)
 
     # resolve renaming
     rename_keys = set(self.rename.keys())
