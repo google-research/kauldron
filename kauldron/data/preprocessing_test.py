@@ -112,6 +112,32 @@ def test_random_crop():
   assert after["values"].shape == (7, 5, 3)
 
 
+def test_normalize_unnormalize_cycle_with_defaults():
+  cc1 = preprocessing.Normalize(key="values")
+  pre_norm = tf.ones(shape=(16, 5, 3), dtype=tf.float32)
+  post_norm = cc1.map_element(pre_norm)
+  assert pre_norm.shape == post_norm.shape
+
+  cc2 = preprocessing.Unnormalize(key="values")
+  post_unnorm = cc2.map_element(post_norm)
+  assert post_unnorm.shape == post_norm.shape
+  assert all(post_unnorm == pre_norm)
+
+
+def test_normalize_unnormalize_cycle():
+  pre_norm = tf.ones(shape=(16, 5, 3), dtype=tf.float32)
+  mean = tf.constant([0.1, 0.2, 0.3], dtype=tf.float32)
+  std = tf.constant([0.4, 0.5, 0.6], dtype=tf.float32)
+  cc1 = preprocessing.Normalize(key="values", mean=mean, std=std)
+  post_norm = cc1.map_element(pre_norm)
+  assert pre_norm.shape == post_norm.shape
+
+  cc2 = preprocessing.Unnormalize(key="values", mean=mean, std=std)
+  post_unnorm = cc2.map_element(post_norm)
+  assert post_unnorm.shape == post_norm.shape
+  assert all(post_unnorm == pre_norm)
+
+
 def test_resize():
   # 0 0 1 1
   # 0 0 1 1

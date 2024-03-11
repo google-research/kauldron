@@ -359,6 +359,40 @@ class Cast(ElementWiseTransform):
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class Normalize(ElementWiseTransform):
+  """Uses provided mean/std to normalize an input image in range [0, 1].
+
+  By default, the commonly used ImageNet mean and std dev are used.
+  """
+
+  mean: tuple[float, float, float] = (0.485, 0.456, 0.406)
+  std: tuple[float, float, float] = (0.229, 0.224, 0.225)
+
+  @typechecked
+  def map_element(self, element: XArray["*any"]) -> XArray["*any"]:
+    element = (element - self.mean) / self.std
+    return element
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class Unnormalize(ElementWiseTransform):
+  """Uses provided mean/std to unnormalize an input image to range [0, 1].
+
+  By default, the commonly used ImageNet mean and std dev are used.
+  """
+
+  mean: tuple[float, float, float] = (0.485, 0.456, 0.406)
+  std: tuple[float, float, float] = (0.229, 0.224, 0.225)
+
+  @typechecked
+  def map_element(self, element: XArray["*any"]) -> XArray["*any"]:
+    element = element * self.std + self.mean
+    return element
+
+
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class OneMinus(ElementWiseTransform):
   """One minus an element (e.g. for inverting a mask)."""
 
