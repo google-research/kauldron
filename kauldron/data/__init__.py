@@ -35,6 +35,7 @@ from kauldron.data.preprocessing import PadFirstDimensionToFixedSize
 from kauldron.data.preprocessing import RandomCrop
 from kauldron.data.preprocessing import RandomFlipLeftRight
 from kauldron.data.preprocessing import Rearrange
+from kauldron.data.preprocessing import Repeat
 from kauldron.data.preprocessing import Resize
 from kauldron.data.preprocessing import ResizeSmall
 from kauldron.data.preprocessing import TreeFlattenWithPath

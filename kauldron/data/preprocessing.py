@@ -252,13 +252,30 @@ class ElementWiseRandomTransform(_ElementWise, grain.RandomMapTransform):
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class Rearrange(ElementWiseTransform):
-  """Einsum rearrange on a single element."""
+  """Einops rearrange on a single element."""
 
   pattern: str
+  axes_lengths: Optional[dict[str, int]] = dataclasses.field(
+      default_factory=dict
+  )
 
   # @typechecked
-  def map_element(self, element: TfArray["..."]) -> TfFloat["..."]:
-    return einops.rearrange(element, self.pattern)
+  def map_element(self, element: TfArray["..."]) -> TfArray["..."]:
+    return einops.rearrange(element, self.pattern, **self.axes_lengths)
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class Repeat(ElementWiseTransform):
+  """Einops repeat on a single element."""
+
+  pattern: str
+  axes_lengths: Optional[dict[str, int]] = dataclasses.field(
+      default_factory=dict
+  )
+
+  # @typechecked
+  def map_element(self, element: TfArray["..."]) -> TfArray["..."]:
+    return einops.repeat(element, self.pattern, **self.axes_lengths)
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
