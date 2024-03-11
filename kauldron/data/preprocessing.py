@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import abc
 import dataclasses
+import typing
 from typing import Any, Iterable, Mapping, Optional, Sequence
 
 import einops
@@ -27,6 +28,8 @@ import grain.tensorflow as grain
 from kauldron import kontext
 from kauldron.typing import TfArray, TfFloat, TfInt, XArray, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import tensorflow as tf
+
+FrozenDict = dict if typing.TYPE_CHECKING else flax.core.FrozenDict
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -252,29 +255,81 @@ class ElementWiseRandomTransform(_ElementWise, grain.RandomMapTransform):
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class Rearrange(ElementWiseTransform):
-  """Einops rearrange on a single element."""
+  """Einops rearrange on a single element.
+
+  Mostly a wrapper around einops.rearrange, but also supports basic types like
+  int, float, lists and tuples (which are converted to a numpy array first).
+
+  Example:
+
+  ```
+  cfg.train_ds = kd.data.Tfds(
+      ...
+      transforms=[
+          ...,
+          kd.data.Rearrange(key="image", pattern="h w c -> (h w c)"),
+      ]
+  )
+  ```
+
+  Attributes:
+    pattern: `einops.rearrange` pattern, e.g. "b h w c -> b c (h w)"
+    axes_lengths: a dictionary for specifying additional axis sizes that cannot
+      be inferred from the pattern and the tensor alone.
+  """
 
   pattern: str
-  axes_lengths: Optional[dict[str, int]] = dataclasses.field(
-      default_factory=dict
-  )
+  axes_lengths: dict[str, int] = dataclasses.field(default_factory=FrozenDict)
 
-  # @typechecked
-  def map_element(self, element: TfArray["..."]) -> TfArray["..."]:
+  @typechecked
+  def map_element(self, element: Any) -> XArray:
+    # Ensure element is an array (and not a python builtin)
+    # This is useful e.g. for pygrain pipelines because often "label" will be
+    # int and not an array, yet one might want to reshape it.
+    xnp = enp.lazy.get_xnp(element, strict=False)
+    element = xnp.asarray(element)
+
     return einops.rearrange(element, self.pattern, **self.axes_lengths)
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class Repeat(ElementWiseTransform):
-  """Einops repeat on a single element."""
+  """Einops repeat on a single element.
+
+  Mostly a wrapper around einops.repeat, but also supports basic types like
+  int, float, lists and tuples (which are converted to a numpy array first).
+
+  Example:
+
+  ```
+  cfg.train_ds = kd.data.Tfds(
+      ...
+      transforms=[
+          ...,
+          kd.data.Repeat(key="image", pattern="h w c -> t h w c",
+                         axes_lengths={"t": 6}),
+      ]
+  )
+  ```
+
+  Attributes:
+    pattern: `einops.repeat` pattern, e.g. "b h w c -> b c (h w)"
+    axes_lengths: a dictionary for specifying additional axis e.g. number of
+      repeats or axis that cannot be inferred from the pattern and the tensor
+      alone.
+  """
 
   pattern: str
-  axes_lengths: Optional[dict[str, int]] = dataclasses.field(
-      default_factory=dict
-  )
+  axes_lengths: dict[str, int] = dataclasses.field(default_factory=FrozenDict)
 
-  # @typechecked
-  def map_element(self, element: TfArray["..."]) -> TfArray["..."]:
+  @typechecked
+  def map_element(self, element: Any) -> XArray:
+    # Ensure element is an array (and not a python builtin)
+    # This is useful e.g. for pygrain pipelines because often "label" will be
+    # int and not an array, yet one might want to reshape it.
+    xnp = enp.lazy.get_xnp(element, strict=False)
+    element = xnp.asarray(element)
+
     return einops.repeat(element, self.pattern, **self.axes_lengths)
 
 
@@ -286,7 +341,7 @@ class Gather(ElementWiseTransform):
   indices: tuple[int, ...]
 
   @typechecked
-  def map_element(self, element: TfArray["..."]) -> TfFloat["..."]:
+  def map_element(self, element: TfArray) -> TfFloat:
     data = tf.unstack(element, axis=self.axis)
     out = [data[idx] for idx in self.indices]
     return tf.stack(out, axis=self.axis)
