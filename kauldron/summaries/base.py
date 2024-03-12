@@ -100,8 +100,6 @@ class ShowImages(ImageSummary):
   width: Optional[int] = None
   height: Optional[int] = None
   in_vrange: Optional[tuple[float, float]] = None
-  convert_to_float: bool = False
-  cmap: str | None = None
   mask_color: float | tuple[float, float, float] = 0.5
 
   def gather_kwargs(self, context: Any) -> dict[str, Images | Masks]:
@@ -111,8 +109,7 @@ class ShowImages(ImageSummary):
     masks = kwargs.get("masks", None)
     if self.rearrange:
       images = einops.rearrange(images, self.rearrange, **self.rearrange_kwargs)
-    if self.convert_to_float:
-      images = images.astype(jnp.float32)
+    images = images.astype(jnp.float32)
     if not isinstance(images, Float["n h w #3"]):
       raise ValueError(f"Bad shape or dtype: {images.shape} {images.dtype}")
 
@@ -142,14 +139,6 @@ class ShowImages(ImageSummary):
       images = (images - vmin) / (vmax - vmin)
     # convert to float
     images = media.to_type(images.astype(jnp.float32), np.float32)
-
-    if self.cmap is not None:
-      if not isinstance(images, Float["n h w 1"]):
-        raise ValueError(
-            "Colormap only supported for single channel inputs (got"
-            f" {images.shape})"
-        )
-      images = media.to_rgb(images[..., 0], cmap=self.cmap)
 
     if masks is not None:
       masks = einops.rearrange(masks, "... h w c -> (...) h w c")
@@ -181,7 +170,6 @@ class ShowDifferenceImages(ImageSummary):
   )
   width: Optional[int] = None
   height: Optional[int] = None
-  convert_to_float: bool = False
   cmap: str | None = None
   mask_color: float | tuple[float, float, float] = 0.5
 
@@ -197,9 +185,9 @@ class ShowDifferenceImages(ImageSummary):
       images2 = einops.rearrange(
           images2, self.rearrange, **self.rearrange_kwargs
       )
-    if self.convert_to_float:
-      images1 = images1.astype(jnp.float32)
-      images2 = images2.astype(jnp.float32)
+
+    images1 = images1.astype(jnp.float32)
+    images2 = images2.astype(jnp.float32)
     if not isinstance(images1, Float["n h w #3"]):
       raise ValueError(f"Bad shape or dtype: {images1.shape} {images1.dtype}")
     if not isinstance(images2, Float["n h w #3"]):
