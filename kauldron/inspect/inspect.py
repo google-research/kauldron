@@ -305,8 +305,9 @@ def _get_summary_table(
     rngs: dict[str, kd_random.PRNGKey],
 ) -> nn.summary.Table:
   """Return model overview as a `nn.summary.Table`."""
-  model_args, model_kwargs = data_utils.get_model_inputs_from_batch_spec(
-      model, ds.element_spec, ds_sharding
+  batch = data_utils.mock_batch_from_elem_spec(ds.element_spec, ds_sharding)
+  model_args, model_kwargs = data_utils.get_model_inputs_from_batch(
+      model, batch
   )
   table_fn = nn.summary._get_module_table(  # pylint: disable=protected-access
       model,

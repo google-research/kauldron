@@ -195,18 +195,18 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
   def init(  # pylint:disable=missing-function-docstring
       self,
       init_rngs: rngs_lib.Rngs,
-      model_args: tuple[Any, ...],
-      model_kwargs: dict[str, Any],
+      batch: PyTree[jax.Array],
       model_method: Optional[str] = None,
   ) -> tuple[_Params, _Collections]:
     self._assert_root_cfg_resolved()
+    args, kwargs = data_utils.get_model_inputs_from_batch(self.model, batch)
     collections = self.model.init(
         init_rngs,
-        *model_args,
+        *args,
         method=model_method,
         is_training_property=True,
         capture_intermediates=True,
-        **model_kwargs,
+        **kwargs,
     )
     collections = flax.core.unfreeze(collections)
     params = collections.pop("params", {})
@@ -339,7 +339,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
 
   @functools.partial(
       jax.jit,
-      static_argnames=("self", "elem_spec", "elem_sharding", "model_method"),
+      static_argnames=("self", "elem_spec", "model_method"),
   )
   def _init_model(
       self,
@@ -348,15 +348,10 @@ class TrainStep(config_util.UpdateFromRootCfg):
       model_method: Optional[str] = None,
   ) -> TrainState:
     """Initialize the model and return the initial TrainState."""
-    model_args, model_kwargs = data_utils.get_model_inputs_from_batch_spec(
-        self.model_with_aux.model,
-        elem_spec,
-        self.sharding.ds,
-    )
+    batch = data_utils.mock_batch_from_elem_spec(elem_spec, self.sharding.ds)
     params, collections = self.model_with_aux.init(
         self.rng_streams.init_rngs(),
-        model_args,
-        model_kwargs,
+        batch,
         model_method=model_method,
     )
     state = TrainState(  # pytype: disable=wrong-arg-types

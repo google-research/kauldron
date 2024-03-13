@@ -117,23 +117,20 @@ def get_model_inputs(
     return (context.batch,), {}
 
 
-def get_model_inputs_from_batch_spec(
+def get_model_inputs_from_batch(
     model: nn.Module,
-    batch_spec: ElementSpec,
-    batch_sharding: sharding_utils.ShardingTree,
+    batch: ElementSpec,
 ) -> tuple[tuple[Any, ...], dict[str, Any]]:
   """Returns dummy (args, kwargs) to pass to the model input.
 
   Args:
     model: Flax model
-    batch_spec: The batch structure from which extract the inputs
-    batch_sharding: The sharding to use for the mock batch
+    batch: The batch structure from which extract the inputs
 
   Returns:
     args: The positional arguments
     kwargs: The keyword arguments
   """
-  mock_batch = mock_batch_from_elem_spec(batch_spec, batch_sharding)
-  context = context_lib.Context(step=0, batch=mock_batch)
+  context = context_lib.Context(step=0, batch=batch)
   args, kwargs = get_model_inputs(model, context)
   return args, kwargs
