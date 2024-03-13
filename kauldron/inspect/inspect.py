@@ -36,6 +36,7 @@ from kauldron import train
 from kauldron.data import utils as data_utils
 from kauldron.typing import Float, UInt8  # pylint: disable=g-multiple-import
 from kauldron.utils import pd_utils
+from kauldron.utils import sharding_utils
 import mediapy as media
 import ml_collections
 import numpy as np
@@ -300,11 +301,12 @@ def _get_styled_df(
 def _get_summary_table(
     model: nn.Module,
     ds: data.Pipeline,
+    ds_sharding: sharding_utils.ShardingTree,
     rngs: dict[str, kd_random.PRNGKey],
 ) -> nn.summary.Table:
   """Return model overview as a `nn.summary.Table`."""
   model_args, model_kwargs = data_utils.get_model_inputs_from_batch_spec(
-      model, ds.element_spec
+      model, ds.element_spec, ds_sharding
   )
   table_fn = nn.summary._get_module_table(  # pylint: disable=protected-access
       model,
@@ -358,11 +360,12 @@ def get_colab_model_overview(
     *,
     model: nn.Module,
     train_ds: data.Pipeline,
+    ds_sharding: sharding_utils.ShardingTree,
     model_config: konfig.ConfigDict | None = None,
     rngs: dict[str, kd_random.PRNGKey],
 ) -> pd.DataFrame:
   """Return `pd.DataFrame` for displaying the model params, inputs,..."""
-  table = _get_summary_table(model, train_ds, rngs)
+  table = _get_summary_table(model, train_ds, ds_sharding, rngs)
   return _get_styled_df(table, model_config)
 
 

@@ -50,6 +50,7 @@ def show_trainer_info(
         model=trainer.model,
         model_config=None if cfg is None else cfg.model,
         train_ds=trainer.train_ds,
+        ds_sharding=trainer.sharding.ds,
         rngs=trainer.rng_streams.init_rngs(),
     )
     total_params = model_overview["Own Params"].sum()

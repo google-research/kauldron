@@ -195,20 +195,18 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
   def init(  # pylint:disable=missing-function-docstring
       self,
       init_rngs: rngs_lib.Rngs,
-      elem_spec: ElementSpec,
+      model_args: tuple[Any, ...],
+      model_kwargs: dict[str, Any],
       model_method: Optional[str] = None,
   ) -> tuple[_Params, _Collections]:
     self._assert_root_cfg_resolved()
-    args, kwargs = data_utils.get_model_inputs_from_batch_spec(
-        self.model, elem_spec
-    )
     collections = self.model.init(
         init_rngs,
-        *args,
+        *model_args,
         method=model_method,
         is_training_property=True,
         capture_intermediates=True,
-        **kwargs,
+        **model_kwargs,
     )
     collections = flax.core.unfreeze(collections)
     params = collections.pop("params", {})
@@ -341,7 +339,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
 
   @functools.partial(
       jax.jit,
-      static_argnames=("self", "elem_spec", "model_method"),
+      static_argnames=("self", "elem_spec", "elem_sharding", "model_method"),
   )
   def _init_model(
       self,
@@ -350,8 +348,16 @@ class TrainStep(config_util.UpdateFromRootCfg):
       model_method: Optional[str] = None,
   ) -> TrainState:
     """Initialize the model and return the initial TrainState."""
+    model_args, model_kwargs = data_utils.get_model_inputs_from_batch_spec(
+        self.model_with_aux.model,
+        elem_spec,
+        self.sharding.ds,
+    )
     params, collections = self.model_with_aux.init(
-        self.rng_streams.init_rngs(), elem_spec, model_method=model_method
+        self.rng_streams.init_rngs(),
+        model_args,
+        model_kwargs,
+        model_method=model_method,
     )
     state = TrainState(  # pytype: disable=wrong-arg-types
         step=jnp.asarray(0),

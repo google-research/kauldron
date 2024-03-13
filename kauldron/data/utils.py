@@ -27,6 +27,7 @@ import jax.numpy as jnp
 from kauldron import kontext
 from kauldron.typing import ArraySpec, ElementSpec, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import context as context_lib
+from kauldron.utils import sharding_utils
 import numpy as np
 
 
@@ -76,10 +77,27 @@ def array_spec_to_jnp_empty(spec: ArraySpec, batch_dim: int = 17) -> jax.Array:
     return jnp.empty(spec.shape, dtype)
 
 
-def mock_batch_from_elem_spec(elem_spec: ElementSpec) -> PyTree[jax.Array]:
+def mock_batch_from_elem_spec(
+    elem_spec: ElementSpec, elem_sharding: sharding_utils.ShardingTree
+) -> PyTree[jax.Array]:
   """Create a mock batch from the element_spec of a data iterator."""
   elem_spec = etree.spec_like(elem_spec)
+
+  # We only support FIRST_DIM and REPLICATED sharding for now.
+  def _get_global_shape(spec):
+    if elem_sharding is sharding_utils.sharding.FIRST_DIM:
+      shape = (spec.shape[0] * jax.process_count(),) + spec.shape[1:]
+    elif elem_sharding is sharding_utils.sharding.REPLICATED:
+      shape = spec.shape
+    else:
+      raise ValueError(f"Unsupported sharding: {elem_sharding!r}")
+    return ArraySpec(shape=shape, dtype=spec.dtype)
+
+  elem_spec = jax.tree.map(_get_global_shape, elem_spec)
   mock_batch = jax.tree.map(array_spec_to_jnp_empty, elem_spec)
+  mock_batch = sharding_utils.sharding.with_sharding_constraint(
+      mock_batch, elem_sharding
+  )
   return mock_batch
 
 
@@ -102,18 +120,20 @@ def get_model_inputs(
 def get_model_inputs_from_batch_spec(
     model: nn.Module,
     batch_spec: ElementSpec,
+    batch_sharding: sharding_utils.ShardingTree,
 ) -> tuple[tuple[Any, ...], dict[str, Any]]:
   """Returns dummy (args, kwargs) to pass to the model input.
 
   Args:
     model: Flax model
     batch_spec: The batch structure from which extract the inputs
+    batch_sharding: The sharding to use for the mock batch
 
   Returns:
     args: The positional arguments
     kwargs: The keyword arguments
   """
-  mock_batch = mock_batch_from_elem_spec(batch_spec)
+  mock_batch = mock_batch_from_elem_spec(batch_spec, batch_sharding)
   context = context_lib.Context(step=0, batch=mock_batch)
   args, kwargs = get_model_inputs(model, context)
   return args, kwargs

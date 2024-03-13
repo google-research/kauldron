@@ -282,6 +282,7 @@ class Trainer(config_util.BaseConfig):
   def context_specs(self) -> context_lib.Context:
     """Shape evaluate the model (fast) and return the context structure."""
     elem_spec = self.train_ds.element_spec
+    elem_sharding = self.sharding.ds
     rngs = self.rng_streams.init_rngs()
     mwa = self.trainstep.model_with_aux
 
@@ -290,7 +291,7 @@ class Trainer(config_util.BaseConfig):
     init_fn = functools.partial(self.init_state, skip_transforms=True)
     state_spec = jax.eval_shape(init_fn)
 
-    m_batch = data_utils.mock_batch_from_elem_spec(elem_spec)
+    m_batch = data_utils.mock_batch_from_elem_spec(elem_spec, elem_sharding)
     _, context = jax.eval_shape(
         functools.partial(mwa.forward, is_training=True),
         params=state_spec.params,
