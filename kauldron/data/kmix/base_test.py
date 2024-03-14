@@ -18,6 +18,7 @@ import dataclasses
 import functools
 from unittest import mock
 
+import kauldron as kd
 from kauldron.data import kmix
 import numpy as np
 import pytest
@@ -26,27 +27,25 @@ import tensorflow_datasets as tfds
 
 # TODO(epot): Test:
 # * Deterministic random transforms (even when shuffle == False)
-# * Test mixtures
+dummy_tfds_ds = functools.partial(
+    kmix.Tfds,
+    name='dummy_dataset',
+    split='train',
+    seed=0,
+)
+
+
+dummy_tfds_legacy_ds = functools.partial(
+    kmix.TfdsLegacy,
+    name='dummy_dataset',
+    split='train',
+    seed=0,
+    shuffle_buffer_size=100,
+)
 
 
 with_ds_cls = pytest.mark.parametrize(
-    'ds_cls',
-    [
-        functools.partial(
-            kmix.Tfds,
-            name='dummy_dataset',
-            split='train',
-            seed=0,
-        ),
-        functools.partial(
-            kmix.TfdsLegacy,
-            name='dummy_dataset',
-            split='train',
-            seed=0,
-            shuffle_buffer_size=100,
-        ),
-        # TODO(epot): Add SeqIO
-    ],
+    'ds_cls', [dummy_tfds_ds, dummy_tfds_legacy_ds]  # TODO(epot): Add SeqIO
 )
 
 
@@ -74,8 +73,8 @@ class DummyDataset(tfds.core.GeneratorBasedBuilder):
       yield i, {'id': i}
 
 
-def _ids(ds) -> list[int]:
-  return [ex['id'] for ex in ds]
+def _ids(ds, key: str = 'id') -> list[int]:
+  return [ex[key] for ex in ds]
 
 
 @pytest.fixture(scope='module')
@@ -160,3 +159,29 @@ def test_sharding(
         all_ids |= set(ids)
 
   assert len(all_ids) == 100  # No overlapping across shards
+
+
+def test_sample_from_datasets(dummy_builder: tfds.core.GeneratorBasedBuilder):  # pylint: disable=redefined-outer-name
+  """Tests SampleFromDatasets."""
+  ds1 = dummy_tfds_ds(
+      data_dir=dummy_builder.data_dir_root,
+      num_epochs=1,
+      shuffle=False,
+      transforms=[
+          kd.data.Elements(rename={'id': 'code'}),
+      ],
+  )
+  ds2 = dummy_tfds_legacy_ds(
+      data_dir=dummy_builder.data_dir_root,
+      num_epochs=2,
+      shuffle=False,
+      transforms=[
+          kd.data.Elements(rename={'id': 'code'}),
+      ],
+  )
+  dsmix = kmix.SampleFromDatasets(  # pytype: disable=wrong-keyword-args
+      [ds1, ds2], seed=0
+  )
+  ids = _ids(dsmix, key='code')
+  assert len(ids) == 300
+  assert sorted(ids) == sorted(list(range(100)) * 3)
