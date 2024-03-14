@@ -98,6 +98,23 @@ def test_elements_copy_overwrite_raises():
     _ = preprocessing.Elements(copy={"old": "oops", "yes": "oops"})
 
 
+def test_add_constants():
+  values = {"new": 2}
+  el = preprocessing.AddConstants(values=values)
+  before = {"old": 1}
+  after = el.map(before)
+  assert set(after.keys()) == {"old", "new"}
+  assert after["old"] == before["old"]
+  assert after["new"] == values["new"]
+
+
+def test_add_constants_overwrite_raises():
+  el = preprocessing.AddConstants(values={"oops": 3})
+  before = {"old": 1, "oops": 2}
+  with pytest.raises(KeyError):
+    el.map(before)
+
+
 @enp.testing.parametrize_xnp(restrict=["np", "tnp"])
 def test_value_range(xnp: enp.NpModule):
   vr = preprocessing.ValueRange(

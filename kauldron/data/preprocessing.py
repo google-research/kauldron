@@ -179,6 +179,25 @@ class Elements(grain.MapTransform):
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class AddConstants(grain.MapTransform):
+  """Adds constant elements for missing fields, eg. as needed for mixtures."""
+
+  values: Mapping[str, Any] = flax.core.FrozenDict()
+
+  def map(self, features):
+    overwrites = sorted(set(self.values.keys()) & set(features.keys()))
+    if overwrites:
+      offending_keys = [k for k, v in self.values.items() if v in overwrites]
+      raise KeyError(
+          f"Tried adding key(s) {offending_keys!r} but"
+          " target names already exist. Implicit overwriting is not supported."
+          " Please explicitly drop target keys that should be overwritten."
+      )
+    features.update(self.values)
+    return features
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class _ElementWise:
   """Mixin class that enables defining a key and iterating relevant elements.
 
