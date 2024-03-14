@@ -60,19 +60,23 @@ class Experiment:
   exp: xmanager_api.Experiment
   _: dataclasses.KW_ONLY
   wid: int
+  lazy: bool = False
 
   @classmethod
-  def from_xid(cls, xid: int, wid: int) -> Experiment:
+  def from_xid(cls, xid: int, wid: int, *, lazy: bool = False) -> Experiment:
     """Factory from an xid.
 
     Args:
       xid: Experiment id
       wid: Work unit id
+      lazy: Specify how the imports should be resolved. If `lazy=False`
+        (default), the imports are resolved during `xp.config` access. If
+        `lazy=True`, the imports are resolved during `konfig.resolve`.
 
     Returns:
       The experiment object
     """
-    return cls(_client().get_experiment(xid), wid=wid)
+    return cls(_client().get_experiment(xid), wid=wid, lazy=lazy)
 
   def __post_init__(self):
     # Ensure `wid` is an `int`.
@@ -114,7 +118,8 @@ class Experiment:
     # Should use a constant rather than hardcoding `config.json`
     config_path = self.wu.workdir / 'config.json'
     config = json.loads(config_path.read_text())
-    return _json_to_config(config)  # Wrap the dict to ConfigDict  # pytype: disable=bad-return-type
+    # Wrap the dict to ConfigDict
+    return _json_to_config(config, lazy=self.lazy)  # pytype: disable=bad-return-type
 
   @functools.cached_property
   def trainer(self) -> config_lib.Trainer:
@@ -144,12 +149,12 @@ def _normalize_workdir(path: str) -> epath.Path:
   return epath.Path(path)
 
 
-def _json_to_config(json_value):
+def _json_to_config(json_value, *, lazy: bool):
   """Wraps a `dict` to a `ConfigDict` and convert list to tuple."""
   match json_value:
     case dict():
-      values = {k: _json_to_config(v) for k, v in json_value.items()}
-      if qualname := values.get('__qualname__'):
+      values = {k: _json_to_config(v, lazy=lazy) for k, v in json_value.items()}
+      if not lazy and (qualname := values.get('__qualname__')):
         try:
           importlib.import_module(qualname.split(':', 1)[0])
         except ImportError as e:
@@ -162,6 +167,6 @@ def _json_to_config(json_value):
           )
       return konfig.ConfigDict(values)
     case list():
-      return tuple(_json_to_config(v) for v in json_value)
+      return tuple(_json_to_config(v, lazy=lazy) for v in json_value)
     case _:
       return json_value
