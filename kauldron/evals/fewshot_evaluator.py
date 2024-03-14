@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import dataclasses
 import functools
-from typing import Mapping, Sequence
+from typing import Mapping, Sequence, TypeVar
 
 import flax
 import flax.struct
@@ -29,11 +29,15 @@ from kauldron import kontext
 from kauldron.evals import evaluators
 from kauldron.metrics import base
 from kauldron.metrics import base_state
+from kauldron.train import config_lib
 from kauldron.train import train_step
 from kauldron.typing import Array, Float, Int, Scalar, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.utils import config_util
 from kauldron.utils import utils
 from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 import numpy as np
+
+_SelfT = TypeVar('_SelfT')
 
 
 class FewShotEvaluator(evaluators.EvaluatorBase):
@@ -87,7 +91,21 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
   l2_regs: Sequence[float] = (2**6, 2**7, 2**8, 2**9, 2**10)
   label_name: str
   selected_repr: str = 'pre_logits'
-  seed: int = 17
+  seed: int = config_util.ROOT_CFG_REF.seed
+
+  def update_from_root_cfg(
+      self: _SelfT,
+      root_cfg: config_lib.Trainer,
+  ) -> _SelfT:
+    """See base class."""
+    new_self = super().update_from_root_cfg(root_cfg)
+
+    return new_self.replace(
+        ds_train=new_self.ds_train.update_from_root_cfg(root_cfg),
+        ds_val=new_self.ds_val.update_from_root_cfg(root_cfg),
+        ds_test=new_self.ds_test.update_from_root_cfg(root_cfg),
+        writer=new_self.writer.update_from_root_cfg(root_cfg),
+    )
 
   @property
   def metrics(self) -> dict[str, str]:
@@ -350,7 +368,7 @@ def _eig_fewshot_acc_fn(
     cache: _FewShotCache,
     x_test: Float['m d'],
     y_test: Int['m'],
-    l2_reg: float,
+    l2_reg: Scalar,
 ) -> Scalar:
   """Computes (x,y) linear regression accuracy on (x_test, y_test)."""
 
