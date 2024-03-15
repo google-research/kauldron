@@ -333,20 +333,22 @@ class CollectFirstState(State):
 
   # TODO(klausg) dynamically check type annotations in post_init
 
+  _INTERNAL_FIELDS = {"keep_first", "parent"}
+
   @classmethod
   def empty(cls: type[_SelfT]) -> _SelfT:
     return cls(**{
         f.name: None
         for f in dataclasses.fields(cls)
-        if f.name not in {"parent", "keep_first"}
+        if f.name not in cls._INTERNAL_FIELDS
     })
 
   @property
   def _accumulated_fields(self) -> dict[str, Array]:
     return {
-        f.name: getattr(self, f.name)
+        f.name: _maybe_truncate(getattr(self, f.name), self.keep_first)
         for f in dataclasses.fields(self)
-        if f.name not in {"parent", "keep_first"}
+        if f.name not in self._INTERNAL_FIELDS
     }
 
   def merge(self: _SelfT, other: _SelfT) -> _SelfT:
@@ -369,10 +371,16 @@ class CollectFirstState(State):
     return _CollectingStateOutput(**self._accumulated_fields)  # pytype: disable=bad-return-type
 
 
+def _maybe_truncate(v: Array["b *any"] | None, num: int):
+  if v is None:
+    return None
+  return np.asarray(v[:num])
+
+
 def _concat_truncate(v1, v2, num: int):
   """Concatenate two arrays along dim 0 up to length num_samples."""
   if v1 is None:
-    return np.asarray(v2)
+    return _maybe_truncate(v2, num)
 
   if v1.shape[0] < num and v2 is not None:
     n = num - v1.shape[0]
@@ -383,4 +391,4 @@ def _concat_truncate(v1, v2, num: int):
         "Tracer detected! CollectingState.merge should not be JIT compiled."
     )
 
-  return v1
+  return _maybe_truncate(v1, num)

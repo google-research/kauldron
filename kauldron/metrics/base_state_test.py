@@ -94,5 +94,15 @@ def test_collecting_first_image():
   result = final_state.compute()
 
   assert result.images.shape == (5, 16, 16, 3)
+  np.testing.assert_allclose(result.images[:4], np.zeros((4, 16, 16, 3)))
+  np.testing.assert_allclose(result.images[4:], np.ones((1, 16, 16, 3)))
+  assert isinstance(result.images, np.ndarray)
+
+
+def test_collecting_first_image_truncate_single_state():
+  state = FirstNImages(images=jnp.zeros((23, 16, 16, 3)), keep_first=5)
+  result = state.compute()
+
+  assert result.images.shape == (5, 16, 16, 3)
   np.testing.assert_allclose(result.images[:4], jnp.zeros((4, 16, 16, 3)))
-  np.testing.assert_allclose(result.images[4:], jnp.ones((1, 16, 16, 3)))
+  assert isinstance(result.images, np.ndarray)
