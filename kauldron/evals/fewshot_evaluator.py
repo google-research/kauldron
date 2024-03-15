@@ -31,7 +31,7 @@ from kauldron.metrics import base
 from kauldron.metrics import base_state
 from kauldron.train import config_lib
 from kauldron.train import train_step
-from kauldron.typing import Array, Float, Int, Scalar, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Array, Float, Int, Scalar, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import config_util
 from kauldron.utils import utils
 from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
@@ -91,7 +91,7 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
   l2_regs: Sequence[float] = (2**6, 2**7, 2**8, 2**9, 2**10)
   label_name: str
   selected_repr: str = 'pre_logits'
-  seed: int = config_util.ROOT_CFG_REF.seed
+  seed: int | Sequence[int] = config_util.ROOT_CFG_REF.seed
 
   def update_from_root_cfg(
       self: _SelfT,
@@ -114,6 +114,10 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
         f'{self.metric_prefix}-{shots}shot': 'blah' for shots in self.num_shots
     }
 
+  @property
+  def seeds(self) -> list[int]:
+    return list(self.seed) if isinstance(self.seed, Sequence) else [self.seed]
+
   def evaluate(self, state: train_step.TrainState, step: int):
     """Run one full evaluation."""
     self._assert_root_cfg_resolved()
@@ -129,32 +133,41 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
     fewshot_accuracies = {}
     for feat_key in train_features.keys():
 
-      curr_results_val, curr_results_test = run_fewshot(
-          train_features[feat_key],
-          train_labels,
-          val_features[feat_key],
-          val_labels,
-          test_features[feat_key],
-          test_labels,
-          num_classes=self.num_classes,
-          all_shots=self.num_shots,
-          l2_regs=self.l2_regs,
-          seed=self.seed,
-      )
-      for shots in self.num_shots:
-        best_reg = np.argmax(curr_results_val[shots])
+      results = np.array([
+          run_fewshot(
+              train_features[feat_key],
+              train_labels,
+              val_features[feat_key],
+              val_labels,
+              test_features[feat_key],
+              test_labels,
+              num_classes=self.num_classes,
+              all_shots=self.num_shots,
+              l2_regs=self.l2_regs,
+              seed=seed,
+          )
+          for seed in self.seeds
+      ])
+      check_type(results, Float['seeds 2 shots regs'])
+      results_val = results[:, 0].mean(axis=0)
+      results_test = results[:, 1].mean(axis=0)
+      check_type(results_val, Float['shots regs'])
+      check_type(results_test, Float['shots regs'])
+
+      for shot_idx, shots in enumerate(self.num_shots):
+        best_reg_idx = np.argmax(results_val[shot_idx])
         if feat_key == self.selected_repr:
           fewshot_accuracies[f'metrics/{self.metric_prefix}-{shots}shot'] = (
-              curr_results_test[shots][best_reg]
+              results_test[shot_idx, best_reg_idx]
           )
         fewshot_accuracies[
             f'z_fewshot_all/{self.metric_prefix}-{feat_key}-{shots}shot'
-        ] = curr_results_test[shots][best_reg]
-        for acc, l2_reg in zip(curr_results_test[shots], self.l2_regs):
+        ] = results_test[shot_idx, best_reg_idx]
+        for reg_idx, l2_reg in enumerate(self.l2_regs):
           l2_reg = float(l2_reg)
           fewshot_accuracies[
               f'z_fewshot_all/z_{self.metric_prefix}-{feat_key}-{shots}shot-{l2_reg:.5f}'
-          ] = acc
+          ] = results_test[shot_idx, reg_idx]
 
     with jax.transfer_guard('allow'):
       self.writer.write_scalars(
@@ -259,7 +272,7 @@ def run_fewshot(
     all_shots: tuple[int, ...],
     l2_regs: tuple[float, ...],
     seed: int = 17,
-) -> tuple[dict[int, Float['r']], dict[int, Float['r']]]:
+) -> tuple[Float['shots regs'], Float['shots regs']]:
   """Run few-shot evaluation."""
   rng = np.random.default_rng(seed)
 
@@ -268,9 +281,9 @@ def run_fewshot(
       for cls_i in range(num_classes)
   ]
 
-  results_val = {}
-  results_test = {}
-  for shots in all_shots:
+  results_val = np.zeros((len(all_shots), len(l2_regs)))
+  results_test = np.zeros((len(all_shots), len(l2_regs)))
+  for shot_idx, shots in enumerate(all_shots):
     all_idx = [indices[:shots] for indices in class_indices]
     all_idx = np.concatenate(all_idx, axis=0)
     assert len(all_idx) == num_classes * shots, (
@@ -282,23 +295,19 @@ def run_fewshot(
 
     # print(f'[fewshot][i1k][{shots}-shot]: compute cache')
     cache = _precompute_cache(to_cpu(x), to_cpu(y), num_classes)
-    curr_results_val = []
-    curr_results_test = []
-    for l2_reg in l2_regs:
+    for l2_reg_idx, l2_reg in enumerate(l2_regs):
       acc_val = _eig_fewshot_acc_fn(
           cache, to_cpu(x_val), to_cpu(y_val), to_cpu(l2_reg)
       )
-      curr_results_val.append(acc_val)
+      results_val[shot_idx, l2_reg_idx] = acc_val
       acc_test = _eig_fewshot_acc_fn(
           cache, to_cpu(x_test), to_cpu(y_test), to_cpu(l2_reg)
       )
-      curr_results_test.append(acc_test)
-    results_val[shots] = np.stack(curr_results_val)
-    results_test[shots] = np.stack(curr_results_test)
+      results_test[shot_idx, l2_reg_idx] = acc_test
   return results_val, results_test
 
 
-# The below functions are copied from
+# The below functions are adapted from
 # https://github.com/google-research/big_vision/blob/main/big_vision/evaluators/fewshot_lsr.py
 
 
