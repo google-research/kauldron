@@ -309,20 +309,7 @@ class KauldronSweep(sweep_utils.SweepInfo):
   Run the named sweeps defined by `sweep_[NAME]()` in the config file.
   If multiple sweep names are given run all their combinations (product).
   Empty string match `def sweep()` (default).
-
-  Attributes:
-    names: DEPRECATED.
   """
-
-  names: Any = None
-
-  def __post_init__(self):
-    if self.names:
-      raise ValueError(
-          "`--xp.sweep_info.names=xx,yy` is deprecated. Please use"
-          " `--xp.sweep=xx,yy`.\n"
-          "See https://kauldron.rtfd.io/en/latest/intro.html#sweeps."
-      )
 
   def __iter__(self) -> Iterable[sweep_utils.SweepItem]:
     if not isinstance(self._jobs_provider, KauldronJobs):

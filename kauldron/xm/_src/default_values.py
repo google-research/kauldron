@@ -43,13 +43,6 @@ konfig.register_default_values(
     )
 )
 
-# TODO(epot): Remove `names` once users have migrated to `--xp.sweep`
-konfig.register_default_values(
-    kxm.KauldronSweep(
-        # Use `placeholder(object)` to accept both `v0,v1` and `['v0', 'v1']`
-        names=konfig.placeholder(object),
-    )
-)
 konfig.register_default_values(
     xm_abc.Borg(
         scheduling=xm_abc.BorgScheduling(),
