@@ -63,7 +63,7 @@ class FourierEmbedding(nn.Module):
 
     # NeRF-style Fourier/sinusoidal position encoding.
     coords = _create_gradient_grid(coord_shape, value_range=(-jnp.pi, jnp.pi))
-    pos_embedding = _convert_to_fourier_features(
+    pos_embedding = convert_to_fourier_features(
         coords, basis_degree=self.num_fourier_bases
     )
     # Project to desired feature dims.
@@ -231,7 +231,7 @@ def _create_gradient_grid(
 
 
 @typechecked
-def _convert_to_fourier_features(
+def convert_to_fourier_features(
     inputs: Float['... D'], basis_degree: int
 ) -> Float['... d']:
   """Convert inputs to Fourier features, e.g. for positional encoding."""
