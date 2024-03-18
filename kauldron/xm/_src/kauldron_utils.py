@@ -59,7 +59,7 @@ if typing.TYPE_CHECKING:
 
 # Flag to send the json-serialized sweep overwrites kwargs
 # If modifying this, also modify the value in `kauldron/utils/sweep_utils.py`
-_SWEEP_FLAG_NAME = "sweep_config"
+SWEEP_FLAG_NAME = "sweep_config"
 
 # TODO(epot): Support sweep on platform,...
 
@@ -332,7 +332,7 @@ class KauldronSweep(sweep_utils.SweepInfo):
       case True:
         return [""]
       case "*":  # All `sweep_` functions
-        return _all_available_sweep_names(self._module)
+        return all_available_sweep_names(self._module)
       case str():
         return self._sweep_value.split(",")
       case list():
@@ -366,7 +366,7 @@ def _sweeps_from_module(
     sweep_kwargs = functools.reduce(operator.ior, sweep_kwargs, {})
     yield sweep_utils.SweepItem(
         # Use custom encoder to support ConfigDict objects
-        job_kwargs={_SWEEP_FLAG_NAME: _JsonEncoder().encode(sweep_kwargs)},
+        job_kwargs={SWEEP_FLAG_NAME: _JsonEncoder().encode(sweep_kwargs)},
         xm_ui_kwargs={k: _ui_repr(v) for k, v in sweep_kwargs.items()},
     )
 
@@ -387,7 +387,7 @@ def _get_sweep_fn(module: types.ModuleType, fn_name: str):
   fn_name = "sweep_" + fn_name if fn_name else "sweep"
   fn = getattr(module, fn_name, None)
   if fn is None:
-    available_sweeps = _all_available_sweep_names(module)
+    available_sweeps = all_available_sweep_names(module)
     raise ValueError(
         f"Could not find sweep function '{fn_name}()' in {module}."
         f" Available sweeps: {available_sweeps}"
@@ -395,7 +395,7 @@ def _get_sweep_fn(module: types.ModuleType, fn_name: str):
   return fn()
 
 
-def _all_available_sweep_names(module: types.ModuleType) -> list[str]:
+def all_available_sweep_names(module: types.ModuleType) -> list[str]:
   """Returns all available sweep names."""
   sweep_names = []
   for name in dir(module):

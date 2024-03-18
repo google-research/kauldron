@@ -60,7 +60,7 @@ def test_sweep():
 
 
 def test_sweep_overwrite():
-  assert sweep_utils._FLAG_NAME == kauldron_utils._SWEEP_FLAG_NAME
+  assert sweep_utils._FLAG_NAME == kauldron_utils.SWEEP_FLAG_NAME
 
   cfg = mnist_autoencoder.get_config()
   cfg = sweep_utils.update_with_sweep(  # pytype: disable=wrong-arg-types
