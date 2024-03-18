@@ -122,14 +122,11 @@ class Experiment(job_params.JobParams):
     if self.sweep in (None, False):
       new_sweep = sweep_utils.NoSweep()
     else:
-      new_sweep = dataclasses.replace(
-          self.sweep_info,
-          # Some sweep require info from the job builder (e.g. to load from
-          #  config). So link the sweep to the job
-          _jobs_provider=self.jobs_provider,
-          # Propagate the `--xp.sweep=` value.
-          _sweep_value=self.sweep,
-      )
+      # Propagate the `--xp.sweep=` value.
+      new_sweep = dataclasses.replace(self.sweep_info, _sweep_value=self.sweep)
+      # Some sweep require info from the job builder (e.g. to load from
+      #  config). So link the sweep to the job
+      new_sweep = new_sweep.replace_with_jobs_provider(self.jobs_provider)
     object.__setattr__(self, "sweep_info", new_sweep)
 
   def launch(self) -> xm_abc.XManagerExperiment:

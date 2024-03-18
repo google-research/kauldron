@@ -19,7 +19,7 @@ from __future__ import annotations
 import abc
 import dataclasses
 import functools
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, Self
 
 from kauldron.xm._src import jobs_info
 
@@ -49,14 +49,9 @@ class SweepInfo(abc.ABC):
   ```
   """
 
-  # Automatically set
+  # Automatically set in `Experiment.__post_init__`
   # `_sweep_value` contains the value passed to `--xp.sweep=`
   _sweep_value: bool | str | list[str] = dataclasses.field(  # pytype: disable=annotation-type-mismatch
-      default=None,
-      repr=False,
-  )
-  # Allow the sweep and jobs_provider to play together
-  _jobs_provider: jobs_info.JobsProvider = dataclasses.field(  # pytype: disable=annotation-type-mismatch
       default=None,
       repr=False,
   )
@@ -74,6 +69,13 @@ class SweepInfo(abc.ABC):
   def tags(self) -> list[str]:
     """XM tags when sweep is activated."""
     return ["🧹"]
+
+  def replace_with_jobs_provider(
+      self, jobs_provider: jobs_info.JobsProvider
+  ) -> Self:
+    """Allow the sweep to access the job provider."""
+    del jobs_provider
+    return self
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)

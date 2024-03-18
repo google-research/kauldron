@@ -29,6 +29,7 @@ def test_launch():
   xp_cfg.jobs_provider.overrides['xm_job.target'] = (  # pytype: disable=attribute-error
       '//third_party/py/kauldron/examples:trainer'
   )
+  xp_cfg.sweep = True
   with konfig.set_lazy_imported_modules():
     xp = konfig.resolve(xp_cfg)
   xp.launch()

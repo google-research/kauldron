@@ -35,7 +35,7 @@ import os
 import pathlib
 import types
 import typing
-from typing import Any
+from typing import Any, Self
 
 from absl import flags
 from etils import epath
@@ -310,16 +310,17 @@ class KauldronSweep(sweep_utils.SweepInfo):
   If multiple sweep names are given run all their combinations (product).
   Empty string match `def sweep()` (default).
   """
+  # Module from which to extract the sweep functions, automatically set inside
+  # `replace_with_job_provider`
+  _module: types.ModuleType = dataclasses.field(  # pytype: disable=annotation-type-mismatch
+      default=None,
+      repr=False,
+  )
 
   def __iter__(self) -> Iterable[sweep_utils.SweepItem]:
-    if not isinstance(self._jobs_provider, KauldronJobs):
-      raise TypeError(
-          "`KauldronSweep` should be used with `KauldronJobs`. Got:"
-          f" {type(self._jobs_provider)}"
-      )
-
+    assert self._module is not None
     yield from _sweeps_from_module(
-        module=self._jobs_provider.module,  # pylint: disable=attribute-error
+        module=self._module,  # pylint: disable=attribute-error
         names=self.sweep_names,
     )
 
@@ -330,6 +331,8 @@ class KauldronSweep(sweep_utils.SweepInfo):
         return []
       case True:
         return [""]
+      case "*":  # All `sweep_` functions
+        return _all_available_sweep_names(self._module)
       case str():
         return self._sweep_value.split(",")
       case list():
@@ -340,6 +343,16 @@ class KauldronSweep(sweep_utils.SweepInfo):
   @functools.cached_property
   def tags(self) -> list[str]:
     return [f"🧹{name}" for name in self.sweep_names]
+
+  def replace_with_jobs_provider(
+      self, jobs_provider: jobs_info.JobsProvider
+  ) -> Self:
+    if not isinstance(jobs_provider, KauldronJobs):
+      raise TypeError(
+          "`KauldronSweep` should be used with `KauldronJobs`. Got:"
+          f" {type(jobs_provider)}"
+      )
+    return dataclasses.replace(self, _module=jobs_provider.module)
 
 
 def _sweeps_from_module(
@@ -374,14 +387,23 @@ def _get_sweep_fn(module: types.ModuleType, fn_name: str):
   fn_name = "sweep_" + fn_name if fn_name else "sweep"
   fn = getattr(module, fn_name, None)
   if fn is None:
-    available_sweeps = [
-        s for s in dir(module) if s.startswith("sweep_") or s == "sweep"
-    ]
+    available_sweeps = _all_available_sweep_names(module)
     raise ValueError(
         f"Could not find sweep function '{fn_name}()' in {module}."
         f" Available sweeps: {available_sweeps}"
     )
   return fn()
+
+
+def _all_available_sweep_names(module: types.ModuleType) -> list[str]:
+  """Returns all available sweep names."""
+  sweep_names = []
+  for name in dir(module):
+    if name.startswith("sweep_"):
+      sweep_names.append(name.removeprefix("sweep_"))
+    elif name == "sweep":
+      sweep_names.append("")
+  return sweep_names
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)

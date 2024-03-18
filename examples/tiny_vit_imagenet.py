@@ -113,6 +113,9 @@ def _make_ds(training: bool):
 
 
 def sweep():
-  for i in range(3):
-    for lr in [0.001, 0.003, 0.01]:
-      yield {"schedules.learning_rate.peak_value": lr, "seed": i}
+  for i in range(2):
+    for lr in [0.001, 0.01]:
+      yield {
+          "schedules.learning_rate.peak_value": lr,
+          "seed": i,
+      }
