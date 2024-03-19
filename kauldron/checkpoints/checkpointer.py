@@ -21,6 +21,7 @@ from collections.abc import Callable, Iterator
 import dataclasses
 import datetime
 import functools
+import time
 from typing import Any, Optional, Sequence, TypeVar
 
 from etils import epath
@@ -111,6 +112,39 @@ class BaseCheckpointer(config_util.UpdateFromRootCfg, abc.ABC):
     """Wrapper around `ocp.checkpoint_utils.checkpoints_iterator`."""
     del min_interval_secs, timeout, timeout_fn
     yield from []
+
+
+def _retry(num_retries=3, retry_delay_seconds=5, exceptions=(Exception,)):
+  """Decorator for retrying a function call upon exceptions.
+
+  Args:
+      num_retries (int, optional): Maximum number of retries. Defaults to 3.
+      retry_delay_seconds (int, optional): Delay in seconds between retries.
+        Defaults to 5.
+      exceptions (tuple, optional): Tuple of exception types to catch. Defaults
+        to (Exception,).
+
+  Returns:
+    A decorator that retries the function call upon exceptions.
+  """
+
+  def decorator(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+      for attempt in range(num_retries + 1):
+        try:
+          return func(*args, **kwargs)
+        except exceptions as e:
+          print(
+              f"Exception occurred: {e}. Retrying (attempt"
+              f" {attempt + 1}/{num_retries})..."
+          )
+          if attempt < num_retries:
+            time.sleep(retry_delay_seconds)
+
+    return wrapper
+
+  return decorator
 
 
 @dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
@@ -205,6 +239,8 @@ class Checkpointer(BaseCheckpointer):
   def should_save(self, step: int) -> bool:
     return self._ckpt_mgr.should_save(step)
 
+  # TODO(b/299684331) workaround for the flaky orbax checkpointing.
+  @_retry(num_retries=3, exceptions=(ValueError,))
   def save(
       self,
       state: _State,
