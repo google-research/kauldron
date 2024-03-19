@@ -104,7 +104,7 @@ class TFDataPipeline(Pipeline):
   prefetch_size: Optional[int] = tf.data.AUTOTUNE
 
   def __post_init__(self):
-    print(
+    raise ValueError(
         "TFDataPipeline is deprecated."
     )
 
