@@ -16,10 +16,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-import dataclasses
 import functools
-import types
 import typing
 from typing import Annotated, Any, TypeVar, Union
 
@@ -81,11 +78,6 @@ def get_annotated(
   ]
 
 
-def get_optional_fields(cls_or_obj: type[Any] | Any) -> list[str]:
-  cls = cls_or_obj if isinstance(cls_or_obj, type) else type(cls_or_obj)
-  return [n for n, a in _get_type_hints(cls).items() if _is_optional(a)]
-
-
 def _is_optional(annotation: type[Any]) -> bool:
   """Check if a typing annotation is Optional[...]."""
   origin = typing.get_origin(annotation)
@@ -95,105 +87,28 @@ def _is_optional(annotation: type[Any]) -> bool:
 
 def _is_hint_annotated_with(hint: _TypeForm, annotated_token: _Token) -> bool:
   """Returns `True` if the hint is annotated with `annotated_token`."""
-  type_visitor = _AnnotatedCheckVisitor(annotated_token)
-  return type_visitor.visit(hint).token_present
+  origin = typing.get_origin(hint)
 
+  if origin is None:  # Leaf (non-generic)
+    return False
 
-# TODO(epot): Should try to unify with:
-# * https://github.com/google-research/dataclass_array/tree/HEAD/dataclass_array/type_parsing.py
-# * https://github.com/google/etils/tree/HEAD/etils/enp/type_parsing.py
-class _TypeVisitor:
-  """Traverse the tree of typing annotations.
+  # For generic types, check if the type itself is Annotated
+  if origin == typing.Annotated and any(
+      a is annotated_token for a in hint.__metadata__
+  ):
+    return True
 
-  Usage:
-
-  ```python
-  @dataclasses.dataclass
-  class MyVisitor(_TypeVisitor):
-    leaves = dataclasses.field(default_factory=list)
-
-    def _visit_leaf(self, hint):
-      self.leaves.append(hint)
-
-
-  MyVisitor().visit(int | list[str]).leaves == [int, str]
-  ```
-  """
-
-  @functools.cached_property
-  def _origin_to_visitor(self) -> dict[_TypeForm, Callable[[_TypeForm], None]]:
-    """Mapping `__origin__` to visitor."""
-    return {
-        typing.Annotated: self._visit_annotated,
-        typing.Union: self._visit_union,
-        types.UnionType: self._visit_union,
-        None: self._visit_leaf,  # Default origin
-    }
-
-  def visit(self: _SelfT, hint: _TypeForm) -> _SelfT:
-    """Traverse the tree of types."""
-    if hint == types.NoneType:  # Normalize `None`
-      hint = None
-
-    origin = typing_extensions.get_origin(hint)
-    visit_fn = self._origin_to_visitor.get(origin, self._visit_leaf)  # pylint: disable=protected-access
-    visit_fn(hint)
-    return self
-
-  def _visit_union(self, hint: _TypeForm) -> None:
-    """Traverse `T0 | T1` and `Optional[T]`."""
-    inner_hints = typing_extensions.get_args(hint)
-    for inner_hint in inner_hints:
-      self.visit(inner_hint)
-
-  def _visit_annotated(self, hint: _TypeForm) -> None:
-    """Traverse `Annotated[T]`."""
-    inner_hint, *_ = typing_extensions.get_args(hint)
-    self.visit(inner_hint)
-
-  def _visit_leaf(self, hint: _TypeForm) -> None:
-    """Leaves nodes."""
-    pass
-
-
-@dataclasses.dataclass
-class _AnnotatedCheckVisitor(_TypeVisitor):
-  """Type visitor which check the token is present in the tree."""
-
-  annotated_token: _Token
-  token_present: bool = False
-
-  def _visit_annotated(self, hint: _TypeForm):
-    super()._visit_annotated(hint)
-    if any(a is self.annotated_token for a in hint.__metadata__):
-      self.token_present = True
-
-
-# This could be removed in Python 3.11
-# Required because: https://github.com/python/cpython/issues/88962
-def _remove_kw_only(fn: _FnT) -> _FnT:
-  """Remove '_: dataclasses.KW_ONLY' from annotations."""
-
-  @functools.wraps(fn)
-  def decorated(cls):
-    old_annotations = cls.__annotations__
-
-    if '_' in old_annotations:
-      new_annotations = dict(old_annotations)
-      new_annotations.pop('_')
-    else:
-      new_annotations = old_annotations
-    try:
-      cls.__annotations__ = new_annotations
-      return fn(cls)
-    finally:
-      cls.__annotations__ = old_annotations
-
-  return decorated
+  # Recurse
+  # Note that `get_args` can return non-type values (e.g. `...`,
+  # `[]` for Callable, and any values for `Annotated`)
+  # `Callable[[int], Any]` won't be recursed into.
+  return any(
+      _is_hint_annotated_with(arg, annotated_token)
+      for arg in typing.get_args(hint)
+  )
 
 
 @functools.cache
-@_remove_kw_only
 def _get_type_hints(cls) -> dict[str, _TypeForm]:
   """Wrapper around `typing.get_type_hints` with better error message."""
   try:

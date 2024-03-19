@@ -36,6 +36,7 @@ class A:
   z: _KeyA[int]  # pytype: disable=unsupported-operands
   z_opt: Optional[_KeyA[int]]  # pytype: disable=unsupported-operands
   z_opt2: None | _KeyA[int]  # pytype: disable=unsupported-operands
+  nested: dict[str, list[_KeyA[int]]]  # pytype: disable=unsupported-operands
   a: int
 
 
@@ -48,10 +49,6 @@ def test_annotated(tokens):
       'z',
       'z_opt',
       'z_opt2',
+      'nested',
   ]
   assert type_utils.get_annotated(A, tokens[1]) == ['x0', 'x']
-
-
-def test_is_optional():
-  optional_fields = type_utils.get_optional_fields(A)
-  assert optional_fields == ['z_opt', 'z_opt2']
