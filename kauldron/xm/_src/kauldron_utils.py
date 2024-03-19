@@ -347,6 +347,10 @@ class KauldronSweep(sweep_utils.SweepInfo):
   def replace_with_jobs_provider(
       self, jobs_provider: jobs_info.JobsProvider
   ) -> Self:
+    if jobs_provider is None:
+      # `jobs_provider` is set later in `launch.py` (as it is defined by the
+      # `--cfg` flag). Could design a more robust way to do this.
+      return self
     if not isinstance(jobs_provider, KauldronJobs):
       raise TypeError(
           "`KauldronSweep` should be used with `KauldronJobs`. Got:"
