@@ -33,7 +33,7 @@ class B:
 
 
 def test_missing():
-  tree = {'a': 1, 'b': 2, 'c': 3}
+  tree = {'a': 1, 'b': {'b0': 2}, 'c': 3}
 
   with pytest.raises(ValueError, match='required keys'):
     kontext.resolve_from_keyed_obj(tree, A())
@@ -41,7 +41,40 @@ def test_missing():
   with pytest.raises(ValueError, match='required keys'):
     kontext.resolve_from_keyed_obj(tree, A(y='a'))
 
-  assert kontext.resolve_from_keyed_obj(tree, A(x='a')) == {'x': 1, 'y': None}
+  assert kontext.resolve_from_keyed_obj(tree, A(x='a')) == {'x': 1}
+  assert kontext.resolve_from_keyed_obj(tree, A(x='a', y='b')) == {
+      'x': 1,
+      'y': {'b0': 2},
+  }
+  assert kontext.resolve_from_keyed_obj(
+      tree, A(x=('a', {'image': 'b.b0'}))
+  ) == {'x': (1, {'image': 2})}
+
+  with pytest.raises(KeyError, match='Invalid keys'):
+    kontext.resolve_from_keyed_obj(tree, A(x='a.non_existing'))
+
+
+def test_signature_match():
+  tree = {'a': 1, 'b': 2, 'c': 3}
+
+  def fn0(*, x, y):
+    del x, y
+
+  # Missing argument
+  with pytest.raises(TypeError, match='signature does not match'):
+    assert kontext.resolve_from_keyed_obj(tree, A(x='a'), func=fn0)
+
+  def fn1(*, x, y=True):
+    del x, y
+
+  assert kontext.resolve_from_keyed_obj(tree, A(x='a'), func=fn1) == {'x': 1}
+
+  def fn2(*, y):
+    del y
+
+  # Extra argument
+  with pytest.raises(TypeError, match='signature does not match'):
+    assert kontext.resolve_from_keyed_obj(tree, A(x='a', y='b'), func=fn2)
 
 
 def test_protocol():

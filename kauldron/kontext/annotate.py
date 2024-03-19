@@ -23,6 +23,7 @@ import os
 from typing import Annotated, Any, Callable, Iterable, Optional
 
 from etils import epy
+import jax
 from kauldron.kontext import paths
 from kauldron.kontext import type_utils
 
@@ -35,14 +36,19 @@ _MISSING = object()
 # Protocol to returns the Keys
 _GET_KEY_PROTOCOL = "__kontext_keys__"
 
+Tree = Any
+
 
 def resolve_from_keyed_obj(
-    tree: Any, keyed_obj: Any, *, func: Optional[Callable[..., Any]] = None
+    context: Any,
+    keyed_obj: Any,
+    *,
+    func: Optional[Callable[..., Any]] = None,
 ) -> dict[str, Any]:
   """Resolve the Key annotations of an object for given context.
 
   Args:
-    tree: Any object from which the values are retrieved.
+    context: Any object from which the values are retrieved.
     keyed_obj: An instance of a class with fields annotated as Key, or
       implementing the `__kontext_keys__()` protocol.
     func: Optionally pass a function from which the signature should match the
@@ -56,81 +62,117 @@ def resolve_from_keyed_obj(
   Raises:
     KeyError: If any non-optional keys are mapped to None.
   """
-  key_paths = get_keypaths(keyed_obj)
-  missing_keys = [k for k, v in key_paths.items() if v == REQUIRED]
-  if missing_keys:
-    raise ValueError(
-        f"Cannot resolve required keys: {missing_keys} for {keyed_obj}.\n"
-        "Keys should be defined during object construction."
-    )
-  optional_keys = {  # treat Optional[Key] as optional only if set to None
-      k
-      for k in type_utils.get_optional_fields(keyed_obj)
-      if k in key_paths and key_paths[k] is None
-  }
-
-  # TODO(epot): Add tests for `func` that check error messages
-  if func is not None:
-    # If a function is passed (and doesn't accept **kwargs), then ensure that
-    # it has a parameter for each key, and that the parameter for each optional
-    # key also specifies a default value
-    parameters = inspect.signature(func).parameters
-    has_var_kwargs = any(
-        p.kind == inspect.Parameter.VAR_KEYWORD for p in parameters.values()
-    )
-    if not has_var_kwargs:
-      missing_params = {k for k in key_paths if k not in parameters}
-      if missing_params:
-        raise TypeError(
-            f"Function {func.__name__} is missing parameters for key(s) "
-            f"{missing_params}. Expected {key_paths.keys()} but got "
-            f"{parameters}."
-        )
-      args_with_default = {
-          name
-          for name, param in parameters.items()
-          if param.default != inspect.Parameter.empty
-      }
-      missing_default = {k for k in optional_keys if k not in args_with_default}
-      if missing_default:
-        raise TypeError(
-            f"Key(s) {missing_default!r} are marked as optional, so the "
-            f"corresponding argument in {func.__name__} has to specify "
-            "default value."
-        )
-
   try:
-    return resolve_from_keypaths(tree, key_paths, optional_keys=optional_keys)
+    key_paths = get_keypaths(keyed_obj)
+    # Filter optional keys
+    # If a key is `None`, we don't pass it to the function (instead rely on the
+    # function argument default value).
+    key_paths = {k: v for k, v in key_paths.items() if v is not None}
+
+    _assert_no_required_keys(key_paths)
+    if func is not None:
+      _assert_signature_match(key_paths, func)
+
+    return resolve_from_keypaths(context, key_paths)
   except Exception as e:  # pylint: disable=broad-exception-caught
     epy.reraise(e, f"Error for {type(keyed_obj).__qualname__}: ")
 
 
 def resolve_from_keypaths(
     context: Any,
-    key_paths: dict[str, str],
-    *,
-    optional_keys: Optional[set[str]] = None,
+    key_paths: Tree[str],
 ) -> dict[str, Any]:
   """Get values for key_paths from context with useful errors when failing."""
-  optional_keys = set() if optional_keys is None else optional_keys
-  key_values = {
-      key: paths.get_by_path(context, path, default=_MISSING)
-      for key, path in key_paths.items()
+  # There should not be any None values in the context.
+  # No remaining None keys left. This constraint could be relaxed based
+  # on use-case.
+  _assert_no_none_keys(key_paths)
+  key_values = jax.tree.map(
+      lambda path: paths.get_by_path(context, path, default=_MISSING),
+      key_paths,
+  )
+  _assert_no_missing_keys(context, key_paths, key_values)
+  return key_values
+
+
+def get_keypaths(keyed_obj: Any) -> dict[str, Tree[str] | None]:
+  """Return a dictionary mapping Key-annotated fieldnames to their paths."""
+  if hasattr(type(keyed_obj), _GET_KEY_PROTOCOL):
+    return getattr(keyed_obj, _GET_KEY_PROTOCOL)()
+  return {
+      key: getattr(keyed_obj, key)
+      for key in set(type_utils.get_annotated(keyed_obj, Key))
   }
-  missing_keys = {
-      key: key_paths[key]
-      for key, value in key_values.items()
-      if value is _MISSING and key not in optional_keys
-  }
+
+
+def is_key_annotated(cls_or_obj: type[Any] | Any) -> bool:
+  """Check if a given class or instance has fields annotated with `Key`."""
+  # TODO(epot): `get_annotated` should recurse into `dict`,...
+  return hasattr(cls_or_obj, _GET_KEY_PROTOCOL) or bool(
+      type_utils.get_annotated(cls_or_obj, Key)
+  )
+
+
+def _assert_no_required_keys(key_paths: Tree[str]) -> None:
+  """Raise an error if any of the key is `REQUIRED`."""
+  missing_keys = [
+      k for k, v in paths.flatten_with_path(key_paths).items() if v == REQUIRED
+  ]
   if missing_keys:
+    raise ValueError(
+        f"Cannot resolve required keys: {missing_keys}.\n"
+        "Keys should be specified during object construction."
+    )
+
+
+def _assert_no_none_keys(key_paths: Tree[str]) -> None:
+  """Raise an error if any of the key is `REQUIRED`."""
+  none_keys = [
+      k for k, v in paths.flatten_with_path(key_paths).items() if v is None
+  ]
+  if none_keys:
+    raise ValueError(
+        f"Cannot resolve keys set to `None`: {none_keys}. Please open a bug"
+        " with your use-case if you need this."
+    )
+
+
+def _assert_signature_match(
+    key_paths: Tree[str],
+    func: Callable[..., Any],
+) -> None:
+  """Validate that the signature of the function matches the key_paths."""
+  sig = inspect.signature(func)
+  try:
+    sig.bind(**key_paths)  # Validate that the keys match the signature
+  except TypeError as e:
+    raise TypeError(
+        f"Function {func.__qualname__} signature does not match the Key"
+        " annotations of the object:\n"
+        f" * Error: {e}\n"
+        f" * Signature: {str(sig)}\n"
+        f" * Provided (non-None) keys: {list(key_paths)}\n"
+    ) from None
+
+
+def _assert_no_missing_keys(context, key_paths, key_values) -> None:
+  """Raise an error if a key cannot be found inside the context."""
+  missing_values = {
+      k for k, v in paths.flatten_with_path(key_values).items() if v is _MISSING
+  }
+  if missing_values:
+    missing_keys = {
+        k: v
+        for k, v in paths.flatten_with_path(key_paths).items()
+        if k in missing_values
+    }
     flat_paths = paths.flatten_with_path(context).keys()
     details = "\n".join(
         _get_missing_key_error_message(missing_key, path, flat_paths)
         for missing_key, path in missing_keys.items()
     )
-    msg = _KeyErrorMessage(f"Missing keys\n{details}")
+    msg = _KeyErrorMessage(f"Invalid keys\n{details}")
     raise KeyError(msg)
-  return {k: None if v is _MISSING else v for k, v in key_values.items()}
 
 
 def _get_missing_key_error_message(
@@ -155,23 +197,6 @@ def _get_missing_key_error_message(
       + f"  {missing_path!r}\n"
       + "Did you mean one of:\n"
       + "\n".join([f"  {s!r}" for s in suggestions])
-  )
-
-
-def get_keypaths(keyed_obj: Any) -> dict[str, str | None]:
-  """Return a dictionary mapping Key-annotated fieldnames to their paths."""
-  if hasattr(type(keyed_obj), _GET_KEY_PROTOCOL):
-    return getattr(keyed_obj, _GET_KEY_PROTOCOL)()
-  return {
-      key: getattr(keyed_obj, key)
-      for key in set(type_utils.get_annotated(keyed_obj, Key))
-  }
-
-
-def is_key_annotated(cls_or_obj: type[Any] | Any) -> bool:
-  """Check if a given class or instance has fields annotated with `Key`."""
-  return hasattr(cls_or_obj, _GET_KEY_PROTOCOL) or bool(
-      type_utils.get_annotated(cls_or_obj, Key)
   )
 
 
