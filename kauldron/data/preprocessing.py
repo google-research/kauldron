@@ -777,3 +777,29 @@ class PadFirstDimensionToFixedSize(ElementWiseTransform):
             else []
         ),
     )
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class RandomSubsetAlongAxis(ElementWiseRandomTransform):
+  """Random take a subset of elements along specified axis.
+
+  Note that it current uses the same shuffle subset for all batches.
+
+  Attributes:
+    num_to_keep:  Number of positions to keep along the axis.  They are in a
+      random order.
+    axis:  Which axis to take the subset along.
+  """
+
+  num_to_keep: int
+  axis: int
+
+  @typechecked
+  def random_map_element(self, element: TfArray["..."], seed) -> TfArray["..."]:
+    indices = tf.random.experimental.index_shuffle(
+        index=tf.range(self.num_to_keep),
+        seed=seed,
+        max_index=tf.shape(element)[self.axis] - 1,  # Range is inclusive!
+    )
+    shuffled_vector = tf.gather(element, indices, axis=self.axis)
+    return shuffled_vector
