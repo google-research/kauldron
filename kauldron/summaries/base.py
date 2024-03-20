@@ -22,20 +22,17 @@ import math
 from typing import Any, Mapping, Optional
 
 import einops
-from etils import epy
 import flax
 import jax
 import jax.numpy as jnp
 from kauldron import kontext
 from kauldron.typing import Array, Bool, Float, Integer, Shape, UInt8, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.utils import plot_segmentation as segplot  # pylint: disable=g-import-not-at-top
 import matplotlib
 import mediapy as media
 import numpy as np
 import sklearn.decomposition
 import tensorflow as tf
-
-with epy.lazy_imports():
-  import jax3d.utils.plot_segmentation as segplot  # pylint: disable=g-import-not-at-top
 
 
 Images = Float["*b h w c"] | UInt8["*b h w c"]
