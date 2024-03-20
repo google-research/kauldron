@@ -351,6 +351,14 @@ class Rearrange(ElementWiseTransform):
     return einops.rearrange(element, self.pattern, **self.axes_lengths)
 
 
+class FlipUpsideDown(ElementWiseTransform):
+  """Flips an image vertically (upside down)."""
+
+  @typechecked
+  def map_element(self, element: TfArray["*B H W C"]) -> TfArray["*B H W C"]:
+    return tf.reverse(element, axis=[-3])
+
+
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class Repeat(ElementWiseTransform):
   """Einops repeat on a single element.
