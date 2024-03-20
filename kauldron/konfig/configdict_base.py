@@ -472,8 +472,11 @@ def _normalize_config_only_value(value, name) -> Any:
       raise ValueError(
           f'Error setting `cfg.{name}`: To avoid mixing configurable and'
           ' resolved python object, ConfigDict only accept other configurables'
-          f' (list, int, ConfigDict,...). Got: {_shortn(value, 40)}\nYou can'
-          ' use `with kd.konfig.mock_modules():` to set the value.'
+          f' (list, int, ConfigDict,...). Got: {_shortn(value, 40)}\n'
+          ' * In your config, you might have forgotten to wrap the import '
+          '   inside `konfig.imports()`\n'
+          ' * On Colab, you can wrap the assignment in '
+          '   `with kd.konfig.mock_modules()` to locally mock the module.\n'
       )
 
 
