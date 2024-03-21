@@ -20,15 +20,24 @@ import difflib
 import functools
 import inspect
 import os
-from typing import Annotated, Any, Callable, Iterable, Optional
+import typing
+from typing import Annotated, Any, Callable, Iterable, Optional, TypeVar
 
 from etils import epy
 import jax
 from kauldron.kontext import paths
 from kauldron.kontext import type_utils
 
+_T = TypeVar("_T")
+
 _key_token = object()
 Key = Annotated[Any, _key_token]  # `str` or `path_builder_from()`
+# `KeyTree` can wrap arbitrary PyTree objects when typing annotations cannot
+# be infered (e.g `ray: KeyTree[v3d.Ray]`)
+if typing.TYPE_CHECKING:
+  KeyTree = Any  # TODO(b/254514368): Remove once pytype supports `Annotated`
+else:
+  KeyTree = Annotated[_T, _key_token]
 
 REQUIRED = "__KEY_REQUIRED__"
 _MISSING = object()

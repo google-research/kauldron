@@ -23,6 +23,7 @@
 from kauldron.kontext.annotate import get_keypaths
 from kauldron.kontext.annotate import is_key_annotated
 from kauldron.kontext.annotate import Key
+from kauldron.kontext.annotate import KeyTree
 from kauldron.kontext.annotate import REQUIRED
 from kauldron.kontext.annotate import resolve_from_keyed_obj
 from kauldron.kontext.annotate import resolve_from_keypaths
