@@ -40,6 +40,7 @@ from kauldron.data.preprocessing import Rearrange
 from kauldron.data.preprocessing import Repeat
 from kauldron.data.preprocessing import Resize
 from kauldron.data.preprocessing import ResizeSmall
+from kauldron.data.preprocessing import Scale
 from kauldron.data.preprocessing import TreeFlattenWithPath
 from kauldron.data.preprocessing import ValueRange
 from kauldron.data.preprocessing import VStack

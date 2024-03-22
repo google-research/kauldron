@@ -435,6 +435,17 @@ class OneMinus(ElementWiseTransform):
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class Scale(ElementWiseTransform):
+  """Scale an element by multiplying by a factor."""
+
+  factor: float
+
+  @typechecked
+  def map_element(self, element: TfArray["*any"]) -> TfArray["*any"]:
+    return element * self.factor
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class ValueRange(ElementWiseTransform):
   """Map the value range of an element."""
 
