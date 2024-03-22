@@ -23,7 +23,7 @@ import tensorflow as tf
 
 @pytest.fixture(autouse=True)
 def graph_mode():
-  # Run in graph mode since that is what the data pipline will do
+  # Run in graph mode since that is what the data pipeline will do
   with tf.Graph().as_default():
     yield
 
@@ -96,23 +96,6 @@ def test_elements_copy_overwrite_raises():
   # copy two fields to the same target name
   with pytest.raises(ValueError):
     _ = preprocessing.Elements(copy={"old": "oops", "yes": "oops"})
-
-
-def test_add_constants():
-  values = {"new": 2}
-  el = preprocessing.AddConstants(values=values)
-  before = {"old": 1}
-  after = el.map(before)
-  assert set(after.keys()) == {"old", "new"}
-  assert after["old"] == before["old"]
-  assert after["new"] == values["new"]
-
-
-def test_add_constants_overwrite_raises():
-  el = preprocessing.AddConstants(values={"oops": 3})
-  before = {"old": 1, "oops": 2}
-  with pytest.raises(KeyError):
-    el.map(before)
 
 
 @enp.testing.parametrize_xnp(restrict=["np", "tnp"])

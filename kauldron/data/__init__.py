@@ -21,27 +21,23 @@ from kauldron.data.grain_utils import MapTransform
 from kauldron.data.in_memory import InMemoryPipeline
 from kauldron.data.pipelines import Pipeline
 from kauldron.data.pipelines import PyGrainPipeline
-from kauldron.data.preprocessing import AddConstants
+#
+# DO NOT ADD new preprocessing ops here. Instead, add them to `kd.contrib.data`
 from kauldron.data.preprocessing import Cast
 from kauldron.data.preprocessing import CenterCrop
 from kauldron.data.preprocessing import Elements
 from kauldron.data.preprocessing import ElementWiseRandomTransform
 from kauldron.data.preprocessing import ElementWiseTransform
-from kauldron.data.preprocessing import FlipUpsideDown
 from kauldron.data.preprocessing import Gather
-from kauldron.data.preprocessing import HStack
 from kauldron.data.preprocessing import InceptionCrop
 from kauldron.data.preprocessing import OneHot
-from kauldron.data.preprocessing import OneMinus
-from kauldron.data.preprocessing import PadFirstDimensionToFixedSize
 from kauldron.data.preprocessing import RandomCrop
 from kauldron.data.preprocessing import RandomFlipLeftRight
 from kauldron.data.preprocessing import Rearrange
-from kauldron.data.preprocessing import Repeat
+# TODO(epot): Unify Resize & ResizeSmall and have better API.
 from kauldron.data.preprocessing import Resize
 from kauldron.data.preprocessing import ResizeSmall
 from kauldron.data.preprocessing import TreeFlattenWithPath
 from kauldron.data.preprocessing import ValueRange
-from kauldron.data.preprocessing import VStack
 from kauldron.data.utils import BatchSize
 # pylint: enable=g-importing-member

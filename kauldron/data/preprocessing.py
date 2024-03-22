@@ -179,25 +179,6 @@ class Elements(grain.MapTransform):
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
-class AddConstants(grain.MapTransform):
-  """Adds constant elements for missing fields, eg. as needed for mixtures."""
-
-  values: Mapping[str, Any] = flax.core.FrozenDict()
-
-  def map(self, features):
-    overwrites = sorted(set(self.values.keys()) & set(features.keys()))
-    if overwrites:
-      offending_keys = [k for k, v in self.values.items() if v in overwrites]
-      raise KeyError(
-          f"Tried adding key(s) {offending_keys!r} but"
-          " target names already exist. Implicit overwriting is not supported."
-          " Please explicitly drop target keys that should be overwritten."
-      )
-    features.update(self.values)
-    return features
-
-
-@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class _ElementWise:
   """Mixin class that enables defining a key and iterating relevant elements.
 
@@ -351,55 +332,6 @@ class Rearrange(ElementWiseTransform):
     return einops.rearrange(element, self.pattern, **self.axes_lengths)
 
 
-class FlipUpsideDown(ElementWiseTransform):
-  """Flips an image vertically (upside down)."""
-
-  @typechecked
-  def map_element(self, element: TfArray["*B H W C"]) -> TfArray["*B H W C"]:
-    return tf.reverse(element, axis=[-3])
-
-
-@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
-class Repeat(ElementWiseTransform):
-  """Einops repeat on a single element.
-
-  Mostly a wrapper around einops.repeat, but also supports basic types like
-  int, float, lists and tuples (which are converted to a numpy array first).
-
-  Example:
-
-  ```
-  cfg.train_ds = kd.data.Tfds(
-      ...
-      transforms=[
-          ...,
-          kd.data.Repeat(key="image", pattern="h w c -> t h w c",
-                         axes_lengths={"t": 6}),
-      ]
-  )
-  ```
-
-  Attributes:
-    pattern: `einops.repeat` pattern, e.g. "b h w c -> b c (h w)"
-    axes_lengths: a dictionary for specifying additional axis e.g. number of
-      repeats or axis that cannot be inferred from the pattern and the tensor
-      alone.
-  """
-
-  pattern: str
-  axes_lengths: dict[str, int] = dataclasses.field(default_factory=FrozenDict)
-
-  @typechecked
-  def map_element(self, element: Any) -> XArray:
-    # Ensure element is an array (and not a python builtin)
-    # This is useful e.g. for pygrain pipelines because often "label" will be
-    # int and not an array, yet one might want to reshape it.
-    xnp = enp.lazy.get_xnp(element, strict=False)
-    element = xnp.asarray(element)
-
-    return einops.repeat(element, self.pattern, **self.axes_lengths)
-
-
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class Gather(ElementWiseTransform):
   """Gathers entries along a single dimension."""
@@ -423,15 +355,6 @@ class Cast(ElementWiseTransform):
   @typechecked
   def map_element(self, element: TfArray["*any"]) -> TfArray["*any"]:
     return tf.cast(element, self.dtype)
-
-
-@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
-class OneMinus(ElementWiseTransform):
-  """One minus an element (e.g. for inverting a mask)."""
-
-  @typechecked
-  def map_element(self, element: TfArray["*any"]) -> TfArray["*any"]:
-    return 1 - element
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -725,55 +648,4 @@ class ResizeSmall(ElementWiseTransform):
     return tf.reshape(
         resized_imgs,
         tf.concat([batch_dims, tf.shape(resized_imgs)[-3:]], axis=0),
-    )
-
-
-@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
-class HStack(ElementWiseTransform):
-  """Hstack a set of images."""
-
-  @typechecked
-  def map_element(  # pylint: disable=arguments-renamed
-      self, image: TfFloat["... N H W c"]
-  ) -> TfFloat["... H N*W c"]:
-    images = tf.unstack(image, axis=-4)
-    return tf.concat(images, axis=-2)
-
-
-@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
-class VStack(ElementWiseTransform):
-  """Vstack a set of images."""
-
-  @typechecked
-  def map_element(  # pylint: disable=arguments-renamed
-      self, image: TfFloat["... N H W c"]
-  ) -> TfFloat["... N*H W c"]:
-    images = tf.unstack(image, axis=-4)
-    return tf.concat(images, axis=-3)
-
-
-@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
-class PadFirstDimensionToFixedSize(ElementWiseTransform):
-  """Pads 0-axis of a tensor to a fixed size (can be used for sparse -> dense)."""
-
-  size: int
-  value: int = -1
-
-  @typechecked
-  def map_element(self, element):
-    pad_size = tf.maximum(self.size - tf.shape(element)[0], 0)
-    padded_element = tf.pad(
-        element,
-        ((0, pad_size),) + ((0, 0),) * (len(element.shape) - 1),  # pytype: disable=attribute-error  # allow-recursive-types
-        constant_values=self.value,
-    )
-
-    return tf.ensure_shape(
-        padded_element,
-        [self.size]
-        + (
-            element.get_shape().as_list()[1:]
-            if len(tf.shape(element)) > 1
-            else []
-        ),
     )
