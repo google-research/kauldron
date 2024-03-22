@@ -397,7 +397,7 @@ def plot_batch(batch: _Example) -> None:
   Images = ImagesGrayscale | ImagesRGB | ImagesRGBA
 
   VideosGrayscale = Float["b t h w 1"] | UInt8["b t h w 1"]
-  VideosRGB = Float["b t h w 3"] | UInt8["b t h w 3"] |  Float["b t h w 1"]
+  VideosRGB = Float["b t h w 3"] | UInt8["b t h w 3"]
   Videos = VideosGrayscale | VideosRGB
   # pylint: enable=invalid-name
 
