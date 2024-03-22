@@ -396,7 +396,9 @@ def plot_batch(batch: _Example) -> None:
   ImagesRGBA = Float["b h w 4"] | UInt8["b h w 4"]
   Images = ImagesGrayscale | ImagesRGB | ImagesRGBA
 
-  VideosRGB = Float["b t h w 3"] | UInt8["b t h w 3"]
+  VideosGrayscale = Float["b t h w 1"] | UInt8["b t h w 1"]
+  VideosRGB = Float["b t h w 3"] | UInt8["b t h w 3"] |  Float["b t h w 1"]
+  Videos = VideosGrayscale | VideosRGB
   # pylint: enable=invalid-name
 
   for k, v in kontext.flatten_with_path(batch).items():
@@ -408,11 +410,13 @@ def plot_batch(batch: _Example) -> None:
           ylabel=f'<span style="font-size: 20;">batch.{k}</span>',
           height=height,
       )
-    elif isinstance(v, VideosRGB):
+    elif isinstance(v, Videos):
       # Dynamically compute the frame-rate, capped at 25 FPS
       _, num_frames, height, _, _ = v.shape
       height = _normalize_height(height)
       fps = min(num_frames / 5.0, 25.0)
+      if isinstance(v, VideosGrayscale):
+        v = v[..., 0]  # because mediapy expects no channel dim for grayscale
 
       media.show_videos(
           v[:8],
