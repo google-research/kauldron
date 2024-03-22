@@ -55,9 +55,13 @@ def get_config():
       # Inner model
       model_inputs={"inputs": "batch.image"},
       model=kd.contrib.nn.get_model_from_xid(xid=cfg.ref.aux.xid),
-      # Readout head
-      readout_inputs={"inputs": "interms.model.encoder.__call__[0]"},
-      readout_head=nn.Dense(features=10, name="readout_head"),
+      # Readout heads
+      readout_inputs={
+          "classification": {"inputs": "interms.model.encoder.__call__[0]"}
+      },
+      readout_heads={
+          "classification": nn.Dense(features=10, name="readout_head")
+      },
       finetune=False,
   )
 
@@ -76,13 +80,13 @@ def get_config():
   # Losses
   cfg.train_losses = {
       "xent": kd.losses.SoftmaxCrossEntropyWithIntLabels(
-          logits="preds.readout", labels="batch.label"
+          logits="preds.readouts.classification", labels="batch.label"
       ),
   }
 
   cfg.train_metrics = {
       "accuracy": kd.metrics.Accuracy(
-          logits="preds.readout", labels="batch.label"
+          logits="preds.readouts.classification", labels="batch.label"
       ),
   }
   # Optimizer
