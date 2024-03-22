@@ -60,7 +60,7 @@ class Metric(abc.ABC):
      on device within a pmap. It should return an instance of `State` (1).
   4) Optionally override the `State.compute(...)` method which returns the
      final value of the metric. This method will be executed outside of
-     jit/pmap and can thus make use of external libararies to perform its
+     jit/pmap and can thus make use of external libraries to perform its
      computation.
   """
 
