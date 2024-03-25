@@ -109,22 +109,14 @@ def _get_eval(split: str) -> kd.evals.Evaluator:
   )
 
 
-def _get_ds(*, training: bool, split: str = 'train') -> nerf.data.Pipeline:
-  if training:
-    data_source = nerf.data.RaySampler(
-        num_samples=128,
-    )
-    # Num samples is the actual batch_size.
-    batch_size = 0
-  else:
-    data_source = nerf.data.ImageSampler()
-    batch_size = 32
-  return nerf.data.Pipeline(
-      scene=nerf.data.Blender(
+def _get_ds(*, training: bool, split: str = 'train') -> kd.data.Pipeline:
+  return kd.data.InMemoryPipeline(
+      loader=nerf.data.Blender(
           name='lego',
           split=split,
+          flatten=True if training else False,
       ),
-      data_source=data_source,
-      batch_size=batch_size,
+      num_epochs=None if training else 1,
+      batch_size=128 if training else 32,
       shuffle=True if training else False,
   )

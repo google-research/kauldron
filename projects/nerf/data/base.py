@@ -20,91 +20,23 @@ import abc
 import dataclasses
 import functools
 
-from grain import python as grain
-from kauldron import kd
 from projects.nerf.core import structs
 
 
-# @dataclasses.dataclass(frozen=True, kw_only=True)
-# class InMemoryPipeline(kd.data.Pipeline):
-#   """."""
-
-#   def __iter__(self) -> Iterator[PyTree[_NpArray]]:
-#     """Iterate over the dataset elements."""
-#     yield from self.loader
-
-#   def __len__(self) -> int:
-#     if self.num_epochs is None:
-#       raise TypeError("Cannot get length of infinite dataset.")
-#     else:
-#       return self.num_epochs * len(self.data_source)
-
-
-# def RandomAccessBatchedDataSource:
-#   pass
-
-
-@dataclasses.dataclass(frozen=True, kw_only=True)
-class Pipeline(kd.data.PyGrainPipeline):
-  """Small wrapper around `PyGrainPipeline`.
-
-  Only to allow a more flat structure in the config:
-
-  * `Pipeline(scene=Blender(), data_source=RaySampler())`
-
-  vs
-
-  * `Pipeline(data_source=RaySampler(scene=Blender()))`
-  """
-
-  scene: SceneBuilder
-
-  def __post_init__(self):
-    # Future proof in case base class implement `__post_init__` one day
-    if hasattr(super(), '__post_init__'):
-      super().__post_init__()  # pylint: disable=attribute-error
-
-    new_data_source = dataclasses.replace(
-        self.data_source,
-        scene_builder=self.scene,
-        seed=self.seed,
-    )
-    object.__setattr__(self, 'data_source', new_data_source)
-
-
-@dataclasses.dataclass(frozen=True, kw_only=True)
-class DataSource(grain.RandomAccessDataSource[structs.Batch]):
-  """Nerf data source."""
-
-  scene_builder: SceneBuilder = None
-  seed: int | None = None
-
-  def __len__(self) -> int:
-    """Returns the total number of records in the data source."""
-    raise NotImplementedError('Abstract method')
-
-  def __getitem__(self, record_key: int) -> structs.Batch:  # pytype: disable=signature-mismatch
-    raise NotImplementedError('Abstract method')
-
-  @functools.cached_property
-  def scene(self) -> structs.Batch:
-    return self.scene_builder.scene
-
-  @functools.cached_property
-  def batch(self) -> structs.Batch:  # -> structs.Batch['*n h w']
-    return self.scene_builder.scene.batch
-
-  @functools.cached_property
-  def flat_batch(self) -> structs.Batch:  # -> structs.Batch['(*n h w)']
-    return self.scene_builder.scene.flat_batch
-
-
-# TODO(epot): Cache results among ecolab reloads !!!
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class SceneBuilder(abc.ABC):
-  """Blender dataset."""
+  """Base class to build a scene."""
+  flatten: bool
 
   @functools.cached_property
   @abc.abstractmethod
   def scene(self) -> structs.Scene:
     raise NotImplementedError()
+
+  def __call__(self) -> structs.Batch:
+    batch = self.scene.batch
+
+    if self.flatten:
+      return batch.flatten()
+    else:
+      return batch
