@@ -19,6 +19,7 @@ from __future__ import annotations
 import ast
 import collections
 from collections.abc import Mapping, Sequence
+import functools
 from types import EllipsisType  # pylint: disable=g-importing-member
 from typing import Any, Callable, Optional, TypeVar, Union, overload
 
@@ -286,6 +287,7 @@ def _format_slice(s: slice) -> str:
   return "".join(str(f) for f in fm if f is not None)
 
 
+@functools.cache
 def _path_parser() -> lark.Lark:
   grammar_path = epath.resource_path("kauldron.kontext") / "path_grammar.lark"
   return lark.Lark(
