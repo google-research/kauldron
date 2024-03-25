@@ -49,6 +49,8 @@ class Debug:
       an uncaught exception this will prevent the experiment from stopping and
       instead start an interactive debugger. Link will be sent by email and
       found among the artifacts.
+    xprof_port: Configures xProf port.
+    g3pdb_port: Configures g3pdb port.
   """
 
   dump_hlo: bool = False
@@ -57,6 +59,8 @@ class Debug:
   # A particularly bad example: 290s vs 30s build-time on one-line change.
   pytype: bool = False
   catch_post_mortem: bool = False
+  xprof_port: bool = True
+  g3pdb_port: bool = True
 
 
 @merge_utils.add_merge_support
@@ -129,6 +133,7 @@ class JobParams:
     env_vars: Environement variables of the job
     files: Additional files to include (Mapping from filename to
       pkgdef-reference)
+    add_jax_flags: Can be disabled for non-jax jobs.
     debug: Additional debug options.
   """
 
@@ -161,6 +166,7 @@ class JobParams:
   # without having to use `files=` attribute first.
   files: dict[str, str] = dataclasses.field(default_factory=dict)
 
+  add_jax_flags: bool = True
   debug: Debug = dataclasses.field(default_factory=Debug)
 
   # Internal variable to prevent `dataclasses.replace`

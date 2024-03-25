@@ -51,6 +51,9 @@ class Job(job_params.JobParams):
       default=None, repr=False
   )
 
+  # Do NOT add new attributes here. Job attributes are defined in the base
+  # class `JobParams`
+
   @property
   def executable(self) -> xm.Executable:
     """Returns the executable."""
@@ -185,12 +188,15 @@ class Job(job_params.JobParams):
     if self.debug.catch_post_mortem:
       args["catch_post_mortem"] = True
 
-    # Could also support non-jax jobs
-    args.update(xm_jax.JaxFlags().flags())
-    # Could be hidden behind `self.debug` options
-    args["jax_log_compiles"] = True
-    args["xprof_port"] = "%port_xprof%"
-    args["g3pdb_port"] = "%port_g3pdb%"
+    # Add optional jax and debug flags.
+    if self.add_jax_flags:
+      args.update(xm_jax.JaxFlags().flags())
+      args["jax_log_compiles"] = True
+
+    if self.debug.xprof_port:
+      args["xprof_port"] = "%port_xprof%"
+    if self.debug.g3pdb_port:
+      args["g3pdb_port"] = "%port_g3pdb%"
 
     # TODO(b/322769542): Remove once XM fix this issue.
     use_auto_host_resources = _get_use_auto_host_resources(
