@@ -22,6 +22,7 @@ from collections.abc import Mapping, Sequence
 from types import EllipsisType  # pylint: disable=g-importing-member
 from typing import Any, Callable, Optional, TypeVar, Union, overload
 
+from etils import epath
 from etils import epy
 from etils.etree import jax as etree  # pylint: disable=g-importing-member
 import jax.tree_util
@@ -101,7 +102,7 @@ class Path(collections.abc.Sequence):
   @classmethod
   def from_str(cls, str_path: str) -> Path:
     try:
-      tree = _path_parser.parse(str_path)
+      tree = _path_parser().parse(str_path)
       new_path = _PathTransformer().transform(tree)
     except Exception as e:  # pylint: disable=broad-exception-caught
       epy.reraise(e, f"Could not parse path: {str_path!r}: ")
@@ -285,62 +286,13 @@ def _format_slice(s: slice) -> str:
   return "".join(str(f) for f in fm if f is not None)
 
 
-_path_parser = lark.Lark(
-    start="path",
-    regex=True,
-    grammar=r"""
-// A path is a series of dot-separated identifiers and [] based item-access.
-path: [(identifier | "[" [WS] key [WS] "]") ("." identifier | "[" [WS] key [WS] "]")*]
-?key: number   // item-access keys can be any hashable python literal
-    | boolean
-    | none
-    | string
-    | slice_key
-    | tensor_slice_key
-    | tuple_key
-
-tuple_key: "()"
-         | "(" key ",)"
-         | "(" key ("," [WS] key)+ [","] [WS]")"
-
-number: DEC_NUMBER
-      | HEX_NUMBER
-      | BIN_NUMBER
-      | OCT_NUMBER
-      | FLOAT_NUMBER
-      | COMPLEX_NUMBER
-
-integer: DEC_NUMBER
-       | HEX_NUMBER
-       | BIN_NUMBER
-       | OCT_NUMBER
-
-?tensor_axis_key: integer | slice_key | ellipsis | none
-tensor_slice_key: tensor_axis_key ["," [WS]]
-                | tensor_axis_key ("," [WS] tensor_axis_key [WS])+ ["," [WS]]
-!slice_key: [integer [WS]] ":" [WS] [integer]
-          | [integer [WS]] ":" [WS] [integer [WS]] ":" [WS] [integer]
-string: /".*?(?<!\\)(\\\\)*?"/ | /'.*?(?<!\\)(\\\\)*?'/
-!none: "None"
-!boolean: "True" | "False"
-!ellipsis: "..."
-
-identifier: IDENTIFIER
-IDENTIFIER: ID_START ID_CONTINUE*
-ID_START: /[\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}_]+/
-ID_CONTINUE: ID_START | /[\p{Mn}\p{Mc}\p{Nd}\p{Pc}·]+/
-
-DEC_NUMBER: /-?\d+/
-HEX_NUMBER: /-?0x[\da-f]*/i
-OCT_NUMBER: /-?0o[0-7]*/i
-BIN_NUMBER : /-?0b[0-1]*/i
-FLOAT_NUMBER: /-?((\d+\.\d*|\.\d+|\d+)(e[-+]?\d+)?|\d+(e[-+]?\d+))/i
-IMAG_NUMBER: (DEC_NUMBER | FLOAT_NUMBER) "j"i
-COMPLEX_NUMBER: IMAG_NUMBER
-              | "(" (FLOAT_NUMBER | DEC_NUMBER) /[+-]/ IMAG_NUMBER ")"
-WS: (" "|/\t/)+
-""",
-)
+def _path_parser() -> lark.Lark:
+  grammar_path = epath.resource_path("kauldron.kontext") / "path_grammar.lark"
+  return lark.Lark(
+      start="path",
+      regex=True,
+      grammar=grammar_path.read_text(),
+  )
 
 
 class _PathTransformer(lark.Transformer):
