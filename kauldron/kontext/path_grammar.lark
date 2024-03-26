@@ -1,5 +1,5 @@
 // A path is a series of dot-separated identifiers and [] based item-access.
-path: [(identifier | "[" [WS] key [WS] "]") ("." identifier | "[" [WS] key [WS] "]")*]
+path: [(_identifier | _getitem) (("." _identifier) | _getitem)*]
 ?key: number   // item-access keys can be any hashable python literal
     | boolean
     | none
@@ -7,6 +7,8 @@ path: [(identifier | "[" [WS] key [WS] "]") ("." identifier | "[" [WS] key [WS] 
     | slice_key
     | tensor_slice_key
     | tuple_key
+
+_getitem: "[" [WS] key [WS] "]"
 
 tuple_key: "()"
          | "(" key ",)"
@@ -34,10 +36,14 @@ string: /".*?(?<!\\)(\\\\)*?"/ | /'.*?(?<!\\)(\\\\)*?'/
 !boolean: "True" | "False"
 !ellipsis: "..."
 
-identifier: IDENTIFIER
+_identifier: wildcard | IDENTIFIER
 IDENTIFIER: ID_START ID_CONTINUE*
 ID_START: /[\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}_]+/
 ID_CONTINUE: ID_START | /[\p{Mn}\p{Mc}\p{Nd}\p{Pc}·]+/
+
+?wildcard: STAR | DOUBLE_STAR
+STAR: "*"
+DOUBLE_STAR: "**"
 
 DEC_NUMBER: /-?\d+/
 HEX_NUMBER: /-?0x[\da-f]*/i

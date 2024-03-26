@@ -16,18 +16,14 @@
 
 from __future__ import annotations
 
-import ast
 import collections
 from collections.abc import Mapping, Sequence
-import functools
-from types import EllipsisType  # pylint: disable=g-importing-member
-from typing import Any, Callable, Optional, TypeVar, Union, overload
+from typing import Any, Callable, TypeVar, Union, overload
 
-from etils import epath
 from etils import epy
 from etils.etree import jax as etree  # pylint: disable=g-importing-member
 import jax.tree_util
-import lark
+from kauldron.kontext import path_parser
 import ml_collections
 
 _T = TypeVar("_T")
@@ -35,6 +31,7 @@ PyTree = Union[_T, Sequence["PyTree[_T]"], Mapping[str, "PyTree[_T]"], Any]
 
 # Context object is a nested structure (dict, dataclass)
 Context = Any
+Part = path_parser.Part
 
 
 JaxKeyEntry = Union[
@@ -43,12 +40,13 @@ JaxKeyEntry = Union[
     jax.tree_util.GetAttrKey,
     jax.tree_util.FlattenedIndexKey,
 ]
-Part = int | float | complex | slice | str | bool | None | EllipsisType | tuple
 
 
-def _is_valid_part(part: Any) -> bool:
+def _is_valid_part(part: Any, wildcard_ok: bool = False) -> bool:
   if isinstance(part, tuple):
     return all(_is_valid_part(p) for p in part)
+  elif not wildcard_ok and isinstance(part, path_parser.Wildcard):
+    return False  # Wildcards are not supported
   else:
     return isinstance(part, Part)
 
@@ -60,7 +58,7 @@ class Path(collections.abc.Sequence):
 
   def __init__(self, *parts: Part):
     if not _is_valid_part(parts):
-      raise ValueError(f"invalid part(s) {parts}")
+      raise ValueError(f"Invalid part(s) {parts}")
     self.parts: tuple[Part, ...] = parts
 
   @overload
@@ -102,12 +100,7 @@ class Path(collections.abc.Sequence):
 
   @classmethod
   def from_str(cls, str_path: str) -> Path:
-    try:
-      tree = _path_parser().parse(str_path)
-      new_path = _PathTransformer().transform(tree)
-    except Exception as e:  # pylint: disable=broad-exception-caught
-      epy.reraise(e, f"Could not parse path: {str_path!r}: ")
-    return new_path
+    return cls(*path_parser.parse_parts(str_path))
 
   @classmethod
   def from_jax_path(cls, jax_path: tuple[JaxKeyEntry, ...]) -> Path:
@@ -285,72 +278,3 @@ def _format_slice(s: slice) -> str:
   if s.step is not None:
     fm += [":", s.step]
   return "".join(str(f) for f in fm if f is not None)
-
-
-@functools.cache
-def _path_parser() -> lark.Lark:
-  grammar_path = epath.resource_path("kauldron.kontext") / "path_grammar.lark"
-  return lark.Lark(
-      start="path",
-      regex=True,
-      grammar=grammar_path.read_text(),
-  )
-
-
-class _PathTransformer(lark.Transformer):
-  """Transforms a Lark parse-tree into a Path object."""
-
-  @staticmethod
-  def path(args: list[Any]) -> Path:
-    return Path(*args)
-
-  @staticmethod
-  def identifier(args: list[lark.Token]) -> str:
-    return str(args[0])
-
-  @staticmethod
-  def slice_key(args: list[int | str | None]) -> slice:
-    sargs: list[Optional[int]] = [None, None, None]
-    i = 0
-    for a in args:
-      if a == ":":
-        i += 1
-      else:
-        sargs[i] = int(a) if a is not None else None
-    return slice(*sargs)
-
-  @staticmethod
-  def ellipsis(_):
-    return ...
-
-  @staticmethod
-  def tensor_slice_key(args: list[Any]) -> Any:
-    return tuple(args)
-
-  @staticmethod
-  def number(args: list[str]) -> Union[int, float, complex]:
-    return ast.literal_eval(args[0])
-
-  @staticmethod
-  def integer(args: list[str]) -> int:
-    return ast.literal_eval(args[0])
-
-  @staticmethod
-  def none(_) -> None:
-    return None
-
-  @staticmethod
-  def boolean(args: list[str]) -> bool:
-    return {"True": True, "False": False}[args[0]]
-
-  @staticmethod
-  def string(args: list[str]) -> str:
-    return args[0][1:-1]
-
-  @staticmethod
-  def tuple_key(args: list[Any]) -> tuple[Any, ...]:
-    return tuple(args)
-
-  def WS(self, _):
-    # discard all whitespace tokens
-    raise lark.Discard()
