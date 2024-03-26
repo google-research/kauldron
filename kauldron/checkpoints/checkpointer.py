@@ -277,19 +277,24 @@ class Checkpointer(BaseCheckpointer):
   def all_steps(self) -> Sequence[int]:
     return self._ckpt_mgr.all_steps()
 
+  # TODO(b/330748987): Remove the loop. Currently required because `.reload`
+  # sometimes crashes during race conditions.
+  @_retry(num_retries=5, exceptions=(gfile.GOSError,))
   def reload(self) -> None:
     self._ckpt_mgr.reload()
 
   def _absolute_step(self, step: int) -> int:
     """Convert `-1` into the last step."""
     step = self._ckpt_mgr.latest_step() if step == -1 else step
-    if step not in self._ckpt_mgr.all_steps():
-      raise ValueError(f"No checkpoint is available for step {step}")
+    # Do not check step as it can lead to race conditions.
+    # if step not in self._ckpt_mgr.all_steps():
+    #   raise ValueError(f"No checkpoint is available for step {step}")
     return step  # pytype: disable=bad-return-type
 
   def item_metadata(self, step: int = -1) -> dict[str, Any]:
     """Returns the metadata (tree, shape,...) associated with the step."""
     step = self._absolute_step(step)
+    # Warning: `item_metadata` can be `None` if the step does not exists.
     return self._ckpt_mgr.item_metadata(step)
 
   def iter_new_checkpoints(
