@@ -32,6 +32,7 @@ with epy.lazy_imports():
 def show_trainer_info(
     trainer: config_lib.Trainer,
     *,
+    print_cfg: bool,
     inspect_params: bool,
     inspect_sharding: bool,
     inspect_dataset: bool,
@@ -40,8 +41,9 @@ def show_trainer_info(
   """Display various plot on the trainer."""
   cfg = trainer.raw_cfg
 
-  with ecolab.collapse("Config (modified)"):
-    _disp(cfg)
+  if print_cfg:
+    with ecolab.collapse("Config (modified)"):
+      ecolab.disp(cfg)
 
   if inspect_params:
 
@@ -55,13 +57,13 @@ def show_trainer_info(
     )
     total_params = model_overview["Own Params"].sum()
     with ecolab.collapse(f"Model Overview (#Params: {total_params:,})"):
-      _disp(model_overview)
+      ecolab.disp(model_overview)
 
     with ecolab.collapse("Structure of Context:"):
       inspect_lib.plot_context(trainer)
 
     with ecolab.collapse("Connected components:"):
-      _disp(graphviz_utils.get_connection_graph(trainer))
+      ecolab.disp(graphviz_utils.get_connection_graph(trainer))
 
     if trainer.schedules:
       with ecolab.collapse("Schedules"):
@@ -70,7 +72,7 @@ def show_trainer_info(
             num_steps=trainer.num_train_steps,
         )
         # TODO(b/299308317): Remove `IPython.display.HTML`
-        _disp(IPython.display.HTML(fig.to_html()))
+        ecolab.disp(IPython.display.HTML(fig.to_html()))
 
   if inspect_sharding:
     with ecolab.collapse("Sharding"):
@@ -88,11 +90,7 @@ def show_trainer_info(
     batch = next(iter(trainer.train_ds))
 
     with ecolab.collapse("Batch statistics"):
-      _disp(inspect_lib.get_batch_stats(batch))
+      ecolab.disp(inspect_lib.get_batch_stats(batch))
 
     with ecolab.collapse("Batch images"):
       inspect_lib.plot_batch(batch)
-
-
-def _disp(obj) -> None:
-  IPython.display.display(obj)
