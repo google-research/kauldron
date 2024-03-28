@@ -14,6 +14,7 @@
 
 """Test."""
 
+from kauldron import konfig
 from kauldron import kontext
 import pytest
 
@@ -36,7 +37,6 @@ def _assert_path(
 
 
 def test_glob_paths():
-  """Test."""
 
   _assert_path(
       path_str='a.*[0]',
@@ -112,6 +112,27 @@ def test_glob_paths():
           'a1': {'b2': [1, 2, 3]},
           'a2': [1, 2, 3],
       },
+  )
+
+
+def test_config_dict():
+
+  _assert_path(
+      path_str='a.*.b',
+      ctx=konfig.ConfigDict({
+          'a': [
+              konfig.ConfigDict({'b': 'old'}),
+              konfig.ConfigDict({'c': 'old'}),
+              konfig.ConfigDict({'b': 'old'}),
+          ],
+      }),
+      expected_ctx=konfig.ConfigDict({
+          'a': [
+              konfig.ConfigDict({'b': 'new'}),
+              konfig.ConfigDict({'b': 'new', 'c': 'old'}),
+              konfig.ConfigDict({'b': 'new'}),
+          ],
+      }),
   )
 
 

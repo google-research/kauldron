@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import abc
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Sequence, MutableMapping
 import dataclasses
 from typing import Any
 
@@ -74,7 +74,7 @@ class _Node(abc.ABC):
   @classmethod
   def make(cls, obj) -> _Node:
     match obj:
-      case dict():  # TODO(epot): Support `ConfigDict`
+      case MutableMapping():
         return _Dict(obj)
       case list():
         return _List(obj)

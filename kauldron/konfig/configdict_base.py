@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import builtins
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, MutableMapping
 import copy
 import dataclasses
 import functools
@@ -43,6 +43,9 @@ _ALIASES = {
 # This map the qualname to the default values to inject, when the `ConfigDict`
 # is created. See `konfig.register_default_values`
 _QUALNAME_TO_DEFAULT_VALUES: dict[str, ConfigDict] = {}
+
+# Register to support `isinstance(cfg, collections.abc.Mapping)`
+MutableMapping.register(ml_collections.ConfigDict)  # pytype: disable=attribute-error
 
 
 class ConfigDict(ml_collections.ConfigDict):
