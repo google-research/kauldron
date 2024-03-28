@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import collections
 from collections.abc import Mapping, Sequence
-from typing import Any, Callable, TypeVar, Union, overload
+from typing import Any, Callable, ClassVar, Self, TypeVar, Union, overload
 
 from etils import epy
 from etils.etree import jax as etree  # pylint: disable=g-importing-member
@@ -42,22 +42,24 @@ JaxKeyEntry = Union[
 ]
 
 
-def _is_valid_part(part: Any, wildcard_ok: bool = False) -> bool:
+def _is_valid_part(part: Any, *, wildcard_ok: bool = False) -> bool:
   if isinstance(part, tuple):
-    return all(_is_valid_part(p) for p in part)
+    return all(_is_valid_part(p, wildcard_ok=wildcard_ok) for p in part)
   elif not wildcard_ok and isinstance(part, path_parser.Wildcard):
     return False  # Wildcards are not supported
   else:
     return isinstance(part, Part)
 
 
-class Path(collections.abc.Sequence):
+class AbstractPath(collections.abc.Sequence):
   """Represents a string path."""
 
   __slots__ = ("parts",)
 
+  _SUPPORT_GLOB: ClassVar[bool]
+
   def __init__(self, *parts: Part):
-    if not _is_valid_part(parts):
+    if not _is_valid_part(parts, wildcard_ok=self._SUPPORT_GLOB):
       raise ValueError(f"Invalid part(s) {parts}")
     self.parts: tuple[Part, ...] = parts
 
@@ -66,10 +68,10 @@ class Path(collections.abc.Sequence):
     ...
 
   @overload
-  def __getitem__(self, key: slice) -> Path:
+  def __getitem__(self, key: slice) -> Self:
     ...
 
-  def __getitem__(self, key: int | slice) -> Part | Path:
+  def __getitem__(self, key: int | slice) -> Part | Self:
     if isinstance(key, int):
       return self.parts[key]
     elif isinstance(key, slice):
@@ -88,7 +90,7 @@ class Path(collections.abc.Sequence):
     return hash(hashable_parts)
 
   def __eq__(self, other: Any) -> bool:
-    if isinstance(other, Path):
+    if isinstance(other, type(self)):
       return self.parts == other.parts
     else:
       return False
@@ -99,11 +101,11 @@ class Path(collections.abc.Sequence):
     return r
 
   @classmethod
-  def from_str(cls, str_path: str) -> Path:
+  def from_str(cls, str_path: str) -> Self:
     return cls(*path_parser.parse_parts(str_path))
 
   @classmethod
-  def from_jax_path(cls, jax_path: tuple[JaxKeyEntry, ...]) -> Path:
+  def from_jax_path(cls, jax_path: tuple[JaxKeyEntry, ...]) -> Self:
     """Create Path object from a jax path.
 
     Args:
@@ -114,6 +116,15 @@ class Path(collections.abc.Sequence):
       The corresponding `kontext.Path`.
     """
     return cls(*(_jax_key_entry_to_kd_path_element(p) for p in jax_path))
+
+  def set_in(self, context: Context, value: Any) -> None:
+    raise NotImplementedError("Abstract method")
+
+
+class Path(AbstractPath):
+  """Represents a (non-glob) string path."""
+
+  _SUPPORT_GLOB = False
 
   # TODO(klausg): docstring, annotations and better name
   def get_from(
@@ -147,7 +158,7 @@ class Path(collections.abc.Sequence):
           return default
     return result
 
-  def set_in(self, context: Context, value: Any):
+  def set_in(self, context: Context, value: Any) -> None:
     """Set the object in the path."""
     root = context
 
@@ -184,7 +195,9 @@ def _jax_key_entry_to_kd_path_element(
 
 
 def get_by_path(
-    obj: Context, path: str | tuple[str, ...] | Path, default=...
+    obj: Context,
+    path: str | tuple[str, ...] | Path,
+    default=...,
 ) -> Any:
   """Get (nested) item or attribute by given path.
 
@@ -247,6 +260,8 @@ def _format_part(part: Any) -> str:
   """Format a single part of a path."""
   if isinstance(part, str) and part.isidentifier():
     return "." + part
+  elif isinstance(part, path_parser.Wildcard):
+    return "." + str(part)
   elif isinstance(part, slice):
     return f"[{_format_slice(part)}]"
   elif part == ...:
@@ -255,6 +270,7 @@ def _format_part(part: Any) -> str:
     parts_str = ",".join(_format_axis(ax) for ax in part)
     return f"[{parts_str}]"
   else:
+    # TODO(epot): Should check all cases and end with `else: raise`
     return f"[{part!r}]"
 
 

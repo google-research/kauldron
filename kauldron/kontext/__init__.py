@@ -27,6 +27,7 @@ from kauldron.kontext.annotate import KeyTree
 from kauldron.kontext.annotate import REQUIRED
 from kauldron.kontext.annotate import resolve_from_keyed_obj
 from kauldron.kontext.annotate import resolve_from_keypaths
+from kauldron.kontext.glob_paths import GlobPath
 from kauldron.kontext.path_builder import path_builder_from
 from kauldron.kontext.paths import Context
 from kauldron.kontext.paths import flatten_with_path

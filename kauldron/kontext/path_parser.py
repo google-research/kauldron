@@ -79,9 +79,10 @@ class _PathTransformer(lark.Transformer):
     return args
 
   @staticmethod
-  def IDENTIFIER(args: list[lark.Token]) -> str:
-    assert isinstance(args, str)
-    return args
+  def IDENTIFIER(args: lark.Token) -> str:
+    assert isinstance(args, lark.Token)
+    assert isinstance(args.value, str)
+    return args.value
 
   @staticmethod
   def slice_key(args: list[int | str | None]) -> slice:
