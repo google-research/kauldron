@@ -18,14 +18,14 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 import contextlib
-from typing import Any, Optional
+import itertools
+from typing import Optional
 
 from absl import logging
 from etils import epath
 from etils import exm
 import jax
 import jax.numpy as jnp
-from kauldron.data import data_utils
 from kauldron.evals import eval_impl
 from kauldron.inspect import profile_utils
 from kauldron.train import checkpoint_state
@@ -35,6 +35,7 @@ from kauldron.train import timer as timer_module
 from kauldron.train import train_step
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 from kauldron.utils import utils
+from kauldron.utils.sharding_utils import sharding as sharding_lib  # pylint: disable=g-importing-member
 import tensorflow as tf
 
 # Jax config options
@@ -57,34 +58,33 @@ def train_impl(
 
   status.log("Initializing ...")
   trainstep = trainer.trainstep
-  ckptr = trainer.checkpointer
+  ckpt = trainer.checkpointer
   writer = trainer.writer
-  latest_step = ckptr.latest_step
+  latest_step = ckpt.latest_step
   initial_step = 0 if latest_step is None else latest_step
 
   state = trainstep.init(
       elem_spec=trainer.train_ds.element_spec,
       skip_transforms=latest_step is not None,
   )
-
   timer = timer_module.PerformanceTimer(
       initial_step_num=initial_step,
       initial_training_time_hours=0.0,
       per_device_batch_size=trainer.train_ds.batch_size / jax.device_count(),
       global_batch_size=trainer.train_ds.batch_size,
   )
+  ds_iter = iter(trainer.train_ds)
 
   # Initialize CheckpointManager and attempt to restore state.
-  # TODO(epot): pipeline=self.pipeline,
-  state, timer = ckptr.restore(
-      checkpoint_state.CheckpointState(state, timer),
+  (state, timer, ds_iter) = ckpt.restore(
+      checkpoint_state.CheckpointState(state, timer, ds_iter),
       noop_if_missing=True,
   )
 
   if initial_step == 0:
     writer.write_config(trainer.raw_cfg)
     writer.write_param_overview(initial_step, state.params)
-    writer.write_element_spec(initial_step, trainer.train_ds.element_spec)
+    writer.write_element_spec(initial_step, ds_iter.element_spec)
     writer.write_context_structure(initial_step, trainer)
 
   aux = None
@@ -92,18 +92,21 @@ def train_impl(
   status.log(f"Starting training loop at step {initial_step}")
   with _transfer_guard():
     # NOTE: DO *NOT* CHANGE THE ORDER OF OPERATIONS IN THE TRAINING LOOP!
-    for i, batch in _enum_ds_with_hooks(
-        trainer.train_ds.device_put(trainer.sharding.ds),
+    for i in _enum_steps_with_hooks(
         initial_step=initial_step,
         num_train_steps=trainer.num_train_steps,
         stop_after_steps=trainer.stop_after_steps,
         profiler=trainer.profiler,
     ):
       with timer.exclude_from_step_stats():
-        if ckptr.should_save(i):
+        if ckpt.should_save(i):
           # Take the time after executing the last training step so
           # that the times logged and stored with the checkpoint match.
-          ckptr.save(checkpoint_state.CheckpointState(state, timer), step=i)
+          # TODO(epot): Should check `i` and `state.step` match
+          ckpt.save(
+              checkpoint_state.CheckpointState(state, timer, ds_iter),
+              step=i,
+          )
 
         for evaluator in trainer.evals.values():
           evaluator.maybe_eval(step=i, state=state)
@@ -112,6 +115,8 @@ def train_impl(
       log_metrics = i % trainer.log_metrics_every == 0
       log_any = log_metrics or log_summaries
 
+      batch = next(ds_iter)  # Only mutate `ds_iter` after `ckpt.save`
+      batch = sharding_lib.device_put(batch, trainer.sharding.ds)
       state, aux = trainstep.step(
           state,
           batch,
@@ -139,19 +144,18 @@ def train_impl(
 
   _sync()
   # TODO(b/321010908): Should sync the checkpoints
-  # ckptr.wait_until_finished()
+  # ckpt.wait_until_finished()
   # Returning the final state is convenient for interactive training in colab
   return state, aux
 
 
-def _enum_ds_with_hooks(
-    ds: data_utils.IterableDataset,
+def _enum_steps_with_hooks(
     *,
     initial_step: int,
     num_train_steps: Optional[int],
     stop_after_steps: Optional[int],
     profiler: profile_utils.Profiler,
-) -> Iterator[tuple[int, Any]]:
+) -> Iterator[int]:
   """Enumerate over the train dataset.
 
   This function:
@@ -161,7 +165,6 @@ def _enum_ds_with_hooks(
   * Add tdqm bar
 
   Args:
-    ds: Train dataset to iterate on
     initial_step: Initial step (e.g. if restoring the checkpoint)
     num_train_steps: Same as `trainer.num_train_steps`
     stop_after_steps: Same as `trainer.stop_after_steps`
@@ -180,20 +183,20 @@ def _enum_ds_with_hooks(
 
   total_steps = num_train_steps + 1
   if stop_after_steps is not None:
-    total_steps = min(total_steps, initial_step + stop_after_steps)
+    total_steps = min(total_steps, stop_after_steps)
 
   hooks = []
   if status.is_lead_host:
     hooks.append(profiler)
 
-  for i, batch in utils.enum_iter(
-      ds,
+  for i, _ in utils.enum_iter(
+      itertools.repeat(None),
       init_step=initial_step,
       total_steps=total_steps,
       desc="train",
       log_xm=True,
   ):
-    yield i, batch
+    yield i
     for h in hooks:
       h(i)
 

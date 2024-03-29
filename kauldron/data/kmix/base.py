@@ -19,7 +19,7 @@ from collections.abc import Sequence
 import dataclasses
 import functools
 import sys
-from typing import Any, Iterator, Optional, TypeAlias
+from typing import Any, Optional, TypeAlias
 
 from etils import enp
 from grain._src.tensorflow import transforms as grain_transforms
@@ -27,6 +27,7 @@ import grain.tensorflow as grain
 import jax
 from kauldron import random
 from kauldron.data import grain_utils
+from kauldron.data import iterators
 from kauldron.data import pipelines
 from kauldron.typing import PyTree  # pylint: disable=g-importing-member,g-multiple-import
 import tensorflow as tf
@@ -34,7 +35,6 @@ import tensorflow_datasets as tfds
 
 
 # Output of `tfds.as_numpy`
-_NpTfdsDataset: TypeAlias = Any
 _NpArray: TypeAlias = Any
 
 # Sentinel value that indicate the field should only be activated at the top
@@ -102,22 +102,27 @@ class Base(pipelines.Pipeline, abc.ABC):
 
   # ======================== Public API ========================
 
-  def __iter__(self) -> Iterator[PyTree[_NpArray]]:
+  def __iter__(self) -> iterators.Iterator:
     """Iterate over the dataset elements."""
-    return iter(self._root_ds_iter)
+    # TODO(epot): Add once TFGrain support checkpointing (stateful ops in)
+    # return iterators.TFDataIterator(source=self, iter=iter(self._root_ds))
+
+    return iterators.NonCheckpointableIterator(
+        source=self, iter=iter(tfds.as_numpy(self._root_ds))
+    )
 
   @property
   def element_spec(self) -> PyTree[enp.ArraySpec]:
     """Returns the element specs of the dataset."""
-    return self._root_ds_iter.element_spec
+    return self._root_ds.element_spec
 
   def __len__(self) -> int:
-    return len(self._root_ds_iter)
+    return len(self._root_ds)
 
   # ======================== Internals ========================
 
   @functools.cached_property
-  def _root_ds_iter(self) -> _NpTfdsDataset:
+  def _root_ds(self) -> tf.data.Dataset:
     """Returns a numpy tf.data.Dataset iterator."""
     self._assert_root_cfg_resolved()
 
@@ -131,8 +136,6 @@ class Base(pipelines.Pipeline, abc.ABC):
 
     # Drop grain meta features
     ds = ds.map(lambda ex: grain_utils.split_grain_meta_features(ex)[1])
-
-    ds = tfds.as_numpy(ds)
     return ds
 
   def ds_with_transforms(

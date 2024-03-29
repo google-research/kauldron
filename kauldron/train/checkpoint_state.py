@@ -19,6 +19,7 @@ from __future__ import annotations
 import typing
 
 from kauldron import checkpoints
+from kauldron.data import iterators
 from kauldron.train import timer as timer_module
 from kauldron.train import train_step
 
@@ -41,6 +42,7 @@ class _CheckpointState(typing.NamedTuple):
 
   train_state: train_step.TrainState
   timer: timer_module.PerformanceTimer
+  ds_iter: iterators.Iterator
 
   # `train_state` is saved as the default name
   DEFAULT_ITEM = 'train_state'

@@ -23,11 +23,14 @@ import itertools
 from typing import Any, Optional
 
 import jax
+from kauldron.data import iterators
 from kauldron.data import pipelines
 from kauldron.data import utils
 import numpy as np
 
 _ArrayTree = Any
+
+# TODO(b/325610230): Delete once PyGrain support efficient batch-lookup
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -50,10 +53,13 @@ class InMemoryPipeline(pipelines.Pipeline):
 
   # TODO(epot): Support `transformations=`
 
-  def __iter__(self) -> Iterator[_ArrayTree]:
+  def iter(self) -> Iterator[_ArrayTree]:
     """Iterator."""
     for indices in self.sampler:
       yield jax.tree.map(lambda x: x[indices], self.examples)  # pylint: disable=cell-var-from-loop
+
+  def __iter__(self):
+    return iterators.NonCheckpointableIterator(source=self, iter=self.iter())
 
   def __len__(self):
     return len(self.sampler)
