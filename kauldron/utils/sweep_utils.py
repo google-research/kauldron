@@ -75,6 +75,6 @@ def update_with_sweep(
   sweep_kwargs: dict[str, Any] = utils.json_list_to_tuple(sweep_kwargs)
 
   for k, v in sweep_kwargs.items():
-    kontext.Path.from_str(k).set_in(config, v)
+    kontext.set_by_path(config, k, v)
 
   return config

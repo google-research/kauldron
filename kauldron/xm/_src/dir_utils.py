@@ -166,7 +166,7 @@ def _filter_invalid_chars(sweep_str: str) -> str:
   sweep_str = sweep_str.replace("[", "(")
   sweep_str = sweep_str.replace("]", ")")
   # The following chars seems to work: # { ( : ' " ,
-  for c in ("\n", "%", "/", "\\"):
+  for c in ("*", "\n", "%", "/", "\\"):
     sweep_str = sweep_str.replace(c, "")
   return sweep_str
 

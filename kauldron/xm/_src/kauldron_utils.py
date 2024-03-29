@@ -146,7 +146,7 @@ class KauldronJobs(jobs_info.JobsProvider):
 
     # Apply the `overrides` as they can contain info on XM `--cfg.xm_job....`
     for k, v in self.overrides.items():
-      kontext.Path.from_str(k).set_in(self.config, v)
+      kontext.set_by_path(self.config, k, v)
 
   @functools.cached_property
   def config_path(self) -> pathlib.Path:
