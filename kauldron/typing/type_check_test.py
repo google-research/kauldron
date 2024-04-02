@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import dataclasses
 from kauldron.typing import Float, TypeCheckError, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import numpy as np
 import pytest
@@ -46,3 +47,69 @@ def test_decorator2():
 
   with pytest.raises(TypeCheckError):
     _foo(x=np.zeros((10, 2)), y=np.zeros((10, 3)))
+
+
+def _dataclass_test_helper(cls):
+  # The following function has an intentional bug.
+  # It returns a Float["B T"] instead of Float["T B"].
+  @typechecked
+  def _foo(a: cls) -> Float["B T"]:
+    return a.a
+
+  # Technically this should is still wrong, because although the size of the
+  # dimensions match (B = 2, T = 2) gets mapped to (T = 2, B = 2), the order
+  # of the dimensions is swapped.
+  # But the type checker can't see that.
+  _foo(cls(a=np.zeros((2, 2)), b=np.zeros((2, 2))))
+
+  with pytest.raises(TypeCheckError):
+    # Wrong type! np.ndarray instead of A.
+    _foo(np.zeros((2, 2)))
+
+  with pytest.raises(TypeCheckError):
+    # B,T are not interchangeable here, hence this will fail.
+    _foo(cls(a=np.zeros((2, 3)), b=np.zeros((2, 3))))
+
+
+def test_dataclass():
+  @dataclasses.dataclass
+  class A:
+    a: Float["T B"]
+
+  @dataclasses.dataclass
+  class B(A):
+    b: Float["T B"]
+
+  @dataclasses.dataclass
+  class C:
+    a: Float["T B"]
+    b: Float["T B"]
+
+  _dataclass_test_helper(B)
+  _dataclass_test_helper(C)
+
+
+# Note: These datac-classes need to be defined outside the test_dataclass()
+# otherwise one cannot annotate TestB.a with the type TestA, because the type
+# checker will get confused.
+@dataclasses.dataclass
+class TestA:
+  a: Float["T B"]
+
+
+@dataclasses.dataclass
+class TestB:
+  a: TestA
+
+
+def test_nested_dataclass():
+
+  @typechecked
+  def _foo(b: TestB) -> TestA:
+    return b.a
+
+  _foo(TestB(a=TestA(a=np.zeros((2, 2)))))
+
+  with pytest.raises(TypeCheckError):
+    # Wrong shape
+    _foo(TestB(a=TestA(a=np.zeros((2, 2, 2)))))

@@ -23,7 +23,7 @@ import re
 import sys
 import types
 import typing
-from typing import Any, Type, Union
+from typing import Any, Type, TypedDict, Union
 
 from etils import enp
 import jax
@@ -197,7 +197,7 @@ class ArraySpecMatch:
     if self.array_spec.dtypes is jaxtyping._array_types._any_dtype:  # pylint: disable=protected-access
       return True
 
-    dtype = get_dtype_str(self.value)
+    dtype = _get_dtype_str(self.value)
     for cls_dtype in self.array_spec.dtypes:
       if type(cls_dtype) is str:  # pylint: disable=unidiomatic-typecheck
         if dtype == cls_dtype:
@@ -244,8 +244,8 @@ class ArraySpecMatch:
       )
     if not self.dtype_correct:
       return (
-          f"{array_spec_repr} because of dtype ({get_dtype_str(self.value)} not"
-          f" in {self.array_spec.dtypes})"
+          f"{array_spec_repr} because of dtype ({_get_dtype_str(self.value)}"
+          f" not in {self.array_spec.dtypes})"
       )
     if not self.shape_correct:
       return (
@@ -255,7 +255,7 @@ class ArraySpecMatch:
     return f"{array_spec_repr} matches"  # shouldn't happen
 
 
-def custom_array_type_union_checker(
+def _custom_array_type_union_checker(
     value: Any,
     origin_type: Any,
     args: tuple[Any, ...],
@@ -319,7 +319,7 @@ def _is_jax_extended_dtype(dtype: Any) -> bool:
     return jax.core.is_opaque_dtype(dtype)  # type: ignore[module-attr]
 
 
-def get_dtype_str(value) -> str:
+def _get_dtype_str(value) -> str:
   """Get value dtype as a string for any array (np, jnp, tf, torch)."""
   if _is_jax_extended_dtype(value.dtype):
     return str(value.dtype)
@@ -358,7 +358,7 @@ def _match_any(
   return None  # Any always matches, never raise an exception
 
 
-def array_spec_checker_lookup(
+def _array_spec_checker_lookup(
     origin_type: Any, args: tuple[Any, ...], extras: tuple[Any, ...]
 ) -> typeguard.TypeCheckerCallable | None:
   """Lookup function to register custom array type checkers in typeguard."""
@@ -366,11 +366,54 @@ def array_spec_checker_lookup(
   if origin_type in [Union, types.UnionType]:
     # TODO(klausg): handle Union of ArrayType with other types
     if all(_is_array_type(arg) for arg in args):
-      return custom_array_type_union_checker
+      return _custom_array_type_union_checker
   if origin_type is Any:
     # By default typeguard doesn't support Any annotations
     # this is a workaround.
     return _match_any
+  return None
+
+
+def _custom_dataclass_checker(
+    value: Any,
+    origin_type: Any,
+    args: tuple[Any, ...],
+    memo: typeguard.TypeCheckMemo,
+) -> None:
+  """Custom checker for typeguard to better support dataclass annotations."""
+  del args
+  # Check if the value is of the right type.
+  if not isinstance(value, origin_type):
+    raise typeguard.TypeCheckError(
+        f"was of type {type(value)} which is not {origin_type}"
+    )
+  # Convert dataclass values and annotations into a TypedDict.
+  fields = dataclasses.fields(origin_type)
+  dataclass_as_typed_dict = TypedDict(
+      "dataclass_as_typed_dict",
+      {f.name: f.type for f in fields},
+  )  # pytype: disable=wrong-arg-types
+  values = {k.name: getattr(value, k.name) for k in fields}
+  try:
+    return typeguard.check_type(
+        dataclass_as_typed_dict(**values),
+        dataclass_as_typed_dict,
+        memo=memo,
+    )
+  # TODO(thomaskeck) Avoid causing NameErrors.
+  # Ignore NameErrors, that can happen if a dataclass contains a Generic TypeVar
+  # annotation that cannot be resolved.
+  except NameError:
+    pass
+
+
+def _dataclass_checker_lookup(
+    origin_type: Any, args: tuple[Any, ...], extras: tuple[Any, ...]
+) -> typeguard.TypeCheckerCallable | None:
+  """Lookup function to register custom dataclass checkers in typeguard."""
+  del args, extras
+  if dataclasses.is_dataclass(origin_type):
+    return _custom_dataclass_checker
   return None
 
 
@@ -394,4 +437,5 @@ def add_custom_checker_lookup_fn(lookup_fn):
     checker_lookup_fns[:0] = [lookup_fn]
 
 
-add_custom_checker_lookup_fn(array_spec_checker_lookup)
+add_custom_checker_lookup_fn(_array_spec_checker_lookup)
+add_custom_checker_lookup_fn(_dataclass_checker_lookup)
