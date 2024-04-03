@@ -32,6 +32,7 @@ from kauldron.utils import config_util
 import orbax.checkpoint as ocp
 
 _State = checkpoint_items.CheckpointItem
+_FnT = TypeVar("_FnT", bound=Callable[..., Any])
 _StateT = TypeVar("_StateT", bound=_State)
 
 CHECKPOINT_FOLDER_NAME = "checkpoints"
@@ -160,7 +161,7 @@ class Checkpointer(BaseCheckpointer):
     fast: (internal) Activate some optimizations
   """
 
-  workdir: str | epath.Path = config_util.ROOT_CFG_REF.workdir
+  workdir: epath.PathLike = config_util.ROOT_CFG_REF.workdir
 
   save_interval_steps: int
   max_to_keep: Optional[int] = 3

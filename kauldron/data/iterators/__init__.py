@@ -18,4 +18,5 @@
 
 from kauldron.data.iterators.iterators import Iterator
 from kauldron.data.iterators.noop_handler import NonCheckpointableIterator
+from kauldron.data.iterators.pygrain_handler import PyGrainIterator
 from kauldron.data.iterators.tfdata_handler import TFDataIterator

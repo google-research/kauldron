@@ -67,7 +67,7 @@ class Pipeline(data_utils.IterableDataset, config_util.UpdateFromRootCfg):
       preprocessing. Defaults to the seed from the root config.
   """
 
-  batch_size: int
+  batch_size: int | None
   seed: Optional[PRNGKeyLike] = config_util.ROOT_CFG_REF.seed
 
   @functools.cached_property
@@ -259,10 +259,7 @@ class PyGrainPipeline(Pipeline):
 
   def __iter__(self) -> iterators.Iterator:
     """Iterate over the dataset elements."""
-    # TODO(epot): return iterable.PyGrainIterator(self.loader)
-    return iterators.NonCheckpointableIterator(
-        source=self, iter=iter(self.loader)
-    )
+    return iterators.PyGrainIterator(source=self, iter=iter(self.loader))
 
   def __len__(self) -> int:
     if self.num_epochs is None:
