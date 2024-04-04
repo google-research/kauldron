@@ -115,7 +115,9 @@ class BaseCheckpointer(config_util.UpdateFromRootCfg, abc.ABC):
     yield from []
 
 
-def _retry(num_retries=3, retry_delay_seconds=5, exceptions=(Exception,)):
+def _retry(
+    num_retries=3, retry_delay_seconds=5, exceptions=(Exception,)
+) -> Callable[[_FnT], _FnT]:
   """Decorator for retrying a function call upon exceptions.
 
   Args:
@@ -142,6 +144,8 @@ def _retry(num_retries=3, retry_delay_seconds=5, exceptions=(Exception,)):
           )
           if attempt < num_retries:
             time.sleep(retry_delay_seconds)
+          else:
+            raise
 
     return wrapper
 
