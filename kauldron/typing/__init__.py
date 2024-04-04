@@ -29,6 +29,7 @@ from kauldron.typing.array_types import (  # pylint: disable=g-multiple-import
     Float32,
     Int,
     Integer,
+    Num,
     Scalar,
     ScalarFloat,
     ScalarInt,

@@ -22,6 +22,7 @@ import sys
 from typing import Any, Optional, TypeAlias
 
 from etils import enp
+from etils.etree import jax as etree  # pylint: disable=g-importing-member
 from grain._src.tensorflow import transforms as grain_transforms
 import grain.tensorflow as grain
 import jax
@@ -114,7 +115,7 @@ class Base(pipelines.Pipeline, abc.ABC):
   @property
   def element_spec(self) -> PyTree[enp.ArraySpec]:
     """Returns the element specs of the dataset."""
-    return self._root_ds.element_spec
+    return etree.spec_like(self._root_ds.element_spec)
 
   def __len__(self) -> int:
     return len(self._root_ds)

@@ -34,7 +34,7 @@ from kauldron import kontext
 from kauldron import random as kd_random
 from kauldron import train
 from kauldron.data import utils as data_utils
-from kauldron.typing import Float, UInt8  # pylint: disable=g-multiple-import
+from kauldron.typing import Float, Num, UInt8  # pylint: disable=g-multiple-import
 from kauldron.utils import pd_utils
 from kauldron.utils import sharding_utils
 import mediapy as media
@@ -372,17 +372,15 @@ def get_colab_model_overview(
 
 def get_batch_stats(batch: _Example) -> pd.DataFrame:
   """Return `pd.DataFrame` containing the batch stats."""
-  # TODO(epot):
-  # * Supports string too
   return pd.DataFrame([
       {
           "Name": f"batch.{k}",
           "Dtype": v.dtype,
           "Shape": v.shape,
-          "Min": np.min(v),
-          "Max": np.max(v),
-          "Mean": np.mean(v),
-          "StdDev": np.std(v),
+          "Min": v.min() if isinstance(v, Num["..."]) else "-",
+          "Max": v.max() if isinstance(v, Num["..."]) else "-",
+          "Mean": v.mean() if isinstance(v, Num["..."]) else "-",
+          "StdDev": v.std() if isinstance(v, Num["..."]) else "-",
       }
       for k, v in kontext.flatten_with_path(batch).items()
   ])

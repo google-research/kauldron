@@ -74,6 +74,7 @@ Int = ArrayAliasMeta("Int", jaxtyping.Int)
 UInt8 = ArrayAliasMeta("UInt8", jaxtyping.UInt8)
 UInt32 = ArrayAliasMeta("UInt32", jaxtyping.UInt32)
 Integer = ArrayAliasMeta("Integer", jaxtyping.Integer)
+Num = ArrayAliasMeta("Num", jaxtyping.Num)
 
 Scalar = Array[""]
 ScalarFloat = Float[""]
