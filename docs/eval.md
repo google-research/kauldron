@@ -4,7 +4,7 @@
 
 ### Use eval
 
-Eval can be defined on the `eval` attribute of `kd.train.Trainer`:
+Eval can be defined on the `evals` attribute of `kd.train.Trainer`:
 
 ```python
 cfg = kd.train.Trainer()
