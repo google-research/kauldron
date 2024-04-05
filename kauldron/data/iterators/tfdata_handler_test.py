@@ -31,6 +31,7 @@ def test_orbax(tmp_path: pathlib.Path):
 
   mgr = ocp.CheckpointManager(tmp_path)
   mgr.save(args=tfdata_handler.TFDataArg(ds_iter), step=0)
+  mgr.wait_until_finished()
 
   mgr = ocp.CheckpointManager(tmp_path)
   restored_iter = mgr.restore(args=tfdata_handler.TFDataArg(iter(ds)), step=0)
