@@ -14,6 +14,7 @@
 
 """Tests for configdict_proxy."""
 
+import json
 import pathlib
 import types
 
@@ -140,3 +141,71 @@ def test_configdict_args_mutation():
 
   expected_obj = pathlib.Path("a", "b2", "c1")
   assert konfig.resolve(obj) == expected_obj
+
+
+def test_configdict_shared():
+  with konfig.imports():
+    import types as fake_types  # pylint: disable=reimported,g-import-not-at-top  # pytype: disable=import-error
+
+  model = fake_types.SimpleNamespace(num_layers=4)
+  model2 = fake_types.SimpleNamespace(num_layers=4)
+  cfg = fake_types.SimpleNamespace(
+      model=model,
+      sub=fake_types.SimpleNamespace(
+          elems=[
+              model,
+              model,
+              model2,
+              model2,
+              fake_types.SimpleNamespace(num_layers=4),
+          ],
+      ),
+  )
+  ns = konfig.resolve(cfg)
+
+  assert ns.model is ns.sub.elems[0]
+  assert ns.model is ns.sub.elems[1]
+  assert ns.model is not ns.sub.elems[2]
+  assert ns.sub.elems[2] is ns.sub.elems[3]
+
+  # Ids are preserved after serialization/deserialization.
+  data = json.loads(cfg.to_json())
+  assert data == {
+      "__qualname__": "types:SimpleNamespace",
+      "model": {
+          "__qualname__": "types:SimpleNamespace",
+          "num_layers": 4,
+          "__id__": 0,
+      },
+      "sub": {
+          "__qualname__": "types:SimpleNamespace",
+          "elems": [
+              {
+                  "__qualname__": "types:SimpleNamespace",
+                  "num_layers": 4,
+                  "__id__": 0,
+              },
+              {
+                  "__qualname__": "types:SimpleNamespace",
+                  "num_layers": 4,
+                  "__id__": 0,
+              },
+              {
+                  "__qualname__": "types:SimpleNamespace",
+                  "num_layers": 4,
+                  "__id__": 1,
+              },
+              {
+                  "__qualname__": "types:SimpleNamespace",
+                  "num_layers": 4,
+                  "__id__": 1,
+              },
+              {"__qualname__": "types:SimpleNamespace", "num_layers": 4},
+          ],
+      },
+  }
+  new_cfg = konfig.ConfigDict(data)
+  new_ns = konfig.resolve(new_cfg)
+  assert new_ns.model is new_ns.sub.elems[0]
+  assert new_ns.model is new_ns.sub.elems[1]
+  assert new_ns.model is not new_ns.sub.elems[2]

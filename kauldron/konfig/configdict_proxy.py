@@ -189,7 +189,17 @@ class _ConfigDictVisitor:
 class _ConstructorResolver(_ConfigDictVisitor):
   """Instanciate all `ConfigDict` proxy object."""
 
+  def __init__(self, freeze=True):
+    super().__init__(freeze=freeze)
+    # Keep track of the constructed object, to allow the same object to be
+    # defined twice.
+    self._id_to_obj = {}
+
   def _resolve_dict(self, value):
+    # If the value was already resolved, return it (shared object)
+    if id(value) in self._id_to_obj:
+      return self._id_to_obj[id(value)]
+
     # Dict proxies have `__const__` or `__qualname__` keys
     if QUALNAME_KEY in value:
       if CONST_KEY in value:
@@ -231,6 +241,7 @@ class _ConstructorResolver(_ConfigDictVisitor):
     # Allow the object to save the config it is comming from.
     if hasattr(type(obj), '__post_konfig_resolve__'):
       obj.__post_konfig_resolve__(value)
+    self._id_to_obj[id(value)] = obj
     return obj
 
 

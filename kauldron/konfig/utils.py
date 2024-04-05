@@ -15,7 +15,7 @@
 """Utils."""
 
 import functools
-import json
+import itertools
 import os
 import typing
 from typing import Any, TypeVar
@@ -73,22 +73,51 @@ class ConfigDictConvertible(typing.Protocol):
     raise NotImplementedError()
 
 
-class DefaultJSONEncoder(json.JSONEncoder):
-  """Default JSONEncoder."""
+def to_json(obj: Any) -> str:
+  """Convert a ConfigDict to JSON."""
+  return _ToJson().convert(obj)
 
-  def default(self, o):
-    obj = o  # base class name is too short
+
+class _ToJson:
+  """Convert a ConfigDict to JSON."""
+
+  def __init__(self):
+    self._id_to_json = {}
+    self._counter = itertools.count()
+
+  def convert(self, obj: Any) -> Any:
+    """Convert a ConfigDict to JSON nested dict."""
+    # Object already encountered: Cycles & support shared references
+    if id(obj) in self._id_to_json:
+      json_ = self._id_to_json[id(obj)]
+      # Eventually assign the `__id__` so deserializing conserve the shared
+      # objects.
+      if isinstance(json_, dict) and '__id__' not in json_:
+        json_['__id__'] = next(self._counter)
+      return json_
+
+    # New object: Convert it to json
+    json_ = self._convert_inner(obj)
+    self._id_to_json[id(obj)] = json_
+    return json_
+
+  def _convert_inner(self, obj: Any) -> Any:
+    """Convert an object to JSON."""
+
     match obj:
+      case ml_collections.ConfigDict():
+        return {k: self.convert(v) for k, v in obj._fields.items()}
+      case dict():
+        return {k: self.convert(v) for k, v in obj.items()}
       case ml_collections.FieldReference():
         # TODO(epot): Support field-ref (at least with identity), so
         # deserialization restore the ref.
-        return obj.get()
-      case ml_collections.ConfigDict():
-        return {k: v for k, v in obj._fields.items()}
+        return self.convert(obj.get())
+      case list() | tuple():
+        return [self.convert(v) for v in obj]
       case os.PathLike():  # For convenience, allow `pathlib`-like objects
         return os.fspath(obj)
+      case int() | float() | bool() | str() | None:
+        return obj
       case _:
-        raise TypeError(
-            '{} is not JSON serializable. Instead use '
-            'ConfigDict.to_json_best_effort()'.format(type(obj))
-        )
+        raise TypeError(f'{type(obj)} is not JSON serializable.')

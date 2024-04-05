@@ -22,6 +22,7 @@ import copy
 import dataclasses
 import functools
 import itertools
+import json
 import os
 from typing import Any, ClassVar, Generic, TypeVar
 
@@ -54,9 +55,18 @@ class ConfigDict(ml_collections.ConfigDict):
   def __init__(
       self,
       init_dict: dict[str, Any] | ml_collections.ConfigDict | None = None,
+      *,
+      # If `True`, skip the normalization to avoid infinite recursion
+      _normalized: bool = False,
   ) -> None:
     init_dict = dict(init_dict or {})
     init_dict = _maybe_update_init_dict(init_dict)  # pytype: disable=name-error
+
+    # Normalize here rather than at the individul field level (`__setattr__`),
+    # to have a global cache for all shared values (so shared fields are
+    # correctly handled).
+    if not _normalized:
+      init_dict = _normalize_config_only_value(init_dict, '', id_to_dict={})  # pytype: disable=name-error
     super().__init__(
         initial_dictionary=init_dict,
         type_safe=True,
@@ -71,7 +81,7 @@ class ConfigDict(ml_collections.ConfigDict):
 
   def __setitem__(self, key: str | int, value: Any) -> None:
     key = self._normalize_arg_key(key, can_append=True)
-    value = _normalize_config_only_value(value, key)
+    value = _normalize_config_only_value(value, key, id_to_dict={})
     return super().__setitem__(key, value)
 
   def __repr__(self) -> str:
@@ -101,7 +111,7 @@ class ConfigDict(ml_collections.ConfigDict):
     return key
 
   def to_json(self, **dumps_kwargs) -> str:  # pytype: disable=signature-mismatch
-    return super().to_json(utils.DefaultJSONEncoder, **dumps_kwargs)
+    return json.dumps(utils.to_json(self), **dumps_kwargs)
 
   @property
   def ref(self: _SelfT) -> _SelfT:
@@ -435,8 +445,18 @@ def register_default_values(default_values: utils.ConfigDictLike[Any]) -> None:
   _QUALNAME_TO_DEFAULT_VALUES[qualname] = default_values
 
 
-def _normalize_config_only_value(value, name) -> Any:
-  """Validate only config values are defined."""
+def _normalize_config_only_value(value, name, *, id_to_dict) -> Any:
+  """Validate only config values are defined.
+
+  Args:
+    value: The value to normalize (e.g. `dict` -> `ConfigDict`).
+    name: The name of the field (for better error message)
+    id_to_dict: Cache to support shared objects (`ConfigDict` created once and
+      reused in multiple places).
+
+  Returns:
+    The normalized value.
+  """
   # TODO(epot): Test `__setattr__` is also called in `ConfigDict({})`
   match value:
     case ConfigDict():  # Leafs should have been already validated
@@ -456,13 +476,28 @@ def _normalize_config_only_value(value, name) -> Any:
     ):
       return value  # Built-ins
     case dict() | ml_collections.ConfigDict():
-      return ConfigDict({  # Convert `dict` -> `ConfigDict`
-          k: _normalize_config_only_value(v, f'{name}.{k}')
-          for k, v in _items_preserve_reference(value)
-      })
+      if (id_ := value.get('__id__')) is not None:  # Shared value:
+        del value['__id__']  # ConfigDict do not have `.pop()`
+        if id_ in id_to_dict:  # ConfigDict already constructed
+          return id_to_dict[id_]  # Reuse same instance
+
+      cfg = ConfigDict(
+          {  # Convert `dict` -> `ConfigDict`
+              k: _normalize_config_only_value(
+                  v, f'{name}.{k}', id_to_dict=id_to_dict
+              )
+              for k, v in _items_preserve_reference(value)
+          },
+          # Skip normalization to avoid infinite recursion. Is there a cleaner
+          # way ?
+          _normalized=True,
+      )
+      if id_ is not None:  # Save shared value
+        id_to_dict[id_] = cfg
+      return cfg
     case list() | tuple() | set() | frozenset():
       return type(value)(
-          _normalize_config_only_value(v, f'{name}[{i}]')
+          _normalize_config_only_value(v, f'{name}[{i}]', id_to_dict=id_to_dict)
           for i, v in enumerate(value)
       )
     case configdict_proxy.ConfigDictProxyObject():
@@ -470,7 +505,9 @@ def _normalize_config_only_value(value, name) -> Any:
       # could simply implement the `ConfigDictConvertible` protocol
       return value
     case utils.ConfigDictConvertible():
-      return _normalize_config_only_value(value.__as_konfig__(), name)
+      return _normalize_config_only_value(
+          value.__as_konfig__(), name, id_to_dict=id_to_dict
+      )
     case _:
       raise ValueError(
           f'Error setting `cfg.{name}`: To avoid mixing configurable and'
@@ -483,7 +520,7 @@ def _normalize_config_only_value(value, name) -> Any:
       )
 
 
-def _shortn(x: str, max_length: int) -> str:
+def _shortn(x: Any, max_length: int) -> str:
   """Shortn the string."""
   if not isinstance(x, str):
     x = repr(x)
