@@ -23,6 +23,7 @@ from orbax import checkpoint as ocp
 def test_orbax(tmp_path: pathlib.Path):
   mgr = ocp.CheckpointManager(tmp_path)
   mgr.save(args=noop_handler.NoopArg(123), step=0)
+  mgr.wait_until_finished()
 
   mgr = ocp.CheckpointManager(tmp_path)
   assert mgr.restore(args=noop_handler.NoopArg(567), step=0) == 567
