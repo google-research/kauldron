@@ -181,3 +181,19 @@ def test_glob_key_error():
           'a3': {'b': 'new'},
       },
   )
+
+
+@pytest.mark.parametrize(
+    'glob_str, parent_str',
+    [
+        ('aa.*.bb.cc', 'aa'),
+        ('**.bb.cc', ''),
+        ('aa.bb.**.bb.**.cc', 'aa.bb'),
+        ('aa[5].*.bb.**.cc', 'aa[5]'),
+        ('aa[5].bb.cc', 'aa[5].bb.cc'),
+    ],
+)
+def test_glob_first_non_glob_parent(glob_str, parent_str):
+  assert kontext.GlobPath.from_str(
+      glob_str
+  ).first_non_glob_parent == kontext.Path.from_str(parent_str)

@@ -60,6 +60,16 @@ class GlobPath(paths.AbstractPath):
     except Exception as e:  # pylint: disable=broad-exception-caught
       epy.reraise(e, prefix=f"Error trying to mutate path {self}: ")
 
+  @property
+  def first_non_glob_parent(self) -> paths.Path:
+    """Returns the first parent which is not a glob."""
+    new_parts = []
+    for part in self.parts:
+      if isinstance(part, path_parser.Wildcard):
+        break
+      new_parts.append(part)
+    return paths.Path(*new_parts)
+
 
 @dataclasses.dataclass(frozen=True)
 class _Node(abc.ABC):
