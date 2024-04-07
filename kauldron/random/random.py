@@ -194,7 +194,6 @@ class PRNGKey(_Base):
   rademacher = jax.random.rademacher
   randint = jax.random.randint
   rayleigh = jax.random.rayleigh
-  shuffle = jax.random.shuffle
   t = jax.random.t
   truncated_normal = jax.random.truncated_normal
   uniform = jax.random.uniform
