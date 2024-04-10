@@ -22,5 +22,4 @@ from kauldron.checkpoints.checkpointer import NoopCheckpointer
 from kauldron.checkpoints.partial_loader import AbstractPartialLoader
 from kauldron.checkpoints.partial_loader import CkptSource
 from kauldron.checkpoints.partial_loader import KauldronSource
-from kauldron.checkpoints.partial_loader import KauldronSourceLegacy
 from kauldron.checkpoints.partial_loader import PartialLoader

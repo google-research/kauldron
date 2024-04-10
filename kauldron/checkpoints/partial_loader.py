@@ -29,7 +29,6 @@ from kauldron import kontext
 from kauldron.checkpoints import checkpoint_items
 from kauldron.checkpoints import checkpointer
 from kauldron.utils import xmanager
-import numpy as np
 import orbax.checkpoint as ocp
 
 _T = TypeVar('_T')
@@ -243,65 +242,6 @@ class KauldronSource(CkptSource):
     state = self._ckpt_mgr.restore(
         checkpoint_items.StandardCheckpointItem(), step=self.step
     )
-
-    # Validate `state` do not contain `_NOT_RESTORED`
-    _assert_all_restored(state)
-
-    return state
-
-
-@dataclasses.dataclass(frozen=True)
-class KauldronSourceLegacy(CkptSource):
-  """Kauldron loader source for `kd.ckpts.PartialLoader`, for old checkpoints.
-
-  Namely, for checkpoints pre cl/599804273 (19.01.2024)
-
-  Attributes:
-    workdir: The work directory from which the checkpoint should be loaded
-    step: Which step to load (default to last one)
-  """
-
-  workdir: epath.PathLike
-
-  _: dataclasses.KW_ONLY
-
-  step: int = -1
-
-  def __post_init__(self):
-    object.__setattr__(self, 'workdir', epath.Path(self.workdir))
-
-  def _absolute_step(self, step: int) -> int:
-    """Convert `-1` into the last step."""
-    step = self._ckpt_mgr.latest_step() if step == -1 else step
-    if step not in self._ckpt_mgr.all_steps():
-      raise ValueError(f'No checkpoint is available for step {step}')
-    return step  # pytype: disable=bad-return-type
-
-  @functools.cached_property
-  def _ckpt_mgr(self) -> ocp.CheckpointManager:
-    mgr_options = ocp.CheckpointManagerOptions(step_prefix='ckpt')
-    ckpt_mgr = ocp.CheckpointManager(
-        epath.Path(self.workdir) / checkpointer.CHECKPOINT_FOLDER_NAME,
-        options=mgr_options,
-        item_handlers=ocp.PyTreeCheckpointHandler(),
-    )
-    return ckpt_mgr
-
-  def metadata(self) -> Any:
-    step = self._absolute_step(self.step)
-    metadata = self._ckpt_mgr.item_metadata(step)
-    if metadata is None:
-      raise ValueError(f'No metadata found for step: {step}')
-    return metadata
-
-  def restore(self, item) -> Any:
-    """Loads the params from the checkpoint."""
-    step = self._absolute_step(self.step)
-    restore_args = lambda _: ocp.RestoreArgs(restore_type=np.ndarray)
-    metadata = self._ckpt_mgr.item_metadata(step)
-    restore_args = jax.tree.map(restore_args, metadata)
-    args = ocp.args.PyTreeRestore(restore_args=restore_args)
-    state = self._ckpt_mgr.restore(step, args=args)
 
     # Validate `state` do not contain `_NOT_RESTORED`
     _assert_all_restored(state)
