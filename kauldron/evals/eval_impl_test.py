@@ -41,6 +41,7 @@ def test_eval_impl(tmp_path: epath.Path):
     # Simulate train saving a step
     state = trainer.init_state()
     trainer.checkpointer.save(state, step=0)
+    trainer.checkpointer.wait_until_finished()
     yield 0
 
   # Launch train

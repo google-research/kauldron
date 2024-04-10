@@ -57,7 +57,9 @@ def continuous_eval(
 
   logging.info('Initialize the state...')
   ckpt = trainer.checkpointer
-  state = trainer.init_state()
+  # Skip transforms as checkpoint is restored anyway afterward. We need to
+  # be careful that step 0 is indeed computed from the checkpoint.
+  state = trainer.init_state(skip_transforms=True)
   aux = {eval_name: train_step.Auxiliaries() for eval_name in eval_names}
 
   # TODO(epot): Checkpoint should save the state ? Otherwise, the last
@@ -75,7 +77,7 @@ def continuous_eval(
     # (b/315316885#6)
     ckpt.reload()
 
-    state = ckpt.restore(state, step=step, noop_if_missing=True)
+    state = ckpt.restore(state, step=step)
     assert int(state.step) == step
 
     # Processing checkpoint
