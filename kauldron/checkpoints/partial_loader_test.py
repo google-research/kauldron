@@ -75,8 +75,8 @@ def _make_loader(
     old_trainer: kd.train.Trainer,  # pylint: disable=redefined-outer-name
     new_to_old: dict[str, str],
 ):
-  loader = kd.ckpts.PartialLoader(  # pytype: disable=wrong-arg-types
-      source=kd.ckpts.KauldronSource(old_trainer.workdir),  # pylint: disable=missing-kwoa
+  loader = kd.ckpts.PartialKauldronLoader(  # pytype: disable=wrong-arg-types
+      workdir=old_trainer.workdir,  # pylint: disable=missing-kwoa
       new_to_old=new_to_old,
   )
   return loader
