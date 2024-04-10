@@ -66,10 +66,10 @@ def get_config():
   )
 
   cfg.init_transforms = {
-      "model_init": kd.ckpts.PartialLoader(
-          source=kd.ckpts.KauldronSource.from_xid(xid=cfg.ref.aux.xid),
+      "model_init": kd.ckpts.PartialKauldronLoader(
+          workdir=kd.ckpts.workdir_from_xid(xid=cfg.ref.aux.xid),
           new_to_old={  # Mapping params
-              "params/model": "params",
+              "params.model": "params",
           },
       )
   }

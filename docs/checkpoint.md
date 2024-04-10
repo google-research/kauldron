@@ -7,11 +7,11 @@ can use the `init_transforms` argument of `kd.train.Trainer`
 
 ```python
 cfg.init_transforms = {
-    'pretrained_init': kd.ckpts.PartialLoader(
-        source=kd.ckpts.KauldronSource('/path/to/original/work_unit/'),
+    'pretrained_init': kd.ckpts.PartialKauldronLoader(
+        workdir=kd.ckpts.workdir_from_xid(12345, wid=1),
         new_to_old={  # Mapping params
             # '<new_path>':            '<source_path>'
-            'params/decoder/layers_0': 'params/endoder',
+            'params.decoder.layers_0': 'params.endoder',
         },
     )
 }
