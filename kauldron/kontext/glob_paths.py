@@ -17,20 +17,19 @@
 from __future__ import annotations
 
 import abc
-from collections.abc import Iterable, Sequence, MutableMapping
+from collections.abc import Iterable, MutableMapping, Sequence
 import dataclasses
-from typing import Any
+from typing import Any, Generic, TypeVar
 
 from etils import epy
 from kauldron.kontext import path_parser
 from kauldron.kontext import paths
 
-# Context object is a nested structure (dict, dataclass)
-Context = Any
+_T = TypeVar("_T")
 
 
 def set_by_path(
-    obj: Context,
+    obj: paths.Context,
     path: str | tuple[str, ...] | paths.AbstractPath,
     value: Any,
 ):
@@ -53,7 +52,7 @@ class GlobPath(paths.AbstractPath):
 
   _SUPPORT_GLOB = True
 
-  def set_in(self, context: Context, value: Any) -> None:
+  def set_in(self, context: paths.Context, value: Any) -> None:
     """Set the object in the path."""
     try:
       _set_in(context, self.parts, value)
@@ -72,33 +71,33 @@ class GlobPath(paths.AbstractPath):
 
 
 @dataclasses.dataclass(frozen=True)
-class _Node(abc.ABC):
+class Node(Generic[_T], abc.ABC):
   """Helper to help the recursion.
 
   Wrap a context object, and provides methods to access/mutate the object.
   This unify the access to all tree objects (dict, list, ...).
   """
 
-  obj: Any
+  obj: _T
 
   @classmethod
-  def make(cls, obj) -> _Node:
+  def make(cls, obj) -> Node:
     match obj:
       case MutableMapping():
         return _Dict(obj)
       case list():
         return _List(obj)
       case _:
-        return _Leaf(obj)
+        return Leaf(obj)
 
   def get_items(self, part: path_parser.Part) -> Iterable[Any]:
     if part == path_parser.Wildcard.STAR:
-      return self.values()
+      return self.items()
     elif part == path_parser.Wildcard.DOUBLE_STAR:
       raise RuntimeError("Should not get `**`")
     else:
       try:
-        return (self[part],)
+        return {part: self[part]}.items()
       except Exception as e:  # pylint: disable=broad-exception-caught
         epy.reraise(e, prefix=f"Error accessing {part!r} in {type(self.obj)}: ")
 
@@ -115,11 +114,15 @@ class _Node(abc.ABC):
     raise NotImplementedError
 
   @abc.abstractmethod
-  def values(self) -> Iterable[Any]:
+  def items(self) -> Iterable[tuple[Any, Any]]:
+    raise NotImplementedError
+
+  @abc.abstractmethod
+  def from_items(self, values: dict[Any, Any]) -> _T:
     raise NotImplementedError
 
 
-class _Dict(_Node):
+class _Dict(Node):
   """Dict or mapping node."""
 
   def __setitem__(self, part: path_parser.Part, value: Any) -> None:
@@ -128,17 +131,25 @@ class _Dict(_Node):
 
   def __getitem__(self, part: path_parser.Part) -> Any:
     # TODO(epot): Validate key
-    return self.obj[part]
+    try:
+      return self.obj[part]
+    except KeyError:
+      raise KeyError(
+          f"Key {part!r} not found. Available keys: {list(self.obj.keys())}"
+      ) from None
 
   def __contains__(self, part: path_parser.Part) -> bool:
     # TODO(epot): Validate key
     return part in self.obj
 
-  def values(self) -> Iterable[Any]:
-    yield from self.obj.values()
+  def items(self) -> Iterable[tuple[Any, Any]]:
+    yield from self.obj.items()
+
+  def from_items(self, values: dict[Any, Any]):
+    return type(self.obj)(values)
 
 
-class _List(_Node):
+class _List(Node):
   """List node."""
 
   def __setitem__(self, part: path_parser.Part, value: Any) -> None:
@@ -165,15 +176,19 @@ class _List(_Node):
     # TODO(epot): Support slices
     return False
 
-  def values(self) -> Iterable[Any]:
-    yield from self.obj
+  def items(self) -> Iterable[tuple[int, Any]]:
+    yield from enumerate(self.obj)
+
+  def from_items(self, values: dict[Any, Any]):
+    assert all(isinstance(k, int) for k in values.keys())
+    return list(v for _, v in sorted(values.items()))
 
 
 # TODO(epot): Add tuple which are immutable, but can still be recursed into
 # class _Tuple(_List):
 
 
-class _Leaf(_Node):
+class Leaf(Node):
   """Leaf node."""
 
   def __setitem__(self, key: str, value: Any) -> None:
@@ -186,7 +201,12 @@ class _Leaf(_Node):
   def __getitem__(self, part: path_parser.Part) -> Any:
     raise RuntimeError  # Should never be called
 
-  def values(self) -> Iterable[Any]:
+  def items(self) -> Iterable[tuple[Any, Any]]:
+    raise ValueError(
+        f"Cannot recurse inside {type(self.obj)} (not a dict or list)"
+    )
+
+  def from_items(self, values: dict[Any, Any]):
     raise ValueError(
         f"Cannot recurse inside {type(self.obj)} (not a dict or list)"
     )
@@ -197,7 +217,7 @@ class _Leaf(_Node):
 
 
 def _set_in(
-    context: Context,
+    context: paths.Context,
     parts: Sequence[paths.Part],
     value: Any,
     *,
@@ -208,7 +228,7 @@ def _set_in(
   if not parts:
     raise ValueError("Path is empty")
 
-  wrapper = _Node.make(context)
+  wrapper = Node.make(context)
   part, *rest = parts
 
   # During glob, the object might contains branch which do not match
@@ -224,12 +244,12 @@ def _set_in(
   elif part == path_parser.Wildcard.DOUBLE_STAR:
     # Try to assign the rest in the current context
     _set_in(context, rest, value, missing_ok=True)
-    if isinstance(wrapper, _Leaf):  # Leaf, do not recurse
+    if isinstance(wrapper, Leaf):  # Leaf, do not recurse
       return
     # Recurse over all elements
-    for new_context in wrapper.get_items(path_parser.Wildcard.STAR):
+    for _, new_context in wrapper.get_items(path_parser.Wildcard.STAR):
       _set_in(new_context, parts, value)  # Propagate the `**` to the leaves
   else:  # Otherwise, recurse.
-    for new_context in wrapper.get_items(part):
+    for _, new_context in wrapper.get_items(part):
       _set_in(new_context, rest, value)
   # TODO(epot): Reraise with the full path branch in which the error occured
