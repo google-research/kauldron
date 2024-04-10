@@ -26,7 +26,6 @@ import typing
 from typing import Any, Type, TypedDict, Union
 
 from etils import enp
-import jax
 import jaxtyping
 from kauldron.typing import shape_spec
 import typeguard
@@ -312,30 +311,9 @@ def _custom_array_type_union_checker(
   )
 
 
-def _is_jax_extended_dtype(dtype: Any) -> bool:
-  if hasattr(jax.dtypes, "extended"):  # jax>=0.4.14
-    return jax.numpy.issubdtype(dtype, jax.dtypes.extended)  # type: ignore[module-attr]
-  else:  # jax<=0.4.13
-    return jax.core.is_opaque_dtype(dtype)  # type: ignore[module-attr]
-
-
 def _get_dtype_str(value) -> str:
   """Get value dtype as a string for any array (np, jnp, tf, torch)."""
-  if _is_jax_extended_dtype(value.dtype):
-    return str(value.dtype)
-  elif hasattr(value.dtype, "type") and hasattr(value.dtype.type, "__name__"):
-    # JAX, numpy
-    return value.dtype.type.__name__
-  elif hasattr(value.dtype, "as_numpy_dtype"):
-    # TensorFlow
-    return value.dtype.as_numpy_dtype.__name__
-  else:
-    # PyTorch
-    repr_dtype = repr(value.dtype).split(".")
-    if len(repr_dtype) == 2 and repr_dtype[0] == "torch":
-      return repr_dtype[1]
-    else:
-      raise RuntimeError("Unrecognised array/tensor type to extract dtype from")
+  return str(enp.lazy.dtype_from_array(value))
 
 
 def _is_array_type(origin_type) -> bool:
