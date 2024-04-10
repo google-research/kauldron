@@ -120,6 +120,14 @@ class AbstractPath(collections.abc.Sequence):
   def set_in(self, context: Context, value: Any) -> None:
     raise NotImplementedError("Abstract method")
 
+  def relative_to(self, other: AbstractPath) -> Self:
+    if len(self.parts) < len(other.parts):
+      raise ValueError(f"{self} is not a subpath of {other}")
+    common_parts = self.parts[: len(other.parts)]
+    if common_parts != other.parts:
+      raise ValueError(f"{self} is not a subpath of {other}")
+    return type(self)(*self.parts[len(other.parts) :])
+
 
 class Path(AbstractPath):
   """Represents a (non-glob) string path."""

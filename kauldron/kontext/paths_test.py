@@ -150,3 +150,14 @@ def test_path_get_from_tensor_slice():
 
   path = kontext.Path.from_str("tensor[0,0].T")
   assert path.get_from(CTX).shape == (8, 5)
+
+
+def test_path_relative_to():
+  path0 = kontext.GlobPath.from_str("tensor[0,0].T.**.b.*[2]")
+  path1 = kontext.GlobPath.from_str("tensor[0,0].T.**")
+  path2 = kontext.GlobPath.from_str("tensor[0,0].T")
+  assert path0.relative_to(path1) == kontext.GlobPath.from_str("b.*[2]")
+  assert path0.relative_to(path2) == kontext.GlobPath.from_str("**.b.*[2]")
+
+  with pytest.raises(ValueError, match="is not a subpath"):
+    path0.relative_to(kontext.GlobPath.from_str("tensor[0,2].T"))
