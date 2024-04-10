@@ -294,21 +294,9 @@ class Memo:
   @classmethod
   def from_current_context(cls):
     """Create a Memo from the current typechecking context."""
-    # TODO(klausg): tidy this up once the jaxtyping PR chain is done
     single_memo, variadic_memo, *_ = jaxtyping._storage.get_shape_memo()  # pylint: disable=protected-access
 
-    def _maybe_remove_bool(memo):
-      match memo:
-        case (bool(_), (*dims,)) if all(isinstance(d, int) for d in dims):
-          return tuple(dims)
-        case (*dims,) if all(isinstance(d, int) for d in dims):
-          return tuple(dims)
-        case _:
-          raise ValueError(f"Unexpected variadic memo: {memo!r}")
-
-    variadic_memo = {
-        k: _maybe_remove_bool(memo) for k, memo in variadic_memo.items()
-    }
+    variadic_memo = {k: tuple(dims) for k, (_, dims) in variadic_memo.items()}
     return cls(
         single=single_memo.copy(),
         variadic=variadic_memo.copy(),
