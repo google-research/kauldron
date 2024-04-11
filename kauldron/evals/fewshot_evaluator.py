@@ -312,8 +312,8 @@ def run_fewshot(
 
 
 # Setup function for few-shot regression on CPU to avoid "polluting" the TPU.
-@typechecked
 @functools.partial(jax.jit, backend='cpu', static_argnums=(2,))
+@typechecked
 def _precompute_cache(
     x: Float['n d'],
     y: Int['n'],
@@ -371,8 +371,8 @@ class _FewShotCache:
   std: Float['1 d']
 
 
-@typechecked
 @functools.partial(jax.jit, backend='cpu')
+@typechecked
 def _eig_fewshot_acc_fn(
     cache: _FewShotCache,
     x_test: Float['m d'],

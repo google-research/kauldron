@@ -88,7 +88,12 @@ def test_shape_parser(spec_str, expected_spec):
 
 
 def test_shape_eval():
-  assert Shape("2 5*6+2 8//2 5-4+1 12/3*2") == (2, 32, 4, 2, 8)
+
+  @typechecked
+  def _foo1():
+    return Shape("2 5*6+2 8//2 5-4+1 12/3*2")
+
+  assert _foo1() == (2, 32, 4, 2, 8)
 
   @typechecked
   def _foo(_: Float["*b h w c"]):
@@ -100,12 +105,23 @@ def test_shape_eval():
 def test_dim():
   @typechecked
   def _foo(_: Float["*b h w c"]):
-    return Dim("*b"), Dim("h"), Dim("w"), Dim("c")
+    return [Dim(d) for d in ["*b", "h", "w", "c"]]
 
-  assert _foo(np.zeros((1, 2, 3, 4))) == (1, 2, 3, 4)
+  assert _foo(np.zeros((1, 2, 3, 4))) == [1, 2, 3, 4]
 
 
 def test_shape_eval_with_batch_dim():
   memo = Memo({"n": 16}, {"batch": (3, 2)})
   parsed_shape = parse_shape_spec("*batch n")
   assert parsed_shape.evaluate(memo) == (3, 2, 16)
+
+
+def test_shape_eval_error_outside_typechecked():
+  with pytest.raises(AssertionError):
+    Shape("1 2 3")
+
+  def _foo():
+    return Dim("1")
+
+  with pytest.raises(AssertionError):
+    _foo()

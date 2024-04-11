@@ -98,6 +98,8 @@ class TypeCheckError(typeguard.TypeCheckError):
 
 def typechecked(fn):
   """Decorator to enable runtime type-checking and shape-checking."""
+  if hasattr(fn, "__wrapped__"):
+    raise AssertionError("@typechecked should be the innermost decorator")
 
   @jaxtyping.jaxtyped(typechecker=None)
   @functools.wraps(fn)

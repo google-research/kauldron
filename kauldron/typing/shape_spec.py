@@ -19,6 +19,7 @@ from __future__ import annotations
 import abc
 import dataclasses
 import enum
+import inspect
 import itertools
 import math
 import operator
@@ -48,14 +49,45 @@ else:
     """
 
     def __new__(cls, spec_str: str) -> tuple[int, ...]:
+      _assert_caller_is_typechecked_func()
       spec = parse_shape_spec(spec_str)
       memo = Memo.from_current_context()
       return spec.evaluate(memo)
 
 
+def _assert_caller_is_typechecked_func() -> None:
+  """Raises AssertionError if the calling function is not @typechecked."""
+  # The caller function is considered to be the first function in the call stack
+  # which is not a list/dict/set-comprehension or generator expression.
+
+  # This function works on the assumption that @typechecked is the innermost
+  # decorator of the caller function. Will give false positives otherwise.
+
+  stack = inspect.stack()
+  # stack[0].function = "_assert_caller_is_typechecked_func"
+  # stack[1].function = either "__new__" (from Shape) or "Dim"
+  # ... any number of <listcomp>, <dictcomp>, <setcomp>, and <genexpr>
+  # stack[i] = caller function which should be decorated with @typechecked
+  # stack[i+1] = "_reraise_with_shape_info"  (if correctly decorated)
+  comprehension_names = {"<listcomp>", "<dictcomp>", "<setcomp>", "<genexpr>"}
+  i = 2
+  while stack[i].function in comprehension_names and i < len(stack) - 2:
+    i += 1
+
+  if stack[i + 1].function != "_reraise_with_shape_info":
+    caller_name = stack[i].function
+    raise AssertionError(
+        "Dim and Shape only work inside of @typechecked functions. But"
+        f" {caller_name!r} lacks @typechecked."
+    )
+
+
 def Dim(spec_str: str) -> int:  # pylint: disable=invalid-name
   """Helper to construct concrete Dim (for single-axis Shape)."""
-  ret = Shape(spec_str)
+  _assert_caller_is_typechecked_func()
+  spec = parse_shape_spec(spec_str)
+  memo = Memo.from_current_context()
+  ret = spec.evaluate(memo)
   if len(ret) != 1:
     raise ShapeError(
         f"Dim expects a single-axis string, but got : {ret!r}"
