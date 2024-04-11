@@ -27,7 +27,6 @@ from absl import flags
 from etils import epy
 from ml_collections import config_flags
 
-
 # Re-import `epy` from HEAD (as the XManager CLI might contain an old version)
 with epy.binary_adhoc(reload="etils"):
   from etils import epy  # pylint: disable=g-import-not-at-top,reimported
