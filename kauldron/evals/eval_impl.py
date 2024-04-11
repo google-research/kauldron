@@ -16,6 +16,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+import contextlib
+import dataclasses
+
 from absl import logging
 from etils import exm
 from kauldron.train import config_lib
@@ -47,9 +51,6 @@ def continuous_eval(
   Raises:
     Exception: Re-raises any exception thrown by underlying evaluators.
   """
-  eval_names = list(eval_names)  # Copy as this get mutated afterward
-  exception = None  # Keeps track of any exceptions we might encounter.
-
   # Validation
   for eval_name in eval_names:
     if eval_name not in trainer.evals:
@@ -62,8 +63,13 @@ def continuous_eval(
   state = trainer.init_state(skip_transforms=True)
   aux = {eval_name: train_step.Auxiliaries() for eval_name in eval_names}
 
-  # TODO(epot): Checkpoint should save the state ? Otherwise, the last
-  # checkpoint might be re-computed if prehempted ?
+  # If preempted, the last checkpoint might be re-computed. There could be
+  # some race condition where the metrics are written twice for one step, but
+  # likely not an issue in practice.
+
+  # Rather than failing if a single eval fails, we keep track of all failures
+  # and raise them at the end.
+  tracker = _ExceptionTracker(eval_names=list(eval_names))  # `list` as mutated
 
   logging.info('Start evaluating...')
   for step in ckpt.iter_new_checkpoints(
@@ -82,20 +88,11 @@ def continuous_eval(
 
     # Processing checkpoint
     aux = dict()
-    for name in list(eval_names):
-      try:
+    for name in eval_names:
+      with tracker.catch_exception(name=name, step=step):
         aux[name] = trainer.evals[name].evaluate(state=state, step=step)
-      except Exception as e:  # pylint: disable=broad-exception-caught
-        exception = e
-        logging.exception('Failed to evaluate %s at step %s', name, step)
-        exc_name = type(e).__name__
-        status.xp.add_tags(f'🚨 Eval {name}: {exc_name} 🚨')
-        eval_names.remove(name)
-        if not eval_names:
-          raise  # All evaluator have failed, re-raise the exception
 
-  if exception is not None:
-    raise exception
+  tracker.maybe_reraise()
 
   # Return the last aux
   return aux
@@ -106,3 +103,35 @@ def _is_train_complete() -> bool:
   wu = exm.current_work_unit()
   wu.refresh()  # Refresh the tags
   return TRAIN_COMPLETE_TAG in wu.tags
+
+
+@dataclasses.dataclass
+class _ExceptionTracker:
+  """Context manager to track exceptions."""
+
+  eval_names: list[str]
+  exceptions: list[Exception] = dataclasses.field(default_factory=list)
+
+  @contextlib.contextmanager
+  def catch_exception(
+      self,
+      *,
+      name: str,
+      step: int,
+  ) -> Iterator[None]:
+    """Context manager which record exceptions."""
+    try:
+      yield
+    except Exception as e:  # pylint: disable=broad-exception-caught
+      self.exceptions.append(e)
+      logging.exception('Failed to evaluate %s at step %s', name, step)
+      exc_name = type(e).__name__
+      status.xp.add_tags(f'🚨 Eval {name}: {exc_name} 🚨')
+      self.eval_names.remove(name)
+    if not self.eval_names:
+      # All evaluator have failed, re-raise the exception
+      raise ExceptionGroup('All evaluators have failed', self.exceptions)
+
+  def maybe_reraise(self) -> None:
+    if self.exceptions:
+      raise ExceptionGroup('One or more evaluators failed', self.exceptions)
