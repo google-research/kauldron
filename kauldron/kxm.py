@@ -25,6 +25,7 @@ from kauldron.xm._src.kauldron_utils import KauldronJobs
 
 # Single job info
 from kauldron.xm._src.job_lib import Job
+from kauldron.xm._src.job_params import custom_python_mpm
 from kauldron.xm._src.job_params import Debug
 from kauldron.xm._src.job_params import InterpreterInfo
 from kauldron.xm._src.job_params import MLPython

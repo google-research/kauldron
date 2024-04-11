@@ -81,6 +81,25 @@ class MLPython:
     )
 
 
+def custom_python_mpm(
+    name: str, version: str, binary_path: str
+) -> xm_abc.PrebuiltMpm:
+  """Returns a custom python interpreter MPM.
+
+  Args:
+    name: Name of the MPM.
+    version: Version of the MPM.
+    binary_path: Name of the binary in the MPM, e.g. "interpreter.par".
+  """
+  return xm_abc.PrebuiltMpm(
+      binary_mpm=xm_abc.dependencies.MidasPackage(
+          name=name,
+          version=version,
+      ),
+      binary_path=binary_path,
+  )
+
+
 @merge_utils.add_merge_support
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class InterpreterInfo:
