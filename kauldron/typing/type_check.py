@@ -25,7 +25,9 @@ import types
 import typing
 from typing import Any, Type, TypedDict, Union
 
+from absl import logging
 from etils import enp
+import jax
 import jaxtyping
 from kauldron.typing import shape_spec
 import typeguard
@@ -34,6 +36,10 @@ import typeguard
 # a global switch to disable typechecking
 # (e.g. for debugging or colab hacking)
 TYPECHECKING_ENABLED = True
+
+# a global switch to turn exceptions into warnings.
+# (e.g. for debugging or colab hacking)
+TYPECHECKING_RAISE = True
 
 _undef = object()
 
@@ -126,14 +132,18 @@ def typechecked(fn):
 
       annotations = {k: p.annotation for k, p in sig.parameters.items()}
       # TODO(klausg): filter the stacktrace to exclude all the typechecking
-      raise TypeCheckError(
+      exception = TypeCheckError(
           str(e),
           arguments=bound_args.arguments,
           return_value=retval,
           annotations=annotations,
           return_annotation=sig.return_annotation,
           memo=shape_spec.Memo.from_current_context(),
-      ) from e
+      )
+      if TYPECHECKING_RAISE:
+        raise exception from e
+      else:
+        logging.warning("TypeCheckError: %s", e)
 
   return _reraise_with_shape_info
 
@@ -311,9 +321,30 @@ def _custom_array_type_union_checker(
   )
 
 
+def _is_jax_extended_dtype(dtype: Any) -> bool:
+  if hasattr(jax.dtypes, "extended"):  # jax>=0.4.14
+    return jax.numpy.issubdtype(dtype, jax.dtypes.extended)  # type: ignore[module-attr]
+  else:  # jax<=0.4.13
+    return jax.core.is_opaque_dtype(dtype)  # type: ignore[module-attr]
+
+
 def _get_dtype_str(value) -> str:
   """Get value dtype as a string for any array (np, jnp, tf, torch)."""
-  return str(enp.lazy.dtype_from_array(value))
+  if _is_jax_extended_dtype(value.dtype):
+    return str(value.dtype)
+  elif hasattr(value.dtype, "type") and hasattr(value.dtype.type, "__name__"):
+    # JAX, numpy
+    return value.dtype.type.__name__
+  elif hasattr(value.dtype, "as_numpy_dtype"):
+    # TensorFlow
+    return value.dtype.as_numpy_dtype.__name__
+  else:
+    # PyTorch
+    repr_dtype = repr(value.dtype).split(".")
+    if len(repr_dtype) == 2 and repr_dtype[0] == "torch":
+      return repr_dtype[1]
+    else:
+      raise RuntimeError("Unrecognised array/tensor type to extract dtype from")
 
 
 def _is_array_type(origin_type) -> bool:
