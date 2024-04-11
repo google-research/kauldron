@@ -39,6 +39,7 @@ class RunStrategy:
   Only the following `RunStrategy` are implemented:
 
   * `RunEvery`: Run evaluation along train, every `X` steps
+  * `RunOnce`: Run a single evaluation along train after `X` steps
   * `RunXM`: Run a single evaluation in a separate `XManager` job.
   * `RunSharedXM`: Run multiple evaluations in a separate `XManager` job.
 
@@ -52,6 +53,13 @@ class RunEvery(RunStrategy):
   """Run eval every `XX` train steps."""
 
   every: int
+
+
+@dataclasses.dataclass(frozen=True)
+class RunOnce(RunStrategy):
+  """Run eval only after the `XX` train steps."""
+
+  step: int
 
 
 @dataclasses.dataclass(frozen=True)
@@ -122,6 +130,17 @@ class KauldronRunEvery(KauldronRunStrategy):
 
 
 @dataclasses.dataclass(frozen=True)
+class KauldronRunOnce(KauldronRunStrategy):
+  """Kauldron implementation of the `RunOnce`."""
+
+  step: int
+
+  def should_eval_in_train(self, step: int) -> bool:
+    """Whether the evaluator should be run for the given train-step."""
+    return step == self.step
+
+
+@dataclasses.dataclass(frozen=True)
 class KauldronRunNoOp(KauldronRunStrategy):
   """Kauldron implementation of the `RunXM`, `RunSharedXM`."""
 
@@ -146,6 +165,11 @@ def run_strategy_cfg_to_kauldron_run_info(
     run.__qualname__ = 'kauldron.xm._src.run_strategies:RunEvery'
     run = konfig.resolve(run)
     return KauldronRunEvery(every=run.every)
+  elif run.__qualname__.endswith(('.RunOnce', ':RunOnce')):
+    # Rewrite the import to avoid a full import of the Kauldron codebase
+    run.__qualname__ = 'kauldron.xm._src.run_strategies:RunOnce'
+    run = konfig.resolve(run)
+    return KauldronRunOnce(step=run.step)
   elif run.__qualname__.endswith('.RunXM'):
     return KauldronRunNoOp()
   elif run.__qualname__.endswith('.RunSharedXM'):

@@ -191,7 +191,9 @@ class KauldronJobs(jobs_info.JobsProvider):
       elif isinstance(run, run_strategies.RunXM):
         final_runs[eval_name] = run
         run_to_eval_names[eval_name].append(eval_name)
-      elif isinstance(run, run_strategies.RunEvery):  # Filter run-every
+      elif isinstance(
+          run, (run_strategies.RunEvery, run_strategies.RunOnce)
+      ):  # Filter run-every
         pass
       else:
         raise TypeError(
