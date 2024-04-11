@@ -28,6 +28,7 @@ import numpy as np
 @dataclasses.dataclass(eq=True, frozen=True, kw_only=True)
 class IntAverage(base.Metric):
   x: kontext.Key = "batch.x"
+  mask: kontext.Key = None
 
   class State(base_state.AverageState):
 
@@ -84,3 +85,34 @@ def test_tree_reduce():
   }
   y = m(x=d)
   assert y == 4  # IntAverage of a, c, and d
+
+
+def test_tree_map_glob():
+  m = base.TreeMap(metric=IntAverage(x="batch.**.d"))
+  d = {
+      "d": np.arange(12).reshape((3, 4)),
+      "b": {
+          "c": np.arange(8).reshape((8)),
+          "d": np.arange(9).reshape((3, 1, 3)),
+      },
+  }
+  y = m.get_state_from_context({"batch": d, "unused": d}).compute()
+  assert y == {
+      "d": 5,
+      "b": {
+          "d": 4,
+      },
+  }
+
+
+def test_tree_reduce_glob():
+  m = base.TreeReduce(metric=IntAverage(x="batch.**.d"))
+  d = {
+      "d": np.arange(2),
+      "b": {
+          "c": np.arange(20),
+          "d": np.arange(4),
+      },
+  }
+  y = m.get_state_from_context({"batch": d}).compute()
+  assert y == 1  # Only d and b.d are included

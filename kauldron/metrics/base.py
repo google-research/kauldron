@@ -161,7 +161,56 @@ class TreeState(base_state.State):
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
-class TreeMap(Metric):
+class _TreeMetric(Metric):
+  """Base class for metrics that are applied to a pytree."""
+
+  metric: Metric
+
+  # TODO(epot): Is it possible to remove `_resolve_kwargs` entirely by
+  # having another `__kontext_func__` protocol to get the `func=` ?
+  def _resolve_kwargs(self, context: Any) -> dict[kontext.Key, Any]:
+    # Use the key and get_state signature of self.metric instead of self
+    return kontext.resolve_from_keyed_obj(
+        context, self, func=self.metric.get_state
+    )
+
+  def _get_tree_state(self, **kwargs) -> PyTree[jax.Array]:
+    """Extract the tree of metric states."""
+    # Filter `None` keys as they are not passed as `kwargs`.
+    # Match filtering in `kontext.resolve_from_keyed_obj`
+    keypaths = {k: v for k, v in self._glob_keypaths.items() if v is not None}
+
+    kwargs = jax.tree.map(
+        lambda path, ctx: kontext.filter_by_path(
+            ctx,
+            # Truncate the path to exclude the already-selected part:
+            # `params.**.bias` -> `**.bias`
+            # The non-glob prefix (`params`) is taken care of already
+            # because it is returned by the __kontext_keys__ method.
+            path.relative_to(path.first_non_glob_parent),
+        ),
+        keypaths,
+        kwargs,
+    )
+    return _tree_map_with_kwargs(self.metric.get_state, **kwargs)
+
+  # Forwards `__kontext_keys__` so the keys can be extracted from the top-level
+  def __kontext_keys__(self) -> dict[kontext.Key, kontext.Key]:
+    return jax.tree.map(
+        lambda glob_path: glob_path.first_non_glob_parent,
+        self._glob_keypaths,
+    )
+
+  @property
+  def _glob_keypaths(self):
+    return jax.tree.map(
+        kontext.GlobPath.from_str,
+        kontext.get_keypaths(self.metric),
+    )
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class TreeMap(_TreeMetric):
   """Maps an inner metric to a pytree and returns a pytree of results.
 
   Example:
@@ -174,27 +223,28 @@ class TreeMap(Metric):
       that metric to resolve the kwargs.
   """
 
-  metric: Metric
-
   @flax.struct.dataclass
   class State(TreeState):
     pass
 
   def get_state(self, **kwargs):
-    state_tree = _tree_map_with_kwargs(self.metric.get_state, **kwargs)
+    state_tree = self._get_tree_state(**kwargs)
     return self.State(state_tree)
 
-  def _resolve_kwargs(self, context: Any) -> dict[kontext.Key, Any]:
-    # Use the key and get_state signature of self.metric instead of self
-    return kontext.resolve_from_keyed_obj(
-        context, self.metric, func=self.metric.get_state
-    )
 
-  # Forwards `__kontext_keys__` so the keys can be extracted from the top-level
-  # TODO(epot): Is it possible to remove `_resolve_kwargs` entirely by
-  # having another `__kontext_func__` protocol to get the `func=` ?
-  def __kontext_keys__(self) -> dict[kontext.Key, kontext.Key]:
-    return kontext.get_keypaths(self.metric)
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class TreeReduce(_TreeMetric):
+  """Aggregates an inner metric over a pytree and returns a single result."""
+
+  def get_state(self, **kwargs) -> base_state.State:
+    state_tree = self._get_tree_state(**kwargs)
+    reduced_state = jax.tree.reduce(
+        lambda x, y: x.merge(y),
+        state_tree,
+        initializer=self.metric.empty(),
+        is_leaf=base_state.State.isinstance,
+    )
+    return reduced_state
 
 
 def _tree_map_with_kwargs(fun, **kwargs):
@@ -216,30 +266,3 @@ def _tree_map_with_kwargs(fun, **kwargs):
   return jax.tree.map(
       _fun_with_posargs, *posargs, is_leaf=base_state.State.isinstance
   )
-
-
-@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
-class TreeReduce(Metric):
-  """Aggregates an inner metric over a pytree and returns a single result."""
-
-  metric: Metric
-
-  def get_state(self, **kwargs) -> base_state.State:
-    state_tree = _tree_map_with_kwargs(self.metric.get_state, **kwargs)
-    reduced_state = jax.tree.reduce(
-        lambda x, y: x.merge(y),
-        state_tree,
-        initializer=self.metric.empty(),
-        is_leaf=base_state.State.isinstance,
-    )
-    return reduced_state
-
-  def _resolve_kwargs(self, context: Any) -> dict[kontext.Key, Any]:
-    # Use the key and get_state signature of self.metric instead of self
-    return kontext.resolve_from_keyed_obj(
-        context, self.metric, func=self.metric.get_state
-    )
-
-  # Forwards `__kontext_keys__` so the keys can be extracted from the top-level
-  def __kontext_keys__(self) -> dict[kontext.Key, kontext.Key]:
-    return kontext.get_keypaths(self.metric)
