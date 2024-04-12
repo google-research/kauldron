@@ -18,12 +18,20 @@
 import dataclasses
 from typing import Any, Callable, Mapping, Optional
 
+from etils import epy
 from grain._src.core import constants
 import jax
 from kauldron.data.loaders import base
-from kauldron.typing import PRNGKey, PRNGKeyLike  # pylint: disable=g-multiple-import
-import seqio
+from kauldron.typing import PRNGKey, PRNGKeyLike  # pylint: disable=g-multiple-import,g-importing-member
 import tensorflow as tf
+
+
+with epy.lazy_imports(
+    error_callback=(
+        "seqio requires adding `//third_party/py/seqio` to your trainer."
+    )
+):
+  import seqio  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
 
 
 def _get_seqio_task_dataset(
