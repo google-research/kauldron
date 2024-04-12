@@ -22,6 +22,7 @@ import math
 from typing import Any, Mapping, Optional
 
 import einops
+from etils import epy
 import flax
 import jax
 import jax.numpy as jnp
@@ -31,8 +32,10 @@ from kauldron.utils import plot_segmentation as segplot  # pylint: disable=g-imp
 import matplotlib
 import mediapy as media
 import numpy as np
-import sklearn.decomposition
 import tensorflow as tf
+
+with epy.lazy_imports():
+  import sklearn.decomposition  # pylint: disable=g-import-not-at-top
 
 
 Images = Float["*b h w c"] | UInt8["*b h w c"]
