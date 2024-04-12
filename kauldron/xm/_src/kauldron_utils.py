@@ -232,9 +232,9 @@ class KauldronJobs(jobs_info.JobsProvider):
             script_path="//third_party/py/kauldron/main.py",
         ),
         args={
-            "config": dir_utils.file_path("config.py"),
-            "config.workdir": dir_utils.WU_DIR_PROXY,
-            **{f"config.{k}": v for k, v in self.overrides.items()},
+            "cfg": dir_utils.file_path("config.py"),
+            "cfg.workdir": dir_utils.WU_DIR_PROXY,
+            **{f"cfg.{k}": v for k, v in self.overrides.items()},
         },
         files={
             "config.py": f"//{self.config_path}",
