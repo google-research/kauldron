@@ -26,9 +26,10 @@ from kauldron import random
 from kauldron.data.kmix import base
 import tensorflow as tf
 
-with epy.lazy_imports():
-  # TODO(epot): Remove seqio from `//...:kauldron` deps
-  import seqio  # pylint: disable=g-import-not-at-top
+with epy.lazy_imports(
+    error_callback=lambda _: "seqio require to add `//third_party/py/seqio` to your trainer."
+):
+  import seqio  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
