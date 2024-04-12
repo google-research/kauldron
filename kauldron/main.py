@@ -39,7 +39,7 @@ with epy.binary_adhoc():
 
 
 _CONFIG = config_flags.DEFINE_config_file(
-    "config",
+    "cfg",
     None,
     "Training configuration.",
     lock_config=False,
