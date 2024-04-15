@@ -235,6 +235,7 @@ class KauldronJobs(jobs_info.JobsProvider):
             "cfg": dir_utils.file_path("config.py"),
             "cfg.workdir": dir_utils.WU_DIR_PROXY,
             **{f"cfg.{k}": v for k, v in self.overrides.items()},
+            "undefok": "g3pdb_port",
         },
         files={
             "config.py": f"//{self.config_path}",
