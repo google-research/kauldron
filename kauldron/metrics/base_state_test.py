@@ -20,7 +20,7 @@ import jax.numpy as jnp
 from kauldron import kd
 from kauldron.typing import Float
 import numpy as np
-import sklearn
+import sklearn.metrics
 
 
 @flax.struct.dataclass
