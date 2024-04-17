@@ -19,6 +19,7 @@ from __future__ import annotations
 import dataclasses
 from typing import Optional
 
+from etils import epy
 import flax.linen as nn
 import flax.struct
 import jax.numpy as jnp
@@ -27,7 +28,10 @@ from kauldron.metrics import base
 from kauldron.metrics import base_state
 from kauldron.typing import Bool, Float, Int, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import numpy as np
-import sklearn.metrics
+
+
+with epy.lazy_imports():
+  from sklearn import metrics as sklearn_metrics  # pylint: disable=g-import-not-at-top
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -133,7 +137,7 @@ class RocAuc(base.Metric):
       mask = out.mask[..., 0].astype(np.float32)
       check_type(mask, Float["b"])
 
-      return sklearn.metrics.roc_auc_score(
+      return sklearn_metrics.roc_auc_score(
           y_true=labels,
           y_score=probs,
           sample_weight=mask,
