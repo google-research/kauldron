@@ -23,6 +23,7 @@ import inspect
 import itertools
 import math
 import operator
+import sys
 import typing
 from typing import Any, Callable, List, Optional
 
@@ -57,6 +58,11 @@ else:
 
 def _assert_caller_is_typechecked_func() -> None:
   """Raises AssertionError if the calling function is not @typechecked."""
+  # First make sure we are not running in a debugger.
+  gettrace = getattr(sys, "gettrace", None)
+  if gettrace is not None and gettrace():
+    return  # likely running in a debugger. Skip the assert since it will fail.
+
   # The caller function is considered to be the first function in the call stack
   # which is not a list/dict/set-comprehension or generator expression.
 
