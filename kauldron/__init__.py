@@ -22,3 +22,13 @@
 # A new PyPI release will be pushed everytime `__version__` is increased
 # When changing this, also update the CHANGELOG.md
 __version__ = '0.1.0'
+
+
+def __getattr__(name):  # pylint: disable=invalid-name
+  """Any attribute access apart from `__version__` should raise an error."""
+  if name == '__version__':
+    return __version__
+  raise AttributeError(
+      'Please always use "from kauldron import kd", '
+      'never "import kauldron as kd".'
+  )
