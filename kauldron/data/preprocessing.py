@@ -382,6 +382,28 @@ class ValueRange(ElementWiseTransform):
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class Normalize(ElementWiseTransform):
+  """Normalize an element."""
+
+  in_vrange: tuple[float, float] = (0.0, 255.0)
+  normalize_mean: tuple[float, float, float] = (0.0, 0.0, 0.0)
+  normalize_std: tuple[float, float, float] = (1.0, 1.0, 1.0)
+
+  dtype: Any = tf.float32
+
+  @typechecked
+  def map_element(self, element: XArray["*any"]) -> XArray["*any"]:
+    xnp = enp.lazy.get_xnp(element)
+    dtype = enp.lazy.as_np_dtype(self.dtype)
+    element = xnp.asarray(element, dtype=dtype)
+    _, in_max = self.in_vrange
+    element = element / in_max
+    element = (element - self.normalize_mean) / self.normalize_std
+
+    return element
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class RandomCrop(ElementWiseRandomTransform):
   """Randomly crop the input data to the specified shape.
 
