@@ -94,10 +94,17 @@ def mock_batch_from_elem_spec(
     return ArraySpec(shape=shape, dtype=spec.dtype)
 
   elem_spec = jax.tree.map(_get_global_shape, elem_spec)
-  mock_batch = jax.tree.map(array_spec_to_jnp_empty, elem_spec)
-  mock_batch = sharding_utils.sharding.with_sharding_constraint(
-      mock_batch, elem_sharding
-  )
+
+  @jax.jit
+  def jitted_create_mock_batch():
+    mock_batch = jax.tree.map(array_spec_to_jnp_empty, elem_spec)
+    mock_batch = sharding_utils.sharding.with_sharding_constraint(
+        mock_batch, elem_sharding
+    )
+    return mock_batch
+
+  mock_batch = jitted_create_mock_batch()
+
   return mock_batch
 
 
