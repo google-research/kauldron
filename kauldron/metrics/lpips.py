@@ -109,7 +109,19 @@ class _LpipsVgg(nn.Module):
     # in the shift and scale.
     shift = (1.0 + jnp.array([-0.030, -0.088, -0.188])) / 2.0
     scale = jnp.array([0.458, 0.448, 0.450]) / 2.0
-    combined = (jnp.stack((images_1, images_2)) - shift) / scale
+
+    # If the images already have a batch dimension, concatenate along that
+    # dimension, otherwise concatenate along a new dimension. This can avoid
+    # excessive padding and hence save memory in certain model sharding setups
+    # with jax.jit.
+    if images_1.ndim == 3:
+      combine_fn = jnp.stack
+      split_fn = lambda x: (x[0], x[1])
+    else:
+      combine_fn = jnp.concatenate
+      split_fn = lambda x: jnp.split(x, 2)
+
+    combined = (combine_fn((images_1, images_2)) - shift) / scale
 
     outputs = VggNet()(combined)
     out = 0.0
@@ -119,7 +131,8 @@ class _LpipsVgg(nn.Module):
       )
       normalization_scale = jax.lax.rsqrt(var + epsilon)
       feature_outputs = output * normalization_scale
-      squared_diff = jnp.square(feature_outputs[1] - feature_outputs[0])
+      feature_output_1, feature_output_2 = split_fn(feature_outputs)
+      squared_diff = jnp.square(feature_output_1 - feature_output_2)
       res = nn.Conv(
           features=1,
           kernel_size=(1, 1),

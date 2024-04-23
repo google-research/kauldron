@@ -22,5 +22,9 @@ def test_lpips_vgg():
   img_a = jnp.zeros([2, 32, 32, 3], jnp.float32)
   img_b = jnp.ones([2, 32, 32, 3], jnp.float32)
   lpips_vgg = lpips.LpipsVgg(pred="pred", target="target", mask="mask")
-  state = lpips_vgg.get_state(pred=img_a, target=img_b, mask=None)
-  unused_result = state.compute()
+  state_1 = lpips_vgg.get_state(pred=img_a, target=img_b, mask=None)
+  unused_result_1 = state_1.compute()
+
+  # Test for images without batch dimension.
+  state_2 = lpips_vgg.get_state(pred=img_a[0], target=img_b[0], mask=None)
+  unused_result_2 = state_2.compute()
