@@ -32,25 +32,26 @@ del pytest, sys
 from etils import epy as _epy
 
 # Namespaces
-from kauldron import checkpoints as ckpts
-from kauldron import data
-from kauldron import evals
-from kauldron import inspect
-from kauldron import klinen as knn
-from kauldron import konfig
-from kauldron import kontext
-from kauldron import losses
-from kauldron import metrics
-from kauldron import modules as nn
-from kauldron import optim
-from kauldron import random
-from kauldron import summaries
-from kauldron import train
-from kauldron import typing
-from kauldron.data import kmix
-from kauldron.utils import api as utils
-from kauldron.utils import xmanager as xm
-from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
+with _epy.lazy_api_imports(globals()):
+  from kauldron import checkpoints as ckpts
+  from kauldron import data
+  from kauldron import evals
+  from kauldron import inspect
+  from kauldron import klinen as knn
+  from kauldron import konfig
+  from kauldron import kontext
+  from kauldron import losses
+  from kauldron import metrics
+  from kauldron import modules as nn
+  from kauldron import optim
+  from kauldron import random
+  from kauldron import summaries
+  from kauldron import train
+  from kauldron import typing
+  from kauldron.data import kmix
+  from kauldron.utils import api as utils
+  from kauldron.utils import xmanager as xm
+  from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 
 # Register the default `ConfigDict` overwrites
 from kauldron.xm._src import default_values as _default_values
