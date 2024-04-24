@@ -49,7 +49,7 @@ class Experiment:
   xp = kd.xm.Experiment.from_xid(1234)
 
   with xp.adhoc():  # Import from xid
-    import kauldron as kd
+    from kauldron import kd
 
     config = kd.konfig.resolve(xp.config)
 
