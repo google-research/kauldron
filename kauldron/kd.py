@@ -32,6 +32,7 @@ del pytest, sys
 from etils import epy as _epy
 
 # Namespaces
+import kauldron as _kauldron
 from kauldron import checkpoints as ckpts
 from kauldron import data
 from kauldron import evals
@@ -57,6 +58,9 @@ from kauldron.xm._src import default_values as _default_values
 
 # Import contrib at the end as they can use all
 from kauldron import contrib  # pylint: disable=g-bad-import-order  # pytype: disable=import-error
+
+# Forward the Kauldron version
+__version__ = _kauldron.__version__
 
 # TODO(epot): This could be optional for the top-level module
 # Automated documentation info

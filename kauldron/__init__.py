@@ -24,10 +24,9 @@
 __version__ = '0.1.0'
 
 
-def __getattr__(name):  # pylint: disable=invalid-name
-  """Any attribute access apart from `__version__` should raise an error."""
-  if name == '__version__':
-    return __version__
+def __getattr__(name: str):  # pylint: disable=invalid-name
+  """Catches `import kauldron as kd` errors."""
+  del name
   raise AttributeError(
       'Please always use "from kauldron import kd", '
       'never "import kauldron as kd".'
