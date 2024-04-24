@@ -425,7 +425,7 @@ def register_default_values(default_values: utils.ConfigDictLike[Any]) -> None:
 
   ```python
   with konfig.imports():
-    import kauldron as kd
+    from kauldron import kd
 
   konfig.register_default_values(
       kd.train.Trainer(

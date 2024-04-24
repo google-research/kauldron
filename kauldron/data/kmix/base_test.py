@@ -18,7 +18,7 @@ import dataclasses
 import functools
 from unittest import mock
 
-import kauldron as kd
+from kauldron import kd
 from kauldron.data import kmix
 import numpy as np
 import pytest
