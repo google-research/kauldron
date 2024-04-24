@@ -182,7 +182,7 @@ class PyGrainPipeline(Pipeline):
 
   Attributes:
     data_source: a random access datasource
-    transformations: A list of transformations to apply to the dataset. Each
+    transforms: A list of transformations to apply to the dataset. Each
       transformation should be either a `grain.MapTransform` or a
       `grain.RandomMapTransform`.
     shuffle: whether to shuffle
@@ -201,7 +201,7 @@ class PyGrainPipeline(Pipeline):
   num_epochs: Optional[int] = None
   # TODO(epot): Should only be `pygrain.Transformations`, but some pygrain
   # transforms currently inherit from tfgrain.Transformations
-  transformations: grain.Transformations | pygrain.Transformations = (
+  transforms: grain.Transformations | pygrain.Transformations = (
       dataclasses.field(default_factory=list)
   )
   worker_count: int = 16
@@ -229,7 +229,7 @@ class PyGrainPipeline(Pipeline):
     self._assert_root_cfg_resolved()
 
     transformations = []
-    transformations.extend(self.transformations)
+    transformations.extend(self.transforms)
     if self.batch_size:
       transformations.append(self.batch_fn)
 

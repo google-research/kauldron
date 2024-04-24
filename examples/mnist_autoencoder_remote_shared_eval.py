@@ -62,7 +62,7 @@ def _make_ds(split: str):
   return kd.data.PyGrainPipeline(
       data_source=tfds.data_source("mnist", split=split),
       shuffle=False,
-      transformations=[
+      transforms=[
           kd.data.Elements(keep=["image"]),
           kd.data.ValueRange(key="image", vrange=(0, 1)),
       ],
