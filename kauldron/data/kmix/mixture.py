@@ -22,14 +22,21 @@ import tensorflow as tf
 
 
 @dataclasses.dataclass(frozen=True)
-class SampleFromDatasets(base.Base):
+class SampleFromDatasets(base.TFDataPipeline):
   """Dataset mixture."""
 
-  datasets: list[base.Base]
+  datasets: list[base.TFDataPipeline]
   _: dataclasses.KW_ONLY
   weights: None | list[float] = None
   stop_on_empty_dataset: bool = False
   rerandomize_each_iteration: bool = True
+
+  def __post_init__(self):
+    if not all(isinstance(ds, base.TFDataPipeline) for ds in self.datasets):
+      raise ValueError(
+          'All datasets in `SampleFromDatasets` should inherit from'
+          ' `TFDataPipeline`.'
+      )
 
   def ds_for_current_process(self, rng: random.PRNGKey) -> tf.data.Dataset:
     # We make sure each nested dataset get a different seed

@@ -44,7 +44,7 @@ _ROOT_ONLY: Any = object()
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True, eq=True)
-class Base(pipelines.Pipeline, abc.ABC):
+class TFDataPipeline(pipelines.Pipeline, abc.ABC):
   """Base classes for all `tf.data` pipeline.
 
   Subclasses should only implement the `ds_for_current_process` method which

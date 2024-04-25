@@ -17,7 +17,7 @@ cfg.train_ds = kd.kmix.Tfds(
     name='mnist',
     split='train',
 
-    # `kmix.Base` optional parameters (common to all objects)
+    # `kmix.TFDataPipeline` optional parameters (common to all objects)
     batch_size=32,
     transforms=[
         kd.data.Elements(keep=["image"]),
@@ -83,7 +83,7 @@ Additionally, sources dataset can be combined using:
 All kmix classes inherit from this simple protocol.
 
 ```python
-class Base(kd.data.Pipeline):
+class TFDataPipeline(kd.data.Pipeline):
 
   @abc.abstractmethod
   def ds_for_current_process(self) -> tf.data.Dataset:

@@ -24,12 +24,12 @@ import tensorflow as tf
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class WithShuffleBuffer(base.Base):
+class WithShuffleBuffer(base.TFDataPipeline):
   """Loader with shuffle buffer.
 
-  Note that due to `ds.shuffle`, iterating twice over the `kmix.Base` will
-  yield different order. You need to recreate the `kmix.Base` object to fully
-  reset the iterator.
+  Note that due to `ds.shuffle`, iterating twice over the `kmix.TFDataPipeline`
+  will yield different order. You need to recreate the `kmix.TFDataPipeline`
+  object to fully reset the iterator.
 
   Attributes:
     cache: Whether to cache the dataset.

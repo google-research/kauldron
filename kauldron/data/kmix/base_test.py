@@ -87,7 +87,8 @@ def dummy_builder(tmp_path_factory: pytest.TempPathFactory):
 
 @with_ds_cls
 def test_no_shuffle(
-    ds_cls: type[kmix.Base], dummy_builder: tfds.core.GeneratorBasedBuilder
+    ds_cls: type[kmix.TFDataPipeline],
+    dummy_builder: tfds.core.GeneratorBasedBuilder,
 ):  # pylint: disable=redefined-outer-name
   ds = ds_cls(  # pytype: disable=wrong-keyword-args
       data_dir=dummy_builder.data_dir_root,
@@ -101,7 +102,8 @@ def test_no_shuffle(
 
 @with_ds_cls
 def test_shuffle(
-    ds_cls: type[kmix.Base], dummy_builder: tfds.core.GeneratorBasedBuilder
+    ds_cls: type[kmix.TFDataPipeline],
+    dummy_builder: tfds.core.GeneratorBasedBuilder,
 ):  # pylint: disable=redefined-outer-name
   ds = ds_cls(  # pytype: disable=wrong-keyword-args
       data_dir=dummy_builder.data_dir_root,
@@ -141,7 +143,8 @@ def test_shuffle(
 
 @with_ds_cls
 def test_sharding(
-    ds_cls: type[kmix.Base], dummy_builder: tfds.core.GeneratorBasedBuilder
+    ds_cls: type[kmix.TFDataPipeline],
+    dummy_builder: tfds.core.GeneratorBasedBuilder,
 ):  # pylint: disable=redefined-outer-name
   all_ids = set()
   with mock.patch('jax.process_count', return_value=4):

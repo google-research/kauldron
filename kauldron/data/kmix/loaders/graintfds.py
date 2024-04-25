@@ -25,7 +25,7 @@ import tensorflow as tf
 
 
 @dataclasses.dataclass(frozen=True)
-class Tfds(base.Base):
+class Tfds(base.TFDataPipeline):
   """Basic TFDS dataset loader (without transformations).
 
   This uses PyGrain and global shuffling, so only support ArrayRecord datasets.

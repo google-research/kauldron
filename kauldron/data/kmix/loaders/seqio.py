@@ -35,7 +35,7 @@ with epy.lazy_imports(
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class _SeqIO(base.Base):
+class _SeqIO(base.TFDataPipeline):
   """Basic SeqIO dataset loader.
 
   Attributes:
