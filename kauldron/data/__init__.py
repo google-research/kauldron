@@ -12,17 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Data modules."""
+"""Data modules.
 
-# pylint: disable=g-importing-member
+"""
+
+# TODO(epot): Make imports lazy
+
+# pylint: disable=g-importing-member,g-bad-import-order
 from kauldron.data import deprecated
 from kauldron.data.data_utils import IterableDataset
-from kauldron.data.grain_utils import MapTransform
-from kauldron.data.in_memory import InMemoryPipeline
+
+# Top-level pipelines
 from kauldron.data.pipelines import Pipeline
+from kauldron.data.in_memory import InMemoryPipeline
 from kauldron.data.pipelines import PyGrainPipeline
-#
+
+# `tf.data` based API
+from kauldron.data.kmix.base import TFDataPipeline
+from kauldron.data.kmix.loaders.graintfds import Tfds
+from kauldron.data.kmix.loaders.seqio import SeqIOMixture
+from kauldron.data.kmix.loaders.seqio import SeqIOTask
+from kauldron.data.kmix.loaders.tfds_legacy import TfdsLegacy
+from kauldron.data.kmix.loaders.with_shuffle_buffer import WithShuffleBuffer
+from kauldron.data.kmix.mixture import SampleFromDatasets
+
+# *****************************************************************************
 # DO NOT ADD new preprocessing ops here. Instead, add them to `kd.contrib.data`
+# *****************************************************************************
+from kauldron.data.grain_utils import MapTransform
 from kauldron.data.preprocessing import Cast
 from kauldron.data.preprocessing import CenterCrop
 from kauldron.data.preprocessing import Elements

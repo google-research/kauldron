@@ -47,6 +47,8 @@ _ROOT_ONLY: Any = object()
 class TFDataPipeline(pipelines.Pipeline, abc.ABC):
   """Base classes for all `tf.data` pipeline.
 
+  Do NOT use this class directly. Instead, use one of the subclasses.
+
   Subclasses should only implement the `ds_for_current_process` method which
   returns the `tf.data.Dataset` for the current process.
 
