@@ -20,6 +20,7 @@ from etils import epath
 from flax import linen as nn
 from kauldron import kd
 from examples import mnist_autoencoder
+import tensorflow_datasets as tfds
 
 
 def test_end2end(tmp_path: epath.Path):
@@ -38,7 +39,7 @@ def test_end2end(tmp_path: epath.Path):
   trainer = kd.konfig.resolve(cfg)
 
   # Launch train
-  with kd.kmix.testing.mock_data(num_examples=10):
+  with tfds.testing.mock_data(num_examples=10):
     state, _ = trainer.train()
 
   assert list(state.collections) == ['batch_stats']

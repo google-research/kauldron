@@ -21,6 +21,7 @@ from etils.etree import jax as etree  # pylint: disable=g-importing-member
 from jax import numpy as jnp
 from kauldron import kd
 from examples import mnist_autoencoder
+import tensorflow_datasets as tfds
 
 
 def test_sharding(tmp_path: epath.Path):
@@ -34,7 +35,7 @@ def test_sharding(tmp_path: epath.Path):
   trainer = kd.konfig.resolve(cfg)
 
   # Get the state
-  with kd.kmix.testing.mock_data():
+  with tfds.testing.mock_data():
     state = trainer.init_state()
 
   del state

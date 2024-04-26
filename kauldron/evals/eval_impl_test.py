@@ -21,6 +21,7 @@ from unittest import mock
 from etils import epath
 from kauldron import kd
 from examples import mnist_autoencoder
+import tensorflow_datasets as tfds
 
 
 def test_eval_impl(tmp_path: epath.Path):
@@ -46,7 +47,7 @@ def test_eval_impl(tmp_path: epath.Path):
 
   # Launch train
   with (
-      kd.kmix.testing.mock_data(),
+      tfds.testing.mock_data(),
       mock.patch(
           'orbax.checkpoint.checkpoint_utils.checkpoints_iterator',
           _mocked_iterator,

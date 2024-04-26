@@ -16,7 +16,6 @@
 
 # pylint: disable=g-importing-member
 
-from kauldron.data.kmix import testing
 from kauldron.data.kmix.base import TFDataPipeline
 from kauldron.data.kmix.loaders.graintfds import Tfds
 from kauldron.data.kmix.loaders.seqio import SeqIOMixture

@@ -21,6 +21,7 @@ from kauldron import kd
 from examples import mnist_autoencoder
 from kauldron.utils import assert_utils
 import pytest
+import tensorflow_datasets as tfds
 
 with kd.konfig.imports():
   from flax import linen as nn  # pylint: disable=g-import-not-at-top
@@ -47,7 +48,7 @@ def new_trainer(tmp_path: pathlib.Path) -> kd.train.Trainer:
   cfg.train_ds.batch_size = 1
   cfg.seed = 0
   cfg = kd.konfig.resolve(cfg)
-  with kd.kmix.testing.mock_data():
+  with tfds.testing.mock_data():
     _ = cfg.train_ds.element_spec
   return cfg
 
@@ -66,7 +67,7 @@ def old_trainer(tmp_path: pathlib.Path):
   cfg.train_ds.batch_size = 1
   cfg.seed = 1
   cfg = kd.konfig.resolve(cfg)
-  with kd.kmix.testing.mock_data():
+  with tfds.testing.mock_data():
     _ = cfg.train_ds.element_spec
   return cfg
 
