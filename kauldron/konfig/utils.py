@@ -113,7 +113,7 @@ class _ToJson:
         # TODO(epot): Support field-ref (at least with identity), so
         # deserialization restore the ref.
         return self.convert(obj.get())
-      case list() | tuple():
+      case list() | tuple() | set():
         return [self.convert(v) for v in obj]
       case os.PathLike():  # For convenience, allow `pathlib`-like objects
         return os.fspath(obj)
