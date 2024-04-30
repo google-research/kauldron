@@ -34,25 +34,24 @@ class SingleDimension(base.Metric):
   Attributes:
     tensor: kontext.Key for the tensor to capture the value of.
     mask: Ignored.
-    index: Dimension to index (from the last axis).
+    index: Dimension to index (from the last axis). If None, no indexing is
+      performed.
   """
 
   tensor: kontext.Key = kontext.REQUIRED
   mask: Optional[kontext.Key] = None
 
-  index: int = 0
+  index: int | None = 0
 
   @flax.struct.dataclass
   class State(base_state.AverageState):
     pass
 
   @typechecked
-  def get_state(
-      self,
-      tensor: Float["*any"],
-  ) -> SingleDimension.State:
-    value = tensor[..., self.index]
-    return self.State.from_values(values=value)
+  def get_state(self, tensor: Float["*any"]) -> SingleDimension.State:
+    if self.index is not None:
+      tensor = tensor[..., self.index]
+    return self.State.from_values(values=tensor)
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
