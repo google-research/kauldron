@@ -239,10 +239,13 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
         is_training_property=is_training,
         **kwargs,
     )
-    params = collections.pop("params", None)
+    # Note the params can be mutable if the model call the same sub-model
+    # internally but with different params. However, the updates are never
+    # propagated
+    collections.pop("params", None)
     interms = collections.pop("intermediates")
     context = context.replace(
-        preds=preds, interms=interms, collections=collections, params=params
+        preds=preds, interms=interms, collections=collections
     )
     loss_total, loss_states = kd_losses.compute_losses(
         losses=self.losses, context=context
