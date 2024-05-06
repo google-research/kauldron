@@ -428,6 +428,7 @@ class RandomCrop(ElementWiseRandomTransform):
     # compute the range of the offset for the tf.slice
     offset_range = shape - target_shape
     clipped_offset_range = tf.clip_by_value(offset_range, 1, tf.int32.max)
+    print("AAA", shape, target_shape, offset_range, clipped_offset_range)
     # randomly sample offsets from the desired range via modulo
     rand_int = tf.random.stateless_uniform(
         [shape.shape[0]], seed=seed, minval=None, maxval=None, dtype=tf.int32
