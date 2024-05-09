@@ -649,3 +649,28 @@ class ResizeSmall(ElementWiseTransform):
         resized_imgs,
         tf.concat([batch_dims, tf.shape(resized_imgs)[-3:]], axis=0),
     )
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class RepeatFrames(ElementWiseTransform):
+  """Repeats frames so that they are divisible by `divisible_by`.
+  """
+
+  divisible_by: int
+
+  @typechecked
+  def map_element(
+      self, element: TfArray["*b T H W C"]
+  ) -> TfArray["*b T2 H W C"]:
+    # Tensorflow image resize only supports height and width dimensions so for
+    # the time dimension we use gather.
+    t = tf.shape(element)[-4]
+    t2 = tf.cast(
+        tf.math.ceil(t / self.divisible_by), tf.int32
+    ) * self.divisible_by
+    indices = tf.image.resize(
+        tf.reshape(tf.range(t), [1, -1, 1]),
+        [1, t2],
+        method="nearest"
+    )[0, :, 0]
+    return tf.gather(element, indices, axis=-4)

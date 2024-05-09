@@ -51,6 +51,7 @@ from kauldron.data.preprocessing import OneHot
 from kauldron.data.preprocessing import RandomCrop
 from kauldron.data.preprocessing import RandomFlipLeftRight
 from kauldron.data.preprocessing import Rearrange
+from kauldron.data.preprocessing import RepeatFrames
 # TODO(epot): Unify Resize & ResizeSmall and have better API.
 from kauldron.data.preprocessing import Resize
 from kauldron.data.preprocessing import ResizeSmall
