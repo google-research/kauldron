@@ -15,7 +15,7 @@
 """Grain TFDS dataset loader."""
 
 import dataclasses
-from typing import Any, Mapping, Optional
+from typing import Any, ClassVar, Mapping, Optional
 
 from etils import epath
 import grain.tensorflow as grain
@@ -42,6 +42,8 @@ class Tfds(base.TFDataPipeline):
   shuffle: bool = True
   shard_drop_remainder: bool = True
   num_epochs: Optional[int] = None
+
+  _supports_symbolic_checkpoint: ClassVar[bool] = True
 
   def ds_for_current_process(self, rng: random.PRNGKey) -> tf.data.Dataset:
     source = grain.TfdsDataSource.from_name(

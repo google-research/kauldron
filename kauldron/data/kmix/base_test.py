@@ -16,6 +16,7 @@
 
 import dataclasses
 import functools
+import pathlib
 from unittest import mock
 
 from kauldron import kd
@@ -42,6 +43,8 @@ dummy_tfds_legacy_ds = functools.partial(
     seed=0,
     shuffle_buffer_size=100,
 )
+
+_TfdsCls = type[kmix.Tfds | kmix.TfdsLegacy]
 
 
 with_ds_cls = pytest.mark.parametrize(
@@ -87,10 +90,10 @@ def dummy_builder(tmp_path_factory: pytest.TempPathFactory):
 
 @with_ds_cls
 def test_no_shuffle(
-    ds_cls: type[kmix.TFDataPipeline],
+    ds_cls: _TfdsCls,
     dummy_builder: tfds.core.GeneratorBasedBuilder,
 ):  # pylint: disable=redefined-outer-name
-  ds = ds_cls(  # pytype: disable=wrong-keyword-args
+  ds = ds_cls(  # pytype: disable=wrong-keyword-args,missing-parameter
       data_dir=dummy_builder.data_dir_root,
       num_epochs=2,
       shuffle=False,
@@ -102,10 +105,10 @@ def test_no_shuffle(
 
 @with_ds_cls
 def test_shuffle(
-    ds_cls: type[kmix.TFDataPipeline],
+    ds_cls: _TfdsCls,
     dummy_builder: tfds.core.GeneratorBasedBuilder,
 ):  # pylint: disable=redefined-outer-name
-  ds = ds_cls(  # pytype: disable=wrong-keyword-args
+  ds = ds_cls(  # pytype: disable=wrong-keyword-args,missing-parameter
       data_dir=dummy_builder.data_dir_root,
       num_epochs=1,
       shuffle=True,
@@ -120,7 +123,7 @@ def test_shuffle(
     ds = dataclasses.replace(ds)
   assert _ids(ds) == ids
 
-  ds = ds_cls(  # pytype: disable=wrong-keyword-args
+  ds = ds_cls(  # pytype: disable=wrong-keyword-args,missing-parameter
       data_dir=dummy_builder.data_dir_root,
       num_epochs=2,
       shuffle=True,
@@ -130,7 +133,7 @@ def test_shuffle(
   assert ids2[:100] == ids  # First epoch is the same
   assert ids2 != ids + ids  # The second epoch has different shuffling.
 
-  ds = ds_cls(  # pytype: disable=wrong-keyword-args
+  ds = ds_cls(  # pytype: disable=wrong-keyword-args,missing-parameter
       data_dir=dummy_builder.data_dir_root,
       num_epochs=1,
       shuffle=True,
@@ -143,14 +146,14 @@ def test_shuffle(
 
 @with_ds_cls
 def test_sharding(
-    ds_cls: type[kmix.TFDataPipeline],
+    ds_cls: _TfdsCls,
     dummy_builder: tfds.core.GeneratorBasedBuilder,
 ):  # pylint: disable=redefined-outer-name
   all_ids = set()
   with mock.patch('jax.process_count', return_value=4):
     for process_index in range(4):
       with mock.patch('jax.process_index', return_value=process_index):
-        ds = ds_cls(  # pytype: disable=wrong-keyword-args
+        ds = ds_cls(  # pytype: disable=wrong-keyword-args,missing-parameter
             data_dir=dummy_builder.data_dir_root,
             num_epochs=1,
             shuffle=True,
@@ -188,3 +191,43 @@ def test_sample_from_datasets(dummy_builder: tfds.core.GeneratorBasedBuilder):  
   ids = _ids(dsmix, key='code')
   assert len(ids) == 300
   assert sorted(ids) == sorted(list(range(100)) * 3)
+
+
+@with_ds_cls
+def test_checkpoint(
+    tmp_path: pathlib.Path,
+    ds_cls: _TfdsCls,
+    dummy_builder: tfds.core.GeneratorBasedBuilder,
+):  # pylint: disable=redefined-outer-name
+  ckpt = kd.ckpts.Checkpointer(
+      workdir=tmp_path,
+      save_interval_steps=1,
+  )
+
+  checkpoint_kwargs = {}
+  if issubclass(ds_cls.func, kmix.TfdsLegacy):  # pytype: disable=attribute-error
+    checkpoint_kwargs['checkpoint'] = True
+
+  def _make_ds_iter():
+    # Load the dataset.
+    ds = ds_cls(  # pytype: disable=wrong-keyword-args,missing-parameter
+        data_dir=dummy_builder.data_dir_root,
+        num_epochs=2,
+        shuffle=True,
+        seed=0,
+        **checkpoint_kwargs,
+    )
+    return iter(ds)
+
+  ids = _ids(_make_ds_iter())
+
+  ds_iter = _make_ds_iter()
+  for i in ids[:45]:
+    assert next(ds_iter) == {'id': i}
+
+  ckpt.save(ds_iter, step=1)  # pytype: disable=wrong-arg-types
+
+  ds_iter = _make_ds_iter()
+  ds_iter = ckpt.restore(ds_iter)  # pytype: disable=wrong-arg-types
+  for i in ids[45:]:
+    assert next(ds_iter) == {'id': i}

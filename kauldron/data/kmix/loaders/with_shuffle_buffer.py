@@ -15,7 +15,7 @@
 """TFDS dataset loader."""
 
 import dataclasses
-from typing import Optional
+from typing import ClassVar, Optional
 
 import jax
 from kauldron import kd
@@ -45,6 +45,8 @@ class WithShuffleBuffer(base.TFDataPipeline):
   shuffle: bool = True
   shuffle_buffer_size: Optional[int] = None
   num_epochs: Optional[int] = None
+
+  _supports_symbolic_checkpoint: ClassVar[bool] = False
 
   def transform_ds(self, ds, *, rng: kd.random.PRNGKey) -> tf.data.Dataset:
     if self.cache:

@@ -15,6 +15,7 @@
 """Dataset mixtures."""
 
 import dataclasses
+import functools
 
 from kauldron import random
 from kauldron.data.kmix import base
@@ -53,3 +54,7 @@ class SampleFromDatasets(base.TFDataPipeline):
         rerandomize_each_iteration=self.rerandomize_each_iteration,
     )
     return ds
+
+  @functools.cached_property
+  def _supports_symbolic_checkpoint(self) -> bool:
+    return all(ds._supports_symbolic_checkpoint for ds in self.datasets)  # pylint: disable=protected-access

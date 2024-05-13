@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 import dataclasses
-from typing import Any, Optional
+from typing import Any, ClassVar, Optional
 
 from etils import epy
 import jax
@@ -52,6 +52,8 @@ class _SeqIO(base.TFDataPipeline):
   shuffle: bool = True
   num_epochs: Optional[int] = None
   register: Optional[Any] = None
+
+  _supports_symbolic_checkpoint: ClassVar[bool] = False
 
   @property
   def shard_info(self) -> seqio.ShardInfo:

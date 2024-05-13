@@ -21,6 +21,7 @@ import functools
 import sys
 from typing import Any, Optional, TypeAlias
 
+from absl import logging
 from etils import enp
 from etils.etree import jax as etree  # pylint: disable=g-importing-member
 from grain._src.tensorflow import transforms as grain_transforms
@@ -33,6 +34,8 @@ from kauldron.data import pipelines
 from kauldron.typing import PyTree  # pylint: disable=g-importing-member,g-multiple-import
 import tensorflow as tf
 import tensorflow_datasets as tfds
+
+# pylint: disable=logging-fstring-interpolation
 
 
 # Output of `tfds.as_numpy`
@@ -61,6 +64,9 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
       dataset.
     prefetch_size: Number of batches to prefetch for this dataset. Defaults to
       AUTOTUNE.
+    checkpoint: Whether the pipeline should be checkpointed. By default,
+      pipelines are checkpointed if they supports symbolic checkpointing, and
+      not otherwise.
   """
 
   # TODO(epot): Users should also be able to specify drop_reminder or mask
@@ -73,8 +79,28 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
   # Those fields are only applied once at the top level
   tf_data_options: Optional[tf.data.Options] = None
   prefetch_size: Optional[int] = _ROOT_ONLY
+  checkpoint: bool | None = None
 
   # ======================== Protocol ========================
+
+  def __post_init__(self):
+    if hasattr(super(), "__post_init__"):
+      super().__post_init__()  # Future proof to run `__post_init__` in parents
+
+    if not self._supports_symbolic_checkpoint:
+      if self.checkpoint is None:
+        logging.info(
+            f"{type(self).__qualname__} does not support symbolic"
+            " checkpointing, so dataset won't be checkpointed, unless"
+            " `checkpoint=` is explicitly set."
+        )
+      elif self.checkpoint:
+        logging.info(
+            f"{type(self).__qualname__} does not support symbolic"
+            " checkpointing, but `checkpoint=True`. This might lead to huge"
+            " checkpoints."
+        )
+      # Else, `checkpoint` is explicitly set to False, so nothing to do.
 
   @abc.abstractmethod
   def ds_for_current_process(self, rng: random.PRNGKey) -> tf.data.Dataset:
@@ -107,12 +133,15 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
 
   def __iter__(self) -> iterators.Iterator:
     """Iterate over the dataset elements."""
-    # TODO(epot): Add once TFGrain support checkpointing (stateful ops in)
-    # return iterators.TFDataIterator(source=self, iter=iter(self._root_ds))
-
-    return iterators.NonCheckpointableIterator(
-        source=self, iter=iter(tfds.as_numpy(self._root_ds))
-    )
+    # Some custom ops raise an error when checkpointed. We could try to
+    # auto-detect, however it might be better to explicitly raise an error
+    # so user explicitly set their pipeline as non-checkpointable.
+    if self._should_checkpoint:
+      return iterators.TFDataIterator(source=self, iter=iter(self._root_ds))
+    else:
+      return iterators.NonCheckpointableIterator(
+          source=self, iter=iter(tfds.as_numpy(self._root_ds))
+      )
 
   @property
   def element_spec(self) -> PyTree[enp.ArraySpec]:
@@ -194,6 +223,9 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
       # Start fetching the data as soon as the `tf.data` pipeline is created
       # (instead of in the first `next(iter(ds))` call) to speed up start time.
       ds_options.experimental_warm_start = True
+
+      if self._supports_symbolic_checkpoint:
+        ds_options.experimental_symbolic_checkpoint = True
     else:
       ds_options = None
 
@@ -207,6 +239,24 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
     if ds_options is not None:
       ds = ds.with_options(ds_options)
     return ds
+
+  # Whether the pipeline supports symbolic checkpointing.
+  # This should be defined in the subclasses.
+  @property
+  @abc.abstractmethod
+  def _supports_symbolic_checkpoint(self) -> bool:
+    raise NotImplementedError(
+        "Abstract property `_supports_symbolic_checkpoint` not implemented for"
+        f" {type(self)}"
+    )
+
+  @property
+  def _should_checkpoint(self) -> bool:
+    """Whether the pipeline should be checkpointed."""
+    if self.checkpoint is None:
+      return self._supports_symbolic_checkpoint
+    else:
+      return self.checkpoint
 
 
 def _maybe_add_grain_meta_features(
