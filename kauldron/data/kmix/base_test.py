@@ -19,20 +19,31 @@ import functools
 import pathlib
 from unittest import mock
 
+import grain.tensorflow as grain
 from kauldron import kd
 from kauldron.data import kmix
 import numpy as np
 import pytest
+import tensorflow as tf
 import tensorflow_datasets as tfds
 
 
-# TODO(epot): Test:
-# * Deterministic random transforms (even when shuffle == False)
+class _DummyRandomTransform(grain.RandomMapTransform):
+  """Test random transformation determinism."""
+
+  def random_map(self, features, seed):
+    features['rand'] = tf.cast(
+        features['id'], tf.float32
+    ) + tf.random.stateless_uniform([], seed)
+    return features
+
+
 dummy_tfds_ds = functools.partial(
     kmix.Tfds,
     name='dummy_dataset',
     split='train',
     seed=0,
+    transforms=[_DummyRandomTransform()],
 )
 
 
@@ -42,6 +53,7 @@ dummy_tfds_legacy_ds = functools.partial(
     split='train',
     seed=0,
     shuffle_buffer_size=100,
+    transforms=[_DummyRandomTransform()],
 )
 
 _TfdsCls = type[kmix.Tfds | kmix.TfdsLegacy]
@@ -80,6 +92,10 @@ def _ids(ds, key: str = 'id') -> list[int]:
   return [ex[key] for ex in ds]
 
 
+def _rngs(ds):
+  return _ids(ds, key='rand')
+
+
 @pytest.fixture(scope='module')
 def dummy_builder(tmp_path_factory: pytest.TempPathFactory):
   tmp_path = tmp_path_factory.mktemp('data_dir')
@@ -99,8 +115,14 @@ def test_no_shuffle(
       shuffle=False,
   )
   assert len(ds) == 200
-  assert list(ds.element_spec.keys()) == ['id']  # pytype: disable=attribute-error
-  assert _ids(ds) == list(range(100)) + list(range(100))
+  assert list(ds.element_spec.keys()) == ['id', 'rand']  # pytype: disable=attribute-error
+  exs = list(ds)
+  assert _ids(exs) == list(range(100)) + list(range(100))
+  # Rng across epochs are different.
+  assert _rngs(exs)[:100] != _rngs(exs)[100:]
+
+  # Iterating twice on the dataset should be deterministic.
+  assert list(ds) == exs
 
 
 @with_ds_cls
@@ -116,22 +138,24 @@ def test_shuffle(
   assert len(ds) == 100
 
   # Iterating twice on the dataset yields the same results.
-  ids = _ids(ds)
+  exs = list(ds)
+  ids = _ids(exs)
   if isinstance(ds, kmix.WithShuffleBuffer):
     # When `ds.shuffle` is used, the dataset has to be re-created as
     # `reshuffle_each_iteration` is persistent on the cached iterator.
     ds = dataclasses.replace(ds)
-  assert _ids(ds) == ids
+  assert list(ds) == exs
 
   ds = ds_cls(  # pytype: disable=wrong-keyword-args,missing-parameter
       data_dir=dummy_builder.data_dir_root,
       num_epochs=2,
       shuffle=True,
   )
-  ids2 = _ids(ds)
-  assert len(ids2) == 200
-  assert ids2[:100] == ids  # First epoch is the same
-  assert ids2 != ids + ids  # The second epoch has different shuffling.
+  exs2 = list(ds)
+  assert len(exs2) == 200
+  assert exs2[:100] == exs  # First epoch is the same
+  # The second epoch has different shuffling.
+  assert _ids(exs2) != ids + ids
 
   ds = ds_cls(  # pytype: disable=wrong-keyword-args,missing-parameter
       data_dir=dummy_builder.data_dir_root,
@@ -139,9 +163,10 @@ def test_shuffle(
       shuffle=True,
       seed=1,  # Different seed
   )
-  ids_new_seed = _ids(ds)
-  assert len(ids_new_seed) == len(ids)
-  assert ids_new_seed != ids  # Seed change the shuffling
+  exs_new_seed = list(ds)
+  assert len(exs_new_seed) == len(ids)
+  assert _ids(exs_new_seed) != ids  # Seed change the shuffling
+  assert _rngs(exs_new_seed) != _rngs(exs)
 
 
 @with_ds_cls
@@ -174,7 +199,9 @@ def test_sample_from_datasets(dummy_builder: tfds.core.GeneratorBasedBuilder):  
       num_epochs=1,
       shuffle=False,
       transforms=[
+          _DummyRandomTransform(),
           kd.data.Elements(rename={'id': 'code'}),
+          kd.contrib.data.AddConstants({'src': 0}),
       ],
   )
   ds2 = dummy_tfds_legacy_ds(
@@ -182,15 +209,27 @@ def test_sample_from_datasets(dummy_builder: tfds.core.GeneratorBasedBuilder):  
       num_epochs=2,
       shuffle=False,
       transforms=[
+          _DummyRandomTransform(),
           kd.data.Elements(rename={'id': 'code'}),
+          kd.contrib.data.AddConstants({'src': 1}),
       ],
   )
   dsmix = kmix.SampleFromDatasets(  # pytype: disable=wrong-keyword-args
       [ds1, ds2], seed=0
   )
-  ids = _ids(dsmix, key='code')
+  exs = list(dsmix)
+  ids = _ids(exs, key='code')
   assert len(ids) == 300
   assert sorted(ids) == sorted(list(range(100)) * 3)
+
+  exs0 = [ex for ex in exs if ex['src'] == 0]
+  exs1 = [ex for ex in exs if ex['src'] == 1]
+  assert len(exs0) == 100
+  assert len(exs1) == 200
+  # Not sorted so examples are the same
+  assert _ids(exs0, key='code') == _ids(exs1, key='code')[:100]
+  # But randomness different across datasets.
+  assert _rngs(exs0) != _rngs(exs1)[:100]
 
 
 @with_ds_cls
@@ -219,15 +258,15 @@ def test_checkpoint(
     )
     return iter(ds)
 
-  ids = _ids(_make_ds_iter())
+  exs = list(_make_ds_iter())
 
   ds_iter = _make_ds_iter()
-  for i in ids[:45]:
-    assert next(ds_iter) == {'id': i}
+  for ex in exs[:45]:
+    assert next(ds_iter) == ex
 
   ckpt.save(ds_iter, step=1)  # pytype: disable=wrong-arg-types
 
   ds_iter = _make_ds_iter()
   ds_iter = ckpt.restore(ds_iter)  # pytype: disable=wrong-arg-types
-  for i in ids[45:]:
-    assert next(ds_iter) == {'id': i}
+  for ex in exs[45:]:
+    assert next(ds_iter) == ex
