@@ -33,13 +33,11 @@ class SingleDimension(base.Metric):
 
   Attributes:
     tensor: kontext.Key for the tensor to capture the value of.
-    mask: Ignored.
     index: Dimension to index (from the last axis). If None, no indexing is
       performed.
   """
 
   tensor: kontext.Key = kontext.REQUIRED
-  mask: Optional[kontext.Key] = None
 
   index: int | None = 0
 
