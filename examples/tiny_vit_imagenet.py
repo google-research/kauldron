@@ -98,7 +98,7 @@ def get_config():
 
 
 def _make_ds(training: bool):
-  return kd.kmix.Tfds(
+  return kd.data.Tfds(
       name="imagenet_resized/64x64",
       split="train" if training else "validation",
       shuffle=True if training else False,

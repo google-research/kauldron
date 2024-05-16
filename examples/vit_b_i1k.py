@@ -127,7 +127,7 @@ def _make_ds(training: bool):
         kd.data.Rearrange(key="label", pattern="... -> ... 1"),
     ]
 
-  return kd.kmix.Tfds(
+  return kd.data.Tfds(
       name="imagenet2012",
       split="train[:99%]"
       if training
