@@ -65,16 +65,16 @@ See https://kauldron.rtfd.io/en/latest-kmix for details on how to implement a cu
 Example of dataset mixture with nested transforms:
 
 ```python
-cfg.train_ds = kd.kmix.SampleFromDatasets(
+cfg.train_ds = kd.data.SampleFromDatasets(
     datasets=[
-        kd.kmix.Tfds(
+        kd.data.Tfds(
             name='cifar100',
             split='train',
             transforms=[
                 kd.data.Elements(keep=["image", "label"]),
             ],
         ),
-        kd.kmix.Tfds(
+        kd.data.Tfds(
             name='imagenet2012',
             split='train',
             transforms=[

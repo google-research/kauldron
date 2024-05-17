@@ -12,7 +12,7 @@ pipelines.
 Minimal example:
 
 ```python
-cfg.train_ds = kd.kmix.Tfds(
+cfg.train_ds = kd.data.Tfds(
     # TFDS parameters
     name='mnist',
     split='train',
@@ -28,16 +28,16 @@ cfg.train_ds = kd.kmix.Tfds(
 Example of dataset mixture with nested transforms:
 
 ```python
-cfg.train_ds = kd.kmix.SampleFromDatasets(
+cfg.train_ds = kd.data.SampleFromDatasets(
     datasets=[
-        kd.kmix.Tfds(
+        kd.data.Tfds(
             name='cifar100',
             split='train',
             transforms=[
                 kd.data.Elements(keep=["image", "label"]),
             ],
         ),
-        kd.kmix.Tfds(
+        kd.data.Tfds(
             name='imagenet2012',
             split='train',
             transforms=[
@@ -147,7 +147,7 @@ Like all `kd.data.Pipeline` objects, the dataset can be used directly as a
 standalone iterator.
 
 ```python
-ds = kd.kmix.Tfds(...)
+ds = kd.data.Tfds(...)
 ds = ds.device_put(kd.sharding.FIRST_DIM)
 
 for ex in ds:
