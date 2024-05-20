@@ -70,12 +70,16 @@ class KauldronJobs(jobs_info.JobsProvider):
 
   Attributes:
     config: The `kd.train.Trainer` `ConfigDict` to launch (before resolve)
+    config_parameter: Additional parameters that are appended to the config
+      path. config-dict supports providing additional parameters to the config
+      like this `config.py:args`.
     overrides: Optional `ConfigDict` overwrides (e.g. `{'batch_size': 64}`)
     module: Module containing the config.
   """
 
   config: konfig.ConfigDictLike[kd.train.Trainer]
   _: dataclasses.KW_ONLY
+  config_parameter: str | None = None
   overrides: dict[str, Any] = dataclasses.field(default_factory=dict)
   # TODO(epot): Make `module` optional. Currently required to ship the
   # config to the trainer. But could have a fully-serializable mode.
@@ -115,6 +119,10 @@ class KauldronJobs(jobs_info.JobsProvider):
     # We cannot simply use a DEFINE_string flag instead, because we also need
     # the evaluated config with CLI config overrides. Thus the hack below:
     config_path = flagvalues[flag.name].config_filename  # pytype: disable=attribute-error
+    # DEFINE_config_file supports additional arguments to be appended like this
+    # config.py:args
+    # We need to remove them to get the actual config path.
+    config_path, *config_parameter = config_path.split(":", 1)
 
     # Import the config module (needed for sweeps etc.).
     config_module = importlib.import_module(config_path)
@@ -129,6 +137,7 @@ class KauldronJobs(jobs_info.JobsProvider):
     return cls(
         module=config_module,
         config=flag.value,
+        config_parameter=config_parameter[0] if config_parameter else None,
         overrides=config_overrides,
     )
 
@@ -224,6 +233,9 @@ class KauldronJobs(jobs_info.JobsProvider):
 
   @functools.cached_property
   def base_job(self) -> job_lib.Job:
+    cfg_path = dir_utils.file_path("config.py")
+    if self.config_parameter is not None:
+      cfg_path += f":{self.config_parameter}"
     return job_lib.Job(  # pytype: disable=wrong-keyword-args
         target=self.project_info.target,
         interpreter_info=job_params.InterpreterInfo(
@@ -232,7 +244,7 @@ class KauldronJobs(jobs_info.JobsProvider):
             script_path="//third_party/py/kauldron/main.py",
         ),
         args={
-            "cfg": dir_utils.file_path("config.py"),
+            "cfg": cfg_path,
             "cfg.workdir": dir_utils.WU_DIR_PROXY,
             **{f"cfg.{k}": v for k, v in self.overrides.items()},
         },

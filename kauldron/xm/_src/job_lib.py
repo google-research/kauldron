@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import functools
+import shlex
 import typing
 from typing import Any, Optional
 
@@ -241,7 +242,7 @@ def _resolve_and_normalize_arg(
       dir_utils.WU_DIR_PROXY: dir_builder.wu_dir,
       dir_utils.XP_DIR_PROXY: dir_builder.xp_dir,
   }
-  replaces_strict = {
+  replaces_startswith = {
       dir_utils.file_path(file): fileset.get_path(file, xm_abc.Borg.Spec())
       for file in fileset.files.values()
   }
@@ -250,8 +251,22 @@ def _resolve_and_normalize_arg(
     if isinstance(leaf, str):
       for before, after in replaces.items():
         leaf = leaf.replace(before, after)
-      for before, after in replaces_strict.items():
-        leaf = after if leaf == before else leaf
+      # Some file paths can contain additional arguments, e.g. config-dict
+      # files support passing arguments separated by a colon:
+      # `__xm_file__(config.py):arg`
+      # In this case we need to replace the `__xm_file__` prefix with the
+      # actual file path, and then add the arguments back.
+      for before, after in replaces_startswith.items():
+        if leaf.startswith(before):
+          suffix = leaf.removeprefix(before)
+          if isinstance(after, str):
+            leaf = after + suffix
+          elif isinstance(after, xm.ShellSafeArg):
+            leaf = xm.ShellSafeArg(after.arg + shlex.quote(suffix))
+          else:
+            raise ValueError(
+                f"Unsupported type for `replaces_startswith`: {type(after)}"
+            )
 
     return leaf
 
