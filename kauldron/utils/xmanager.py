@@ -23,6 +23,7 @@ import functools
 import importlib
 import json
 import typing
+from typing import Any
 
 from etils import epath
 from etils import epy
@@ -154,9 +155,9 @@ def _json_to_config(json_value, *, lazy: bool):
   match json_value:
     case dict():
       values = {k: _json_to_config(v, lazy=lazy) for k, v in json_value.items()}
-      if not lazy and (qualname := values.get('__qualname__')):
+      if not lazy and (module_name := _get_module_name(values)):
         try:
-          importlib.import_module(qualname.split(':', 1)[0])
+          importlib.import_module(module_name)
         except ImportError as e:
           epy.reraise(
               e,
@@ -170,3 +171,14 @@ def _json_to_config(json_value, *, lazy: bool):
       return tuple(_json_to_config(v, lazy=lazy) for v in json_value)
     case _:
       return json_value
+
+
+def _get_module_name(values: dict[str, Any]) -> str | None:
+  """Returns the module name from the config values."""
+  qualname = values.get(konfig.configdict_proxy.QUALNAME_KEY) or values.get(
+      konfig.configdict_proxy.CONST_KEY
+  )
+  if qualname is not None:
+    return qualname.split(':', 1)[0]
+  else:
+    return None
