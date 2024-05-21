@@ -129,9 +129,11 @@ class Experiment(job_params.JobParams):
       new_sweep = new_sweep.replace_with_jobs_provider(self.jobs_provider)
     object.__setattr__(self, "sweep_info", new_sweep)
 
-  def launch(self) -> xm_abc.XManagerExperiment:
+  def launch(
+      self, existing_xp: xm_abc.XManagerExperiment | None = None
+  ) -> xm_abc.XManagerExperiment:
     """Launch the experiment."""
-    with self.create_experiment() as xp:
+    with self._maybe_create_experiment(existing_xp) as xp:
       xp.context.add_config_file(
           file_content=epy.pretty_repr(self.resolved_jobs),
           description="Jobs",
@@ -170,9 +172,19 @@ class Experiment(job_params.JobParams):
             workdir=dir_builder.xp_dir,
             executor=xm_abc.Borg(requirements=requirements),
         )
-      # TODO(epot): Support Custom auxiliaries
 
     return xp
+
+  @contextlib.contextmanager
+  def _maybe_create_experiment(
+      self, existing_xp: xm_abc.XManagerExperiment | None
+  ) -> Iterator[xm_abc.XManagerExperiment]:
+    """Returns either the existing experiment or create a new one."""
+    if existing_xp is not None:
+      yield existing_xp
+    else:
+      with self.create_experiment() as xp:
+        yield xp
 
   @contextlib.contextmanager
   def create_experiment(self) -> Iterator[xm_abc.XManagerExperiment]:

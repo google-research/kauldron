@@ -91,6 +91,7 @@ class KauldronJobs(jobs_info.JobsProvider):
       module: str | types.ModuleType,
       *,
       overrides: dict[str, Any] | None = None,
+      config_parameter: str | None = None,
   ) -> KauldronJobs:
     """Create a `KauldronJobs` from a config module."""
     if isinstance(module, str):
@@ -98,9 +99,14 @@ class KauldronJobs(jobs_info.JobsProvider):
     elif not isinstance(module, types.ModuleType):
       raise TypeError(f"Expected module. Got: {type(module)}")
 
+    if config_parameter is None:
+      config = module.get_config()
+    else:
+      config = module.get_config(config_parameter)
     return cls(
         module=module,
-        config=module.get_config(),
+        config=config,
+        config_parameter=config_parameter,
         overrides=overrides or {},
     )
 
