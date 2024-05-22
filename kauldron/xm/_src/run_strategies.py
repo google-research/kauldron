@@ -77,11 +77,7 @@ class RunXM(RunStrategy, job_params.JobParams):
   }
   ```
 
-  The experiment will containing 3 tasks: `train`, `eval0`, `eval1`:
-
-  Attributes:
-    shared_name: If multiple evaluator share the `RunXM` with the same
-      shared_name, they will be launched with the
+  The experiment will containing 3 tasks: `train`, `eval0`, `eval1`.
   """
 
 
