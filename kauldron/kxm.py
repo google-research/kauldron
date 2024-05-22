@@ -41,6 +41,8 @@ from kauldron.xm._src.dir_utils import SubdirFormat
 from kauldron.xm._src.dir_utils import WU_DIR_PROXY
 from kauldron.xm._src.dir_utils import XP_DIR_PROXY
 from kauldron.xm._src.dir_utils import file_path
+from kauldron.xm._src.requirements import platform_from_requirements
+
 
 # Register the default `ConfigDict` overwrites
 from kauldron.xm._src import default_values as _default_values
