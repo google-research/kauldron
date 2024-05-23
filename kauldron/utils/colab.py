@@ -44,6 +44,7 @@ def iter_sweep_configs(
     module: types.ModuleType,
     sweep_mode: str,
     sweep_name: str,
+    config_args: str | None = None,
 ):
   """Iterates over sweep configs."""
   sweep_mode = SweepMode(sweep_mode)
@@ -63,7 +64,10 @@ def iter_sweep_configs(
   with ecolab.collapse(f'Resolving {len(all_sweep_items)} sweeps configs'):
     for i, sweep_item in enumerate(all_sweep_items):
       # Re-create the config to avoid mutations leak between iterations.
-      cfg = module.get_config()
+      if config_args:
+        cfg = module.get_config(config_args)
+      else:
+        cfg = module.get_config()
       # TODO(epot): Display the sweep short name (workdir) and config.
       sweep_json = sweep_item.job_kwargs[kauldron_utils.SWEEP_FLAG_NAME]
       cfg = sweep_utils.update_with_sweep(
