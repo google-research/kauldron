@@ -23,7 +23,6 @@ from typing import Optional
 
 from absl import logging
 from etils import epath
-from etils import exm
 import jax
 import jax.numpy as jnp
 from kauldron.evals import eval_impl
@@ -139,8 +138,9 @@ def train_impl(
         )
 
   # Notify the eval job training is complete
-  if exm.is_running_under_xmanager():
-    exm.current_work_unit().add_tag(eval_impl.TRAIN_COMPLETE_TAG)
+  epath.Path(trainer.workdir).joinpath(
+      eval_impl.TRAIN_COMPLETE_FILENAME
+  ).touch()
 
   _sync()
   # TODO(b/321010908): Should sync the checkpoints

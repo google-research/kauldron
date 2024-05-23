@@ -21,7 +21,7 @@ import contextlib
 import dataclasses
 
 from absl import logging
-from etils import exm
+from etils import epath
 from kauldron.train import config_lib
 from kauldron.train import train_step
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
@@ -29,8 +29,8 @@ from kauldron.train.status_utils import status  # pylint: disable=g-importing-me
 # pylint: disable=logging-fstring-interpolation
 
 # XManager API do not have API for jobs within a work-unit to communicate,
-# so use work-units tags.
-TRAIN_COMPLETE_TAG = 'train_complete'
+# so use files for communication.
+TRAIN_COMPLETE_FILENAME = 'train_complete.txt'
 
 
 def continuous_eval(
@@ -75,7 +75,10 @@ def continuous_eval(
   for step in ckpt.iter_new_checkpoints(
       min_interval_secs=10,
       timeout=10,
-      timeout_fn=_is_train_complete,
+      # Check train is complete
+      timeout_fn=lambda: epath.Path(trainer.workdir)
+      .joinpath(TRAIN_COMPLETE_FILENAME)
+      .exists(),
   ):
     logging.info(f'Processing checkpoint for step {step}...')
 
@@ -96,13 +99,6 @@ def continuous_eval(
 
   # Return the last aux
   return aux
-
-
-def _is_train_complete() -> bool:
-  """Detect if `train` XManager job is complete."""
-  wu = exm.current_work_unit()
-  wu.refresh()  # Refresh the tags
-  return TRAIN_COMPLETE_TAG in wu.tags
 
 
 @dataclasses.dataclass
