@@ -100,9 +100,11 @@ class RunSharedXM(RunXM):
 
   Attributes:
     shared_name: str
+    final_eval: bool
   """
 
   shared_name: str
+  final_eval: bool = False
 
 
 @dataclasses.dataclass(frozen=True)

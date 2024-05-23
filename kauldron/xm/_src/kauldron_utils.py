@@ -39,7 +39,6 @@ from typing import Any, Self
 
 from absl import flags
 from etils import epath
-from etils import epy
 from etils import exm
 from kauldron import konfig
 from kauldron import kontext
@@ -189,6 +188,7 @@ class KauldronJobs(jobs_info.JobsProvider):
     # Merge shared run
     final_runs = {}
     run_to_eval_names = collections.defaultdict(list)
+    run_to_final_eval_names = collections.defaultdict(list)
     for eval_name, run in runs.items():
       if isinstance(run, run_strategies.RunSharedXM):
         # TODO(epot): Validate that the runtimes are the same.
@@ -202,7 +202,10 @@ class KauldronJobs(jobs_info.JobsProvider):
         #   )
 
         final_runs[run.shared_name] = run
-        run_to_eval_names[run.shared_name].append(eval_name)
+        if run.final_eval:
+          run_to_final_eval_names[run.shared_name].append(eval_name)
+        else:
+          run_to_eval_names[run.shared_name].append(eval_name)
       elif isinstance(run, run_strategies.RunXM):
         final_runs[eval_name] = run
         run_to_eval_names[eval_name].append(eval_name)
@@ -216,18 +219,21 @@ class KauldronJobs(jobs_info.JobsProvider):
         )
 
     # Create the associated job
-    return {
-        eval_name: merge_utils.merge(
-            self.base_job,
-            run,
-            job_params.JobParams(
-                args={"eval_names": ",".join(eval_names)},
-            ),
-        )
-        for eval_name, (run, eval_names) in epy.zip_dict(
-            final_runs, run_to_eval_names
-        )
-    }
+    job = {}
+    for eval_name, run in final_runs.items():
+      eval_names = run_to_eval_names[eval_name]
+      final_eval_names = run_to_final_eval_names[eval_name]
+      args = {}
+      if eval_names:
+        args["eval_names"] = ",".join(eval_names)
+      if final_eval_names:
+        args["final_eval_names"] = ",".join(final_eval_names)
+      job[eval_name] = merge_utils.merge(
+          self.base_job,
+          run,
+          job_params.JobParams(args=args),
+      )
+    return job
 
   @functools.cached_property
   def trainer_xm_job(self) -> job_lib.Job:

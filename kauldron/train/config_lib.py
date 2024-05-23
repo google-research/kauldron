@@ -260,7 +260,9 @@ class Trainer(config_util.BaseConfig):
     return train_lib.train_impl(self)
 
   def continuous_eval(
-      self, names: str | list[str]
+      self,
+      names: str | list[str],
+      final_eval_names: str | list[str] | None = None,
   ) -> dict[str, train_step.Auxiliaries]:
     """Main method that perform auxiliary tasks (evaluation, rendering,...).
 
@@ -270,13 +272,23 @@ class Trainer(config_util.BaseConfig):
 
     Args:
       names: Name of the evaluators to run.
+      final_eval_names: Name of the evaluators to run at the end of the
+        training.
 
     Returns:
       Auxiliaries: Mapping eval name to auxiliary
     """
     if isinstance(names, str):
       names = [names]
-    return eval_impl.continuous_eval(self, eval_names=names)
+    if final_eval_names is None:
+      final_eval_names = []
+    if isinstance(final_eval_names, str):
+      final_eval_names = [final_eval_names]
+    return eval_impl.continuous_eval(
+        self,
+        eval_names=names,
+        final_eval_names=final_eval_names,
+    )
 
   @functools.cached_property
   def context_specs(self) -> context_lib.Context:

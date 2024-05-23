@@ -36,6 +36,7 @@ TRAIN_COMPLETE_FILENAME = 'train_complete.txt'
 def continuous_eval(
     trainer: config_lib.Trainer,
     eval_names: list[str],
+    final_eval_names: list[str],
 ) -> dict[str, train_step.Auxiliaries]:
   """Continuous evaluation.
 
@@ -44,6 +45,7 @@ def continuous_eval(
   Args:
     trainer: Trainer to evaluate
     eval_names: Eval names to run.
+    final_eval_names: Eval names to run after the training is complete.
 
   Returns:
     Auxiliaries: Dict eval name -> last auxiliaries
@@ -72,6 +74,7 @@ def continuous_eval(
   tracker = _ExceptionTracker(eval_names=list(eval_names))  # `list` as mutated
 
   logging.info('Start evaluating...')
+  final_step = 0
   for step in ckpt.iter_new_checkpoints(
       min_interval_secs=10,
       timeout=10,
@@ -94,6 +97,15 @@ def continuous_eval(
     for name in eval_names:
       with tracker.catch_exception(name=name, step=step):
         aux[name] = trainer.evals[name].evaluate(state=state, step=step)
+
+    final_step = step
+
+  logging.info('Running final evals...')
+  if final_eval_names:
+    aux = dict()
+  for name in final_eval_names:
+    with tracker.catch_exception(name=name, step=final_step):
+      aux[name] = trainer.evals[name].evaluate(state=state, step=final_step)
 
   tracker.maybe_reraise()
 
