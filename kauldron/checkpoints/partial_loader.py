@@ -162,5 +162,7 @@ class _PartialRestoreCheckpointItem(checkpoint_items.CheckpointItem):
     return sub_state
 
 
-def workdir_from_xid(xid: int, wid: int = 1) -> epath.Path:
-  return xmanager.Experiment.from_xid(xid=xid, wid=wid).wu.workdir
+def workdir_from_xid(
+    xid: int, wid: int = 1, *, lazy: bool = False
+) -> epath.Path:
+  return xmanager.Experiment.from_xid(xid=xid, wid=wid, lazy=lazy).wu.workdir
