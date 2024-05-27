@@ -52,6 +52,29 @@ class L2(base.Loss):
     return jnp.square(preds - targets)
 
 
+@dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
+class NegativeCosineSimilarity(base.Loss):
+  """Negative Cosine Similarity loss."""
+
+  preds: kontext.Key = kontext.REQUIRED
+  targets: kontext.Key = kontext.REQUIRED
+  eps: float = 1e-8
+
+  def _safe_normalize(self, x):
+    return x / (jnp.linalg.norm(x, axis=-1, keepdims=True) + self.eps)
+
+  @typechecked
+  def get_values(
+      self,
+      preds: Float["*a c"],
+      targets: Float["*a c"],
+  ) -> Float["*a 1"]:
+    preds = self._safe_normalize(preds)
+    targets = self._safe_normalize(targets)
+
+    similarity = jnp.sum(preds * targets, axis=-1, keepdims=True)
+    return - similarity
+
 # ============================== Classification ===============================
 
 

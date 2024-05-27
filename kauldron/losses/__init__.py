@@ -19,6 +19,7 @@ from kauldron.losses.base import compute_losses
 from kauldron.losses.base import Loss
 from kauldron.losses.simple import L1
 from kauldron.losses.simple import L2
+from kauldron.losses.simple import NegativeCosineSimilarity
 from kauldron.losses.simple import SigmoidBinaryCrossEntropy
 from kauldron.losses.simple import SoftmaxCrossEntropy
 from kauldron.losses.simple import SoftmaxCrossEntropyWithIntLabels
