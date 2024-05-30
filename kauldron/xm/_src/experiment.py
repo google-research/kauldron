@@ -27,6 +27,7 @@ from typing import Optional
 from etils import epy
 from etils import exm
 from etils import g3_utils
+from kauldron.xm._src import cfg_provider_utils
 from kauldron.xm._src import dir_utils
 from kauldron.xm._src import job_lib
 from kauldron.xm._src import job_params
@@ -68,6 +69,8 @@ class Experiment(job_params.JobParams):
       `sweep_info._sweep_value`.
     sweep_info: Sweep kwargs builder. Specify how to get the sweep kwargs.
     orchestrator: Indicate how to launch the jobs (which order,...)
+    cfg_provider: Propagates the `--cfg.xxx` flags from the launcher to all
+      individual jobs which have `kxm.CFG_FLAG_VALUES` argument.
     importance: Experiment importance.
     execution_settings: `xm_abc.ExecutionSettings` of the experiment.
     emoji_tags: Whether to use cool emoji tags.
@@ -97,6 +100,9 @@ class Experiment(job_params.JobParams):
   orchestrator: orchestrator_lib.Orchestrator = dataclasses.field(
       default_factory=orchestrator_lib.SweepOrchestrator
   )
+  cfg_provider: cfg_provider_utils.ConfigProviderBase = dataclasses.field(
+      default_factory=cfg_provider_utils.EmptyConfigProvider
+  )
 
   # Additional experiment-level info
   importance: xm.Importance = xm.Importance.NORMAL
@@ -118,6 +124,13 @@ class Experiment(job_params.JobParams):
     # Support `--xp.tags=my_tag,another_tag`
     if isinstance(self.tags, str):
       object.__setattr__(self, "tags", self.tags.split(","))
+
+    # Propagate the `--cfg` flags values to the job provider
+    jobs_provider = dataclasses.replace(
+        self.jobs_provider,
+        cfg_provider=self.cfg_provider,
+    )
+    object.__setattr__(self, "jobs_provider", jobs_provider)
 
     if self.sweep in (None, False):
       new_sweep = sweep_utils.NoSweep()
@@ -203,6 +216,8 @@ class Experiment(job_params.JobParams):
       xp.set_importance(self.importance)
       # Let the jobs builder perform additional customization
       self.jobs_provider.experiment_creation(xp)
+      # Add the config flags artifacts
+      self.cfg_provider.experiment_creation(xp)
       yield xp
 
   @functools.cached_property
@@ -232,6 +247,12 @@ class Experiment(job_params.JobParams):
         jobs[k] = v
       else:
         jobs[k] = merge_utils.merge(jobs[k], v)
+
+    # Add the `--cfg` flags.
+    jobs = {
+        k: self.cfg_provider.maybe_add_cfg_flags(j)
+        for k, j in jobs.items()
+    }
 
     # Merge jobs with the default runtime options
     # We remove the `--xp.name=` kwarg as it is a Experiment level kwarg and

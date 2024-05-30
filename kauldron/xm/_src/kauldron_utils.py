@@ -26,22 +26,17 @@ import collections
 from collections.abc import Iterable
 import dataclasses
 import functools
-import importlib
-import inspect
 import itertools
 import json
 import operator
-import os
-import pathlib
 import types
 import typing
-from typing import Any, Self
+from typing import Self
 
-from absl import flags
 from etils import epath
 from etils import exm
 from kauldron import konfig
-from kauldron import kontext
+from kauldron.xm._src import cfg_provider_utils
 from kauldron.xm._src import dir_utils
 from kauldron.xm._src import experiment
 from kauldron.xm._src import job_lib
@@ -54,7 +49,6 @@ from xmanager import xm
 
 if typing.TYPE_CHECKING:
   from kauldron import kd  # pylint: disable=g-bad-import-order  # pytype: disable=import-error
-  import ml_collections  # pylint: disable=g-bad-import-order
 
 # Flag to send the json-serialized sweep overwrites kwargs
 # If modifying this, also modify the value in `kauldron/utils/sweep_utils.py`
@@ -63,110 +57,8 @@ SWEEP_FLAG_NAME = "sweep_config"
 # TODO(epot): Support sweep on platform,...
 
 
-@dataclasses.dataclass(frozen=True)
 class KauldronJobs(jobs_info.JobsProvider):
-  """Extract jobs from a Kauldron `kd.train.Trainer` config.
-
-  Attributes:
-    config: The `kd.train.Trainer` `ConfigDict` to launch (before resolve)
-    config_parameter: Additional parameters that are appended to the config
-      path. config-dict supports providing additional parameters to the config
-      like this `config.py:args`.
-    overrides: Optional `ConfigDict` overwrides (e.g. `{'batch_size': 64}`)
-    module: Module containing the config.
-  """
-
-  config: konfig.ConfigDictLike[kd.train.Trainer]
-  _: dataclasses.KW_ONLY
-  config_parameter: str | None = None
-  overrides: dict[str, Any] = dataclasses.field(default_factory=dict)
-  # TODO(epot): Make `module` optional. Currently required to ship the
-  # config to the trainer. But could have a fully-serializable mode.
-  module: types.ModuleType
-
-  @classmethod
-  def from_module(
-      cls,
-      module: str | types.ModuleType,
-      *,
-      overrides: dict[str, Any] | None = None,
-      config_parameter: str | None = None,
-  ) -> KauldronJobs:
-    """Create a `KauldronJobs` from a config module."""
-    if isinstance(module, str):
-      module = importlib.import_module(module)
-    elif not isinstance(module, types.ModuleType):
-      raise TypeError(f"Expected module. Got: {type(module)}")
-
-    if config_parameter is None:
-      config = module.get_config()
-    else:
-      config = module.get_config(config_parameter)
-    return cls(
-        module=module,
-        config=config,
-        config_parameter=config_parameter,
-        overrides=overrides or {},
-    )
-
-  @classmethod
-  def from_config_dict_flag(
-      cls,
-      flag: flags.FlagHolder[ml_collections.ConfigDict],
-  ) -> KauldronJobs:
-    """Create a `KauldronJobs` from a `DEFINE_config_file` flag."""
-    # Get the flags.FLAGS object linked to the flag
-    flagvalues = flag._flagvalues  # pylint: disable=protected-access
-
-    # Getting the path is tricky because we use DEFINE_config_file for the flag
-    # And This flag returns the evaluated config directly instead of the
-    # filepath.
-    # We cannot simply use a DEFINE_string flag instead, because we also need
-    # the evaluated config with CLI config overrides. Thus the hack below:
-    config_path = flagvalues[flag.name].config_filename  # pytype: disable=attribute-error
-    # DEFINE_config_file supports additional arguments to be appended like this
-    # config.py:args
-    # We need to remove them to get the actual config path.
-    config_path, *config_parameter = config_path.split(":", 1)
-
-    # Import the config module (needed for sweeps etc.).
-    config_module = importlib.import_module(config_path)
-
-    # In addition to the filename we also need the config overrides to pass on
-    # to the worker units, so here we collect them from the list of all flags.
-    config_overrides = {
-        flag_name.removeprefix(f"{flag.name}."): flagvalues[flag_name].value
-        for flag_name in flagvalues
-        if flag_name.startswith(f"{flag.name}.")
-    }
-    return cls(
-        module=config_module,
-        config=flag.value,
-        config_parameter=config_parameter[0] if config_parameter else None,
-        overrides=config_overrides,
-    )
-
-  def __post_init__(self) -> None:
-    # TODO(epot): I don't think this should be a limitation if `v == 'None'` str
-    for k, v in self.overrides.items():
-      if v is None:
-        raise ValueError(
-            f"Value is `None` for parameter {k}. XManager does not support "
-            "overriding parameters to `None` and will silently keep the "
-            "default value. Note that, in some places, even xm2a/ will be "
-            "misleading about this. If you need this and think it should "
-            "work, please reach out."
-        )
-
-    # Apply the `overrides` as they can contain info on XM `--cfg.xm_job....`
-    for k, v in self.overrides.items():
-      kontext.set_by_path(self.config, k, v)
-
-  @functools.cached_property
-  def config_path(self) -> pathlib.Path:
-    """Config path."""
-    config_path = pathlib.Path(self.module.__file__)
-    return config_path
+  """Extract jobs from a Kauldron `kd.train.Trainer` config."""
 
   @functools.cached_property
   def jobs(self) -> dict[str, job_lib.Job]:
@@ -181,7 +73,7 @@ class KauldronJobs(jobs_info.JobsProvider):
     # Resolve configs
     runs = {
         eval_name: _resolve_run_konfig(eval_cfg.run)
-        for eval_name, eval_cfg in self.config.evals.items()
+        for eval_name, eval_cfg in self.cfg_provider.config.evals.items()
         if "run" in eval_cfg
     }
 
@@ -237,7 +129,7 @@ class KauldronJobs(jobs_info.JobsProvider):
 
   @functools.cached_property
   def trainer_xm_job(self) -> job_lib.Job:
-    return konfig.resolve(self.config.xm_job)
+    return konfig.resolve(self.cfg_provider.config.xm_job)
 
   @functools.cached_property
   def trainer_job(self) -> job_lib.Job:
@@ -245,9 +137,6 @@ class KauldronJobs(jobs_info.JobsProvider):
 
   @functools.cached_property
   def base_job(self) -> job_lib.Job:
-    cfg_path = dir_utils.file_path("config.py")
-    if self.config_parameter is not None:
-      cfg_path += f":{self.config_parameter}"
     return job_lib.Job(  # pytype: disable=wrong-keyword-args
         target=self.project_info.target,
         interpreter_info=job_params.InterpreterInfo(
@@ -256,30 +145,23 @@ class KauldronJobs(jobs_info.JobsProvider):
             script_path="//third_party/py/kauldron/main.py",
         ),
         args={
-            "cfg": cfg_path,
+            "cfg": cfg_provider_utils.CFG_FLAG_VALUES,
             "cfg.workdir": dir_utils.WU_DIR_PROXY,
-            **{f"cfg.{k}": v for k, v in self.overrides.items()},
-        },
-        files={
-            "config.py": f"//{self.config_path}",
         },
     )
 
   def experiment_creation(self, xp: xm.Experiment) -> None:
     if xp.context.annotations.title == experiment.DEFAULT_EXPERIMENT_NAME:
       xp.context.annotations.set_title(
-          f"{self.project_info.project_name}.{self.config_path.stem}"
+          f"{self.project_info.project_name}.{self.cfg_provider.config_path.stem}"
       )
+
+    super().experiment_creation(xp)
 
     if self.project_info.project_name:
       xp.context.annotations.add_tags(self.project_info.project_name)
 
-    xp.context.add_config_file(
-        file_content=inspect.getsource(self.module),
-        description=f"Content of {self.config_path}",
-    )
-
-    module_name = self.module.__name__
+    module_name = self.cfg_provider.module.__name__
 
     template_params = {
         "SOURCE": f"xid/{xp.experiment_id}",
@@ -297,7 +179,7 @@ class KauldronJobs(jobs_info.JobsProvider):
       project_name = target.rpartition(":")[0].rpartition("/")[-1]
       return _ProjectInfo(target=target, project_name=project_name)
 
-    path = epath.resource_path(self.module)
+    path = epath.resource_path(self.cfg_provider.module)
 
     for curr_dir in _iter_parents(path):
       build_path = curr_dir / "BUILD"
@@ -312,8 +194,8 @@ class KauldronJobs(jobs_info.JobsProvider):
     else:
       raise ValueError(
           "Could not auto-infer the project from the config path:"
-          f" {self.config_path}. You might have to explicitly specify"
-          " `cfg.xm_job.target =`"
+          f" {self.cfg_provider.config_path}. You might have to explicitly"
+          " specify `cfg.xm_job.target =`"
       )
 
 
@@ -382,7 +264,7 @@ class KauldronSweep(sweep_utils.SweepInfo):
           "`KauldronSweep` should be used with `KauldronJobs`. Got:"
           f" {type(jobs_provider)}"
       )
-    return dataclasses.replace(self, _module=jobs_provider.module)
+    return dataclasses.replace(self, _module=jobs_provider.cfg_provider.module)
 
 
 def _sweeps_from_module(

@@ -38,10 +38,7 @@ def get_config():
   return kxm.Experiment(
       root_dir='/path/to/home/{author}/kd/',
       # Job builder is the Job provider
-      jobs_provider=kxm.KauldronJobs.from_module(
-          module=konfig.placeholder(str),
-          overrides={},
-      ),
+      jobs_provider=kxm.KauldronJobs(),
       # `KauldronSweep` is activated either:
       # * By setting `--xp.sweep` (for `def sweep()`)
       # * By setting `--xp.sweep=aaa,bbb` (named sweep `def sweep_aaa()`,...)

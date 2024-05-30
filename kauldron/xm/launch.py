@@ -50,26 +50,22 @@ try:
       accept_new_attributes=True,
       lock_config=False,
   )
-  _CONFIG = config_flags.DEFINE_config_file(
-      "cfg",
-      None,
-      "Path to the configuration file to be run.",
-      accept_new_attributes=True,
-      lock_config=False,
-  )
 except Exception as e_:  # pylint: disable=broad-exception-caught
   epy.reraise(e_, suffix="See all flags at")
+
+_CONFIG = config_flags.DEFINE_config_file(
+    "cfg",
+    None,
+    "Path to the configuration file to be run.",
+    accept_new_attributes=True,
+    lock_config=False,
+)
 
 
 def main(_) -> None:
   """Main launcher code."""
   xp_config = _XP.value
-  kd_config = _CONFIG.value
-
-  if kd_config is not None:
-    # TODO(epot): Could we merge the config directly here ?
-    # kxm.KauldronJobs.from_config_dict_flag(_CONFIG)
-    xp_config.jobs_provider = None
+  job_config = _CONFIG.value
 
   # Execute resolve within a adhoc import context as it can import
   # additional modules
@@ -79,14 +75,15 @@ def main(_) -> None:
     except TypeError as e:
       epy.reraise(e, suffix="See all flags at")
 
-  if kd_config is not None:
+  # Merge with the `--cfg` flags
+  if job_config is not None:
     with (
         epy.binary_adhoc(),
         konfig.set_lazy_imported_modules(),
     ):
-      jobs_provider = kxm.KauldronJobs.from_config_dict_flag(_CONFIG)
-    # Merge the `XManager` and `Kauldron` config together
-    xp = xp.replace(jobs_provider=jobs_provider)
+      cfg_provider = kxm.ConfigProvider.from_flag(_CONFIG)
+    # Merge the `XManager` with the config flag provider
+    xp = xp.replace(cfg_provider=cfg_provider)
 
   xp.launch()
 

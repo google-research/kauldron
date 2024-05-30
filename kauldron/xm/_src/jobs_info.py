@@ -19,6 +19,7 @@ from __future__ import annotations
 import dataclasses
 import functools
 
+from kauldron.xm._src import cfg_provider_utils
 from kauldron.xm._src import job_lib
 from xmanager import xm
 
@@ -31,10 +32,23 @@ class JobsProvider:
 
   * `kxm.EmptyJobs`: Empty provider (only use `xp.jobs`)
   * `kxm.KauldronJobs`: Extract the jobs to launch from the `config.py`.
+
+  Attributes:
+    cfg_provider: (optional) Eventually the config used. Automatically forwarded
+      from `kxm.Experiment`.
   """
+
+  cfg_provider: cfg_provider_utils.ConfigProvider = dataclasses.field(  # pytype: disable=annotation-type-mismatch
+      default=None, repr=False
+  )
 
   @functools.cached_property
   def jobs(self) -> dict[str, job_lib.Job]:
+    """Jobs to launch.
+
+    Jobs returned here will be merged to the ones defined in
+    `xm.Experiment.jobs`.
+    """
     raise NotImplementedError("Abstract method")
 
   def experiment_creation(self, xp: xm.Experiment) -> None:

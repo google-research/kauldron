@@ -36,6 +36,10 @@ from kauldron.xm._src.sweep_utils import SimpleSweep
 from kauldron.xm._src.kauldron_utils import KauldronSweep
 from kauldron.xm._src.sweep_utils import SweepItem
 
+# `--cfg` flag support
+from kauldron.xm._src.cfg_provider_utils import ConfigProvider
+from kauldron.xm._src.cfg_provider_utils import CFG_FLAG_VALUES
+
 # Others
 from kauldron.xm._src.dir_utils import SubdirFormat
 from kauldron.xm._src.dir_utils import WU_DIR_PROXY
