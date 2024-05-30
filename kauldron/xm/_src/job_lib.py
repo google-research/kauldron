@@ -237,6 +237,7 @@ def _resolve_and_normalize_arg(
     fileset: xm_abc.Fileset,
 ) -> str:
   """Build up the commandline arguments to be passed."""
+  # TODO(epot): Do not require `root_dir` if unused. Currently raise an error.
   replaces = {
       "%": "%%",  # Fixes an issue with loading tfds splits containing "%"
       dir_utils.WU_DIR_PROXY: dir_builder.wu_dir,

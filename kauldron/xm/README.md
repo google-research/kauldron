@@ -142,8 +142,12 @@ how to resolve the sweep. Different implementations are provided:
 
 * `SimpleSweep`: Explicitly provide the list of args overwrite
   (`[{'batch_size': 64}, ...]`)
+* `SweepFromCfg`: Load the `def sweep()` from the `config.py` (passed
+  through `--cfg=path/to/cfg.py`)
+  (`[{'batch_size': 64}, ...]`). Flags yield by the sweep functions are passed
+  as-is to the binary.
 * `KauldronSweep`: Load the sweep from the `def sweep()` function from the
-  `config.py`
+  `config.py`. Values yield are merged with the `kd.train.Trainer` config.
 
 Example:
 
@@ -154,7 +158,7 @@ def sweep_fn():
 
 xp = kxm.Experiment(
     ...,
-    sweep_info=kxm.SimpleSweep(sweep_fn),
+    sweep_info=kxm.SimpleSweep(sweep_fn),  # Jobs launched with `--batch_size=`
 )
 xp.launch()
 ```
@@ -235,6 +239,31 @@ kxm.Job(
         'my_file.gin': '//path/to/file.gin'
     },
 )
+```
+
+### Config
+
+If using the system, you can add `kxm.CFG_FLAG_VALUES` to your job
+args:
+
+```python
+kxm.Job(
+    args={
+        'cfg': kxm.CFG_FLAG_VALUES,
+    },
+)
+```
+
+This allow to propagate the `--cfg.xxx` flags values from the `launch.py` to
+your binary.
+
+```sh
+xmanager launch kauldron/xm/launch.py -- \
+  --cfg=path/to/my_config.py \
+  --cfg.train_ds.batch_size=32 \
+  --xp=path/to/xm/launch_config.py \
+  --xp.sweep=True \
+  --xp.platform=jf=2x2
 ```
 
 ## Structure

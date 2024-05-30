@@ -26,10 +26,7 @@ import collections
 from collections.abc import Iterable
 import dataclasses
 import functools
-import itertools
 import json
-import operator
-import types
 import typing
 from typing import Self
 
@@ -44,6 +41,7 @@ from kauldron.xm._src import job_params
 from kauldron.xm._src import jobs_info
 from kauldron.xm._src import merge_utils
 from kauldron.xm._src import run_strategies
+from kauldron.xm._src import sweep_cfg_utils
 from kauldron.xm._src import sweep_utils
 from xmanager import xm
 
@@ -211,76 +209,41 @@ def _resolve_run_konfig(
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class KauldronSweep(sweep_utils.SweepInfo):
+class KauldronSweep(sweep_cfg_utils.SweepFromCfg):
   """Kauldron sweep.
 
   Run the named sweeps defined by `sweep_[NAME]()` in the config file.
   If multiple sweep names are given run all their combinations (product).
   Empty string match `def sweep()` (default).
   """
-  # Module from which to extract the sweep functions, automatically set inside
-  # `replace_with_job_provider`
-  _module: types.ModuleType = dataclasses.field(  # pytype: disable=annotation-type-mismatch
-      default=None,
-      repr=False,
-  )
 
   def __iter__(self) -> Iterable[sweep_utils.SweepItem]:
     assert self._module is not None
-    yield from _sweeps_from_module(
-        module=self._module,  # pylint: disable=attribute-error
-        names=self.sweep_names,
-    )
-
-  @functools.cached_property
-  def sweep_names(self) -> list[str]:
-    match self._sweep_value:
-      case None | False:
-        return []
-      case True:
-        return [""]
-      case "*":  # All `sweep_` functions
-        return all_available_sweep_names(self._module)
-      case str():
-        return self._sweep_value.split(",")
-      case list():
-        return self._sweep_value
-      case _:
-        raise ValueError(f"Unexpected sweep value: {self._sweep_value}")
-
-  @functools.cached_property
-  def tags(self) -> list[str]:
-    return [f"🧹{name}" for name in self.sweep_names]
+    for sweep_item in super().__iter__():
+      yield _encode_sweep_item(sweep_item)
 
   def replace_with_jobs_provider(
       self, jobs_provider: jobs_info.JobsProvider
   ) -> Self:
-    if jobs_provider is None:
-      # `jobs_provider` is set later in `launch.py` (as it is defined by the
-      # `--cfg` flag). Could design a more robust way to do this.
-      return self
     if not isinstance(jobs_provider, KauldronJobs):
       raise TypeError(
           "`KauldronSweep` should be used with `KauldronJobs`. Got:"
           f" {type(jobs_provider)}"
       )
-    return dataclasses.replace(self, _module=jobs_provider.cfg_provider.module)
+    return super().replace_with_jobs_provider(jobs_provider)
 
 
-def _sweeps_from_module(
-    module: types.ModuleType, names: list[str]
-) -> Iterable[sweep_utils.SweepItem]:
-  # Step 1: Collect all sweep functions
-  sweeps = [_get_sweep_fn(module, name) for name in names]
-
-  # Step 2: Merge all sweep functions with product
-  for sweep_kwargs in itertools.product(*sweeps):
-    sweep_kwargs = functools.reduce(operator.ior, sweep_kwargs, {})
-    yield sweep_utils.SweepItem(
-        # Use custom encoder to support ConfigDict objects
-        job_kwargs={SWEEP_FLAG_NAME: _JsonEncoder().encode(sweep_kwargs)},
-        xm_ui_kwargs={k: _ui_repr(v) for k, v in sweep_kwargs.items()},
-    )
+def _encode_sweep_item(
+    sweep_item: sweep_utils.SweepItem,
+) -> sweep_utils.SweepItem:
+  """Encodes the sweep args."""
+  job_kwargs = sweep_item.job_kwargs
+  return dataclasses.replace(
+      sweep_item,
+      # Use custom encoder to support ConfigDict objects
+      job_kwargs={SWEEP_FLAG_NAME: _JsonEncoder().encode(job_kwargs)},
+      xm_ui_kwargs={k: _ui_repr(v) for k, v in job_kwargs.items()},
+  )
 
 
 def _ui_repr(v):
@@ -293,29 +256,6 @@ def _ui_repr(v):
     repr_ = repr_.removeprefix("<ConfigDict[").removesuffix("]>")
   # TODO(epot): If str is too big, should truncate ?
   return repr_
-
-
-def _get_sweep_fn(module: types.ModuleType, fn_name: str):
-  fn_name = "sweep_" + fn_name if fn_name else "sweep"
-  fn = getattr(module, fn_name, None)
-  if fn is None:
-    available_sweeps = all_available_sweep_names(module)
-    raise ValueError(
-        f"Could not find sweep function '{fn_name}()' in {module}."
-        f" Available sweeps: {available_sweeps}"
-    )
-  return fn()
-
-
-def all_available_sweep_names(module: types.ModuleType) -> list[str]:
-  """Returns all available sweep names."""
-  sweep_names = []
-  for name in dir(module):
-    if name.startswith("sweep_"):
-      sweep_names.append(name.removeprefix("sweep_"))
-    elif name == "sweep":
-      sweep_names.append("")
-  return sweep_names
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -337,15 +277,3 @@ def _iter_parents(path: epath.Path) -> Iterable[epath.Path]:
   yield path
   for path in path.parents:
     yield path
-
-
-def _is_standalone_eval(
-    eval_cfg: konfig.ConfigDictLike[kd.evals.EvaluatorBase],
-) -> bool:
-  """Infer if the config should be launched as standalone job."""
-  # Because Kauldron is not imported during resolving the konfig import,
-  # it's not clear how to have a good way to detect whether the eval is
-  # standalone or inlined with train.
-  if not hasattr(eval_cfg, "run"):
-    return False
-  return eval_cfg.run.__qualname__ == "kauldron.kd:evals.RunXM"

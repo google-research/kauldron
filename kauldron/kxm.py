@@ -35,6 +35,7 @@ from kauldron.xm._src.sweep_utils import NoSweep
 from kauldron.xm._src.sweep_utils import SimpleSweep
 from kauldron.xm._src.kauldron_utils import KauldronSweep
 from kauldron.xm._src.sweep_utils import SweepItem
+from kauldron.xm._src.sweep_cfg_utils import SweepFromCfg
 
 # `--cfg` flag support
 from kauldron.xm._src.cfg_provider_utils import ConfigProvider

@@ -20,6 +20,7 @@ from kauldron import kd
 from examples import mnist_autoencoder
 from kauldron.utils import sweep_utils
 from kauldron.xm._src import kauldron_utils
+from kauldron.xm._src import sweep_cfg_utils
 
 with kd.konfig.imports():
   from flax import linen as nn  # pylint: disable=g-import-not-at-top
@@ -45,13 +46,13 @@ def test_sweep():
   from kauldron.utils import sweep_utils_test as config_module  # pylint: disable=g-import-not-at-top
 
   all_sweep_info = list(
-      kauldron_utils._sweeps_from_module(
+      sweep_cfg_utils._sweeps_from_module(
           module=config_module, names=['model', '']
       )
   )
   assert len(all_sweep_info) == 4  # Cross product
 
-  sweep0 = all_sweep_info[0]
+  sweep0 = kauldron_utils._encode_sweep_item(all_sweep_info[0])
   assert json.loads(sweep0.job_kwargs[sweep_utils._FLAG_NAME]) == {
       'eval_ds.batch_size': 16,
       'train_ds.batch_size': 16,
