@@ -29,7 +29,6 @@ def test_sweep():
               target='//path/to/my:target',
           ),
       },
-      root_dir='/tmp/',  # TODO(epot): remove
       sweep=True,
       sweep_info=kxm.SweepFromCfg(),
       add_tensorboard_borg=False,

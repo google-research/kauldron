@@ -237,11 +237,12 @@ def _resolve_and_normalize_arg(
     fileset: xm_abc.Fileset,
 ) -> str:
   """Build up the commandline arguments to be passed."""
-  # TODO(epot): Do not require `root_dir` if unused. Currently raise an error.
+  # Use lambda to lazy-resolve the `dir_builder.wu_dir`, otherwise it would
+  # raise an error when `xp.root_dir` is not set even it it's never used.
   replaces = {
-      "%": "%%",  # Fixes an issue with loading tfds splits containing "%"
-      dir_utils.WU_DIR_PROXY: dir_builder.wu_dir,
-      dir_utils.XP_DIR_PROXY: dir_builder.xp_dir,
+      "%": lambda: "%%",  # Fixes an issue with tfds splits containing "%"
+      dir_utils.WU_DIR_PROXY: lambda: dir_builder.wu_dir,
+      dir_utils.XP_DIR_PROXY: lambda: dir_builder.xp_dir,
   }
   replaces_startswith = {
       dir_utils.file_path(file): fileset.get_path(file, xm_abc.Borg.Spec())
@@ -251,7 +252,8 @@ def _resolve_and_normalize_arg(
   def sanitize_leaf(leaf):
     if isinstance(leaf, str):
       for before, after in replaces.items():
-        leaf = leaf.replace(before, after)
+        if before in leaf:
+          leaf = leaf.replace(before, after())
       # Some file paths can contain additional arguments, e.g. config-dict
       # files support passing arguments separated by a colon:
       # `__xm_file__(config.py):arg`

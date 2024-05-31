@@ -26,10 +26,11 @@ def test_launch_no_workdir():
           'train': kxm.Job(
               target='//path/to/my:target',
               platform='jf=2x2',
+              args={
+                  'batch_size': 128,
+              },
           ),
       },
-      add_tensorboard_borg=False,
-      add_tensorboard_corp=False,
   )
   xp.launch()
 
