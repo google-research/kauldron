@@ -25,6 +25,31 @@ from kauldron.typing import Array, Float, Int, typechecked  # pylint: disable=g-
 import optax
 
 
+# ============================== Values ===============================
+
+
+@dataclasses.dataclass(eq=True, frozen=True, kw_only=True)
+class Value(base.Loss):
+  """Value loss."""
+
+  values: kontext.Key = kontext.REQUIRED
+
+  @typechecked
+  def get_values(self, values: Float["*a"]) -> Float["*a"]:
+    return values
+
+
+@dataclasses.dataclass(eq=True, frozen=True, kw_only=True)
+class AbsoluteValue(base.Loss):
+  """Absolute value loss."""
+
+  values: kontext.Key = kontext.REQUIRED
+
+  @typechecked
+  def get_values(self, values: Float["*a"]) -> Float["*a"]:
+    return jnp.abs(values)
+
+
 # ============================== Distance ===============================
 
 
