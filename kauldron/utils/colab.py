@@ -27,6 +27,8 @@ with epy.lazy_imports():
   # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
   from etils import ecolab
   from kauldron.xm._src import kauldron_utils
+  from kauldron.xm._src import sweep_cfg_utils
+
   from colabtools import interactive_forms
   # pylint: enable=g-import-not-at-top  # pytype: enable=import-error
 
@@ -85,7 +87,7 @@ def iter_sweep_configs(
 
 def _update_sweep_names_forms(module: types.ModuleType) -> None:
   """Updates the `SWEEP_NAMES` field in Colab."""
-  all_names = kauldron_utils.all_available_sweep_names(module)
+  all_names = sweep_cfg_utils.all_available_sweep_names(module)
   interactive_forms.UpdateParam(
       'SWEEP_NAMES',
       config=['*'] + list(all_names),
