@@ -170,18 +170,17 @@ class Experiment(job_params.JobParams):
 
       # Step 3: Launch auxiliaries
       if self.add_tensorboard_borg:
-        requirements = xm.JobRequirements(CPU=1)
         tensorboard.add_tensorboard_borg(
             xp,
             workdir=dir_builder.xp_dir,
-            executor=xm_abc.Borg(requirements=requirements),
         )
       if self.add_tensorboard_corp:
-        requirements = xm.JobRequirements(CPU=1)
         tensorboard.add_tensorboard_corp(
             xp,
             workdir=dir_builder.xp_dir,
-            executor=xm_abc.Borg(requirements=requirements),
+            # Sometimes, the default exporter exit before finishing exporting
+            # all events, so increase default to 5h.
+            termination_delay_secs=60 * 60 * 5,
         )
       # TODO(epot): Support Custom auxiliaries
 
