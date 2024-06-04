@@ -77,11 +77,6 @@ def get_config():
   )
 
   cfg.evals = {
-      "eval": kd.evals.Evaluator(
-          run=kd.evals.RunEvery(100),
-          num_batches=None,
-          ds=_make_ds(training=False),
-      ),
       "readout": kd.contrib.evals.TrainEvaluator(
           run=kd.evals.RunEvery(100),
           readout_config=readout_mnist.get_config(),
@@ -93,14 +88,12 @@ def get_config():
 
 
 def _make_ds(training: bool):
-  return kd.data.deprecated.TFDataPipeline(
-      loader=kd.data.deprecated.loaders.GrainTfds(
-          name="mnist",
-          split="train" if training else "test",
-          shuffle=True if training else False,
-          num_epochs=None if training else 1,
-      ),
-      transformations=[
+  return kd.data.Tfds(
+      name="mnist",
+      split="train" if training else "test",
+      shuffle=True if training else False,
+      num_epochs=None if training else 1,
+      transforms=[
           kd.data.Elements(keep=["image"]),
           kd.data.ValueRange(key="image", vrange=(0, 1)),
       ],

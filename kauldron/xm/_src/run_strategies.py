@@ -141,6 +141,9 @@ class KauldronRunOnce(KauldronRunStrategy):
 @dataclasses.dataclass(frozen=True)
 class KauldronRunNoOp(KauldronRunStrategy):
   """Kauldron implementation of the `RunXM`, `RunSharedXM`."""
+  # Use to indicate that multiple evluators are sharing the same job.
+  # Can be used in the evaluator for some memory optimization.
+  shared: bool = False
 
   def should_eval_in_train(self, step: int) -> bool:
     """Whether the evaluator should be run for the given train-step."""
@@ -171,7 +174,7 @@ def run_strategy_cfg_to_kauldron_run_info(
   elif run.__qualname__.endswith('.RunXM'):
     return KauldronRunNoOp()
   elif run.__qualname__.endswith('.RunSharedXM'):
-    return KauldronRunNoOp()
+    return KauldronRunNoOp(shared=True)
   else:
     raise TypeError(
         f'Unexpected eval run strategy. Got: {run} ({run.__qualname__!r})'
