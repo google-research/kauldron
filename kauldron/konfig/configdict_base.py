@@ -269,6 +269,8 @@ class _FieldReferenceVisitor(_Visitor):
 
   def _repr(self, obj: ml_collections.FieldReference) -> str:
     # The `&id000` makes it explicit already which fields are references
+    # TODO(epot): The `id` tracking system do not work with references on
+    # integers and primitives. Only sub-configs. Not sure how to support this.
     return self._recurse(obj)
 
 
@@ -364,7 +366,9 @@ class _VisitedTracker:
       return True
 
   def get_id_and_was_repr(self, obj) -> tuple[int, bool]:
-    id_ = self.pyid_to_id[id(obj)]
+    # With `konfig.ref_fn`, some objects are re-created everytime the attribute
+    # is accessed. So some objects might have new `id()`
+    id_ = self.pyid_to_id.get(id(obj))
     if not id_:  # Object has no duplicate
       return 0, False
     # Object has duplicate
