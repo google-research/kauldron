@@ -24,6 +24,7 @@ from etils import epy
 import flax
 import flax.linen as nn
 import jax
+from jax.experimental import checkify
 import jax.numpy as jnp
 from kauldron import kontext
 from kauldron import losses as kd_losses
@@ -32,6 +33,7 @@ from kauldron import summaries as kd_summaries
 from kauldron.checkpoints import checkpoint_items
 from kauldron.checkpoints import partial_loader
 import kauldron.data.utils as data_utils
+from kauldron.train import config_lib
 from kauldron.train import rngs_lib
 from kauldron.typing import ElementSpec, Float, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import config_util
@@ -81,6 +83,9 @@ class Auxiliaries:
   )
   summary_kwargs: Mapping[str, Any] = dataclasses.field(
       default_factory=flax.core.FrozenDict
+  )
+  error: checkify.Error = checkify.Error(
+      _pred={}, _code={}, _metadata={}, _payload={}
   )
 
   def replace(self, **changes: Any) -> Auxiliaries:
@@ -388,6 +393,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
           "return_losses",
           "return_metrics",
           "return_summaries",
+          "checkify_error_categories",
       ),
       donate_argnames=("state",),
   )
@@ -400,10 +406,43 @@ class TrainStep(config_util.UpdateFromRootCfg):
       return_losses: bool = False,
       return_metrics: bool = False,
       return_summaries: bool = False,
+      checkify_error_categories: frozenset[
+          config_lib.CheckifyErrorCategory
+      ] = frozenset(),
   ) -> tuple[TrainState, Auxiliaries]:
     """Training step: forward, losses, gradients, update, and metrics."""
-    # TODO(epot): Should `jax.named_call` be moved downstream directly in optax?
+    if checkify_error_categories:
+      step_fn = checkify.checkify(self._step, errors=checkify_error_categories)
+      error, (state, aux) = step_fn(
+          state,
+          batch,
+          return_losses=return_losses,
+          return_metrics=return_metrics,
+          return_summaries=return_summaries,
+      )
+      aux = aux.replace(error=error)
+    else:
+      state, aux = self._step(
+          state,
+          batch,
+          return_losses=return_losses,
+          return_metrics=return_metrics,
+          return_summaries=return_summaries,
+      )
 
+    return state, aux
+
+  def _step(
+      self,
+      state: TrainState,
+      batch: PyTree[Any],
+      *,
+      return_losses: bool = False,
+      return_metrics: bool = False,
+      return_summaries: bool = False
+  ) -> tuple[TrainState, Auxiliaries]:
+    """Training step to be wrapped by checkify and called by `step`."""
+    # TODO(epot): Should `jax.named_call` be moved downstream directly in optax?
     # NOTE: ensure that evaluation metrics are computed from the OLD model state
     # *before* backprop gradients are applied.
     grad_fn = jax.grad(self.model_with_aux.forward, argnums=0, has_aux=True)

@@ -27,6 +27,7 @@ from etils import epath
 import flax
 from flax import linen as nn
 import jax
+from jax.experimental import checkify
 from kauldron import checkpoints
 from kauldron import data
 from kauldron import konfig
@@ -64,6 +65,9 @@ if typing.TYPE_CHECKING:
 else:
   _JobConfigDict = Any
 
+# This hack is needed because `JaxException` is used to define ErrorCategory
+# as Type['JaxException'] before class JaxException is declared.
+CheckifyErrorCategory = checkify.ErrorCategory if typing.TYPE_CHECKING else Any
 
 FrozenDict = dict if typing.TYPE_CHECKING else flax.core.FrozenDict
 
@@ -95,6 +99,7 @@ class Trainer(config_util.BaseConfig):
     writer: Metric writer used for writing to TB, datatable, etc.
     flatboards: x
     profiler: Profiler can be customized (see `kd.inspect.Profile`)
+    checkify_error_categories: List of errors to enable checkify for.
     schedules: optax schedules (to be used in `optimizer`)
     optimizer: optax optimizer
     checkpointer: Checkpoint used to save/restore the state
@@ -151,6 +156,7 @@ class Trainer(config_util.BaseConfig):
   profiler: profile_utils.Profiler = dataclasses.field(
       default_factory=profile_utils.Profiler
   )
+  checkify_error_categories: frozenset[CheckifyErrorCategory] = frozenset()
 
   # Optimizer
   schedules: MutableMapping[str, optax.Schedule] = dataclasses.field(

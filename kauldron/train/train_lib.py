@@ -122,8 +122,12 @@ def train_impl(
           return_losses=log_any,
           return_metrics=log_metrics,
           return_summaries=log_summaries,
+          checkify_error_categories=trainer.checkify_error_categories,
       )
       timer.finish_step()
+
+      if trainer.checkify_error_categories:
+        jax.device_get(aux.error).throw()
 
       if log_any and status.is_lead_host:
         # NOTE: ensure that evaluation metrics are computed from the OLD model
