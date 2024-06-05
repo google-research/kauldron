@@ -21,14 +21,6 @@ from kauldron import kd
 
 # pylint: disable=unused-import,g-importing-member,g-import-not-at-top
 
-import sys
-
-pytest = sys.modules.get('pytest')
-if pytest:
-  # Inside tests, rewrite `assert` statement for better debug messages
-  pytest.register_assert_rewrite('kauldron.utils.assert_utils')
-del pytest, sys
-
 from etils import epy as _epy
 
 # Namespaces
@@ -47,6 +39,7 @@ with _epy.lazy_api_imports(globals()):
   from kauldron import random
   from kauldron import summaries
   from kauldron import train
+  from kauldron import testing
   from kauldron import typing
   from kauldron.utils import api as utils
   from kauldron.utils import xmanager as xm
