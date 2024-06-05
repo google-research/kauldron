@@ -41,6 +41,7 @@ from kauldron.inspect import profile_utils
 from kauldron.train import flatboard
 from kauldron.train import metric_writer
 from kauldron.train import rngs_lib
+from kauldron.train import setup_utils
 from kauldron.train import train_lib
 from kauldron.train import train_step
 from kauldron.utils import config_util
@@ -73,7 +74,22 @@ FrozenDict = dict if typing.TYPE_CHECKING else flax.core.FrozenDict
 
 
 class Trainer(config_util.BaseConfig):
-  """Base config class.
+  """Base trainer class.
+
+  This class is the root object containing all the configuration options (
+  datasets, model, optimizer, etc.).
+
+  Usage:
+
+  ```python
+  trainer = kd.train.Trainer(
+      train_ds=...,
+      model=...,
+      optimizer=...,
+      ...
+  )
+  trainer.train()
+  ```
 
   Attributes:
     seed: Seed for all rngs
@@ -110,6 +126,7 @@ class Trainer(config_util.BaseConfig):
     evals: Evaluators to use (e.g. `{'eval': kd.eval.Evaluator()}`)
     aux: Arbitrary additional values (e.g. can be set once and referenced
       elsewhere `cfg.model.num_layer = cfg.ref.aux.num_layers`)
+    setup: Global setup options
     xm_job: XManager runtime parameters (e.g. which target is the config using)
     raw_cfg: Original config from which this `Config` was created. Automatically
       set during `konfig.resolve()`
@@ -184,7 +201,10 @@ class Trainer(config_util.BaseConfig):
   # Should this be renamed `extra` ?
   aux: MutableMapping[str, Any] = dataclasses.field(default_factory=FrozenDict)
 
-  # XManager parameters
+  # XManager and other environement parameters
+  setup: setup_utils.Setup = dataclasses.field(
+      default_factory=setup_utils.Setup
+  )
   xm_job: _JobConfigDict = dataclasses.field(default_factory=job_lib.Job)
 
   # Original `konfig.ConfigDict` from which the `Trainer` was created.

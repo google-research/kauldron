@@ -21,7 +21,6 @@ import contextlib
 import itertools
 from typing import Optional
 
-from absl import logging
 from etils import epath
 import jax
 import jax.numpy as jnp
@@ -29,13 +28,11 @@ from kauldron.evals import eval_impl
 from kauldron.inspect import profile_utils
 from kauldron.train import checkpoint_state
 from kauldron.train import config_lib
-from kauldron.train import flatboard_utils
 from kauldron.train import timer as timer_module
 from kauldron.train import train_step
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 from kauldron.utils import utils
 from kauldron.utils.sharding_utils import sharding as sharding_lib  # pylint: disable=g-importing-member
-import tensorflow as tf
 
 # Jax config options
 # Required for the `jax.Array` parallelization
@@ -47,13 +44,7 @@ def train_impl(
 ) -> tuple[train_step.TrainState, Optional[train_step.Auxiliaries]]:
   """Implements of `Trainer.train`."""
   status.log("Configuring ...")
-  # TODO(epot): Should allow user to customize the setup (e.g. to add
-  # custom artifacts,...)
-  utils.add_log_artifacts()
-  utils.add_colab_artifacts()
-  tf.config.set_visible_devices([], "GPU")
-  _ensure_workdir(trainer.workdir)
-  flatboard_utils.add_flatboards(trainer)
+  trainer.setup.run(trainer)
 
   status.log("Initializing ...")
   trainstep = trainer.trainstep
@@ -126,6 +117,7 @@ def train_impl(
       )
       timer.finish_step()
 
+      # TODO(epot): Should be a `@checkify` decorator in `trainstep.step`.
       if trainer.checkify_error_categories:
         jax.device_get(aux.error).throw()
 
@@ -203,16 +195,6 @@ def _enum_steps_with_hooks(
     yield i
     for h in hooks:
       h(i)
-
-
-def _ensure_workdir(workdir: epath.PathLike):
-  """Ensure workdir is set and exists."""
-  workdir = epath.Path(workdir) if workdir else epath.Path()
-  if workdir == epath.Path():
-    raise ValueError("--workdir must be set when running on XManager.")
-
-  logging.info("Creating workdir: %s", workdir)
-  workdir.mkdir(parents=True, exist_ok=True)
 
 
 @contextlib.contextmanager

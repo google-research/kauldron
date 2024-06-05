@@ -84,6 +84,7 @@ konfig.register_default_values(
     kd.train.Trainer(
         workdir=konfig.placeholder(str),
         evals={},
+        setup=kd.train.Setup(),
         xm_job=kxm.Job(),
     )
 )
