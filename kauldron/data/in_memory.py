@@ -48,7 +48,7 @@ class InMemoryPipeline(pipelines.Pipeline):
 
   loader: Callable[[], _ArrayTree]
   shuffle: bool = False
-  num_epochs: Optional[int]
+  num_epochs: Optional[int] = None
   drop_remainder: bool = True
 
   # TODO(epot): Support `transformations=`
@@ -70,11 +70,22 @@ class InMemoryPipeline(pipelines.Pipeline):
     # TODO(epot): Should try to add colab cache across reload.
     return self.loader()
 
+  @functools.cached_property
+  def num_examples(self) -> int:
+    num_examples_tree = jax.tree.map(lambda x: x.shape[0], self.examples)
+    flat_num_examples = jax.tree.leaves(num_examples_tree)
+    if not all([shape == flat_num_examples[0] for shape in flat_num_examples]):
+      raise ValueError(
+          'All features have to have the same number of examples. Got'
+          f' {num_examples_tree=}'
+      )
+    return flat_num_examples[0]
+
   @property
   def sampler(self) -> BatchedIndexSampler:
     return BatchedIndexSampler(
         batch_size=utils.BatchSize(self.batch_size),
-        num_records=len(self.examples),
+        num_records=self.num_examples,
         num_epochs=self.num_epochs,
         seed=self.seed,
         shuffle=self.shuffle,
