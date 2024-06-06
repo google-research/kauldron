@@ -80,7 +80,6 @@ def get_config():
       "readout": kd.contrib.evals.TrainEvaluator(
           run=kd.evals.RunEvery(100),
           readout_config=readout_mnist.get_config(),
-          batch_size=256,
       ),
   }
 

@@ -56,6 +56,25 @@ def test_glob_paths():
       },
   )
   _assert_path(
+      path_str='**.b',
+      ctx={
+          'a': {
+              'b': [1, 2, 3],
+              'b2': [1, 2, 3],
+          },
+          'b2': 5,
+          'b': 'old',
+      },
+      expected_ctx={
+          'a': {
+              'b': 'new',
+              'b2': [1, 2, 3],
+          },
+          'b2': 5,
+          'b': 'new',
+      },
+  )
+  _assert_path(
       path_str='a.**[0]',
       ctx={
           'a': {

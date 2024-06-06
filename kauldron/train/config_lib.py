@@ -317,6 +317,18 @@ class Trainer(config_util.BaseConfig):
     )
 
   @functools.cached_property
+  def state_specs(self) -> train_step.TrainState:
+    """Returns the `state` specs."""
+    # Cache `element_spec` before calling the jitted function, otherwise
+    # `rng` used inside the data pipelines are mocked with Traced<Array>
+    _ = self.train_ds.element_spec
+
+    # Skip the `init_transforms`. Indeed, restoring checkpoint (partial
+    # loading) will fail inside `jax.eval_shape / `jax.jit`
+    init_fn = functools.partial(self.init_state, skip_transforms=True)
+    return jax.eval_shape(init_fn)
+
+  @functools.cached_property
   def context_specs(self) -> context_lib.Context:
     """Shape evaluate the model (fast) and return the context structure."""
     elem_spec = self.train_ds.element_spec
@@ -324,19 +336,16 @@ class Trainer(config_util.BaseConfig):
     rngs = self.rng_streams.init_rngs()
     mwa = self.trainstep.model_with_aux
 
-    # Skip the `init_transforms`. Indeed, restoring checkpoint (partial
-    # loading) will fail inside `jax.eval_shape / `jax.jit`
-    init_fn = functools.partial(self.init_state, skip_transforms=True)
-    state_spec = jax.eval_shape(init_fn)
+    state_specs = self.state_specs
 
     m_batch = data_utils.mock_batch_from_elem_spec(elem_spec, elem_sharding)
     _, context = jax.eval_shape(
         functools.partial(mwa.forward, is_training=True),
-        params=state_spec.params,
+        params=state_specs.params,
         batch=m_batch,
         rngs=rngs,
         step=0,
-        collections=state_spec.collections,
+        collections=state_specs.collections,
     )
-    context = context.replace(opt_state=state_spec.opt_state)
+    context = context.replace(opt_state=state_specs.opt_state)
     return context
