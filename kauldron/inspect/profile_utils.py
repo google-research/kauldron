@@ -28,7 +28,7 @@ from kauldron.utils import config_util
 import tqdm
 
 
-class NoopProfiler:
+class NoopProfiler(config_util.UpdateFromRootCfg):
   """No-op profiler."""
 
   def __call__(self, step: int):

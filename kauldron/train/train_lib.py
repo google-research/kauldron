@@ -28,6 +28,7 @@ from kauldron.evals import eval_impl
 from kauldron.inspect import profile_utils
 from kauldron.train import checkpoint_state
 from kauldron.train import config_lib
+from kauldron.train import setup_utils
 from kauldron.train import timer as timer_module
 from kauldron.train import train_step
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
@@ -43,10 +44,11 @@ def train_impl(
     trainer: config_lib.Trainer,
 ) -> tuple[train_step.TrainState, Optional[train_step.Auxiliaries]]:
   """Implements of `Trainer.train`."""
-  status.log("Configuring ...")
-  trainer.setup.run(trainer)
+  setup = trainer.setup
+  setup.log("Configuring ...")
+  setup.run(trainer)
 
-  status.log("Initializing ...")
+  setup.log("Initializing ...")
   trainstep = trainer.trainstep
   ckpt = trainer.checkpointer
   writer = trainer.writer
@@ -79,7 +81,7 @@ def train_impl(
 
   aux = None
 
-  status.log(f"Starting training loop at step {initial_step}")
+  setup.log(f"Starting training loop at step {initial_step}")
   with _transfer_guard():
     # NOTE: DO *NOT* CHANGE THE ORDER OF OPERATIONS IN THE TRAINING LOOP!
     for i in _enum_steps_with_hooks(
@@ -87,6 +89,7 @@ def train_impl(
         num_train_steps=trainer.num_train_steps,
         stop_after_steps=trainer.stop_after_steps,
         profiler=trainer.profiler,
+        tqdm_info=trainer.setup.tqdm_info,
     ):
       with timer.exclude_from_step_stats():
         if ckpt.should_save(i):
@@ -134,9 +137,10 @@ def train_impl(
         )
 
   # Notify the eval job training is complete
-  epath.Path(trainer.workdir).joinpath(
-      eval_impl.TRAIN_COMPLETE_FILENAME
-  ).touch()
+  if trainer.workdir.exists():  # `TrainEvaluator` do not have a workdir
+    epath.Path(trainer.workdir).joinpath(
+        eval_impl.TRAIN_COMPLETE_FILENAME
+    ).touch()
 
   _sync()
   # TODO(b/321010908): Should sync the checkpoints
@@ -151,6 +155,7 @@ def _enum_steps_with_hooks(
     num_train_steps: Optional[int],
     stop_after_steps: Optional[int],
     profiler: profile_utils.Profiler,
+    tqdm_info: setup_utils.TqdmInfo,
 ) -> Iterator[int]:
   """Enumerate over the train dataset.
 
@@ -165,6 +170,7 @@ def _enum_steps_with_hooks(
     num_train_steps: Same as `trainer.num_train_steps`
     stop_after_steps: Same as `trainer.stop_after_steps`
     profiler: Same as `trainer.profiler`
+    tqdm_info: Additional display parameters for the TQDM bar.
 
   Yields:
     step: Step number
@@ -189,8 +195,8 @@ def _enum_steps_with_hooks(
       itertools.repeat(None),
       init_step=initial_step,
       total_steps=total_steps,
-      desc="train",
-      log_xm=True,
+      desc=tqdm_info.desc,
+      log_xm=tqdm_info.log_xm,
   ):
     yield i
     for h in hooks:
@@ -222,5 +228,6 @@ def _sync():
   def _psync(x):
     return jax.lax.psum(x, "i")
 
-  x = jnp.ones([jax.local_device_count()])
-  return jax.pmap(_psync, "i")(x).block_until_ready()
+  with jax.transfer_guard("allow"):
+    x = jnp.ones([jax.local_device_count()])
+    return jax.pmap(_psync, "i")(x).block_until_ready()

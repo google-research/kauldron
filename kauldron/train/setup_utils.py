@@ -29,16 +29,24 @@ import tensorflow as tf
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True)
+class TqdmInfo:
+  desc: str = "train"
+  log_xm: bool = True
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True)
 class Setup:
-  """Setup options.
+  """Setup/environment options.
 
   Attributes:
     tags: Custom XManager tags.
+    tqdm_info: Customize the `tqdm` bar.
   """
 
   # Could provide more options here to customize artifacts,...
 
   tags: str | list[str] = dataclasses.field(default_factory=list)
+  tqdm_info: TqdmInfo = dataclasses.field(default_factory=TqdmInfo)
 
   def __post_init__(self):
     # Normalize tags to a list.
@@ -57,6 +65,9 @@ class Setup:
       assert isinstance(self.tags, list)
       experiment = exm.current_experiment()
       experiment.add_tags(*self.tags)
+
+  def log(self, msg: str) -> None:
+    status.log(msg)
 
 
 def _ensure_workdir(workdir: epath.PathLike):
