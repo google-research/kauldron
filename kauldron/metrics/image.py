@@ -57,6 +57,7 @@ class Psnr(base.Metric):
   mask: Optional[kontext.Key] = None
 
   in_vrange: tuple[float, float] = (0.0, 1.0)
+  clip: float | None = None
 
   @flax.struct.dataclass
   class State(base_state.AverageState):
@@ -71,6 +72,8 @@ class Psnr(base.Metric):
   ) -> Psnr.State:
     dynamic_range = self.in_vrange[1] - self.in_vrange[0]
     values = psnr(a=pred, b=target, dynamic_range=dynamic_range)
+    if self.clip is not None:
+      values = jnp.minimum(values, self.clip)
     return self.State.from_values(values=values, mask=mask)
 
 
