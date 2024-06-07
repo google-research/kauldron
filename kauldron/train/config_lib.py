@@ -218,6 +218,7 @@ class Trainer(config_util.BaseConfig):
         'evals': FrozenDict,
         'checkpointer': checkpoints.NoopCheckpointer,
         'profiler': profile_utils.NoopProfiler,
+        'writer': metric_writer.NoopWriter,
     }.items():
       if getattr(self, name) is None:
         object.__setattr__(self, name, default_factory())

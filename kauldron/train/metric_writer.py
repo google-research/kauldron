@@ -84,6 +84,7 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
   ) -> None:
     """Write histograms for the step."""
 
+  @abc.abstractmethod
   def write_videos(
       self,
       step: int,
@@ -92,6 +93,7 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
     """Write videos for the step."""
     raise NotImplementedError()
 
+  @abc.abstractmethod
   def write_audios(
       self,
       step: int,
@@ -117,53 +119,26 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
   ) -> None:
     """Write hyper parameters."""
 
+  @abc.abstractmethod
   def write_config(
       self,
       config: konfig.ConfigDict,
   ) -> None:
-    self._assert_collection_is_set()
-    if config is None:
-      return
+    """Export the config `.json` file."""
 
-    if status.is_lead_host:
-      # Save the raw config (for easy re-loading)
-      config_path = self.workdir / "config.json"
-      config_path.write_text(config.to_json())
-
-    texts = {"config": f"```python\n{config!r}\n```"}
-    self.write_texts(0, texts)
-
+  @abc.abstractmethod
   def write_param_overview(self, step: int, params) -> None:
-    self._assert_collection_is_set()
-    texts = {"parameters": _get_markdown_param_table(params)}
-    self.write_texts(step, texts)
+    """Write a table with parameter shapes and sizes."""
 
+  @abc.abstractmethod
   def write_element_spec(self, step: int, element_spec) -> None:
-    self._assert_collection_is_set()
-    texts = {"element_spec": f"```python\n{element_spec!s}\n```"}
-    self.write_texts(step, texts)
+    """Write the element spec."""
 
+  @abc.abstractmethod
   def write_context_structure(
       self, step: int, trainer: config_lib.Trainer
   ) -> None:
-    self._assert_collection_is_set()
-    # do a lightweight shape-eval for the context
-    context = trainer.context_specs
-    # create a flat spec for the context
-    context_spec = kontext.flatten_with_path(context)
-    context_spec = etree.spec_like(context_spec)
-    context_spec["grads"] = "<<same structure as params>>"
-    context_spec["updates"] = "<<same structure as params>>"
-
-    # convert flat spec into a pandas dataframe
-    ctx_df = pd.DataFrame(
-        # wrap entries in backticks to avoid interpreting __x__ as markdown bold
-        [(f"`{k}`", f"`{v}`") for k, v in context_spec.items()],
-        columns=["Path", "Spec"],
-    )
-    # export pandas dataframe as markdown text
-    markdown_table = ctx_df.to_markdown(index=False, tablefmt="github")
-    self.write_texts(step, {"context_spec": markdown_table})
+    """Write the context structure."""
 
   # TODO(klausg): move most of this functionality out of the writer
   def write_step_metrics(
@@ -401,6 +376,54 @@ class KDMetricWriter(WriterBase):
     self._log_writer.write_hparams(hparams)
     self._tf_summary_writer.write_hparams(hparams)
 
+  def write_config(
+      self,
+      config: konfig.ConfigDict,
+  ) -> None:
+    self._assert_collection_is_set()
+    if config is None:
+      return
+
+    if status.is_lead_host:
+      # Save the raw config (for easy re-loading)
+      config_path = self.workdir / "config.json"
+      config_path.write_text(config.to_json())
+
+    texts = {"config": f"```python\n{config!r}\n```"}
+    self.write_texts(0, texts)
+
+  def write_param_overview(self, step: int, params) -> None:
+    self._assert_collection_is_set()
+    texts = {"parameters": _get_markdown_param_table(params)}
+    self.write_texts(step, texts)
+
+  def write_element_spec(self, step: int, element_spec) -> None:
+    self._assert_collection_is_set()
+    texts = {"element_spec": f"```python\n{element_spec!s}\n```"}
+    self.write_texts(step, texts)
+
+  def write_context_structure(
+      self, step: int, trainer: config_lib.Trainer
+  ) -> None:
+    self._assert_collection_is_set()
+    # do a lightweight shape-eval for the context
+    context = trainer.context_specs
+    # create a flat spec for the context
+    context_spec = kontext.flatten_with_path(context)
+    context_spec = etree.spec_like(context_spec)
+    context_spec["grads"] = "<<same structure as params>>"
+    context_spec["updates"] = "<<same structure as params>>"
+
+    # convert flat spec into a pandas dataframe
+    ctx_df = pd.DataFrame(
+        # wrap entries in backticks to avoid interpreting __x__ as markdown bold
+        [(f"`{k}`", f"`{v}`") for k, v in context_spec.items()],
+        columns=["Path", "Spec"],
+    )
+    # export pandas dataframe as markdown text
+    markdown_table = ctx_df.to_markdown(index=False, tablefmt="github")
+    self.write_texts(step, {"context_spec": markdown_table})
+
   def flush(self) -> None:
     self._scalar_writer.flush()
     self._array_writer.flush()
@@ -458,6 +481,23 @@ class NoopWriter(WriterBase):
     pass
 
   def write_hparams(self, hparams: Mapping[str, Any]) -> None:
+    pass
+
+  def write_config(
+      self,
+      config: konfig.ConfigDict,
+  ) -> None:
+    pass
+
+  def write_param_overview(self, step: int, params) -> None:
+    pass
+
+  def write_element_spec(self, step: int, element_spec) -> None:
+    pass
+
+  def write_context_structure(
+      self, step: int, trainer: config_lib.Trainer
+  ) -> None:
     pass
 
   def write_step_metrics(
