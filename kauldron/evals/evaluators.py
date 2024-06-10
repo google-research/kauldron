@@ -43,6 +43,13 @@ _SelfT = TypeVar('_SelfT')
 _DEFAULT_EVAL_NAME = 'eval'
 
 
+@dataclasses.dataclass(frozen=True)
+class CollectionKeys:
+  losses: tuple[str, ...]
+  metrics: tuple[str, ...]
+  summaries: tuple[str, ...]
+
+
 class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
   """Base class for inline evaluators.
 
@@ -98,6 +105,11 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
   def evaluate(self, state: train_step.TrainState, step: int) -> Any:
     """Run this evaluator then write and optionally return the results."""
     raise NotImplementedError
+
+  @property
+  def __flatboard_collections__(self) -> dict[str, CollectionKeys]:
+    """Returns collection keys used by flatboard."""
+    return {}
 
   @functools.cached_property
   def _resolved_run(self) -> run_strategies.KauldronRunStrategy:
@@ -222,6 +234,17 @@ class Evaluator(EvaluatorBase):
         metrics=self.metrics,
         summaries=self.summaries,
     )
+
+  @functools.cached_property
+  def __flatboard_collections__(self) -> dict[str, CollectionKeys]:
+    """Returns metrics keys."""
+    return {
+        self.name: CollectionKeys(
+            losses=tuple(self.losses.keys()),
+            metrics=tuple(self.metrics.keys()),
+            summaries=tuple(self.summaries.keys()),
+        )
+    }
 
 
 @functools.partial(

@@ -32,10 +32,8 @@ def _get_loss_y_keys(trainer: config_lib.Trainer) -> Sequence[str]:
   }
   # evaluator losses
   for evaluator in trainer.evals.values():
-    eval_losses = getattr(evaluator, "losses", {})
-    loss_names |= {
-        k for k in kontext.flatten_with_path(eval_losses, separator="/")
-    }
+    for c in evaluator.__flatboard_collections__.values():
+      loss_names |= set(c.losses)
 
   # If more than one loss, add the total loss
   if len(loss_names) > 1:
@@ -50,10 +48,8 @@ def _get_metric_y_keys(trainer: config_lib.Trainer) -> Sequence[str]:
   }
   # add evaluator metrics
   for evaluator in trainer.evals.values():
-    eval_metrics = getattr(evaluator, "metrics", {})
-    metric_names |= {
-        k for k in kontext.flatten_with_path(eval_metrics, separator="/")
-    }
+    for c in evaluator.__flatboard_collections__.values():
+      metric_names |= set(c.metrics)
   return [f"metrics/{l.replace('.', '/')}" for l in sorted(metric_names)]
 
 
@@ -81,7 +77,8 @@ def _get_perf_stat_y_keys() -> Sequence[str]:
 def _get_data_collections(trainer: config_lib.Trainer) -> list[str]:
   """Return a list of datatable collections for a given resolved trainer."""
   collections = ["train"]
-  collections.extend(e.name for e in trainer.evals.values())
+  for e in trainer.evals.values():
+    collections.extend(e.__flatboard_collections__.keys())
   return collections
 
 

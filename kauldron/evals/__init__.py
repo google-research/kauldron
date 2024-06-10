@@ -16,6 +16,7 @@
 
 # pylint: disable=g-importing-member,g-import-not-at-top
 
+from kauldron.evals.evaluators import CollectionKeys
 from kauldron.evals.evaluators import Evaluator
 from kauldron.evals.evaluators import EvaluatorBase
 from kauldron.evals.fewshot_evaluator import FewShotEvaluator
