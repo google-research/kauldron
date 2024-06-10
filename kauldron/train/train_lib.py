@@ -142,6 +142,7 @@ def train_impl(
         eval_impl.TRAIN_COMPLETE_FILENAME
     ).touch()
 
+  # Ensure all hosts exit together. See section in dm/jax-faqs.
   _sync()
   # TODO(b/321010908): Should sync the checkpoints
   # ckpt.wait_until_finished()
