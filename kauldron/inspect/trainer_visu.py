@@ -36,6 +36,7 @@ def show_trainer_info(
     inspect_params: bool,
     inspect_sharding: bool,
     inspect_dataset: bool,
+    inspect_connected: bool,
     profile_statix: bool,
 ):
   """Display various plot on the trainer."""
@@ -62,9 +63,6 @@ def show_trainer_info(
     with ecolab.collapse("Structure of Context:"):
       inspect_lib.plot_context(trainer)
 
-    with ecolab.collapse("Connected components:"):
-      ecolab.disp(graphviz_utils.get_connection_graph(trainer))
-
     if trainer.schedules:
       with ecolab.collapse("Schedules"):
         fig = plotting.plot_schedules(
@@ -73,6 +71,10 @@ def show_trainer_info(
         )
         # TODO(b/299308317): Remove `IPython.display.HTML`
         ecolab.disp(IPython.display.HTML(fig.to_html()))
+
+  if inspect_connected:
+    with ecolab.collapse("Connected components:"):
+      ecolab.disp(graphviz_utils.get_connection_graph(trainer))
 
   if inspect_sharding:
     with ecolab.collapse("Sharding"):
