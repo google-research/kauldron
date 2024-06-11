@@ -40,6 +40,7 @@ class Elements(grain.MapTransform):
   drop: Iterable[str] = ()
   rename: Mapping[str, str] = flax.core.FrozenDict()
   copy: Mapping[str, str] = flax.core.FrozenDict()
+  do_copy: bool = False  # a hack to enable tensorflow's compilation of `copy`
 
   def __post_init__(self):
     if self.keep and self.drop:
@@ -100,13 +101,14 @@ class Elements(grain.MapTransform):
 
     object.__setattr__(self, "keep", keep)
     object.__setattr__(self, "drop", drop)
+    object.__setattr__(self, "do_copy", True if self.copy else False)
 
   def map(self, features):
     feature_keys = set(features.keys())
 
     # first handle copying because some elements might be dropped/renamed
     copy_output = {}
-    if self.copy:
+    if self.do_copy:
       copy_keys = set(self.copy.keys())
       missing_copy_keys = copy_keys - feature_keys
       if missing_copy_keys:
