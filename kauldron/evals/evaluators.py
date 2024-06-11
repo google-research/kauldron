@@ -43,11 +43,12 @@ _SelfT = TypeVar('_SelfT')
 _DEFAULT_EVAL_NAME = 'eval'
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(kw_only=True, frozen=True)
 class CollectionKeys:
-  losses: tuple[str, ...]
-  metrics: tuple[str, ...]
-  summaries: tuple[str, ...]
+  """Names of the metrics/summaries/losses (displayed in flatboard)."""
+  losses: tuple[str, ...] = ()
+  metrics: tuple[str, ...] = ()
+  summaries: tuple[str, ...] = ()
 
 
 class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
@@ -108,7 +109,15 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
 
   @property
   def __flatboard_collections__(self) -> dict[str, CollectionKeys]:
-    """Returns collection keys used by flatboard."""
+    """Returns collection keys used by flatboard.
+
+    To be merged with the other existing metrics.
+
+    Returns:
+      A dict mapping collection keys (usually `self.name` with the metrics,
+      summaries,... names).
+    """
+    # TODO(epot): Make this abstract and update childs
     return {}
 
   @functools.cached_property
@@ -237,7 +246,6 @@ class Evaluator(EvaluatorBase):
 
   @functools.cached_property
   def __flatboard_collections__(self) -> dict[str, CollectionKeys]:
-    """Returns metrics keys."""
     return {
         self.name: CollectionKeys(
             losses=tuple(self.losses.keys()),

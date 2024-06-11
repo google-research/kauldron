@@ -234,7 +234,71 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
 
 
 @dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
-class KDMetricWriter(WriterBase):
+class MetadataWriter(WriterBase):
+  """Mixing to log global metadata."""
+
+  @abc.abstractmethod
+  def write_hparams(
+      self,
+      hparams: Mapping[str, Any],
+  ) -> None:
+    """Write hyper parameters."""
+    # TODO(epot): Could have implementation with `self.write_texts(0, texts)`
+
+  def write_config(
+      self,
+      config: konfig.ConfigDict,
+  ) -> None:
+    self._assert_collection_is_set()
+    if config is None:
+      return
+
+    if status.is_lead_host:
+      # Save the raw config (for easy re-loading)
+      config_path = self.workdir / "config.json"
+      config_path.write_text(config.to_json())
+
+    texts = {"config": f"```python\n{config!r}\n```"}
+    self.write_texts(0, texts)
+
+  def write_param_overview(self, step: int, params) -> None:
+    self._assert_collection_is_set()
+    texts = {"parameters": _get_markdown_param_table(params)}
+    self.write_texts(step, texts)
+
+  def write_element_spec(self, step: int, element_spec) -> None:
+    self._assert_collection_is_set()
+    texts = {"element_spec": f"```python\n{element_spec!s}\n```"}
+    self.write_texts(step, texts)
+
+
+@dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
+class NoopMetadataWriter(WriterBase):
+  """Mixing to disable loggin global metadata."""
+
+  def write_hparams(self, hparams: Mapping[str, Any]) -> None:
+    pass
+
+  def write_config(
+      self,
+      config: konfig.ConfigDict,
+  ) -> None:
+    pass
+
+  def write_param_overview(self, step: int, params) -> None:
+    pass
+
+  def write_element_spec(self, step: int, element_spec) -> None:
+    pass
+
+  def write_context_structure(
+      self, step: int, trainer: config_lib.Trainer
+  ) -> None:
+    pass
+
+
+@dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
+class KDMetricWriter(MetadataWriter):
   """Writes summaries to logs, tf_summaries and datatables.
 
   Differs from the clu default metric writer in a few ways:
@@ -376,32 +440,6 @@ class KDMetricWriter(WriterBase):
     self._log_writer.write_hparams(hparams)
     self._tf_summary_writer.write_hparams(hparams)
 
-  def write_config(
-      self,
-      config: konfig.ConfigDict,
-  ) -> None:
-    self._assert_collection_is_set()
-    if config is None:
-      return
-
-    if status.is_lead_host:
-      # Save the raw config (for easy re-loading)
-      config_path = self.workdir / "config.json"
-      config_path.write_text(config.to_json())
-
-    texts = {"config": f"```python\n{config!r}\n```"}
-    self.write_texts(0, texts)
-
-  def write_param_overview(self, step: int, params) -> None:
-    self._assert_collection_is_set()
-    texts = {"parameters": _get_markdown_param_table(params)}
-    self.write_texts(step, texts)
-
-  def write_element_spec(self, step: int, element_spec) -> None:
-    self._assert_collection_is_set()
-    texts = {"element_spec": f"```python\n{element_spec!s}\n```"}
-    self.write_texts(step, texts)
-
   def write_context_structure(
       self, step: int, trainer: config_lib.Trainer
   ) -> None:
@@ -436,7 +474,7 @@ class KDMetricWriter(WriterBase):
 
 
 @dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
-class NoopWriter(WriterBase):
+class NoopWriter(NoopMetadataWriter):
   """Writer that writes nothing. Useful for deactivating the writer."""
 
   def write_scalars(self, step: int, scalars: Mapping[str, Scalar]) -> None:
@@ -478,26 +516,6 @@ class NoopWriter(WriterBase):
     pass
 
   def write_texts(self, step: int, texts: Mapping[str, str]) -> None:
-    pass
-
-  def write_hparams(self, hparams: Mapping[str, Any]) -> None:
-    pass
-
-  def write_config(
-      self,
-      config: konfig.ConfigDict,
-  ) -> None:
-    pass
-
-  def write_param_overview(self, step: int, params) -> None:
-    pass
-
-  def write_element_spec(self, step: int, element_spec) -> None:
-    pass
-
-  def write_context_structure(
-      self, step: int, trainer: config_lib.Trainer
-  ) -> None:
     pass
 
   def write_step_metrics(
