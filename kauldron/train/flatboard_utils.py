@@ -100,6 +100,10 @@ def _get_default_dashboards(trainer: config_lib.Trainer):
         title="{xid}: Metrics", y_keys=y_keys, collections=data_collections
     )
 
+  # extra dashboards (e.g. for fewshot, TrainEvaluator,...)
+  for eval_ in trainer.evals.values():
+    dashboards.update(eval_.__flatboard_extra_dashboards__)
+
   # schedules
   y_keys = _get_schedule_y_keys(trainer)
   if y_keys:

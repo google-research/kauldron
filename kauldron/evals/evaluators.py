@@ -29,6 +29,7 @@ from kauldron import losses as losses_lib
 from kauldron import metrics as metrics_lib
 from kauldron import summaries as summaries_lib
 from kauldron.train import config_lib
+from kauldron.train import flatboard
 from kauldron.train import metric_writer
 from kauldron.train import rngs_lib
 from kauldron.train import train_step
@@ -119,6 +120,16 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
     """
     # TODO(epot): Make this abstract and update childs
     return {}
+
+  @property
+  def __flatboard_extra_dashboards__(
+      self,
+  ) -> dict[str, flatboard.DashboardFactory]:
+    """Additional dashboards to create (in addition from metrics)."""
+    # TODO(epot): Might be cases where users want to merge multiple extra
+    # dashboards from various evals together. Currently not really supported.
+    # Might have to re-design the API in the future.
+    return {}  # No extra dahsboard per default
 
   @functools.cached_property
   def _resolved_run(self) -> run_strategies.KauldronRunStrategy:
