@@ -234,7 +234,10 @@ class TreeMap(_TreeMetric):
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class TreeReduce(_TreeMetric):
-  """Aggregates an inner metric over a pytree and returns a single result."""
+  """Applies a metric to a pytree and returns the aggregated result.
+
+  The given metric defines the aggregation method.
+  """
 
   def get_state(self, **kwargs) -> base_state.State:
     state_tree = self._get_tree_state(**kwargs)
