@@ -106,7 +106,9 @@ class Elements(grain.MapTransform):
 
     # first handle copying because some elements might be dropped/renamed
     copy_output = {}
-    if self.copy:
+    # Auto-graph fail to convert the condition, so explicitly set
+    # `bool(self.copy)` (see b/335839876)
+    if bool(self.copy):
       copy_keys = set(self.copy.keys())
       missing_copy_keys = copy_keys - feature_keys
       if missing_copy_keys:
