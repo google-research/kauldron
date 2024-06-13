@@ -304,14 +304,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
       config_util.ROOT_CFG_REF.init_transforms
   )
 
-  def update_from_root_cfg(self, root_cfg) -> TrainStep:
-    new_self = super().update_from_root_cfg(root_cfg)
-    assert isinstance(new_self, TrainStep)
-    new_self = dataclasses.replace(
-        new_self,
-        model_with_aux=new_self.model_with_aux.update_from_root_cfg(root_cfg),
-    )
-    return new_self
+  __root_cfg_fields_to_recurse__ = ("model_with_aux",)
 
   def init(
       self,
