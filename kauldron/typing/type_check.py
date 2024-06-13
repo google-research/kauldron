@@ -26,6 +26,7 @@ import typing
 from typing import Any, Type, TypedDict, Union
 
 from etils import enp
+from etils import epy
 import jaxtyping
 from kauldron.typing import shape_spec
 import typeguard
@@ -101,6 +102,7 @@ def typechecked(fn):
   if hasattr(fn, "__wrapped__"):
     raise AssertionError("@typechecked should be the innermost decorator")
 
+  @epy.maybe_reraise(lambda: f"Error in {fn.__qualname__}: ")
   @jaxtyping.jaxtyped(typechecker=None)
   @functools.wraps(fn)
   def _reraise_with_shape_info(*args, _typecheck: bool = True, **kwargs):
