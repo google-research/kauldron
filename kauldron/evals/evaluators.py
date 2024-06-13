@@ -19,6 +19,7 @@ from __future__ import annotations
 import collections.abc
 import dataclasses
 import functools
+import inspect
 from typing import Any, Optional, TypeVar
 
 from etils import epy
@@ -78,6 +79,7 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
       default=config_util.ROOT_CFG_REF, repr=False
   )
 
+  __root_cfg_fields_to_recurse__ = ('writer',)
   __konfig_resolve_exclude_fields__ = ('run',)
 
   def __post_init__(self) -> None:
@@ -92,7 +94,16 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
     # always set the name of the collection to eval name
     if isinstance(self.writer, metric_writer.WriterBase):
       object.__setattr__(
-          self, 'writer', dataclasses.replace(self.writer, collection=self.name)
+          self,
+          'writer',
+          # TODO(epot): Correctly propagating the `_ResolvedRootCfg` isn't
+          # trivial. How to simplify ?
+          config_util.unwrap_wrap_resolved_ref(
+              inspect.getattr_static(self, 'writer'),
+              functools.partial(
+                  config_util.replace_preserve_ref, collection=self.name
+              ),
+          ),
       )
 
   def maybe_eval(self, *, step: int, state: train_step.TrainState) -> Any:
@@ -178,24 +189,19 @@ class Evaluator(EvaluatorBase):
       config_util.ROOT_CFG_REF.train_summaries
   )
 
+  __root_cfg_fields_to_recurse__ = ('ds',)
+
   # TODO(klausg): filter out metrics / summaries that access grads/updates
 
-  def update_from_root_cfg(
-      self: _SelfT, root_cfg: config_lib.Trainer
-  ) -> _SelfT:
-    """See base class."""
-    new_self = super().update_from_root_cfg(root_cfg)
-    if new_self.ds is None:
+  def __post_init__(self) -> None:
+    super().__post_init__()
+
+    if self.ds is None:
       raise ValueError(
           f'Eval dataset missing (`cfg.evals.{self.name}.ds is None`). Please'
           ' set it either in `kd.train.Trainer.eval_ds` or in'
           ' `Evaluator(ds=...)`.'
       )
-
-    return new_self.replace(
-        ds=new_self.ds.update_from_root_cfg(root_cfg),
-        writer=new_self.writer.update_from_root_cfg(root_cfg),
-    )
 
   @functools.cached_property
   def ds_iter(self) -> data.IterableDataset:
@@ -322,7 +328,7 @@ def _replace_name(evaluator: EvaluatorBase, name: str) -> EvaluatorBase:
         ' metrics.'
     )
   elif evaluator.name == _DEFAULT_EVAL_NAME:  # Default name, overwrite
-    return dataclasses.replace(evaluator, name=name)
+    return config_util.replace_preserve_ref(evaluator, name=name)
   elif evaluator.name == name:
     return evaluator
   else:

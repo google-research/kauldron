@@ -223,20 +223,22 @@ class Trainer(config_util.BaseConfig):
       if getattr(self, name) is None:
         object.__setattr__(self, name, default_factory())
 
+    # TODO(epot):
+    # Use self.update_from_root_cfg(self) directly
+
     # Some config object values are lazy-initialized from the root config.
     # See `UpdateFromRootCfg` for details
     for attr_name in (
         'train_ds',
+        'eval_ds',
         'rng_streams',
         'checkpointer',
         'profiler',
         'trainstep',
         'writer',
     ):
-      if hasattr(self, attr_name):
-        object.__setattr__(
-            self, attr_name, getattr(self, attr_name).update_from_root_cfg(self)
-        )
+      if (value := getattr(self, attr_name)) is not None:
+        object.__setattr__(self, attr_name, value.update_from_root_cfg(self))
     if self.evals:
       evals = evaluators.normalize_evaluators(self.evals)
       object.__setattr__(
@@ -248,7 +250,9 @@ class Trainer(config_util.BaseConfig):
     # set the name of the collection to train
     if isinstance(self.writer, metric_writer.KDMetricWriter):
       object.__setattr__(
-          self, 'writer', dataclasses.replace(self.writer, collection='train')
+          self,
+          'writer',
+          config_util.replace_preserve_ref(self.writer, collection='train'),
       )
 
   __konfig_resolve_exclude_fields__ = ('xm_job',)
