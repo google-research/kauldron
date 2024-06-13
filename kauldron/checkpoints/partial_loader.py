@@ -17,12 +17,15 @@
 from __future__ import annotations
 
 import abc
+from collections.abc import MutableMapping
 import dataclasses
 import functools
+import typing
 from typing import Any, TypeVar
 
 from etils import epath
 from etils import epy
+import flax
 from kauldron import kontext
 from kauldron.checkpoints import checkpoint_items
 from kauldron.checkpoints import checkpointer
@@ -32,6 +35,7 @@ import orbax.checkpoint as ocp
 with epy.lazy_imports():
   from orbax.checkpoint.experimental.model_surgery import standard_checkpoint_handler  # pylint: disable=g-import-not-at-top
 
+FrozenDict = dict if typing.TYPE_CHECKING else flax.core.FrozenDict
 _T = TypeVar('_T')
 
 
@@ -88,12 +92,17 @@ class PartialKauldronLoader(AbstractPartialLoader):
     workdir: The work directory from which the checkpoint should be loaded ( can
       be created from `kd.ckpts.workdir_from_xid`).
     new_to_old: Mapping the pytree to copy to the new state from the original
-      checkpoint.
+      checkpoint. By default, copy all model `params` and `collections`
     step: Which step to load (default to last one)
   """
 
   workdir: epath.PathLike
-  new_to_old: dict[str, str]  # PyTree[types.EllipsisType] = ...
+  new_to_old: MutableMapping[str, str] = dataclasses.field(
+      default_factory=lambda: FrozenDict({
+          'params': 'params',
+          'collections': 'collections',
+      })
+  )
   step: int = -1
 
   def transform(self, state: _T) -> _T:
@@ -118,7 +127,7 @@ class _PartialRestoreCheckpointItem(checkpoint_items.CheckpointItem):
 
   state: Any
   _: dataclasses.KW_ONLY
-  new_to_old: dict[str, str]  # PyTree[types.EllipsisType] = ...
+  new_to_old: MutableMapping[str, str]
 
   def __kd_ocp_handlers__(self) -> ocp.CheckpointHandler:
     return standard_checkpoint_handler.StandardCheckpointHandler()
