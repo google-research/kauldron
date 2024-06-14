@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import dataclasses
 import functools
-import inspect
 import typing
 from typing import Any, ClassVar, TypeVar
 
@@ -30,6 +29,56 @@ if typing.TYPE_CHECKING:
   from kauldron.train import config_lib
 
 _SelfT = TypeVar('_SelfT')
+
+
+# Use class rather than `object()` to support pickle and better `__repr__`.
+class _FakeRefsUnset:
+  """Sentinel to mark an object had never applied `update_from_root_cfg`.
+
+  Tracking the original fake reference allow to correctly re-overwrite the
+  sub-values when the original config object is updated.
+
+  ```python
+  trainer = kd.train.Trainer(
+      train_ds=kd.data.Tfds(),
+      seed=0,
+  )
+  assert trainer.train_ds.seed == 0
+
+  dataclasses.replace(trainer, seed=42)
+  assert trainer.train_ds.seed == 42  # < Seed is correcly updated.
+  ```
+
+  Implementation:
+
+  * When a `UpdateFromRootCfg` is first created, it's `_fake_refs` field is
+    set to `_FakeRefsUnset`.
+  * When `update_from_root_cfg` is called, the dataclass fields which are
+    `_FakeRootCfg` are saved in `_fake_refs`.
+  * TODO(epot): When `dataclasses.replace` is called on a `UpdateFromRootCfg`
+    object, the `_fake_refs` are propagated to the new object UNLESS the field
+    is explicitly overwritten.
+  * When `dataclasses.replace` is called on the root `Trainer` and `_fake_refs`
+    exists, only the fields defined in `_fake_refs` are overwritten by the
+    new resolved `ROOT_CFG_REF` objects.
+
+  Caveat: While `_fake_refs` is not updated when `dataclasses.replace`,
+  overwriting field will be a no-op.
+
+  ```python
+  trainer = kd.train.Trainer(
+      train_ds=kd.data.Tfds(),
+      seed=0,
+  )
+
+  new_ds = dataclasses.replace(trainer.train_ds, seed=100)
+  assert new_ds.seed == 100
+
+  trainer = dataclasses.replace(trainer, train_ds=new_ds)
+  assert trainer.train_ds.seed == 0  # < Value overwritten !!!!
+  ```
+  """
+
 
 # TODO(epot): Remove `BaseConfig` ?
 
@@ -133,37 +182,6 @@ class _FakeRootCfg:
       )
 
 
-@dataclasses.dataclass(kw_only=True, frozen=True)
-class _ResolvedRootCfg:
-  """Resolved value (after being copied from the root config).
-
-  This is a small wrapper around the resolved value. This allow to correctly
-  re-overwrite the sub-values when the original config object is updated.
-
-  ```
-  trainer = kd.train.Trainer(
-      train_ds=kd.data.Tfds(),
-      seed=0,
-  )
-  assert trainer.train_ds.seed == 0
-
-  dataclasses.replace(trainer, seed=42)
-  assert trainer.train_ds.seed == 42  # < Seed is correcly updated.
-  ```
-
-  Note: Overwriting the field in the dataclass or changing the nested object (
-  e.g. `dataclasses.replace(trainer.train_ds)`) will lose the reference (
-  attribute will be a standard attribute).
-
-  Attributes:
-    value: Resolved value.
-    fake_ref: Reference to the original fake root config.
-  """
-
-  value: Any
-  fake_ref: _FakeRootCfg
-
-
 ROOT_CFG_REF: config_lib.Trainer = _FakeRootCfg.make_fake_cfg()
 
 
@@ -204,25 +222,28 @@ class UpdateFromRootCfg:
   ```
 
   Attributes:
+    _fake_refs: Keep track of the original fake references, so
+      `dataclasses.replace` correctly propagate the reference in case the value
+      is replaced later on in the Trainer.
     __root_cfg_fields_to_recurse__: List of fields that should be recursively
       updated from the root config. Order is preserved. Is automatically merged
       with all parent classes.
   """
 
-  # TODO(epot): Currently, the propagation of `_ResolvedRootCfg` is quite
-  # brittle because it every `dataclasses.replace` calls will loose the original
-  # fake reference. So `__post_init__` methods should make sure to use
-  # `replace_preserve_ref` instead of `dataclasses.replace`.
-  # A clearner solution would be to add a `_fake_refs: dict[str, _FakeRootCfg]`
-  # dataclass field which is automatically propagated during
-  # `dataclasses.replace`. But this also has caveat as now explicitly
-  # overwriting a ref field with `dataclasses.replace` will not overwrite the
-  # fake refs. Could auto-wrap `__init__` to check that calling `.replace` with
-  # new values remove the ref from fake_refs. A good heuristic would be to
-  # check whether `kwargs[name] is getattr(self, name)` to check whether
-  # `dataclasses.replace` try to overwrite the value. Even then, it might not be
-  # simple to alwyas know when propagate `_fake_refs` or not.
-  # Seems feasible, but leave this for my future self.
+  if not typing.TYPE_CHECKING:
+    # TODO(epot): Should wrap `__init__` to check that calling `.replace` with
+    # new values remove the ref from fake_refs. A good heuristic would be to
+    # check whether `kwargs[name] is getattr(self, name)` to check whether
+    # `dataclasses.replace` tried to overwrite the value. But how to get the
+    # previous `getattr` ?
+    _fake_refs: type[_FakeRefsUnset] | dict[str, _FakeRootCfg] = (
+        dataclasses.field(
+            default=_FakeRefsUnset,
+            compare=False,
+            hash=False,
+            repr=False,
+        )
+    )
 
   __root_cfg_fields_to_recurse__: ClassVar[tuple[str, ...]] = ()
 
@@ -231,7 +252,7 @@ class UpdateFromRootCfg:
   ) -> _SelfT:
     """Returns a copy of `self`, potentially with updated values."""
     # Check all fields which are `field: Any = ROOT_CFG_REF.xxx`
-    fields_to_replace = self._base_fields(root_cfg)
+    fields_to_replace, fake_refs = self._base_fields(root_cfg)
     # Apply `.update_from_root_cfg()` recursively on fields defined in
     # `__root_cfg_fields_to_recurse__`
     fields_to_replace = self._recurse_fields(root_cfg, fields_to_replace)
@@ -239,40 +260,55 @@ class UpdateFromRootCfg:
     if not fields_to_replace:
       return self
     else:
-      return dataclasses.replace(self, **fields_to_replace)
+      return dataclasses.replace(
+          self, **fields_to_replace, _fake_refs=fake_refs  # pytype: disable=wrong-keyword-args
+      )
 
-  def _base_fields(self, root_cfg: config_lib.Trainer) -> dict[str, Any]:
+  def _base_fields(
+      self, root_cfg: config_lib.Trainer
+  ) -> tuple[dict[str, Any], dict[str, _FakeRootCfg]]:
     """Return the fields to replace."""
+    curr_fake_refs = self._fake_refs  # pytype: disable=attribute-error
     fields_to_replace = {}
+    fake_refs = {}
     for f in dataclasses.fields(self):
       default = f.default
       if not isinstance(default, _FakeRootCfg):
         continue
-      value = inspect.getattr_static(self, f.name)
-      # Value is either:
-      # * an unresolved reference (likely default value)
-      # * automatically set from a previous `.update_from_root_cfg()` call (
-      #   in which case should be overwritten).
-      if not isinstance(value, (_FakeRootCfg, _ResolvedRootCfg)):
-        continue
+      value = getattr(self, f.name)
 
-      if isinstance(value, _ResolvedRootCfg):
-        value = value.fake_ref  # Unwrap the original fake ref
+      # Check all cases:
+      # First time `update_from_root_cfg`, replace all `_FakeRootCfg`
+      if curr_fake_refs is _FakeRefsUnset:
+        if isinstance(value, _FakeRootCfg):
+          fake_ref = value  # Replace
+        else:
+          continue  # Ignore (ROOT_CFG_REF explicitly overwritten)
+      else:  # self._fake_refs is a `dict`
+        if isinstance(value, _FakeRootCfg):
+          # Unexpected, should raise an error ? Indicates the user explicitly
+          # set the value to `ROOT_CFG_REF.xxx`
+          fake_ref = value  # Always replace ROOT_CFG_REF
+        elif f.name in curr_fake_refs:
+          # Overwrite the resolved value by the new resolved ROOT_CFG_REF, as
+          # the previous value was automatically set by a previous
+          # `update_from_root_cfg` call.
+          fake_ref = curr_fake_refs[f.name]  # pytype: disable=not-indexable
+        else:
+          continue  # Ignore (ROOT_CFG_REF explicitly overwritten)
 
       # value is a fake cfg, should be update
       new_value = root_cfg
-      for attr in value.names[1:]:
+      for attr in fake_ref.names[1:]:  # pytype: disable=attribute-error
         new_value = getattr(root_cfg, attr)
 
-      # Auto-recurse into the nested value
-      if isinstance(value, UpdateFromRootCfg):
-        new_value = value.update_from_root_cfg(root_cfg)
+      # Should auto-recurse into the nested value ?
+      # Careful about infinite recursion when the value is top-level
+      # `ROOT_CFG_REF`
 
-      fields_to_replace[f.name] = _ResolvedRootCfg(
-          value=new_value,
-          fake_ref=value,
-      )
-    return fields_to_replace
+      fields_to_replace[f.name] = new_value
+      fake_refs[f.name] = fake_ref
+    return fields_to_replace, fake_refs  # pytype: disable=bad-return-type
 
   def _recurse_fields(
       self,
@@ -292,25 +328,18 @@ class UpdateFromRootCfg:
           f'fields from parent classes are automatically merged): {all_fields}'
       )
 
-    def _recurse(value):
-      return jax.tree.map(
+    for field_name in all_fields:
+      if field_name in fields_to_replace:  # Field already updated.
+        new_value = fields_to_replace[field_name]
+      else:
+        new_value = getattr(self, field_name)
+
+      # Apply `.update_from_root_cfg()` on the field
+      fields_to_replace[field_name] = jax.tree.map(
           lambda x: x.update_from_root_cfg(root_cfg),
-          value,
+          new_value,
           is_leaf=lambda x: isinstance(x, UpdateFromRootCfg),
       )
-
-    for field_name in all_fields:
-      # The field is a `_ResolvedRootCfg`, so need to propagate the reference
-      if field_name in fields_to_replace:
-        resolved_value = fields_to_replace[field_name]
-        new_value = _ResolvedRootCfg(
-            value=_recurse(resolved_value.value),
-            fake_ref=resolved_value.fake_ref,
-        )
-      else:
-        new_value = _recurse(getattr(self, field_name))
-
-      fields_to_replace[field_name] = new_value
 
     return fields_to_replace
 
@@ -332,31 +361,3 @@ class UpdateFromRootCfg:
             ' `obj.update_from_root_cfg(root_cfg)` to copy the value from the'
             ' root `kd.train.Trainer` object.'
         )
-
-  if not typing.TYPE_CHECKING:
-
-    def __getattribute__(self, name: str) -> Any:
-      value = super().__getattribute__(name)
-      if isinstance(value, _ResolvedRootCfg):  # Unwrap the resolved value
-        value = value.value
-      return value
-
-
-def unwrap_wrap_resolved_ref(value, fn):
-  if isinstance(value, _ResolvedRootCfg):
-    return _ResolvedRootCfg(
-        value=fn(value.value),
-        fake_ref=value.fake_ref,
-    )
-  return fn(value)
-
-
-def replace_preserve_ref(dc: _SelfT, **changes: Any) -> _SelfT:
-  """Like `dataclasses.replace` but preserve the resolved `ROOT_CFG_REF`."""
-  for field in dataclasses.fields(dc):
-    if not field.init:
-      continue
-    if field.name not in changes:
-      value = inspect.getattr_static(dc, field.name)
-      changes[field.name] = value
-  return dc.__class__(**changes)

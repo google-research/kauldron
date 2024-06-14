@@ -23,7 +23,7 @@ from kauldron.train import metric_writer
 def test_trainer_replace():
   trainer = kd.train.Trainer(
       eval_ds=kd.data.Tfds(name='mnist', split='train'),
-      train_ds=kd.data.Tfds(name='mnist', split='train'),
+      train_ds=kd.data.Tfds(name='mnist', split='train', seed=60),  # pytype: disable=wrong-keyword-args
       init_transforms={
           'base': kd.ckpts.PartialKauldronLoader(workdir='/some/workdir')
       },
@@ -38,7 +38,7 @@ def test_trainer_replace():
   )
 
   assert trainer.eval_ds.seed == 0
-  assert trainer.train_ds.seed == 0
+  assert trainer.train_ds.seed == 60
   assert trainer.evals['eval'].ds.seed == 0  # pytype: disable=attribute-error
   assert isinstance(trainer.evals['eval'].writer, metric_writer.KDMetricWriter)
   assert trainer.trainstep.init_transforms['base'].workdir == '/some/workdir'  # pytype: disable=attribute-error
@@ -54,7 +54,7 @@ def test_trainer_replace():
   )
 
   assert new_trainer.eval_ds.seed == 42
-  assert new_trainer.train_ds.seed == 42
+  assert new_trainer.train_ds.seed == 60
   assert new_trainer.evals['eval'].ds.seed == 42  # pytype: disable=attribute-error
   assert isinstance(new_trainer.evals['eval'].writer, metric_writer.NoopWriter)
   assert new_trainer.trainstep.init_transforms['base'].workdir == '/new/workdir'  # pytype: disable=attribute-error

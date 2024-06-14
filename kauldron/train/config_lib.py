@@ -252,7 +252,7 @@ class Trainer(config_util.BaseConfig):
       object.__setattr__(
           self,
           'writer',
-          config_util.replace_preserve_ref(self.writer, collection='train'),
+          dataclasses.replace(self.writer, collection='train'),
       )
 
   __konfig_resolve_exclude_fields__ = ('xm_job',)

@@ -19,7 +19,6 @@ from __future__ import annotations
 import collections.abc
 import dataclasses
 import functools
-import inspect
 from typing import Any, Optional, TypeVar
 
 from etils import epy
@@ -84,7 +83,7 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
 
   def __post_init__(self) -> None:
     if hasattr(super(), '__post_init__'):
-      super().__post_init__()  # Future proof to run `__post_init__` in parents
+      super().__post_init__()  # Future proof to run `__post_init__` in parents  # pylint: disable=attribute-error
     if not self.name.replace('.', '_').replace('-', '_').isidentifier():
       raise ValueError(
           'Evaluator name should be a valid Python identifier. Got:'
@@ -96,14 +95,7 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
       object.__setattr__(
           self,
           'writer',
-          # TODO(epot): Correctly propagating the `_ResolvedRootCfg` isn't
-          # trivial. How to simplify ?
-          config_util.unwrap_wrap_resolved_ref(
-              inspect.getattr_static(self, 'writer'),
-              functools.partial(
-                  config_util.replace_preserve_ref, collection=self.name
-              ),
-          ),
+          dataclasses.replace(self.writer, collection=self.name),
       )
 
   def maybe_eval(self, *, step: int, state: train_step.TrainState) -> Any:
@@ -328,7 +320,7 @@ def _replace_name(evaluator: EvaluatorBase, name: str) -> EvaluatorBase:
         ' metrics.'
     )
   elif evaluator.name == _DEFAULT_EVAL_NAME:  # Default name, overwrite
-    return config_util.replace_preserve_ref(evaluator, name=name)
+    return dataclasses.replace(evaluator, name=name)
   elif evaluator.name == name:
     return evaluator
   else:
