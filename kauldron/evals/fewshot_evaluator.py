@@ -29,7 +29,6 @@ from kauldron import kontext
 from kauldron.evals import evaluators
 from kauldron.metrics import base
 from kauldron.metrics import base_state
-from kauldron.train import config_lib
 from kauldron.train import train_step
 from kauldron.typing import Array, Float, Int, Scalar, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import config_util
@@ -93,19 +92,7 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
   selected_repr: str = 'pre_logits'
   seed: int | Sequence[int] = config_util.ROOT_CFG_REF.seed
 
-  def update_from_root_cfg(
-      self: _SelfT,
-      root_cfg: config_lib.Trainer,
-  ) -> _SelfT:
-    """See base class."""
-    new_self = super().update_from_root_cfg(root_cfg)
-
-    return new_self.replace(
-        ds_train=new_self.ds_train.update_from_root_cfg(root_cfg),
-        ds_val=new_self.ds_val.update_from_root_cfg(root_cfg),
-        ds_test=new_self.ds_test.update_from_root_cfg(root_cfg),
-        writer=new_self.writer.update_from_root_cfg(root_cfg),
-    )
+  __root_cfg_fields_to_recurse__ = ('ds_train', 'ds_val', 'ds_test')
 
   @property
   def metrics(self) -> dict[str, str]:
