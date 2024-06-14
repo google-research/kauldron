@@ -20,6 +20,7 @@ import abc
 import dataclasses
 from typing import Any, Hashable, Optional, Sequence
 
+from etils import exm
 import flax
 from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 
@@ -242,13 +243,11 @@ def _collect_datatables(dashboard: fb.Dashboard) -> set[str]:
 
 def add_flatboard_artifacts(dashboard_factories: dict[str, DashboardFactory]):
   """Add flatboard artifacts and corresponding datatable artifacts to XM."""
-  xp = xmanager_api.XManagerApi().get_current_experiment()
 
   for name, factory in dashboard_factories.items():
     dashboard = factory()
     if dashboard:
       create_artifact_only_if_missing(
-          xp=xp,
           artifact_type=xmanager_api.ArtifactType.ARTIFACT_TYPE_FLATBOARD_URL,
           artifact=dashboard.save_url(
               reader_permissions=fb.FlatboardDashboardPermissions.EVERYONE
@@ -257,7 +256,9 @@ def add_flatboard_artifacts(dashboard_factories: dict[str, DashboardFactory]):
       )
 
 
-def create_artifact_only_if_missing(xp, artifact_type, description, artifact):
+def create_artifact_only_if_missing(artifact_type, description, artifact):
+  xp = exm.current_experiment()
+
   for old_artifact in xp.get_artifacts(artifact_types=[artifact_type]):
     if old_artifact.description == description:
       return old_artifact  # Already exists, no need to create it.
