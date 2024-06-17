@@ -25,6 +25,7 @@ from typing import Any
 
 from absl import flags
 from kauldron import konfig
+from kauldron import kontext
 from kauldron.utils import utils
 
 # This should match sweep args passed in `kauldron/xm/_src/kauldron_utils.py`
@@ -60,10 +61,6 @@ def update_with_sweep(
     sweep_kwargs: str,
 ) -> konfig.ConfigDict:
   """Update the config with sweep."""
-  # Might create issue with adhoc import, but `update_with_sweep` is likely not
-  # called on Colab
-  from kauldron import kontext  # pylint: disable=g-import-not-at-top
-
   if not sweep_kwargs:
     return config
 

@@ -105,7 +105,7 @@ class _Status:
       logging.info(msg)
       return
     else:
-      print(msg)  # Colab or local
+      print(msg, flush=True)  # Colab or local
 
 
 status = _Status()
