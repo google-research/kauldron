@@ -346,6 +346,8 @@ class Trainer(config_util.BaseConfig):
         rngs=rngs,
         step=0,
         collections=state_specs.collections,
+        # TODO(msajjadi): Pass the entire context to the forward pass.
+        opt_state=state_specs.opt_state,
     )
     context = context.replace(opt_state=state_specs.opt_state)
     return context
