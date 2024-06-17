@@ -40,6 +40,7 @@ from kauldron.utils import config_util
 from kauldron.utils import context as context_lib
 from kauldron.utils.sharding_utils import sharding as sharding_lib  # pylint: disable=g-bad-import-order,g-importing-member
 from kauldron.utils import train_property  # pylint: disable=unused-import
+from kauldron.utils.kdash import dashboard_utils
 import optax
 
 
@@ -126,7 +127,7 @@ class Auxiliaries:
     if not isinstance(loss_values, dict):
       loss_values = dict(loss_values)  # Convert FrozenDict, ImmutableDict
     if loss_values.values():  # if there are any losses also add a total
-      loss_values["total"] = total_loss
+      loss_values[dashboard_utils.TOTAL_LOSS_KEY] = total_loss
 
     # train metrics
     metric_values = jax.tree.map(
