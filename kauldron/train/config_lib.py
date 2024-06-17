@@ -38,7 +38,6 @@ from kauldron.data import utils as data_utils
 from kauldron.evals import eval_impl
 from kauldron.evals import evaluators
 from kauldron.inspect import profile_utils
-from kauldron.train import flatboard
 from kauldron.train import metric_writer
 from kauldron.train import rngs_lib
 from kauldron.train import setup_utils
@@ -113,7 +112,6 @@ class Trainer(config_util.BaseConfig):
     train_metrics: x
     train_summaries: x
     writer: Metric writer used for writing to TB, datatable, etc.
-    flatboards: x
     profiler: Profiler can be customized (see `kd.inspect.Profile`)
     checkify_error_categories: List of errors to enable checkify for.
     schedules: optax schedules (to be used in `optimizer`)
@@ -166,9 +164,6 @@ class Trainer(config_util.BaseConfig):
 
   writer: metric_writer.WriterBase = dataclasses.field(
       default_factory=metric_writer.KDMetricWriter
-  )
-  flatboards: MutableMapping[str, flatboard.DashboardFactory] = (
-      dataclasses.field(default_factory=FrozenDict)
   )
   profiler: profile_utils.Profiler = dataclasses.field(
       default_factory=profile_utils.Profiler

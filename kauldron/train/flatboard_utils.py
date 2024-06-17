@@ -128,7 +128,5 @@ def add_flatboards(trainer: config_lib.Trainer):
   """Add flatboards based on trainer.flatboards or default flatboards."""
   if not status.on_xmanager or not status.is_lead_host or status.wid != 1:
     return  # only add flatboards once per experiment
-  dashboard_factories = trainer.flatboards
-  if not dashboard_factories:
-    dashboard_factories = _get_default_dashboards(trainer)
+  dashboard_factories = _get_default_dashboards(trainer)
   flatboard.add_flatboard_artifacts(dashboard_factories)
