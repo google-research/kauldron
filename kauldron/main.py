@@ -97,7 +97,7 @@ def _wu_error_handling(post_mortem: bool = False):
       yield
     except Exception as e:
       exc_name = type(e).__name__
-      status.log(f"🚨 {exc_name}: {e!s}")
+      status.log_status(f"🚨 {exc_name}: {e!s}")
       status.xp.add_tags(f"🚨 {exc_name} 🚨")
       # Add links to the logs of the failing work units.
       utils.add_log_artifacts(add_experiment_artifact=True)

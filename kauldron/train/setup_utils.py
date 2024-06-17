@@ -66,8 +66,8 @@ class Setup:
       experiment = exm.current_experiment()
       experiment.add_tags(*self.tags)
 
-  def log(self, msg: str) -> None:
-    status.log(msg)
+  def log_status(self, msg: str) -> None:
+    status.log_status(msg)
 
 
 def _ensure_workdir(workdir: epath.PathLike):

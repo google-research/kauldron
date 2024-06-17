@@ -45,10 +45,10 @@ def train_impl(
 ) -> tuple[train_step.TrainState, Optional[train_step.Auxiliaries]]:
   """Implements of `Trainer.train`."""
   setup = trainer.setup
-  setup.log("Configuring ...")
+  setup.log_status("Configuring ...")
   setup.run(trainer)
 
-  setup.log("Initializing ...")
+  setup.log_status("Initializing ...")
   trainstep = trainer.trainstep
   ckpt = trainer.checkpointer
   writer = trainer.writer
@@ -81,7 +81,7 @@ def train_impl(
 
   aux = None
 
-  setup.log(f"Starting training loop at step {initial_step}")
+  setup.log_status(f"Starting training loop at step {initial_step}")
   with _transfer_guard():
     # NOTE: DO *NOT* CHANGE THE ORDER OF OPERATIONS IN THE TRAINING LOOP!
     for i in _enum_steps_with_hooks(

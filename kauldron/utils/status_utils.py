@@ -18,7 +18,7 @@
 from kauldron.utils.status_utils import status
 
 
-status.log("Starting training.")
+status.log_status("Starting training.")
 if status.on_xmanager and status.is_lead_host:
   ...
 ```
@@ -42,7 +42,7 @@ class _Status:
   from kauldron.utils.status_utils import status
 
 
-  status.log("Starting training.")
+  status.log_status("Starting training.")
   if status.on_xmanager and status.is_lead_host:
     ...
   ```
@@ -82,10 +82,28 @@ class _Status:
       raise RuntimeError("Not running on Xmanager.")
     return self.wu.experiment_id
 
-  def log(self, msg: str) -> None:
-    """Log a message (from lead host)."""
+  def log_status(self, msg: str) -> None:
+    """Log a message (from lead host), will be displayed on the XM UI."""
+    self.log(msg)
     if self.on_xmanager and self.is_lead_host:
       self.wu.set_notes(msg)
+
+  def log(self, msg: str) -> None:
+    """Print a message.
+
+    * On Colab: Use `print`
+    * On Borg: Use `logging.info`
+
+    Contrary to `log_status()`, messages are not displayed on the XM UI.
+
+    Args:
+      msg: the message to print.
+    """
+    if (
+        not epy.is_notebook()
+    ):
+      logging.info(msg)
+      return
     else:
       print(msg)  # Colab or local
 
