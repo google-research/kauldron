@@ -24,6 +24,7 @@ from typing import Any, Mapping, Optional
 from clu import metric_writers
 from clu import parameter_overview
 from etils import epath
+from etils import epy
 from etils.etree import jax as etree  # pylint: disable=g-importing-member
 import jax
 from kauldron import konfig
@@ -34,6 +35,7 @@ from kauldron.train import timer as timer_module
 from kauldron.train import train_step
 from kauldron.typing import Array, Float, Scalar  # pylint: disable=g-multiple-import
 from kauldron.utils import config_util
+from kauldron.utils import kdash
 from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
 import numpy as np
 import optax
@@ -218,6 +220,8 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
             },
         )
 
+    # TODO(epot): This is blocking and slow. Is it really required ?
+    # Should likely be only called once at the end of the training / eval.
     self.flush()
 
   def flush(self) -> None:
@@ -311,19 +315,25 @@ class KDMetricWriter(MetadataWriter):
 
   add_artifacts: bool = True
 
+  flatboard_build_context: kdash.BuildContext = (
+      config_util.ROOT_CFG_REF.setup.flatboard_build_context
+  )
+
+  @functools.cached_property
+  def _collection_path_prefix(self) -> str:
+    if self.flatboard_build_context.collection_path_prefix is None:
+      raise ValueError("collection_path_prefix must be set.")
+    return self.flatboard_build_context.collection_path_prefix
+
   @functools.cached_property
   def _scalar_datatable_name(self) -> str:
     self._assert_collection_is_set()
-    if not status.on_xmanager:
-      raise RuntimeError("Not on XManager.")
-    return f"/datatable/xid/{status.xid}/{self.collection}"
+    return f"{self._collection_path_prefix}{self.collection}"
 
   @functools.cached_property
   def _array_datatable_name(self) -> str:
     self._assert_collection_is_set()
-    if not status.on_xmanager:
-      raise RuntimeError("Not on XManager.")
-    return f"/datatable/xid/{status.xid}/{self.collection}_arrays"
+    return f"{self._collection_path_prefix}{self.collection}_arrays"
 
   @functools.cached_property
   def _noop(self) -> metric_writers.MetricWriter:
@@ -348,40 +358,42 @@ class KDMetricWriter(MetadataWriter):
 
   @functools.cached_property
   def _scalar_writer(self) -> metric_writers.MetricWriter:
-    if status.on_xmanager and status.is_lead_host:
-      if status.wid == 1 and self.add_artifacts:
-        status.xp.create_artifact(
-            artifact_type=xmanager_api.ArtifactType.ARTIFACT_TYPE_STORAGE2_BIGTABLE,
-            artifact=self._scalar_datatable_name,
-            description=f"Scalars datatable ({self.collection})",
-        )
-
-      return metric_writers.AsyncWriter(
-          metric_writers.DatatableWriter(
-              datatable_name=self._scalar_datatable_name,
-              keys=[("wid", status.wid)],
-          ),
-      )
-    else:
-      return self._noop
+    return self._create_datatable_writer(
+        name=self._scalar_datatable_name,
+        description=f"Scalars datatable ({self.collection})",
+    )
 
   @functools.cached_property
   def _array_writer(self) -> metric_writers.MetricWriter:
-    if status.on_xmanager and status.is_lead_host:
+    return self._create_datatable_writer(
+        name=self._array_datatable_name,
+        description=f"Arrays and images datatable ({self.collection})",
+    )
+
+  def _create_datatable_writer(
+      self, name: str, description: str
+  ) -> metric_writers.MetricWriter:
+    if epy.is_test():
+      return self._noop  # Do not write to datatable inside tests
+    if status.on_xmanager:
+      if not status.is_lead_host:
+        return self._noop
       if status.wid == 1 and self.add_artifacts:
         status.xp.create_artifact(
             artifact_type=xmanager_api.ArtifactType.ARTIFACT_TYPE_STORAGE2_BIGTABLE,
-            artifact=self._array_datatable_name,
-            description=f"Arrays and images datatable ({self.collection})",
+            artifact=name,
+            description=description,
         )
-      return metric_writers.AsyncWriter(
-          metric_writers.DatatableWriter(
-              datatable_name=self._array_datatable_name,
-              keys=[("wid", status.wid)],
-          ),
-      )
+      keys = [("wid", status.wid)]
     else:
-      return self._noop
+      keys = []
+
+    return metric_writers.AsyncWriter(
+        metric_writers.DatatableWriter(
+            datatable_name=self._scalar_datatable_name,
+            keys=keys,
+        ),
+    )
 
   def write_summaries(
       self,

@@ -49,6 +49,8 @@ def build_and_upload(
   ctx = ctx or plot_utils.BuildContext()
 
   dashboards = dashboards.normalize().build(ctx)
+  if epy.is_test():  # Inside tests, do not actually create the dashboards.
+    return
   urls = {
       # Remove the `/revisions/` so that flatboard updates are reflected.
       # TODO(epot): Is it a good idea?

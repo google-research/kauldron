@@ -29,13 +29,14 @@ from kauldron import losses as losses_lib
 from kauldron import metrics as metrics_lib
 from kauldron import summaries as summaries_lib
 from kauldron.train import config_lib
-from kauldron.train import flatboard
 from kauldron.train import metric_writer
 from kauldron.train import rngs_lib
 from kauldron.train import train_step
 from kauldron.utils import config_util
+from kauldron.utils import kdash
 from kauldron.utils import utils
 from kauldron.utils.sharding_utils import sharding as sharding_lib  # pylint: disable=g-importing-member
+from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
 from kauldron.xm._src import run_strategies
 
 
@@ -111,8 +112,8 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
     """Run this evaluator then write and optionally return the results."""
     raise NotImplementedError
 
-  @property
-  def __flatboard_collections__(self) -> dict[str, CollectionKeys]:
+  @functools.cached_property
+  def __dashboards__(self) -> kdash.DashboardsBase:
     """Returns collection keys used by flatboard.
 
     To be merged with the other existing metrics.
@@ -122,17 +123,15 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
       summaries,... names).
     """
     # TODO(epot): Make this abstract and update childs
-    return {}
-
-  @property
-  def __flatboard_extra_dashboards__(
-      self,
-  ) -> dict[str, flatboard.DashboardFactory]:
-    """Additional dashboards to create (in addition from metrics)."""
-    # TODO(epot): Might be cases where users want to merge multiple extra
-    # dashboards from various evals together. Currently not really supported.
-    # Might have to re-design the API in the future.
-    return {}  # No extra dahsboard per default
+    status.log(
+        f'Warning: Evaluator {type(self).__name__} ({self.name!r}) does not'
+        ' implement `__dashboards__` protocol, so NO metrics will be reported'
+        ' to flatboard. This will be an error in the future.\nSee'
+        ' `kd.evals.Evaluator.__dashboards__` for an example (returning'
+        ' `kdash.MetricDashboards`). If your evaluator does not report any'
+        ' metrics, you can return an empty `kdash.NoopDashboards()`'
+    )
+    return kdash.NoopDashboard()
 
   @functools.cached_property
   def _resolved_run(self) -> run_strategies.KauldronRunStrategy:
@@ -254,14 +253,12 @@ class Evaluator(EvaluatorBase):
     )
 
   @functools.cached_property
-  def __flatboard_collections__(self) -> dict[str, CollectionKeys]:
-    return {
-        self.name: CollectionKeys(
-            losses=tuple(self.losses.keys()),
-            metrics=tuple(self.metrics.keys()),
-            summaries=tuple(self.summaries.keys()),
-        )
-    }
+  def __dashboards__(self) -> kdash.DashboardsBase:
+    return kdash.MetricDashboards(
+        collection=self.name,
+        losses=self.losses.keys(),
+        metrics=self.metrics.keys(),
+    )
 
 
 @functools.partial(

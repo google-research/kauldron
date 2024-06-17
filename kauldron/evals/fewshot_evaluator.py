@@ -32,6 +32,7 @@ from kauldron.metrics import base_state
 from kauldron.train import train_step
 from kauldron.typing import Array, Float, Int, Scalar, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import config_util
+from kauldron.utils import kdash
 from kauldron.utils import utils
 from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 import numpy as np
@@ -93,13 +94,6 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
   seed: int | Sequence[int] = config_util.ROOT_CFG_REF.seed
 
   __root_cfg_fields_to_recurse__ = ('ds_train', 'ds_val', 'ds_test')
-
-  @property
-  def metrics(self) -> dict[str, str]:
-    # This is a hack to make the metrics show up on Flatboard
-    return {
-        f'{self.metric_prefix}-{shots}shot': 'blah' for shots in self.num_shots
-    }
 
   @property
   def seeds(self) -> list[int]:
@@ -214,6 +208,15 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
         ),
         losses=flax.core.FrozenDict({}),
         summaries=flax.core.FrozenDict({}),
+    )
+
+  @functools.cached_property
+  def __dashboards__(self) -> kdash.DashboardsBase:
+    return kdash.MetricDashboards(
+        collection=self.name,
+        metrics=[
+            f'{self.metric_prefix}-{shots}shot' for shots in self.num_shots
+        ],
     )
 
 

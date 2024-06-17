@@ -45,6 +45,7 @@ from kauldron.train import train_lib
 from kauldron.train import train_step
 from kauldron.utils import config_util
 from kauldron.utils import context as context_lib
+from kauldron.utils import kdash
 from kauldron.utils.sharding_utils import sharding as sharding_utils  # pylint: disable=g-importing-member
 import optax
 
@@ -243,12 +244,11 @@ class Trainer(config_util.BaseConfig):
       )
 
     # set the name of the collection to train
-    if isinstance(self.writer, metric_writer.KDMetricWriter):
-      object.__setattr__(
-          self,
-          'writer',
-          dataclasses.replace(self.writer, collection='train'),
-      )
+    object.__setattr__(
+        self,
+        'writer',
+        dataclasses.replace(self.writer, collection='train'),
+    )
 
   __konfig_resolve_exclude_fields__ = ('xm_job',)
 
@@ -349,3 +349,40 @@ class Trainer(config_util.BaseConfig):
     )
     context = context.replace(opt_state=state_specs.opt_state)
     return context
+
+  @functools.cached_property
+  def __dashboards__(self) -> kdash.DashboardsBase:
+    # Create all dashboards to display in flatboard
+    train_dashboard = kdash.MetricDashboards(
+        collection='train',
+        losses=self.train_losses.keys(),
+        metrics=self.train_metrics.keys(),
+    )
+    evals_dashboards = [ev.__dashboards__ for ev in self.evals.values()]
+
+    # TODO(epot): This should dynamically updated once we move to better
+    # chrono system!!!
+    PERF_KEYS = [  # pylint: disable=invalid-name
+        'steps_per_sec',
+        'data_points_per_sec_global',
+        'data_points_per_sec_per_device',
+        'total_training_time_hours',
+    ]
+
+    extra_dashboards = [
+        kdash.SingleDashboard.from_y_keys(
+            name='schedules',
+            title='{xid}: Schedules',
+            y_keys=[f'schedules/{s}' for s in self.schedules.keys()],
+            collections=['train'],
+        ),
+        kdash.SingleDashboard.from_y_keys(
+            name='perf_stats',
+            title='{xid}: Performance Statistics',
+            y_keys=[f'perf_stats/{p}' for p in PERF_KEYS],
+            collections=['train'],
+        ),
+    ]
+    return kdash.MultiDashboards.from_iterable(
+        [train_dashboard] + evals_dashboards + extra_dashboards
+    )

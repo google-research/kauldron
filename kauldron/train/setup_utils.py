@@ -22,7 +22,7 @@ from absl import logging
 from etils import epath
 from etils import exm
 from kauldron.train import config_lib
-from kauldron.train import flatboard_utils
+from kauldron.utils import kdash
 from kauldron.utils import utils
 from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
 import tensorflow as tf
@@ -41,12 +41,20 @@ class Setup:
   Attributes:
     tags: Custom XManager tags.
     tqdm_info: Customize the `tqdm` bar.
+    add_flatboard: Whether to create the flatboard dashboards.
+    flatboard_build_context: Shared info to build the flatboard dashboards. This
+      object is created once globally and shared between all the metrics
+      `Writer`, to ensure all dashboards are written to the same collection.
   """
 
   # Could provide more options here to customize artifacts,...
 
   tags: str | list[str] = dataclasses.field(default_factory=list)
   tqdm_info: TqdmInfo = dataclasses.field(default_factory=TqdmInfo)
+  add_flatboard: bool = True
+  flatboard_build_context: kdash.BuildContext = dataclasses.field(
+      default_factory=kdash.BuildContext
+  )
 
   def __post_init__(self):
     # Normalize tags to a list.
@@ -54,12 +62,18 @@ class Setup:
       object.__setattr__(self, "tags", self.tags.split(","))
 
   def run(self, trainer: config_lib.Trainer) -> None:
+    """Perform the initial setup."""
     tf.config.set_visible_devices([], "GPU")
 
     utils.add_log_artifacts()
     utils.add_colab_artifacts()
-    flatboard_utils.add_flatboards(trainer)
     _ensure_workdir(trainer.workdir)
+
+    if self.add_flatboard:
+      kdash.build_and_upload(
+          trainer.__dashboards__,
+          ctx=self.flatboard_build_context,
+      )
 
     if self.tags and status.is_lead_host:
       assert isinstance(self.tags, list)
