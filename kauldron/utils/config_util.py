@@ -22,6 +22,7 @@ import typing
 from typing import Any, ClassVar, TypeVar
 
 from etils import edc
+from etils import epy
 import jax
 from kauldron import konfig
 
@@ -298,9 +299,18 @@ class UpdateFromRootCfg:
           continue  # Ignore (ROOT_CFG_REF explicitly overwritten)
 
       # value is a fake cfg, should be update
-      new_value = root_cfg
-      for attr in fake_ref.names[1:]:  # pytype: disable=attribute-error
-        new_value = getattr(root_cfg, attr)
+      try:
+        new_value = root_cfg
+        for attr in fake_ref.names[1:]:  # pytype: disable=attribute-error
+          new_value = getattr(new_value, attr)
+      except Exception as e:  # pylint: disable=broad-exception-caught
+        epy.reraise(
+            e,
+            prefix=(
+                f'Cannot resolve reference {type(self).__name__}.{f.name} ='
+                f' {fake_ref}: '
+            ),
+        )
 
       # Should auto-recurse into the nested value ?
       # Careful about infinite recursion when the value is top-level
