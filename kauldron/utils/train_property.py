@@ -52,6 +52,11 @@ _context = _Context()
 @contextlib.contextmanager
 def set_train_property(is_training: bool) -> Iterator[None]:  # pylint: disable=redefined-outer-name
   """Set the `self.is_training` state to the given value."""
+  if not isinstance(is_training, bool):
+    raise ValueError(
+        f'`is_training_property` must be a `bool`. Got: {type(is_training)}:'
+        f' {is_training}'
+    )
   try:
     _context.is_training_stack.append(is_training)
     yield
