@@ -12,7 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Context info."""
+"""Status utils is a small library to reduce boilerplate of common check.
+
+```python
+from kauldron.utils.status_utils import status
+
+
+status.log("Starting training.")
+if status.on_xmanager and status.is_lead_host:
+  ...
+```
+"""
 
 import functools
 
@@ -24,7 +34,19 @@ from unittest import mock as _mock ; xmanager_api = _mock.Mock()
 
 
 class _Status:
-  """Job context."""
+  """Reduce boilerplate for common operations.
+
+  Example:
+
+  ```python
+  from kauldron.utils.status_utils import status
+
+
+  status.log("Starting training.")
+  if status.on_xmanager and status.is_lead_host:
+    ...
+  ```
+  """
 
   @functools.cached_property
   def on_xmanager(self) -> bool:

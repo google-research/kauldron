@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Functions for visualizing instance segmentation."""
+"""Functions for visualizing instance segmentation.
+
+Usage: `plot_segmentation.plot_segmentation(my_array)`
+"""
 
 import functools
 from typing import Optional, Union

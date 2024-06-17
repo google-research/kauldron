@@ -22,7 +22,7 @@ from typing import Any, Hashable, Optional, Sequence
 
 from etils import exm
 import flax
-from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
+from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
 
 from unittest import mock as _mock
 xmanager_api = _mock.Mock()

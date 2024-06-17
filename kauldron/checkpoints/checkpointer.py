@@ -284,7 +284,7 @@ class Checkpointer(BaseCheckpointer):
 
   # TODO(b/330748987): Remove the loop. Currently required because `.reload`
   # sometimes crashes during race conditions.
-  @_retry(num_retries=5, exceptions=(gfile.GOSError,))
+  @_retry(num_retries=5, exceptions=(OSError,))
   def reload(self) -> None:
     self._ckpt_mgr.reload()
 

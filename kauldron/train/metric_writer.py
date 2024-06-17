@@ -32,9 +32,9 @@ from kauldron import summaries
 from kauldron.train import config_lib
 from kauldron.train import timer as timer_module
 from kauldron.train import train_step
-from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 from kauldron.typing import Array, Float, Scalar  # pylint: disable=g-multiple-import
 from kauldron.utils import config_util
+from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
 import numpy as np
 import optax
 import pandas as pd

@@ -24,7 +24,7 @@ from absl import logging
 from etils import epath
 from kauldron.train import config_lib
 from kauldron.train import train_step
-from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
+from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
 
 # pylint: disable=logging-fstring-interpolation
 

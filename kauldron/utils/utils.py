@@ -20,7 +20,7 @@ import json
 from typing import Optional, TypeVar
 
 from etils import exm
-from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
+from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
 from tqdm import auto as tqdm
 from xmanager.contrib.internal import xm_tqdm
 

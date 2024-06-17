@@ -23,8 +23,8 @@ from etils import epath
 from etils import exm
 from kauldron.train import config_lib
 from kauldron.train import flatboard_utils
-from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 from kauldron.utils import utils
+from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
 import tensorflow as tf
 
 

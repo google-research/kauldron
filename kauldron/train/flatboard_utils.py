@@ -21,7 +21,7 @@ from typing import Sequence
 from kauldron import kontext
 from kauldron.train import config_lib
 from kauldron.train import flatboard
-from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
+from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
 
 
 def _get_loss_y_keys(trainer: config_lib.Trainer) -> Sequence[str]:

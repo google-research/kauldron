@@ -31,9 +31,9 @@ from kauldron.train import config_lib
 from kauldron.train import setup_utils
 from kauldron.train import timer as timer_module
 from kauldron.train import train_step
-from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
 from kauldron.utils import utils
 from kauldron.utils.sharding_utils import sharding as sharding_lib  # pylint: disable=g-importing-member
+from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
 
 # Jax config options
 # Required for the `jax.Array` parallelization

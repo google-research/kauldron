@@ -36,7 +36,7 @@ with epy.binary_adhoc():
   # pylint: disable=g-import-not-at-top
   from etils import exm
   from kauldron import kd
-  from kauldron.train.status_utils import status  # pylint: disable=g-importing-member
+  from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
   from kauldron.utils import utils
   from kauldron.utils import sweep_utils
   # pylint: enable=g-import-not-at-top
