@@ -337,6 +337,8 @@ def json_spec_like(obj) -> Any:
         return {k: _to_json(v) for k, v in spec.items()}
       case list():
         return [_to_json(v) for v in spec]
+      case tuple() if epy.is_namedtuple(spec):
+        return _to_json(spec._asdict())  # pytype: disable=attribute-error
       case tuple():
         return tuple(_to_json(v) for v in spec)
       case int() | float() | bool() | None:
