@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import dataclasses
+import itertools
 
 from kauldron.utils.kdash import build_utils
 from kauldron.utils.kdash import xm_utils
@@ -65,13 +66,39 @@ class BuildContext:
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class Plot:
-  """Single plot inside a dashboard."""
+  """Single plot inside a dashboard.
+
+  Attributes:
+    y_key: Metric to plot.
+    x_key: `step` by default.
+    collections: List of collections to plot.
+    facet_to_collections: Group the collections by facet. Each facet is
+      displayed as a separate plot. If set, `collections=` is optional.
+    remove_prefix: Remove the `losses/`, `metrics/`,... prefixes.
+  """
 
   y_key: str
   x_key: str = 'step'
-  collections: list[str]
+  collections: list[str] = dataclasses.field(default_factory=list)
+  facet_to_collections: dict[str, list[str]] = dataclasses.field(
+      default_factory=dict
+  )
 
   remove_prefix: bool = True
+
+  def __post_init__(self):
+    # Normalize the values.
+    if self.facet_to_collections:
+      collections = itertools.chain.from_iterable(
+          self.facet_to_collections.values()
+      )
+      if self.collections and set(collections) != set(self.collections):
+        raise ValueError(
+            'The `collections` and `facet_to_collections` values are not'
+            f' consistent. {self.collections} vs {self.facet_to_collections}'
+        )
+      if not self.collections:
+        object.__setattr__(self, 'collections', list(collections))
 
   def build(self, ctx: BuildContext) -> fb.Plot:
     """Build the flatboard plot."""
@@ -92,31 +119,40 @@ class Plot:
     # Separate group for each non-seed sweep-key (if present)
     groups = fb.Groups(columns=[f'HYP_{y_key}' for y_key in sweep_argnames])
 
-    # If both sweeping over values and multiple collections (train / eval)
-    # then split collections into facets to prevent crowding the flatboard
-    # otherwise combine collections into a single plot
-    if sweep_argnames and len(self.collections) > 1:
+    if self.facet_to_collections:
+      facet_to_collections = self.facet_to_collections
+    elif sweep_argnames and len(self.collections) > 1:
+      # If both sweeping over values and multiple collections (train / eval)
+      # then split collections into facets to prevent crowding the flatboard
+      # otherwise combine collections into a single plot
+      # Rename "train" to " train" as a hack to ensure that it is displayed
+      # first.
+      facet_to_collections = {
+          (' train' if c == 'train' else c): [c] for c in self.collections
+      }
+    else:
+      facet_to_collections = {}
+
+    if facet_to_collections:
       facets = fb.Facets(
           columns=['collection'],
           couple_scales=True,
-          num_cols=len(self.collections),
+          num_cols=len(facet_to_collections),
       )
-      # If doing a facet over collections, then:
-      # - we need to set the collections argument for each datagroup. In that
-      #   case we also rename "train" to " train" as a hack to ensure that it is
-      #   displayed first.
-      # - we do not add any name to the data group to keep the labels short
-      #   (e.g. "lr=0.1" instead of "train, lr=0.1")
+      queries = []
+      for facet_name, collections_ in facet_to_collections.items():
+        for collection in collections_:
+          query = fb.DataQuery(
+              query=f'{ctx.collection_path_prefix}{collection}',
+              set={'collection': facet_name},
+          )
+          queries.append(query)
       data_groups = [
           fb.DataGroup(  # pylint: disable=g-complex-comprehension
+              # We do not add any name to the data group to keep the labels
+              # short (e.g. "lr=0.1" instead of "train, lr=0.1")
               name='',
-              queries=[
-                  fb.DataQuery(
-                      query=f'{ctx.collection_path_prefix}{c}',
-                      set={'collection': ' train' if c == 'train' else c},
-                  )
-                  for c in self.collections
-              ],
+              queries=queries,
           )
       ]
     else:
