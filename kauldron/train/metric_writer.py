@@ -30,9 +30,9 @@ import jax
 from kauldron import konfig
 from kauldron import kontext
 from kauldron import summaries
-from kauldron.train import config_lib
 from kauldron.train import timer as timer_module
 from kauldron.train import train_step
+from kauldron.train import trainer_lib
 from kauldron.typing import Array, Float, Scalar  # pylint: disable=g-multiple-import
 from kauldron.utils import config_util
 from kauldron.utils import kdash
@@ -138,7 +138,7 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
 
   @abc.abstractmethod
   def write_context_structure(
-      self, step: int, trainer: config_lib.Trainer
+      self, step: int, trainer: trainer_lib.Trainer
   ) -> None:
     """Write the context structure."""
 
@@ -296,7 +296,7 @@ class NoopMetadataWriter(WriterBase):
     pass
 
   def write_context_structure(
-      self, step: int, trainer: config_lib.Trainer
+      self, step: int, trainer: trainer_lib.Trainer
   ) -> None:
     pass
 
@@ -453,7 +453,7 @@ class KDMetricWriter(MetadataWriter):
     self._tf_summary_writer.write_hparams(hparams)
 
   def write_context_structure(
-      self, step: int, trainer: config_lib.Trainer
+      self, step: int, trainer: trainer_lib.Trainer
   ) -> None:
     self._assert_collection_is_set()
     # do a lightweight shape-eval for the context

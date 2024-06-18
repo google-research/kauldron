@@ -22,8 +22,8 @@ import dataclasses
 
 from absl import logging
 from etils import epath
-from kauldron.train import config_lib
 from kauldron.train import train_step
+from kauldron.train import trainer_lib
 from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
 
 # pylint: disable=logging-fstring-interpolation
@@ -34,7 +34,7 @@ TRAIN_COMPLETE_FILENAME = 'train_complete.txt'
 
 
 def continuous_eval(
-    trainer: config_lib.Trainer,
+    trainer: trainer_lib.Trainer,
     eval_names: list[str],
     final_eval_names: list[str],
 ) -> dict[str, train_step.Auxiliaries]:

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import dataclasses
 import functools
+import typing
 from typing import Any, Mapping, Optional
 
 from etils import epy
@@ -33,7 +34,6 @@ from kauldron import summaries as kd_summaries
 from kauldron.checkpoints import checkpoint_items
 from kauldron.checkpoints import partial_loader
 import kauldron.data.utils as data_utils
-from kauldron.train import config_lib
 from kauldron.train import context as context_lib
 from kauldron.train import rngs_lib
 from kauldron.typing import ElementSpec, Float, PyTree  # pylint: disable=g-multiple-import,g-importing-member
@@ -42,6 +42,10 @@ from kauldron.utils.sharding_utils import sharding as sharding_lib  # pylint: di
 from kauldron.utils import train_property  # pylint: disable=unused-import
 from kauldron.utils.kdash import dashboard_utils
 import optax
+
+# Do not import `trainer_lib` at runtime to avoid circular imports
+if typing.TYPE_CHECKING:
+  from kauldron.train import trainer_lib  # pylint: disable=g-bad-import-order
 
 
 _Params = PyTree[Float["..."]]
@@ -401,7 +405,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
       return_metrics: bool = False,
       return_summaries: bool = False,
       checkify_error_categories: frozenset[
-          config_lib.CheckifyErrorCategory
+          trainer_lib.CheckifyErrorCategory
       ] = frozenset(),
   ) -> tuple[TrainState, Auxiliaries]:
     """Training step: forward, losses, gradients, update, and metrics."""

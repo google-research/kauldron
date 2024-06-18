@@ -17,10 +17,10 @@
 import functools
 import jax
 from kauldron.data import utils as data_utils
-from kauldron.train import config_lib
+from kauldron.train import trainer_lib
 
 
-def assert_step_specs(trainer: config_lib.Trainer) -> None:
+def assert_step_specs(trainer: trainer_lib.Trainer) -> None:
   """Check the train step run correctly (fast).
 
   This function run a single `trainer.trainstep.step`. This use `jax.eval_shape`

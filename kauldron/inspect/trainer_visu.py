@@ -20,7 +20,7 @@ from etils import epy
 from kauldron.inspect import graphviz_utils
 from kauldron.inspect import inspect as inspect_lib
 from kauldron.inspect import plotting
-from kauldron.train import config_lib
+from kauldron.train import trainer_lib
 
 with epy.lazy_imports():
   # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
@@ -30,7 +30,7 @@ with epy.lazy_imports():
 
 
 def show_trainer_info(
-    trainer: config_lib.Trainer,
+    trainer: trainer_lib.Trainer,
     *,
     print_cfg: bool,
     inspect_params: bool,

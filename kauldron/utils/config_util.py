@@ -27,7 +27,7 @@ import jax
 from kauldron import konfig
 
 if typing.TYPE_CHECKING:
-  from kauldron.train import config_lib
+  from kauldron.train import trainer_lib
 
 _SelfT = TypeVar('_SelfT')
 
@@ -159,7 +159,7 @@ class _FakeRootCfg:
     return _FakeRootCfg(parent=self, name=name)
 
   @classmethod
-  def make_fake_cfg(cls) -> config_lib.Trainer:
+  def make_fake_cfg(cls) -> trainer_lib.Trainer:
     return cls()  # pytype: disable=bad-return-type
 
   @property
@@ -183,7 +183,7 @@ class _FakeRootCfg:
       )
 
 
-ROOT_CFG_REF: config_lib.Trainer = _FakeRootCfg.make_fake_cfg()
+ROOT_CFG_REF: trainer_lib.Trainer = _FakeRootCfg.make_fake_cfg()
 
 
 @dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
@@ -249,7 +249,7 @@ class UpdateFromRootCfg:
   __root_cfg_fields_to_recurse__: ClassVar[tuple[str, ...]] = ()
 
   def update_from_root_cfg(
-      self: _SelfT, root_cfg: config_lib.Trainer
+      self: _SelfT, root_cfg: trainer_lib.Trainer
   ) -> _SelfT:
     """Returns a copy of `self`, potentially with updated values."""
     # Check all fields which are `field: Any = ROOT_CFG_REF.xxx`
@@ -266,7 +266,7 @@ class UpdateFromRootCfg:
       )
 
   def _base_fields(
-      self, root_cfg: config_lib.Trainer
+      self, root_cfg: trainer_lib.Trainer
   ) -> tuple[dict[str, Any], dict[str, _FakeRootCfg]]:
     """Return the fields to replace."""
     curr_fake_refs = self._fake_refs  # pytype: disable=attribute-error
@@ -322,7 +322,7 @@ class UpdateFromRootCfg:
 
   def _recurse_fields(
       self,
-      root_cfg: config_lib.Trainer,
+      root_cfg: trainer_lib.Trainer,
       fields_to_replace: dict[str, Any],
   ) -> dict[str, Any]:
     """Return the fields to replace."""

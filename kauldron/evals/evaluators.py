@@ -28,10 +28,10 @@ from kauldron import konfig
 from kauldron import losses as losses_lib
 from kauldron import metrics as metrics_lib
 from kauldron import summaries as summaries_lib
-from kauldron.train import config_lib
 from kauldron.train import metric_writer
 from kauldron.train import rngs_lib
 from kauldron.train import train_step
+from kauldron.train import trainer_lib
 from kauldron.utils import config_util
 from kauldron.utils import kdash
 from kauldron.utils import utils
@@ -48,6 +48,7 @@ _DEFAULT_EVAL_NAME = 'eval'
 @dataclasses.dataclass(kw_only=True, frozen=True)
 class CollectionKeys:
   """Names of the metrics/summaries/losses (displayed in flatboard)."""
+
   losses: tuple[str, ...] = ()
   metrics: tuple[str, ...] = ()
   summaries: tuple[str, ...] = ()
@@ -75,7 +76,7 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
   writer: metric_writer.WriterBase = dataclasses.field(
       default=config_util.ROOT_CFG_REF.writer
   )
-  base_cfg: config_lib.Trainer = dataclasses.field(
+  base_cfg: trainer_lib.Trainer = dataclasses.field(
       default=config_util.ROOT_CFG_REF, repr=False
   )
 
@@ -293,7 +294,7 @@ def basic_eval_step(
 
 
 def normalize_evaluators(
-    evaluators: collections.abc.Mapping[str, EvaluatorBase]
+    evaluators: collections.abc.Mapping[str, EvaluatorBase],
 ) -> collections.abc.Mapping[str, EvaluatorBase]:
   """Set the evaluator names."""
   if not isinstance(evaluators, collections.abc.Mapping):

@@ -22,13 +22,13 @@ import dataclasses
 
 from etils import epy
 from kauldron import kontext
-from kauldron.train import config_lib
+from kauldron.train import trainer_lib
 
 with epy.lazy_imports():
   import graphviz  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
 
 
-def get_connection_graph(trainer: config_lib.Trainer) -> graphviz.Digraph:
+def get_connection_graph(trainer: trainer_lib.Trainer) -> graphviz.Digraph:
   """Build the graphviz."""
   nodes = _extract_graph(trainer)
   return _make_graph(nodes)
@@ -57,7 +57,7 @@ class _Node:
       yield f'{_path_to_graphviz_path(v)}', f'{self.name}:{k}'
 
 
-def _extract_graph(trainer: config_lib.Trainer) -> list[_Node]:
+def _extract_graph(trainer: trainer_lib.Trainer) -> list[_Node]:
   """Extract the nodes from the trainer."""
   # TODO(epot): Would be nice to add links to the source code.
   # TODO(epot): Filter optional values (mask, step)

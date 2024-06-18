@@ -17,15 +17,19 @@
 from __future__ import annotations
 
 import dataclasses
+import typing
 
 from absl import logging
 from etils import epath
 from etils import exm
-from kauldron.train import config_lib
 from kauldron.utils import kdash
 from kauldron.utils import utils
 from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
 import tensorflow as tf
+
+# Do not import `trainer_lib` at runtime to avoid circular imports
+if typing.TYPE_CHECKING:
+  from kauldron.train import trainer_lib  # pylint: disable=g-bad-import-order
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True)
@@ -61,7 +65,7 @@ class Setup:
     if isinstance(self.tags, str):
       object.__setattr__(self, "tags", self.tags.split(","))
 
-  def run(self, trainer: config_lib.Trainer) -> None:
+  def run(self, trainer: trainer_lib.Trainer) -> None:
     """Perform the initial setup."""
     tf.config.set_visible_devices([], "GPU")
 

@@ -27,10 +27,10 @@ import jax.numpy as jnp
 from kauldron.evals import eval_impl
 from kauldron.inspect import profile_utils
 from kauldron.train import checkpoint_state
-from kauldron.train import config_lib
 from kauldron.train import setup_utils
 from kauldron.train import timer as timer_module
 from kauldron.train import train_step
+from kauldron.train import trainer_lib
 from kauldron.utils import utils
 from kauldron.utils.sharding_utils import sharding as sharding_lib  # pylint: disable=g-importing-member
 from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
@@ -41,7 +41,7 @@ jax.config.update("jax_threefry_partitionable", True)
 
 
 def train_impl(
-    trainer: config_lib.Trainer,
+    trainer: trainer_lib.Trainer,
 ) -> tuple[train_step.TrainState, Optional[train_step.Auxiliaries]]:
   """Implements of `Trainer.train`."""
   setup = trainer.setup

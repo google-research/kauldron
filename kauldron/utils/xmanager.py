@@ -32,7 +32,7 @@ from kauldron import konfig
 from unittest import mock as _mock ; xmanager_api = _mock.Mock()
 
 if typing.TYPE_CHECKING:
-  from kauldron.train import config_lib  # pylint: disable=g-bad-import-order
+  from kauldron.train import trainer_lib  # pylint: disable=g-bad-import-order
 
 
 @functools.cache
@@ -114,7 +114,7 @@ class Experiment:
     return _normalize_workdir(self.artifacts['Workdir'])
 
   @functools.cached_property
-  def config(self) -> konfig.ConfigDictLike[config_lib.Trainer]:
+  def config(self) -> konfig.ConfigDictLike[trainer_lib.Trainer]:
     """Unresolved `ConfigDict`."""
     # Should use a constant rather than hardcoding `config.json`
     config_path = self.wu.workdir / 'config.json'
@@ -123,7 +123,7 @@ class Experiment:
     return _json_to_config(config, lazy=self.lazy)  # pytype: disable=bad-return-type
 
   @functools.cached_property
-  def trainer(self) -> config_lib.Trainer:
+  def trainer(self) -> trainer_lib.Trainer:
     """Resolved `ConfigDict`."""
     return konfig.resolve(self.config)
 
