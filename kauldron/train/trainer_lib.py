@@ -339,13 +339,17 @@ class Trainer(config_util.BaseConfig):
     state_specs = self.state_specs
 
     m_batch = data_utils.mock_batch_from_elem_spec(elem_spec, elem_sharding)
+    context = context_lib.Context(
+        step=0,
+        batch=m_batch,
+        collections=state_specs.collections,
+        opt_state=state_specs.opt_state,
+    )
     _, context = jax.eval_shape(
         functools.partial(mwa.forward, is_training=True),
         params=state_specs.params,
-        batch=m_batch,
+        context=context,
         rngs=rngs,
-        step=0,
-        collections=state_specs.collections,
     )
     context = context.replace(opt_state=state_specs.opt_state)
     return context

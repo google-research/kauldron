@@ -41,6 +41,7 @@ from kauldron.utils import config_util
 from kauldron.utils.sharding_utils import sharding as sharding_lib  # pylint: disable=g-bad-import-order,g-importing-member
 from kauldron.utils import train_property  # pylint: disable=unused-import
 from kauldron.utils.kdash import dashboard_utils
+from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
 import optax
 
 # Do not import `trainer_lib` at runtime to avoid circular imports
@@ -171,7 +172,7 @@ class AuxiliariesOutput:
 
 
 def _reduce_states_single(
-    states: tuple[kd_metrics.State, ...]
+    states: tuple[kd_metrics.State, ...],
 ) -> kd_metrics.State:
   final_state, *rest_states = states
   for state in rest_states:
@@ -229,19 +230,62 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
       self,
       params,
       *,
-      batch,
       rngs: rngs_lib.Rngs,
-      step: int,
       is_training: bool,
-      collections: _Collections,
+      context: context_lib.Context | None = None,
+      # The fields below should be passed through context.
+      batch: Any | None = None,
+      step: int | None = None,
+      collections: _Collections | None = None,
   ) -> tuple[float, context_lib.Context]:
-    """Forward pass of the model including losses."""
-    context = context_lib.Context(
-        step=step, batch=batch, params=params, collections=collections
-    )
+    """Forward pass of the model including losses.
+
+    Args:
+      params: Model parameters.
+      rngs: Random number generators.
+      is_training: Whether to run in training mode.
+      context: Context to use. Should only be None for deprecated API usage
+        where batch, step, collections should be passed instead. Required
+        attributes that must be set: batch, step, collections.
+      batch: Batch to use. Deprecated field, pass context instead.
+      step: Current step. Deprecated field, pass context instead.
+      collections: Mutable collections (e.g. `'batch_stats'`). Deprecated field,
+        pass context instead.
+
+    Returns:
+      loss_total: Total loss.
+      context: Updated context with predictions, intermediates, losses, and
+      collections.
+    """
+    if any([v is not None for v in [batch, step, collections]]):
+      status.log(
+          "🚨 DEPRECATION WARNING: batch, step, collections should be passed"
+          " through context."
+      )
+      if context is not None:
+        raise ValueError(
+            "Please only pass context, setting batch, step, collections is"
+            " deprecated API."
+        )
+      context = context_lib.Context(
+          step=step, batch=batch, collections=collections
+      )
+    if context is None:
+      raise ValueError("Context is required.")
+    if any(
+        [v is None for v in [context.batch, context.step, context.collections]]
+    ):
+      raise ValueError("batch, step, collections are required in context.")
+    # TODO(msajjadi): Pass params through context. It's currently passed
+    # directly as we use argnum=0 to compute gradients for the model params.
+    if context.params is not None:
+      raise ValueError(
+          "params must not be set in context, please pass it directly."
+      )
+
     args, kwargs = data_utils.get_model_inputs(self.model, context)
     preds, collections = self.model.apply(
-        {"params": params} | collections,
+        {"params": params} | context.collections,
         *args,
         rngs=rngs,
         mutable=True,
@@ -437,20 +481,24 @@ class TrainStep(config_util.UpdateFromRootCfg):
       *,
       return_losses: bool = False,
       return_metrics: bool = False,
-      return_summaries: bool = False
+      return_summaries: bool = False,
   ) -> tuple[TrainState, Auxiliaries]:
     """Training step to be wrapped by checkify and called by `step`."""
     # TODO(epot): Should `jax.named_call` be moved downstream directly in optax?
     # NOTE: ensure that evaluation metrics are computed from the OLD model state
     # *before* backprop gradients are applied.
     grad_fn = jax.grad(self.model_with_aux.forward, argnums=0, has_aux=True)
+    context = context_lib.Context(
+        step=state.step,
+        batch=batch,
+        collections=state.collections,
+        opt_state=state.opt_state,
+    )
     grads, context = jax.named_call(grad_fn, name="grad_fn")(
         state.params,
-        batch=batch,
         rngs=self.rng_streams.train_rngs(state.step),
-        step=state.step,
         is_training=True,
-        collections=state.collections,
+        context=context,
     )
     assert isinstance(context, context_lib.Context)
     updates, new_opt_state = jax.named_call(self.optimizer.update)(
