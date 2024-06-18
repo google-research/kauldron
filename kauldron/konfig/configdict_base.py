@@ -462,6 +462,9 @@ def _normalize_config_only_value(value, name, *, id_to_dict) -> Any:
     The normalized value.
   """
   # TODO(epot): Test `__setattr__` is also called in `ConfigDict({})`
+  normalize_fn = functools.partial(
+      _normalize_config_only_value, id_to_dict=id_to_dict
+  )
   match value:
     case ConfigDict():  # Leafs should have been already validated
       return value
@@ -487,9 +490,7 @@ def _normalize_config_only_value(value, name, *, id_to_dict) -> Any:
 
       cfg = ConfigDict(
           {  # Convert `dict` -> `ConfigDict`
-              k: _normalize_config_only_value(
-                  v, f'{name}.{k}', id_to_dict=id_to_dict
-              )
+              k: normalize_fn(v, f'{name}.{k}')
               for k, v in _items_preserve_reference(value)
           },
           # Skip normalization to avoid infinite recursion. Is there a cleaner
@@ -501,16 +502,33 @@ def _normalize_config_only_value(value, name, *, id_to_dict) -> Any:
       return cfg
     case list() | tuple() | set() | frozenset():
       return type(value)(
-          _normalize_config_only_value(v, f'{name}[{i}]', id_to_dict=id_to_dict)
-          for i, v in enumerate(value)
+          normalize_fn(v, f'{name}[{i}]') for i, v in enumerate(value)
       )
     case configdict_proxy.ConfigDictProxyObject():
       # TODO(epot): Rather than inheriting from dict, `ConfigDictProxyObject`
       # could simply implement the `ConfigDictConvertible` protocol
       return value
     case utils.ConfigDictConvertible():
-      return _normalize_config_only_value(
-          value.__as_konfig__(), name, id_to_dict=id_to_dict
+      return normalize_fn(value.__as_konfig__(), name)
+    case functools.partial():
+      # TODO(epot): Cleaner way to create the object with
+      # `fake_import_utils.mock_modules()` rather than manually create it ?
+      return ConfigDict(
+          {
+              '__qualname__': 'functools:partial',
+              '0': normalize_fn(value.func, f'{name}.0'),
+              **{
+                  str(i + 1): normalize_fn(a, f'{name}.{i+1}')
+                  for i, a in enumerate(value.args)
+              },
+              **{
+                  k: normalize_fn(v, f'{name}.{k}')
+                  for k, v in value.keywords.items()
+              },
+          },
+          # Skip normalization to avoid infinite recursion. Is there a cleaner
+          # way ?
+          _normalized=True,
       )
     case _:
       raise ValueError(

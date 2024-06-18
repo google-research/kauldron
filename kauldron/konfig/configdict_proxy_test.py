@@ -14,6 +14,7 @@
 
 """Tests for configdict_proxy."""
 
+import functools
 import json
 import pathlib
 import types
@@ -209,3 +210,19 @@ def test_configdict_shared():
   assert new_ns.model is new_ns.sub.elems[0]
   assert new_ns.model is new_ns.sub.elems[1]
   assert new_ns.model is not new_ns.sub.elems[2]
+
+
+def test_configdict_partial():
+  with konfig.imports():
+    import types as fake_types  # pylint: disable=reimported,g-import-not-at-top  # pytype: disable=import-error
+    import pathlib as fake_pathlib  # pylint: disable=reimported,g-import-not-at-top  # pytype: disable=import-error
+
+  cfg = konfig.ConfigDict({
+      "ns": functools.partial(fake_types.SimpleNamespace, num_layers=4),
+      "path": functools.partial(fake_pathlib.Path, "a", "b"),
+  })
+  cfg = konfig.resolve(cfg)
+  assert isinstance(cfg.ns, functools.partial)
+  assert isinstance(cfg.path, functools.partial)
+  assert cfg.ns() == types.SimpleNamespace(num_layers=4)
+  assert cfg.path() == pathlib.Path("a", "b")
