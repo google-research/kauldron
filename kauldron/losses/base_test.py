@@ -19,7 +19,7 @@ import dataclasses
 import jax.numpy as jnp
 from kauldron import kontext
 from kauldron.losses import base
-from kauldron.utils import context as context_lib
+from kauldron.train import context as context_lib
 import numpy as np
 
 

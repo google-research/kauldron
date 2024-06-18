@@ -115,7 +115,7 @@ Each key starts by a registered prefix. Common prefixes includes:
 *   `interms`: Flax intermediate variables (from `model.apply(...,
     capture_intermediates=True)`)
 
-See http://https://github.com/google-research/kauldron/tree/HEAD/kauldron/utils/context.py for the full list of
+See http://https://github.com/google-research/kauldron/tree/HEAD/kauldron/train/context.py for the full list of
 identifiers.
 
 Note: Keys can be arbitrary nested (e.g. `preds.cameras[0].pos`). `a.b` can

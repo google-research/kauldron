@@ -34,10 +34,10 @@ from kauldron.checkpoints import checkpoint_items
 from kauldron.checkpoints import partial_loader
 import kauldron.data.utils as data_utils
 from kauldron.train import config_lib
+from kauldron.train import context as context_lib
 from kauldron.train import rngs_lib
 from kauldron.typing import ElementSpec, Float, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import config_util
-from kauldron.utils import context as context_lib
 from kauldron.utils.sharding_utils import sharding as sharding_lib  # pylint: disable=g-bad-import-order,g-importing-member
 from kauldron.utils import train_property  # pylint: disable=unused-import
 from kauldron.utils.kdash import dashboard_utils

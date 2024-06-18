@@ -38,13 +38,13 @@ from kauldron.data import utils as data_utils
 from kauldron.evals import eval_impl
 from kauldron.evals import evaluators
 from kauldron.inspect import profile_utils
+from kauldron.train import context as context_lib
 from kauldron.train import metric_writer
 from kauldron.train import rngs_lib
 from kauldron.train import setup_utils
 from kauldron.train import train_lib
 from kauldron.train import train_step
 from kauldron.utils import config_util
-from kauldron.utils import context as context_lib
 from kauldron.utils import kdash
 from kauldron.utils.sharding_utils import sharding as sharding_utils  # pylint: disable=g-importing-member
 import optax
