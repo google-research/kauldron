@@ -175,7 +175,7 @@ class MultiDashboards(DashboardsBase):
 
   @classmethod
   def from_iterable(
-      cls, dashboards: Iterable[SingleDashboard]
+      cls, dashboards: Iterable[DashboardsBase]
   ) -> MultiDashboards:
     """Factory from an iterable of dashboards."""
     merged_dashboards = {}
@@ -202,7 +202,12 @@ class MultiDashboards(DashboardsBase):
     return self
 
   def build(self, ctx: plot_utils.BuildContext) -> dict[str, fb.Dashboard]:
-    return {name: dash.build(ctx) for name, dash in self.dashboards.items()}
+    return {
+        name: dash.build(ctx)
+        for name, dash in self.dashboards.items()
+        # Filter empty dashboards (should we do this here ?)
+        if dash.plots
+    }
 
 
 def _merge_plots(plots: list[plot_utils.Plot]) -> list[plot_utils.Plot]:
