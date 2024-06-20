@@ -46,9 +46,6 @@ with _epy.lazy_api_imports(globals()):
   from kauldron.utils import xmanager as xm
   from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 
-# Register the default `ConfigDict` overwrites
-from kauldron.xm._src import default_values as _default_values
-
 # Import contrib at the end as they can use all
 from kauldron import contrib  # pylint: disable=g-bad-import-order  # pytype: disable=import-error
 
