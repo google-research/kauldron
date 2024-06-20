@@ -14,7 +14,7 @@
 
 """Default values and configuration.
 
-This file is shared by both `kxm` and `kd`.
+This file do not add any overhead as it do not import anything.
 """
 
 from kauldron import konfig
@@ -33,7 +33,8 @@ with konfig.imports(lazy=True):
 # but tricky in practice (not all subclasses should be created).
 # TODO(epot): Add a `__konfig_default_init__` to move those directly in the
 # files where they are used. Currently not possible as it would break
-# `__qualname__`
+# `__qualname__`. And when imports are lazy, `__konfig_default_init__` would not
+# be available.
 
 konfig.register_default_values(
     xm_abc.Borg(
