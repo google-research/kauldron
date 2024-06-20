@@ -24,7 +24,7 @@ import functools
 import itertools
 import json
 import os
-from typing import Any, ClassVar, Generic, TypeVar
+from typing import Any, ClassVar, Generic, Self, TypeVar
 
 from etils import epy
 from kauldron.konfig import configdict_proxy
@@ -70,7 +70,10 @@ class ConfigDict(ml_collections.ConfigDict):
     super().__init__(
         initial_dictionary=init_dict,
         type_safe=True,
-        convert_dict=True,
+        # `ConfigDict` already normalize everything to `dict`, so disable
+        # it here as it creates issues with `FieldReference` (accessed before
+        # the value is resolved).
+        convert_dict=False,
         sort_keys=False,  # Keep original key order
         allow_dotted_keys=True,
     )
@@ -83,6 +86,19 @@ class ConfigDict(ml_collections.ConfigDict):
     key = self._normalize_arg_key(key, can_append=True)
     value = _normalize_config_only_value(value, key, id_to_dict={})
     return super().__setitem__(key, value)
+
+  def __deepcopy__(self, memo: dict[int, Any]) -> Self:
+    # First create an empty copy and add it to the memo to avoid infinite
+    # recursion.
+    new = type(self)()
+    memo[id(self)] = new
+
+    # Then copy the content and recurse into the sub-fields.
+    new.update({
+        k: copy.deepcopy(v, memo)
+        for k, v in self.items(preserve_field_references=True)
+    })
+    return new
 
   def __repr__(self) -> str:
     visited = _VisitedTracker()

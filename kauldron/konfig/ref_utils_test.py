@@ -14,6 +14,7 @@
 
 """Ref utils test."""
 
+import copy
 import json
 
 from kauldron import konfig
@@ -120,3 +121,32 @@ def test_ref_copy():
   assert train_ds.src.split == 'eval'
   assert test_ds.src.name == 'mnist'
   assert test_ds.src.split == 'test'
+
+
+def test_deepcopy():
+  x = konfig.ConfigDict()
+  cfg = konfig.ConfigDict()
+  cfg.a = 1
+  cfg.b = cfg.ref.a * 10
+  cfg.x = [x, x]
+  cfg.y = x
+
+  new = copy.deepcopy(cfg)
+
+  cfg.a = 2
+  new.a = 666
+
+  # The field references are correctly propagated
+  assert cfg.a == 2
+  assert cfg.b == 20
+  assert new.a == 666
+  assert new.b == 6660
+
+  # The instances are correctly copied
+  assert cfg.x[0] is x
+  assert cfg.x[1] is x
+  assert cfg.y is x
+  assert new.y is not x
+  x2 = new.y
+  assert new.x[0] is x2
+  assert new.x[1] is x2

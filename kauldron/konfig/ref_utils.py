@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import copy
 import functools
 import operator
 import typing
@@ -340,6 +341,22 @@ def ref_copy(cfg: _T) -> _T:
         value = cfg.get_oneway_ref(key)
     cfg_copy[key] = value
   return cfg_copy
+
+
+def _deepcopy(self, memo: dict[int, Any]):
+  """Deepcopy support for FieldReference."""
+  # Should we add the new FieldReference to the memo ?
+  new = type(self)(
+      default=copy.deepcopy(self._value, memo),  # pylint: disable=protected-access
+      field_type=self._field_type,  # pylint: disable=protected-access
+      required=self._required,  # pylint: disable=protected-access
+  )
+  new._ops = self._ops  # pylint: disable=protected-access
+  return new
+
+
+# Mock the base class to support deepcopy
+ml_collections.FieldReference.__deepcopy__ = _deepcopy
 
 
 # Mock the base class to support ref on childs
