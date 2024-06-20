@@ -19,6 +19,7 @@ from __future__ import annotations
 import abc
 import dataclasses
 import functools
+import json
 from typing import Any, Mapping, Optional
 
 from clu import metric_writers
@@ -30,11 +31,13 @@ import jax
 from kauldron import konfig
 from kauldron import kontext
 from kauldron import summaries
+from kauldron.data import utils as data_utils
 from kauldron.train import timer as timer_module
 from kauldron.train import train_step
 from kauldron.train import trainer_lib
 from kauldron.typing import Array, Float, Scalar  # pylint: disable=g-multiple-import
 from kauldron.utils import config_util
+from kauldron.utils import constants
 from kauldron.utils import kdash
 from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
 import numpy as np
@@ -259,7 +262,7 @@ class MetadataWriter(WriterBase):
 
     if status.is_lead_host:
       # Save the raw config (for easy re-loading)
-      config_path = self.workdir / "config.json"
+      config_path = self.workdir / constants.CONFIG_FILENAME
       config_path.write_text(config.to_json())
 
     texts = {"config": f"```python\n{config!r}\n```"}
@@ -272,6 +275,14 @@ class MetadataWriter(WriterBase):
 
   def write_element_spec(self, step: int, element_spec) -> None:
     self._assert_collection_is_set()
+
+    if status.is_lead_host:
+      # Save the raw config (for easy re-loading)
+      spec_path = self.workdir / constants.ELEMENT_SPEC_FILENAME
+      element_spec = data_utils.spec_to_json(element_spec)
+      element_spec = json.dumps(element_spec, indent=2)
+      spec_path.write_text(element_spec)
+
     texts = {"element_spec": f"```python\n{element_spec!s}\n```"}
     self.write_texts(step, texts)
 

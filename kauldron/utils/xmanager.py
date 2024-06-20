@@ -28,6 +28,7 @@ from typing import Any
 from etils import epath
 from etils import epy
 from kauldron import konfig
+from kauldron.utils import constants
 
 from unittest import mock as _mock ; xmanager_api = _mock.Mock()
 
@@ -116,8 +117,7 @@ class Experiment:
   @functools.cached_property
   def config(self) -> konfig.ConfigDictLike[trainer_lib.Trainer]:
     """Unresolved `ConfigDict`."""
-    # Should use a constant rather than hardcoding `config.json`
-    config_path = self.wu.workdir / 'config.json'
+    config_path = self.wu.workdir / constants.CONFIG_FILENAME
     config = json.loads(config_path.read_text())
     # Wrap the dict to ConfigDict
     return _json_to_config(config, lazy=self.lazy)  # pytype: disable=bad-return-type

@@ -74,6 +74,10 @@ def train_impl(
   )
 
   if initial_step == 0:
+    # Writer do both logging metrics and writing metadata (config,
+    # element_spec). While the first one is optional (could be skipped with
+    # `NoopWriter`, the second one is mandatory in order to re-load the model
+    # for evals/inference.
     writer.write_config(trainer.raw_cfg)
     writer.write_param_overview(initial_step, state.params)
     writer.write_element_spec(initial_step, ds_iter.element_spec)

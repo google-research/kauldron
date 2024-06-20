@@ -20,6 +20,8 @@ import dataclasses
 import functools
 from typing import Any
 
+from etils import enp
+from etils import epy
 from etils.etree import jax as etree  # pylint: disable=g-importing-member
 import flax.linen as nn
 import jax
@@ -141,3 +143,19 @@ def get_model_inputs_from_batch(
   context = context_lib.Context(step=0, batch=batch)
   args, kwargs = get_model_inputs(model, context)
   return args, kwargs
+
+
+def spec_to_json(spec: PyTree[enp.ArraySpec]) -> epy.typing.Json:
+  """Convert the element_spec tree to a json representation."""
+  # TODO(epot): Supports non-dict structures (dataclasses, and arbitrary
+  # `__json__` protocol). Likely cannot use jax `xx_with_path` function to
+  # automatically convert any tree to a json as the objects couldn't be
+  # restored.
+  return jax.tree.map(_spec_to_json, spec)
+
+
+def _spec_to_json(spec: enp.ArraySpec) -> epy.typing.Json:
+  return {
+      "shape": spec.shape,
+      "dtype": spec.dtype.name,
+  }
