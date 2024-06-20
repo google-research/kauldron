@@ -159,3 +159,19 @@ def _spec_to_json(spec: enp.ArraySpec) -> epy.typing.Json:
       "shape": spec.shape,
       "dtype": spec.dtype.name,
   }
+
+
+def json_to_spec(data: epy.typing.Json) -> PyTree[enp.ArraySpec]:
+  """Convert a json representation to a element_spec tree."""
+  return jax.tree.map(_json_to_spec, data, is_leaf=_is_spec_leaf)
+
+
+def _is_spec_leaf(spec: epy.typing.Json) -> bool:
+  return isinstance(spec, dict) and set(spec) == {"shape", "dtype"}
+
+
+def _json_to_spec(data: epy.typing.Json) -> enp.ArraySpec:
+  return enp.ArraySpec(
+      dtype=np.dtype(data["dtype"]),
+      shape=data["shape"],
+  )
