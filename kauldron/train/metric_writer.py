@@ -401,7 +401,7 @@ class KDMetricWriter(MetadataWriter):
 
     return metric_writers.AsyncWriter(
         metric_writers.DatatableWriter(
-            datatable_name=self._scalar_datatable_name,
+            datatable_name=name,
             keys=keys,
         ),
     )
