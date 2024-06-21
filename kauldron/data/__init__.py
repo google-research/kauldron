@@ -32,6 +32,7 @@ from kauldron.data.kmix.base import TFDataPipeline
 from kauldron.data.kmix.loaders.graintfds import Tfds
 from kauldron.data.kmix.loaders.seqio import SeqIOMixture
 from kauldron.data.kmix.loaders.seqio import SeqIOTask
+from kauldron.data.kmix.loaders.spec_ds import ElementSpecDataset
 from kauldron.data.kmix.loaders.tfds_legacy import TfdsLegacy
 from kauldron.data.kmix.loaders.with_shuffle_buffer import WithShuffleBuffer
 from kauldron.data.kmix.mixture import SampleFromDatasets
