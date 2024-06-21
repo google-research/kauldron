@@ -17,12 +17,17 @@
 from __future__ import annotations
 
 import contextlib
+import json
 import typing
 from typing import Any, Callable, ContextManager, Optional
 
+from etils import enp
 from etils import epath
 from kauldron import konfig
 from kauldron import kontext
+from kauldron.data import utils as data_utils
+from kauldron.typing import PyTree  # pylint: disable=g-importing-member
+from kauldron.utils import constants
 from kauldron.utils import xmanager as xm_lib
 
 if typing.TYPE_CHECKING:
@@ -103,6 +108,27 @@ def get_workdir(
 ) -> epath.Path:
   """Returns the workdir of an xmanager experiment."""
   return xm_lib.Experiment.from_xid(xid, wid, lazy=True).wu.workdir
+
+
+def get_element_spec(
+    xid: int,
+    wid: int = 1,
+) -> PyTree[enp.ArraySpec]:
+  """Returns the element_spec of the train dataset of an xmanager experiment.
+
+  This allow to initialize an existing model without having to load an actual
+  dataset, by using `kd.data.ElementSpecDataset`.
+
+  Args:
+    xid: The XID of the experiment to load the config from.
+    wid: ID of the worker to load the config from. Defaults to 1.
+
+  Returns:
+    The element_spec of the train dataset.
+  """
+  path = get_workdir(xid, wid) / constants.ELEMENT_SPEC_FILENAME
+  spec = json.loads(path.read_text())
+  return data_utils.json_to_spec(spec)
 
 
 def _adhoc_cm(
