@@ -42,6 +42,7 @@ with _epy.lazy_api_imports(globals()):
   from kauldron import testing
   from kauldron import typing
   from kauldron.utils import api as utils
+  from kauldron.utils import from_xid
   from kauldron.utils import kdash
   from kauldron.utils import xmanager as xm
   from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member

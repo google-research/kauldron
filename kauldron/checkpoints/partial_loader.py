@@ -29,7 +29,7 @@ import flax
 from kauldron import kontext
 from kauldron.checkpoints import checkpoint_items
 from kauldron.checkpoints import checkpointer
-from kauldron.utils import xmanager
+from kauldron.utils import from_xid
 import orbax.checkpoint as ocp
 
 with epy.lazy_imports():
@@ -171,5 +171,7 @@ class _PartialRestoreCheckpointItem(checkpoint_items.CheckpointItem):
     return sub_state
 
 
+# TODO(epot): Deprecate the alias and migrate everyone to
+# `kd.from_xid.get_workdir`
 def workdir_from_xid(xid: int, wid: int = 1) -> epath.Path:
-  return xmanager.Experiment.from_xid(xid=xid, wid=wid).wu.workdir
+  return from_xid.get_workdir(xid=xid, wid=wid)
