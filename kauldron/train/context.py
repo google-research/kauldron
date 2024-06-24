@@ -17,15 +17,30 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any
+import typing
+from typing import Any, Self
 
 import flax
 from kauldron import kontext
+
+if typing.TYPE_CHECKING:
+  from kauldron.train import train_step
 
 
 @flax.struct.dataclass
 class Context:
   """Namespace for retrieving information with path-based keys.
+
+  The context is progressively filled during the training/eval step.
+
+  ```python
+  # Initial context contain the params, batch,...
+  ctx = kd.train.Context.from_state_and_batch(state=state, batch=batch)
+
+  # Add pred, interms, loss_states,...
+  loss, ctx = model_with_aux.forward(ctx, ...)
+
+  ```
 
   Attributes:
     step: The global step number. Used for evaluating schedules etc.
@@ -67,6 +82,21 @@ class Context:
   opt_state: Any = None
 
   replace = dataclasses.replace
+
+  @classmethod
+  def from_state_and_batch(
+      cls,
+      *,
+      state: train_step.TrainState,
+      batch: Any,
+  ) -> Self:
+    return cls(
+        step=state.step,
+        params=state.params,
+        collections=state.collections,
+        opt_state=state.opt_state,
+        batch=batch,
+    )
 
   def flatten(self) -> dict[str, Any]:
     return kontext.flatten_with_path(self)

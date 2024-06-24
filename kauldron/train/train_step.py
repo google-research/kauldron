@@ -38,9 +38,10 @@ from kauldron.train import context as context_lib
 from kauldron.train import rngs_lib
 from kauldron.typing import ElementSpec, Float, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import config_util
-from kauldron.utils.sharding_utils import sharding as sharding_lib  # pylint: disable=g-bad-import-order,g-importing-member
 from kauldron.utils import train_property  # pylint: disable=unused-import
 from kauldron.utils.kdash import dashboard_utils
+from kauldron.utils.sharding_utils import sharding as sharding_lib  # pylint: disable=g-importing-member
+from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
 import optax
 
 # Do not import `trainer_lib` at runtime to avoid circular imports
@@ -227,21 +228,65 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
   @jax.named_call
   def forward(
       self,
-      params,
+      context: context_lib.Context | None = None,
       *,
-      batch,
       rngs: rngs_lib.Rngs,
-      step: int,
       is_training: bool,
-      collections: _Collections,
+      # DEPRECATED variables: Should be passed through `context` instead.
+      params=None,
+      batch=None,
+      step: int | None = None,
+      collections: _Collections | None = None,
   ) -> tuple[float, context_lib.Context]:
-    """Forward pass of the model including losses."""
-    context = context_lib.Context(
-        step=step, batch=batch, params=params, collections=collections
-    )
+    """Forward pass of the model including losses.
+
+    Arguments:
+      context: Context to use for the forward pass. Should contain `params`,
+        `batch`, `step`, and `collections` (and optionally `opt_state`).
+      rngs: Random numbers to use for the forward pass.
+      is_training: Whether to run the model in training or eval mode.
+      params: DEPRECATED: Should be passed through `context` instead.
+      batch: DEPRECATED: Should be passed through `context` instead.
+      step: DEPRECATED: Should be passed through `context` instead.
+      collections: DEPRECATED: Should be passed through `context` instead.
+
+    Returns:
+      loss_total: Total loss.
+      context: Context with the updated `loss_total`, `loss_states`,
+        `interms`, and `collections`.
+    """
+    # New API: pass everything through `context`
+    if isinstance(context, context_lib.Context):
+      if any(v is not None for v in (params, batch, step, collections)):
+        raise ValueError(
+            "When calling `model_with_aux.forward(context)`, you should not"
+            " pass `params`, `batch`,... through kwargs, but rather through the"
+            " context."
+        )
+      # Should check that params, batch,... are correctly set in the context ?
+    else:  # Legacy API (deprecated)
+      status.log(
+          "Warning: Calling `model_with_aux.forward(params)` is deprecated and"
+          " will be removed soon. Instead, all inputs should be passed"
+          " through context directly: `model_with_aux.forward(context)`."
+      )
+      # Params can be passed either as positional or keyword arguments:
+      if context is None:  # `forward(params=params)`
+        assert params is not None, "Cannot pass both `params` and `context`"
+      else:  # `forward(params)`
+        assert params is None, "Cannot pass both `params` and `context`"
+        params = context
+
+      context = context_lib.Context(
+          step=step,
+          batch=batch,
+          params=params,
+          collections=collections,
+      )
+    del params, batch, step, collections
     args, kwargs = data_utils.get_model_inputs(self.model, context)
     preds, collections = self.model.apply(
-        {"params": params} | collections,
+        {"params": context.params} | context.collections,
         *args,
         rngs=rngs,
         mutable=True,
@@ -255,7 +300,9 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
     collections.pop("params", None)
     interms = collections.pop("intermediates")
     context = context.replace(
-        preds=preds, interms=interms, collections=collections
+        preds=preds,
+        interms=interms,
+        collections=collections,
     )
     loss_total, loss_states = kd_losses.compute_losses(
         losses=self.losses, context=context
@@ -446,18 +493,24 @@ class TrainStep(config_util.UpdateFromRootCfg):
     # TODO(epot): Should `jax.named_call` be moved downstream directly in optax?
     # NOTE: ensure that evaluation metrics are computed from the OLD model state
     # *before* backprop gradients are applied.
-    grad_fn = jax.grad(self.model_with_aux.forward, argnums=0, has_aux=True)
-    grads, context = jax.named_call(grad_fn, name="grad_fn")(
-        state.params,
-        batch=batch,
-        rngs=self.rng_streams.train_rngs(state.step),
-        step=state.step,
-        is_training=True,
-        collections=state.collections,
+    grad_fn = jax.grad(
+        self.model_with_aux.forward,
+        argnums=0,
+        has_aux=True,
+        allow_int=True,
     )
+    grad_fn = jax.named_call(grad_fn, name="grad_fn")
+
+    context = context_lib.Context.from_state_and_batch(state=state, batch=batch)
+    context_grads, context = grad_fn(
+        context,
+        rngs=self.rng_streams.train_rngs(state.step),
+        is_training=True,
+    )
+    params_grads = context_grads.params
     assert isinstance(context, context_lib.Context)
     updates, new_opt_state = jax.named_call(self.optimizer.update)(
-        grads, state.opt_state, state.params
+        params_grads, state.opt_state, state.params
     )
     new_params = jax.named_call(optax.apply_updates)(state.params, updates)
 
@@ -470,7 +523,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
 
     # add the gradients, computed updates, and *old* optimizer state to context
     context = context.replace(
-        grads=grads,
+        grads=params_grads,
         updates=updates,
         opt_state=state.opt_state,
     )

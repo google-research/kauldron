@@ -28,6 +28,7 @@ from kauldron import losses as losses_lib
 from kauldron import metrics as metrics_lib
 from kauldron import summaries as summaries_lib
 from kauldron.evals import run_strategies
+from kauldron.train import context as context_lib
 from kauldron.train import metric_writer
 from kauldron.train import rngs_lib
 from kauldron.train import train_step
@@ -269,13 +270,12 @@ def basic_eval_step(
     sharding: sharding_lib.ShardingStrategy,
 ) -> train_step.Auxiliaries:
   """Call the model (pmap version)."""
+  # Note that step is train step (from train state), NOT `eval_step`
+  ctx = context_lib.Context.from_state_and_batch(state=state, batch=batch)
   _, ctx = model_with_aux.forward(
-      params=state.params,
-      batch=batch,
+      context=ctx,
       rngs=rng_streams.eval_rngs(eval_step),
-      step=state.step,  # Step is train step, NOT eval
       is_training=False,
-      collections=state.collections,
   )
   aux = model_with_aux.get_aux(
       ctx,
