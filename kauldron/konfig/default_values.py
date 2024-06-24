@@ -15,6 +15,12 @@
 """Default values and configuration.
 
 This file do not add any overhead as it do not import anything.
+
+Registering default values allows to pre-fill nested values, making them
+available through CLI. For example, creating an empty `kxm.Experiment()`
+automatically adds `--xp.requirements.cpu=`,
+`--xp.executor.autopilot_params.enabled=`... without having to explicitly
+define `cfg.executor = `, `cfg.requirements = `.
 """
 
 from kauldron import konfig
@@ -28,13 +34,12 @@ with konfig.imports(lazy=True):
   # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
 
 
-# TODO(epot): Could automatically deduce which fields should be
+# We cannot automatically deduce which fields should be
 # initialized as `dict`/subclass using dataclasses.field().default_factory
-# but tricky in practice (not all subclasses should be created).
-# TODO(epot): Add a `__konfig_default_init__` to move those directly in the
-# files where they are used. Currently not possible as it would break
-# `__qualname__`. And when imports are lazy, `__konfig_default_init__` would not
-# be available.
+# as not all subclasses should be created. Better to be explicit.
+# We cannot add a `__konfig_default_init__` to move those directly in the
+# files where they are used. It would break `__qualname__`. And when imports
+# are lazy, `__konfig_default_init__` would not be available.
 
 konfig.register_default_values(
     xm_abc.Borg(
@@ -62,6 +67,23 @@ konfig.register_default_values(
         interpreter_info=kxm.InterpreterInfo(),
     ),
 )
+
+# Resolving `kd.evals.StandaloneXxx` will trigger the `default_factories`, thus
+# importing XM. To avoid this, we prefil the values with empty ConfigDict.
+# Those won't be resolved due to `Standalone.__konfig_resolve_exclude_fields__`
+konfig.register_default_values(
+    kd.evals.StandaloneLastCheckpoint(
+        requirements=xm.JobRequirements(),
+        executor=xm_abc.Borg(),
+    )
+)
+konfig.register_default_values(
+    kd.evals.StandaloneEveryCheckpoint(
+        requirements=xm.JobRequirements(),
+        executor=xm_abc.Borg(),
+    )
+)
+
 konfig.register_default_values(
     kxm.Experiment(
         # Use `object` to support both `--xp.sweep` and `--xp.sweep=lr,batch`

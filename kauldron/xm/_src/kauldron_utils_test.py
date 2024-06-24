@@ -45,23 +45,7 @@ def test_launch_with_evals():
   xp_cfg.cell = 'xx'  # Auto-cell selection not activated in tests
   with konfig.mock_modules():
     xp_cfg.cfg_provider = kxm.ConfigProvider.from_module(
-        module='kauldron.examples.mnist_autoencoder_remote_eval',
-        overrides={
-            'xm_job.target': '//third_party/py/kauldron/examples:trainer',
-        },
-    )
-
-  with konfig.set_lazy_imported_modules():
-    xp = konfig.resolve(xp_cfg)
-  xp.launch()
-
-
-def test_launch_with_shared_evals():
-  xp_cfg = kd_base.get_config()
-  xp_cfg.cell = 'xx'  # Auto-cell selection not activated in tests
-  with konfig.mock_modules():
-    xp_cfg.cfg_provider = kxm.ConfigProvider.from_module(
-        module='kauldron.examples.mnist_autoencoder_remote_shared_eval',
+        module='kauldron.examples.mnist_standalone_eval',
         overrides={
             'xm_job.target': '//third_party/py/kauldron/examples:trainer',
         },

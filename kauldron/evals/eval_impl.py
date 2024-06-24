@@ -22,6 +22,8 @@ import dataclasses
 
 from absl import logging
 from etils import epath
+from kauldron.evals import evaluators as evaluators_lib
+from kauldron.evals import run_strategies
 from kauldron.train import train_step
 from kauldron.train import trainer_lib
 from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
@@ -36,7 +38,6 @@ TRAIN_COMPLETE_FILENAME = 'train_complete.txt'
 def continuous_eval(
     trainer: trainer_lib.Trainer,
     eval_names: list[str],
-    final_eval_names: list[str],
 ) -> dict[str, train_step.Auxiliaries]:
   """Continuous evaluation.
 
@@ -45,7 +46,6 @@ def continuous_eval(
   Args:
     trainer: Trainer to evaluate
     eval_names: Eval names to run.
-    final_eval_names: Eval names to run after the training is complete.
 
   Returns:
     Auxiliaries: Dict eval name -> last auxiliaries
@@ -54,9 +54,6 @@ def continuous_eval(
     Exception: Re-raises any exception thrown by underlying evaluators.
   """
   trainer.setup.run(trainer)
-
-  # TODO(epot): Merge `eval_names` and `final_eval_names`
-  eval_names = eval_names or []  # TODO(epot): Remove.
 
   # Validation
   for eval_name in eval_names:
@@ -79,6 +76,20 @@ def continuous_eval(
   # Rather than failing if a single eval fails, we keep track of all failures
   # and raise them at the end.
   tracker = _ExceptionTracker(eval_names=list(eval_names))  # `list` as mutated
+
+  # Split evaluators
+  every_checkpoint_evals: list[evaluators_lib.EvaluatorBase] = []
+  last_checkpoint_evals: list[evaluators_lib.EvaluatorBase] = []
+  for name in eval_names:
+    ev = trainer.evals[name]
+    if isinstance(ev.run, run_strategies.StandaloneLastCheckpoint):
+      last_checkpoint_evals.append(ev)
+    elif isinstance(ev.run, run_strategies.StandaloneEveryCheckpoint):
+      every_checkpoint_evals.append(ev)
+    else:
+      raise ValueError(
+          f'Remote eval ({name!r}) should be standalone. Got run={ev.run}'
+      )
 
   logging.info('Start evaluating...')
   # Initialize the final step from the state for eval-only jobs which restore
@@ -107,18 +118,16 @@ def continuous_eval(
 
     # Processing checkpoint
     aux = dict()
-    for name in eval_names:
-      with tracker.catch_exception(name=name, step=step):
-        aux[name] = trainer.evals[name].evaluate(state=state, step=step)
+    for ev in every_checkpoint_evals:
+      with tracker.catch_exception(name=ev.name, step=step):
+        aux[ev.name] = ev.evaluate(state=state, step=step)
 
     final_step = step
 
   logging.info('Running final evals...')
-  if final_eval_names:
-    aux = dict()
-  for name in final_eval_names:
-    with tracker.catch_exception(name=name, step=final_step):
-      aux[name] = trainer.evals[name].evaluate(state=state, step=final_step)
+  for ev in last_checkpoint_evals:
+    with tracker.catch_exception(name=ev.name, step=final_step):
+      aux[ev.name] = ev.evaluate(state=state, step=final_step)
 
   tracker.maybe_reraise()
 
@@ -149,9 +158,7 @@ class _ExceptionTracker:
       exc_name = type(e).__name__
       status.xp.add_tags(f'🚨 Eval {name}: {exc_name} 🚨')
       self.eval_names.remove(name)
-    # TODO(epot): Remove `self.exceptions and ` once `eval_names` and
-    # `final_eval_names` are merged.
-    if self.exceptions and not self.eval_names:
+    if not self.eval_names:
       # All evaluator have failed, re-raise the exception
       raise ExceptionGroup('All evaluators have failed', self.exceptions)
 

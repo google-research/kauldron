@@ -56,12 +56,6 @@ _EVAL_NAMES = flags.DEFINE_list(
     "Evaluation(s) to run. When set, run `.continuous_eval()` rather than"
     " `.train()`.",
 )
-_FINAL_EVAL_NAMES = flags.DEFINE_list(
-    "final_eval_names",
-    None,
-    "Evaluation(s) to run after training. When set, run `.continuous_eval()`"
-    "rather than `.train()`.",
-)
 _POST_MORTEM = flags.DEFINE_boolean(
     "catch_post_mortem",
     False,
@@ -74,7 +68,6 @@ def main(_):
 
   with _wu_error_handling(_POST_MORTEM.value):
     eval_names = _EVAL_NAMES.value
-    final_eval_names = _FINAL_EVAL_NAMES.value
     cfg = sweep_utils.update_with_sweep(
         config=_CONFIG.value,
         sweep_kwargs=_SWEEP_CONFIG.value,
@@ -82,10 +75,10 @@ def main(_):
     _update_xm_configuration(cfg)
 
     trainer: kd.train.Trainer = kd.konfig.resolve(cfg)
-    if eval_names is None and final_eval_names is None:
+    if eval_names is None:
       trainer.train()
     else:
-      trainer.continuous_eval(eval_names, final_eval_names)
+      trainer.continuous_eval(eval_names)
 
 
 @contextlib.contextmanager

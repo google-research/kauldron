@@ -14,16 +14,27 @@
 
 """Evaluator."""
 
+from etils import epy as _epy
+
 # pylint: disable=g-importing-member,g-import-not-at-top
 
-from kauldron.evals.evaluators import CollectionKeys
-from kauldron.evals.evaluators import Evaluator
-from kauldron.evals.evaluators import EvaluatorBase
-from kauldron.evals.fewshot_evaluator import FewShotEvaluator
+# Lazy-import is import here as `run_strategies` is imported from kxm and
+# we do not want to trigger a full import.
+with _epy.lazy_api_imports(globals()):
+  from kauldron.evals.evaluators import CollectionKeys
+  from kauldron.evals.evaluators import Evaluator
+  from kauldron.evals.evaluators import EvaluatorBase
+  from kauldron.evals.fewshot_evaluator import FewShotEvaluator
 
-# RunStrategy are available in both XM and Kauldron side
-from kauldron.xm._src.run_strategies import RunEvery
-from kauldron.xm._src.run_strategies import RunOnce
-from kauldron.xm._src.run_strategies import RunSharedXM
-from kauldron.xm._src.run_strategies import RunStrategy
-from kauldron.xm._src.run_strategies import RunXM
+  # Available run strategies (`Evaluator.run=`)
+  from kauldron.evals.run_strategies import EveryNSteps
+  from kauldron.evals.run_strategies import Once
+  from kauldron.evals.run_strategies import RunStrategy
+  from kauldron.evals.run_strategies import StandaloneEveryCheckpoint
+  from kauldron.evals.run_strategies import StandaloneLastCheckpoint
+
+  # TODO(epot): Backward compatibility. Remove
+  from kauldron.evals.run_strategies import RunEvery
+  from kauldron.evals.run_strategies import RunOnce
+  from kauldron.evals.run_strategies import RunSharedXM
+  from kauldron.evals.run_strategies import RunXM

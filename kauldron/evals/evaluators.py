@@ -24,10 +24,10 @@ from typing import Any, Optional, TypeVar
 from etils import epy
 import jax
 from kauldron import data
-from kauldron import konfig
 from kauldron import losses as losses_lib
 from kauldron import metrics as metrics_lib
 from kauldron import summaries as summaries_lib
+from kauldron.evals import run_strategies
 from kauldron.train import metric_writer
 from kauldron.train import rngs_lib
 from kauldron.train import train_step
@@ -37,7 +37,6 @@ from kauldron.utils import kdash
 from kauldron.utils import utils
 from kauldron.utils.sharding_utils import sharding as sharding_lib  # pylint: disable=g-importing-member
 from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
-from kauldron.xm._src import run_strategies
 
 
 _SelfT = TypeVar('_SelfT')
@@ -61,8 +60,8 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
 
   Attributes:
     name: Eval name (collection name for TensorBoard and Datatables)
-    run: How/when to run this eval (e.g. `kd.evals.RunEvery(100)` or
-      `kd.evals.RunXM()`)
+    run: How/when to run this eval (e.g. `kd.evals.EveryNSteps(100)` or
+      `kd.evals.StandaloneEveryCheckpoint()`)
     writer: Metric writer (set automatically)
     base_cfg: reference to the experiment configuration (set automatically).
   """
@@ -70,8 +69,7 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
   # Evaluators can be used as standalone, so keep a default name
   name: str = _DEFAULT_EVAL_NAME
 
-  # Do not resolve the RunStrategy to avoid depending on XManager
-  run: konfig.ConfigDictLike[run_strategies.RunStrategy]
+  run: run_strategies.RunStrategy
 
   writer: metric_writer.WriterBase = dataclasses.field(
       default=config_util.ROOT_CFG_REF.writer
@@ -81,7 +79,6 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
   )
 
   __root_cfg_fields_to_recurse__ = ('writer',)
-  __konfig_resolve_exclude_fields__ = ('run',)
 
   def __post_init__(self) -> None:
     if hasattr(super(), '__post_init__'):
@@ -102,7 +99,7 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
 
   def maybe_eval(self, *, step: int, state: train_step.TrainState) -> Any:
     """Run or skip the evaluator for the given train-step."""
-    if self._resolved_run.should_eval_in_train(step):
+    if self.run.should_eval_in_train(step):
       try:
         return self.evaluate(state, step)
       except Exception as e:  # pylint: disable=broad-exception-caught
@@ -133,10 +130,6 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
         ' metrics, you can return an empty `kdash.NoopDashboards()`'
     )
     return kdash.NoopDashboard()
-
-  @functools.cached_property
-  def _resolved_run(self) -> run_strategies.KauldronRunStrategy:
-    return run_strategies.run_strategy_cfg_to_kauldron_run_info(self.run)
 
 
 class Evaluator(EvaluatorBase):

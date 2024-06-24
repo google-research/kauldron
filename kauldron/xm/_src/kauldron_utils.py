@@ -31,9 +31,11 @@ import typing
 from typing import Self
 
 from etils import epath
+from etils import epy
 from etils import exm
 from kauldron import konfig
 from kauldron import kontext
+from kauldron.evals import run_strategies
 from kauldron.xm._src import cfg_provider_utils
 from kauldron.xm._src import dir_utils
 from kauldron.xm._src import experiment
@@ -41,7 +43,6 @@ from kauldron.xm._src import job_lib
 from kauldron.xm._src import job_params
 from kauldron.xm._src import jobs_info
 from kauldron.xm._src import merge_utils
-from kauldron.xm._src import run_strategies
 from kauldron.xm._src import sweep_cfg_utils
 from kauldron.xm._src import sweep_utils
 from xmanager import xm
@@ -85,52 +86,37 @@ class KauldronJobs(jobs_info.JobsProvider):
     # Merge shared run
     final_runs = {}
     run_to_eval_names = collections.defaultdict(list)
-    run_to_final_eval_names = collections.defaultdict(list)
     for eval_name, run in runs.items():
-      if isinstance(run, run_strategies.RunSharedXM):
-        # TODO(epot): Validate that the runtimes are the same.
-        # Currently, the naive equality fail because `xm.JobRequirement` and
-        # `xm_abc.Borg` don't support `__eq__`.
-        # if (prev_run := final_runs.get(run.shared_name)) and prev_run != run:
-        #   raise ValueError(
-        #       "Inconsistent RunSharedXM: the shared runtime from"
-        #       f" {eval_name} is different from the ones in"
-        #       f" {run_to_eval_names[run.shared_name]}."
-        #   )
+      if isinstance(run, run_strategies.Standalone):
+        # TODO(epot): Merge all `Standalone` jobs into a single `JobParams`.
+        # This would allow to share `StandaloneLastCheckpoint` and
+        # `StandaloneEveryCheckpoint` on the same group, as well as partially
+        # defining different requirements for each evals. And ensure the
+        # params are consistent with each others.
 
-        final_runs[run.shared_name] = run
-        if run.final_eval:
-          run_to_final_eval_names[run.shared_name].append(eval_name)
-        else:
-          run_to_eval_names[run.shared_name].append(eval_name)
-      elif isinstance(run, run_strategies.RunXM):
-        final_runs[eval_name] = run
-        run_to_eval_names[eval_name].append(eval_name)
-      elif isinstance(
-          run, (run_strategies.RunEvery, run_strategies.RunOnce)
-      ):  # Filter run-every
+        job_group = run.job_group or eval_name
+        final_runs[job_group] = run
+        run_to_eval_names[job_group].append(eval_name)
+      elif isinstance(run, run_strategies.AlongTrain):  # Filter run-every
         pass
       else:
         raise TypeError(
-            f"Unexpected run strategy for {eval_name}. Got: {type(run)}."
+            f"Unexpected run strategy for {eval_name}. Got: {run!r}."
         )
 
     # Create the associated job
-    job = {}
-    for eval_name, run in final_runs.items():
-      eval_names = run_to_eval_names[eval_name]
-      final_eval_names = run_to_final_eval_names[eval_name]
-      args = {}
-      if eval_names:
-        args["eval_names"] = ",".join(eval_names)
-      if final_eval_names:
-        args["final_eval_names"] = ",".join(final_eval_names)
-      job[eval_name] = merge_utils.merge(
-          self.base_job,
-          run,
-          job_params.JobParams(args=args),
-      )
-    return job
+    return {
+        eval_name: merge_utils.merge(
+            self.base_job,
+            run,
+            job_params.JobParams(
+                args={"eval_names": ",".join(eval_names)},
+            ),
+        )
+        for eval_name, (run, eval_names) in epy.zip_dict(
+            final_runs, run_to_eval_names
+        )
+    }
 
   @functools.cached_property
   def trainer_xm_job(self) -> job_lib.Job:
@@ -214,43 +200,40 @@ class KauldronJobs(jobs_info.JobsProvider):
       eval_name: str,
       run: konfig.ConfigDictLike[run_strategies.RunStrategy],
   ) -> run_strategies.RunStrategy:
+    # We do not want to trigger a full Kauldron import, so we rewrite the
+    # import path.
     # TODO(epot): Should add another registration mechanism to automatically
     # rewrite the imports.
     if run.__qualname__.startswith("kauldron.kd:evals."):  # pytype: disable=attribute-error
       _, _, end = run.__qualname__.rpartition(".")  # pytype: disable=attribute-error
-      run.__qualname__ = f"kauldron.xm._src.run_strategies:{end}"
-    strategy = konfig.resolve(run)
-    if self._is_eval_only:  # Eval only, normalize run config.
-      # TODO(epot): Cleanup
+      run.__qualname__ = f"kauldron.evals.run_strategies:{end}"
+    run = konfig.resolve(run)
+    # Resolve the XM parameters of the `Standalone` jobs. Those had to be
+    # defined in `__konfig_resolve_exclude_fields__` to avoid trigger
+    # slow XManager import in Kauldron.
+    if isinstance(run, run_strategies.Standalone):
+      init_kwargs = konfig.resolve(run._kxm_init_kwargs)  # pylint: disable=protected-access
+      # Cannot use `dataclasses.replace` as it interact with the `merge_utils`
+      run = type(run)(**init_kwargs)
 
-      if isinstance(
-          strategy, (run_strategies.RunEvery, run_strategies.RunOnce)
-      ):
-        strategy = run_strategies.RunSharedXM(
-            # What is the best default name ? Should be `train` for consistency
-            # but is confusing `train` only does `eval`. `eval_only` likely
-            # won't colide with other `cfg.evals` names.
-            shared_name="eval_only",
-            final_eval=True,
+    if self._is_eval_only:  # Eval only, normalize run config.
+      if isinstance(run, run_strategies.AlongTrain):
+        run = run_strategies.StandaloneLastCheckpoint(
+            # `eval_only` likely won't colide with other `cfg.evals` names.
+            job_group="eval_only",
             **self.trainer_xm_job._kxm_init_kwargs,  # pylint: disable=protected-access
         )
-      elif isinstance(strategy, run_strategies.RunXM):
-        strategy = run_strategies.RunSharedXM(
-            shared_name=eval_name,
-            final_eval=True,
-            **strategy._kxm_init_kwargs,  # pylint: disable=protected-access
-        )
-      elif isinstance(strategy, run_strategies.RunSharedXM):
-        strategy = run_strategies.RunSharedXM(
-            shared_name=strategy.shared_name,
-            final_eval=True,
-            **strategy._kxm_init_kwargs,  # pylint: disable=protected-access
+      elif isinstance(run, run_strategies.Standalone):
+
+        run = run_strategies.StandaloneLastCheckpoint(
+            job_group=run.job_group,
+            **run._kxm_init_kwargs,  # pylint: disable=protected-access
         )
       else:
         raise TypeError(
-            f"Unexpected run strategy for {eval_name}. Got: {type(strategy)}."
+            f"Unexpected run strategy for {eval_name}. Got: {type(run)}."
         )
-    return strategy
+    return run
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)

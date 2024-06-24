@@ -34,6 +34,10 @@ def test_eval_impl(tmp_path: epath.Path):
   cfg.num_train_steps = 1
   cfg.workdir = os.fspath(tmp_path)
 
+  with kd.konfig.mock_modules():
+    for ev in cfg.evals.values():
+      ev.run = kd.evals.StandaloneEveryCheckpoint()
+
   trainer = kd.konfig.resolve(cfg)
 
   def _mocked_iterator(**kwargs) -> Iterator[int]:

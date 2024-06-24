@@ -21,15 +21,27 @@ cfg.evals = {
 If `kd.evals.Evaluator` does not define losses, metrics, summaries, those are
 reused from train.
 
-`kd.evals.Evaluator` can be run along train, or as a standalone XManager job
-through the `run=` kwarg. The `run=` kwarg can be:
+Where/how the `kd.evals.Evaluator` is run can be specified through the `run=`
+kwargs. Evaluators can run:
 
-*   `kd.evals.RunEvery(100)`: Run eval along train, every x train steps
-*   `kd.evals.RunXM()`: Start the eval in a separate standalone job (can also be
-    customized `kd.evals.RunXM(platform='jf=2x2', requirements=..., ...)`)
-*   `kd.evals.RunSharedXM(shared_name='my_evals')`: All evaluator sharing the
-    same RunSharedXM will be launched together. This allow to launch all evals
-    in a single separated job and save resources.
+*   Within the `train` job:
+    *   `EveryNSteps`: Run evaluation every `X` steps
+    *   `Once`: Run a single evaluation after `X` steps
+*   In a separate XManager job:
+    *   `StandaloneEveryCheckpoint`: Run evaluation every time a new checkpoint
+        is found.
+    *   `StandaloneLastCheckpoint`: Only run evaluation once, after train has
+        completed.
+
+Evaluators run in a standalone job can be grouped together through the
+`job_group='group_name'` attribute. This allow to save resources by sharing the
+same job for multiple evaluators.
+
+The `StandaloneXxx` supports all `kxm.Job` parameters, if you need to run
+evaluator on a different platform,...
+
+See https://github.com/google-research/kauldron/tree/HEAD/kauldron/examples/mnist_standalone_eval.py for an
+example.
 
 When run as a standalone job, you can use different XManager options between the
 train and eval jobs (defined both in the config or through flags):
@@ -39,6 +51,28 @@ train and eval jobs (defined both in the config or through flags):
 *   `--xp.evals.<my-eval>.run.platform`: Set the value for eval only
 
 Note: Using `--xp.platfom` and `--cfg.xxx.platform` are mutually exclusive!
+
+### Start an eval-only job
+
+Sometimes, you only want to run evaluation on a trainer from a previous
+Kauldron experiment.
+experiment. This can be achieved through `kd.train.Trainer.eval_only()`:
+
+```python
+def config():
+  cfg = kd.train.Trainer.eval_only()
+  cfg.evals = {
+      'my_eval': kd.evals.Evaluator(
+          run=kd.evals.StandaloneLastCheckpoint(),
+          ...,
+      ),
+  }
+  return cfg
+```
+
+See https://github.com/google-research/kauldron/tree/HEAD/kauldron/examples/mnist_eval_only.py for an example.
+
+Note: `kd.train.Trainer.eval_only()` only works when used inside `konfig`.
 
 ### Train / eval in Module
 
