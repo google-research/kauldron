@@ -90,6 +90,54 @@ konfig.register_default_values(
     )
 )
 
+_eval_only_trainer = kd.train.Trainer.eval_only(
+    workdir=konfig.placeholder(str),
+    aux={
+        'xid': konfig.placeholder(int),
+        'wid': 1,
+    },
+    evals={},
+    num_train_steps=0,
+    stop_after_steps=0,
+    optimizer=None,
+    # No checkpointer. The weights are restored through `init_transforms`.
+    checkpointer=None,
+    setup=kd.train.Setup(eval_only=True),
+    xm_job=kxm.Job(),
+)
+_eval_only_trainer.update(  # pytype: disable=attribute-error
+    # No train dataset, but specs are needed to initialize the model.
+    train_ds=kd.data.ElementSpecDataset(
+        spec=kd.from_xid.get_element_spec(
+            xid=_eval_only_trainer.ref.aux['xid'],
+            wid=_eval_only_trainer.ref.aux['wid'],
+        ),
+    ),
+    model=kd.from_xid.get_resolved(
+        xid=_eval_only_trainer.ref.aux['xid'],
+        wid=_eval_only_trainer.ref.aux['wid'],
+        path='model',
+    ),
+    init_transforms={
+        'model_init': kd.ckpts.PartialKauldronLoader(
+            workdir=kd.ckpts.workdir_from_xid(
+                xid=_eval_only_trainer.ref.aux['xid'],
+                wid=_eval_only_trainer.ref.aux['wid'],
+            ),
+            new_to_old={
+                # Also restore the step so metrics are reported correctly.
+                'step': 'step',
+                'params': 'params',
+                'collections': 'collections',
+            },
+        ),
+    },
+    # TODO(epot): If present in the original config, should also re-use
+    # `rng_streams`, sharding` !!
+)
+
+konfig.register_default_values(_eval_only_trainer)
+
 # Register aliases for cleaner config display
 konfig.register_aliases({
     'kauldron.kd': 'kd',

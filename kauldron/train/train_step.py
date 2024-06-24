@@ -334,10 +334,13 @@ class TrainStep(config_util.UpdateFromRootCfg):
       elem_spec = flax.core.freeze(elem_spec)
     state = self._init_model(elem_spec, model_method=model_method)
     if not skip_transforms:
-      # if restoring a checkpoint we can skip the (potentially slow) transforms
+      # If restoring a checkpoint we can skip the (potentially slow) transforms
+      # Note: Transforms should be responsible to correclty propagate the
+      # sharding from the state.
       state = self._init_transforms(state)
-    # state = sharding.device_put(state, sharding.REPLICATED)
-    state = self._init_optimizer(state)
+    if self.optimizer is not None:
+      # Eval-only jobs do not have optimizer.
+      state = self._init_optimizer(state)
     return state
 
   @functools.partial(

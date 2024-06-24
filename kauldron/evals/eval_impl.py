@@ -53,6 +53,11 @@ def continuous_eval(
   Raises:
     Exception: Re-raises any exception thrown by underlying evaluators.
   """
+  trainer.setup.run(trainer)
+
+  # TODO(epot): Merge `eval_names` and `final_eval_names`
+  eval_names = eval_names or []  # TODO(epot): Remove.
+
   # Validation
   for eval_name in eval_names:
     if eval_name not in trainer.evals:
@@ -62,7 +67,9 @@ def continuous_eval(
   ckpt = trainer.checkpointer
   # Skip transforms as checkpoint is restored anyway afterward. We need to
   # be careful that step 0 is indeed computed from the checkpoint.
-  state = trainer.init_state(skip_transforms=True)
+  # In eval-only mode, the model weights are restored from the init_transforms
+  # and not the checkpoint, so we cannot skip it.
+  state = trainer.init_state(skip_transforms=not trainer.setup.eval_only)
   aux = {eval_name: train_step.Auxiliaries() for eval_name in eval_names}
 
   # If preempted, the last checkpoint might be re-computed. There could be
@@ -74,14 +81,20 @@ def continuous_eval(
   tracker = _ExceptionTracker(eval_names=list(eval_names))  # `list` as mutated
 
   logging.info('Start evaluating...')
-  final_step = 0
+  # Initialize the final step from the state for eval-only jobs which restore
+  # the step from the `init_transforms`.
+  final_step = int(state.step)
   for step in ckpt.iter_new_checkpoints(
       min_interval_secs=10,
       timeout=10,
-      # Check train is complete
-      timeout_fn=lambda: epath.Path(trainer.workdir)
-      .joinpath(TRAIN_COMPLETE_FILENAME)
-      .exists(),
+      timeout_fn=lambda: (
+          # Skip the `iter_new_checkpoints` for eval-only jobs.
+          trainer.setup.eval_only
+          # Exit when train job has completed
+          or epath.Path(trainer.workdir)
+          .joinpath(TRAIN_COMPLETE_FILENAME)
+          .exists()
+      ),
   ):
     logging.info(f'Processing checkpoint for step {step}...')
 
@@ -136,7 +149,9 @@ class _ExceptionTracker:
       exc_name = type(e).__name__
       status.xp.add_tags(f'🚨 Eval {name}: {exc_name} 🚨')
       self.eval_names.remove(name)
-    if not self.eval_names:
+    # TODO(epot): Remove `self.exceptions and ` once `eval_names` and
+    # `final_eval_names` are merged.
+    if self.exceptions and not self.eval_names:
       # All evaluator have failed, re-raise the exception
       raise ExceptionGroup('All evaluators have failed', self.exceptions)
 

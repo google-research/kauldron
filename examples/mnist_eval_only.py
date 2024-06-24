@@ -12,58 +12,61 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-r"""Minimal example training a simple Autoencoder on MNIST.
+r"""Example of an eval-only job.
+
+This require to first run the `mnist_autoencoder.py` training. Then this
+config will perform a separate evaluation.
 
 ```sh
 xmanager launch third_party/py/kauldron/xm/launch.py -- \
-  --cfg=third_party/py/kauldron/examples/mnist_autoencoder_remote_shared_eval.py \
-  --xp.platform=jf=2x2
+  --xp.use_interpreter \
+  --xp.platform=jf=2x2 \
+  --cfg=third_party/py/kauldron/examples/mnist_eval_only.py \
+  --cfg.aux.xid=116820528 \
+  --cfg.aux.wid=1
 ```
 
 """
 
 from kauldron import konfig
-from examples import mnist_autoencoder
 
 # pylint: disable=g-import-not-at-top
 with konfig.imports():
   from kauldron import kd
-  import tensorflow_datasets as tfds
 # pylint: enable=g-import-not-at-top
-
-# TODO(epot): Merge this file with `remove_eval.py`
 
 
 def get_config():
-  """Get the default hyperparameter configuration."""
-  cfg = mnist_autoencoder.get_config()
+  """Eval-only config."""
+  cfg = kd.train.Trainer.eval_only()
 
-  cfg.num_train_steps = 10_000  # Longer train step to trigger multiple evals
-
-  shared_run = kd.evals.RunSharedXM(shared_name="evals")
-
-  cfg.evals = {
-      "eval_train": kd.evals.Evaluator(
-          run=shared_run,
-          num_batches=None,
-          ds=_make_ds(split="train"),
-          metrics={},
-      ),
-      "eval_test": kd.evals.Evaluator(
-          run=shared_run,
-          num_batches=None,
-          ds=_make_ds(split="test"),
-          metrics={},
-      ),
-  }
+  cfg.evals = {}
+  for split in ["train", "test"]:
+    cfg.evals[f"eval_{split}"] = kd.evals.Evaluator(
+        # TODO(epot): Use `StandaloneFinalCheckpoint`
+        run=kd.evals.RunOnce(0),
+        num_batches=None,
+        ds=_make_ds(split=split),
+        losses={
+            "recon": kd.losses.L2(preds="preds.image", targets="batch.image"),
+        },
+        summaries={
+            "gt": kd.summaries.ShowImages(images="batch.image", num_images=5),
+            "recon": kd.summaries.ShowImages(
+                images="preds.image", num_images=5
+            ),
+        },
+    )
 
   return cfg
 
 
 def _make_ds(split: str):
-  return kd.data.PyGrainPipeline(
-      data_source=tfds.data_source("mnist", split=split),
+  return kd.data.Tfds(
+      name="mnist",
+      split=split,
       shuffle=False,
+      num_epochs=1,
       transforms=[
           kd.data.Elements(keep=["image"]),
           kd.data.ValueRange(key="image", vrange=(0, 1)),

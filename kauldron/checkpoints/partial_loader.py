@@ -48,8 +48,12 @@ class AbstractPartialLoader(abc.ABC):
   def transform(self, state: _T) -> _T:
     """Transform the state by updating it with pre-trained values.
 
-    Note: `transform` functions can modify the `state` values but should NOT
-    modify its structure, shape or dtypes.
+    Notes:
+
+    * `transform` functions can modify the `state` values but should NOT
+      modify its structure, shape or dtypes.
+    * `transform` should correctly propagate the sharding information from the
+      given state.
 
     Args:
       state: The `state` object to transform

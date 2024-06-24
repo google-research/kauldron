@@ -33,6 +33,7 @@ from typing import Self
 from etils import epath
 from etils import exm
 from kauldron import konfig
+from kauldron import kontext
 from kauldron.xm._src import cfg_provider_utils
 from kauldron.xm._src import dir_utils
 from kauldron.xm._src import experiment
@@ -59,19 +60,25 @@ class KauldronJobs(jobs_info.JobsProvider):
   """Extract jobs from a Kauldron `kd.train.Trainer` config."""
 
   @functools.cached_property
+  def _cfg(self) -> kd.train.Trainer:
+    """Trainer config."""
+    return self.cfg_provider.config
+
+  @functools.cached_property
   def jobs(self) -> dict[str, job_lib.Job]:
-    return {
-        "train": self.trainer_job,
-        **self.eval_jobs,
-    }
+    jobs = {}
+    if not self._is_eval_only:
+      jobs["train"] = self.trainer_job
+    jobs.update(self.eval_jobs)
+    return jobs
 
   @functools.cached_property
   def eval_jobs(self) -> dict[str, job_lib.Job]:
     """Returns the evaluation runtime info."""
     # Resolve configs
     runs = {
-        eval_name: _resolve_run_konfig(eval_cfg.run)
-        for eval_name, eval_cfg in self.cfg_provider.config.evals.items()
+        eval_name: self._resolve_run_konfig(eval_name, eval_cfg.run)
+        for eval_name, eval_cfg in self._cfg.evals.items()
         if "run" in eval_cfg
     }
 
@@ -127,7 +134,7 @@ class KauldronJobs(jobs_info.JobsProvider):
 
   @functools.cached_property
   def trainer_xm_job(self) -> job_lib.Job:
-    return konfig.resolve(self.cfg_provider.config.xm_job)
+    return konfig.resolve(self._cfg.xm_job)
 
   @functools.cached_property
   def trainer_job(self) -> job_lib.Job:
@@ -158,6 +165,8 @@ class KauldronJobs(jobs_info.JobsProvider):
 
     if self.project_info.project_name:
       xp.context.annotations.add_tags(self.project_info.project_name)
+    # Should we add an `eval` tag when job is `eval_only` ? Likely redundant
+    # with the config name.
 
     module_name = self.cfg_provider.module.__name__
 
@@ -196,16 +205,52 @@ class KauldronJobs(jobs_info.JobsProvider):
           " specify `cfg.xm_job.target =`"
       )
 
+  @functools.cached_property
+  def _is_eval_only(self) -> bool:
+    return kontext.get_by_path(self._cfg, "setup.eval_only", False)
 
-def _resolve_run_konfig(
-    run: konfig.ConfigDictLike[run_strategies.RunStrategy],
-) -> run_strategies.RunStrategy:
-  # TODO(epot): Should add another registration mechanism to automatically
-  # rewrite the imports.
-  if run.__qualname__.startswith("kauldron.kd:evals."):  # pytype: disable=attribute-error
-    _, _, end = run.__qualname__.rpartition(".")  # pytype: disable=attribute-error
-    run.__qualname__ = f"kauldron.xm._src.run_strategies:{end}"
-  return konfig.resolve(run)
+  def _resolve_run_konfig(
+      self,
+      eval_name: str,
+      run: konfig.ConfigDictLike[run_strategies.RunStrategy],
+  ) -> run_strategies.RunStrategy:
+    # TODO(epot): Should add another registration mechanism to automatically
+    # rewrite the imports.
+    if run.__qualname__.startswith("kauldron.kd:evals."):  # pytype: disable=attribute-error
+      _, _, end = run.__qualname__.rpartition(".")  # pytype: disable=attribute-error
+      run.__qualname__ = f"kauldron.xm._src.run_strategies:{end}"
+    strategy = konfig.resolve(run)
+    if self._is_eval_only:  # Eval only, normalize run config.
+      # TODO(epot): Cleanup
+
+      if isinstance(
+          strategy, (run_strategies.RunEvery, run_strategies.RunOnce)
+      ):
+        strategy = run_strategies.RunSharedXM(
+            # What is the best default name ? Should be `train` for consistency
+            # but is confusing `train` only does `eval`. `eval_only` likely
+            # won't colide with other `cfg.evals` names.
+            shared_name="eval_only",
+            final_eval=True,
+            **self.trainer_xm_job._kxm_init_kwargs,  # pylint: disable=protected-access
+        )
+      elif isinstance(strategy, run_strategies.RunXM):
+        strategy = run_strategies.RunSharedXM(
+            shared_name=eval_name,
+            final_eval=True,
+            **strategy._kxm_init_kwargs,  # pylint: disable=protected-access
+        )
+      elif isinstance(strategy, run_strategies.RunSharedXM):
+        strategy = run_strategies.RunSharedXM(
+            shared_name=strategy.shared_name,
+            final_eval=True,
+            **strategy._kxm_init_kwargs,  # pylint: disable=protected-access
+        )
+      else:
+        raise TypeError(
+            f"Unexpected run strategy for {eval_name}. Got: {type(strategy)}."
+        )
+    return strategy
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)

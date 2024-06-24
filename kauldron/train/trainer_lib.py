@@ -20,7 +20,7 @@ from collections.abc import MutableMapping
 import dataclasses
 import functools
 import typing
-from typing import Any, Optional
+from typing import Any, Optional, Self
 
 from etils import edc
 from etils import epath
@@ -71,6 +71,32 @@ else:
 CheckifyErrorCategory = checkify.ErrorCategory if typing.TYPE_CHECKING else Any
 
 FrozenDict = dict if typing.TYPE_CHECKING else flax.core.FrozenDict
+
+
+if typing.TYPE_CHECKING:
+  _ClassMethod = classmethod
+else:
+
+  class _ClassMethod:
+    """Similar to `classmethod`.
+
+    But correctly propagate the `__konfig_resolve_exclude_fields__` attribute.
+    """
+
+    # Inspired from
+    # https://docs.python.org/3/howto/descriptor.html#class-methods
+    def __init__(self, f):
+      self.f = f
+      functools.update_wrapper(self, f)
+
+    def __get__(self, obj, cls=None):
+      if cls is None:
+        cls = type(obj)
+      fn = functools.partial(self.f, cls)
+      fn.__konfig_resolve_exclude_fields__ = (
+          cls.__konfig_resolve_exclude_fields__
+      )
+      return fn
 
 
 class Trainer(config_util.BaseConfig):
@@ -219,8 +245,8 @@ class Trainer(config_util.BaseConfig):
       if getattr(self, name) is None:
         object.__setattr__(self, name, default_factory())
 
-    # TODO(epot):
-    # Use self.update_from_root_cfg(self) directly
+    # TODO(epot): Reuse logic from self.update_from_root_cfg(self). But can't
+    # be used directly as `Trainer` need to be mutated in-place.
 
     # Some config object values are lazy-initialized from the root config.
     # See `UpdateFromRootCfg` for details
@@ -257,6 +283,46 @@ class Trainer(config_util.BaseConfig):
     # TODO(epot): Should freeze and deep-copy the config, but let's do this
     # after fiddle migration.
     object.__setattr__(self, 'raw_cfg', cfg)
+
+  @_ClassMethod
+  def eval_only(cls, **kwargs: Any) -> Self:  # pylint: disable=no-self-argument
+    """Returns a `Trainer` which only do evaluation.
+
+    Calling this function in a konfig context will pre-populate the
+    `konfig.ConfigDict` returned object with the values defined in
+    `kauldron/konfig/default_values.py`:
+
+    Usage:
+
+    ```python
+    cfg = kd.train.Trainer.eval_only()
+
+    # Should be set either here or in the CLI `--cfg.aux.xid=12345` to indicate
+    # which Kauldron experiment to load the model from.
+    cfg.aux.xid = 12345
+    cfg.aux.wid = 1
+
+    cfg.evals {
+        ...,
+    }
+    ```
+
+    This function should NOT be directly called outside a konfig context.
+
+    Args:
+      **kwargs: Propagated to the `kd.train.Trainer` constructor.
+    """
+    if not (setup := kwargs.get('setup')) or not setup.eval_only:
+      raise ValueError(
+          '`kd.train.Trainer.eval_only()` should only be called from a konfig'
+          ' context, not directly. And make sure to not overwrite the `setup`'
+          ' field.'
+      )
+    # TODO(epot):
+    # * Colab support (add eval section ? And set xid ?)
+    # * Unittest support (mock `kd.from_xid.get_config()`)
+    # * Copy sharding, rngs, etc from experiment.
+    return cls(**kwargs)
 
   # Do not use property to make it explicit this is recomputed each time
   def init_state(
@@ -352,37 +418,47 @@ class Trainer(config_util.BaseConfig):
 
   @functools.cached_property
   def __dashboards__(self) -> kdash.DashboardsBase:
-    # Create all dashboards to display in flatboard
-    train_dashboard = kdash.MetricDashboards(
-        collection='train',
-        losses=self.train_losses.keys(),
-        metrics=self.train_metrics.keys(),
-    )
-    evals_dashboards = [ev.__dashboards__ for ev in self.evals.values()]
+    all_dashboards = []
 
-    # TODO(epot): This should dynamically updated once we move to better
-    # chrono system!!!
-    PERF_KEYS = [  # pylint: disable=invalid-name
-        'steps_per_sec',
-        'data_points_per_sec_global',
-        'data_points_per_sec_per_device',
-        'total_training_time_hours',
-    ]
+    if not self.setup.eval_only:
+      # Create all dashboards to display in flatboard
+      train_dashboard = kdash.MetricDashboards(
+          collection='train',
+          losses=self.train_losses.keys(),
+          metrics=self.train_metrics.keys(),
+      )
+      all_dashboards.append(train_dashboard)
 
-    extra_dashboards = [
+    # Eval dashboards
+    all_dashboards.extend(ev.__dashboards__ for ev in self.evals.values())
+
+    # Extra dashboards
+    all_dashboards.append(
         kdash.SingleDashboard.from_y_keys(
             name='schedules',
             title='{xid}: Schedules',
             y_keys=[f'schedules/{s}' for s in self.schedules.keys()],
             collections=['train'],
         ),
-        kdash.SingleDashboard.from_y_keys(
-            name='perf_stats',
-            title='{xid}: Performance Statistics',
-            y_keys=[f'perf_stats/{p}' for p in PERF_KEYS],
-            collections=['train'],
-        ),
-    ]
-    return kdash.MultiDashboards.from_iterable(
-        [train_dashboard] + evals_dashboards + extra_dashboards
     )
+    if not self.setup.eval_only:
+      # TODO(epot): This should dynamically updated once we move to better
+      # chrono system!!!
+      # TODO(epot): Restore this for `eval_only` once `Chrono` is implemented
+      # and available in evals.
+
+      PERF_KEYS = [  # pylint: disable=invalid-name
+          'steps_per_sec',
+          'data_points_per_sec_global',
+          'data_points_per_sec_per_device',
+          'total_training_time_hours',
+      ]
+      all_dashboards.append(
+          kdash.SingleDashboard.from_y_keys(
+              name='perf_stats',
+              title='{xid}: Performance Statistics',
+              y_keys=[f'perf_stats/{p}' for p in PERF_KEYS],
+              collections=['train'],
+          ),
+      )
+    return kdash.MultiDashboards.from_iterable(all_dashboards)

@@ -49,6 +49,7 @@ class Setup:
     flatboard_build_context: Shared info to build the flatboard dashboards. This
       object is created once globally and shared between all the metrics
       `Writer`, to ensure all dashboards are written to the same collection.
+    eval_only: Whether the job is a eval-only job.
   """
 
   # Could provide more options here to customize artifacts,...
@@ -59,6 +60,7 @@ class Setup:
   flatboard_build_context: kdash.BuildContext = dataclasses.field(
       default_factory=kdash.BuildContext
   )
+  eval_only: bool = False
 
   def __post_init__(self):
     # Normalize tags to a list.
@@ -70,8 +72,9 @@ class Setup:
     tf.config.set_visible_devices([], "GPU")
 
     utils.add_log_artifacts()
-    utils.add_colab_artifacts()
-    _ensure_workdir(trainer.workdir)
+    if not trainer.setup.eval_only:
+      utils.add_colab_artifacts()
+    _create_workdir(trainer.workdir)
 
     if self.add_flatboard:
       kdash.build_and_upload(
@@ -88,7 +91,7 @@ class Setup:
     status.log_status(msg)
 
 
-def _ensure_workdir(workdir: epath.PathLike):
+def _create_workdir(workdir: epath.PathLike):
   """Ensure workdir is set and exists."""
   workdir = epath.Path(workdir) if workdir else epath.Path()
   if workdir == epath.Path():
