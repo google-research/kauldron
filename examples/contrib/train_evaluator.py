@@ -78,7 +78,7 @@ def get_config():
 
   cfg.evals = {
       "readout": kd.contrib.evals.TrainEvaluator(
-          run=kd.evals.RunEvery(100),
+          run=kd.evals.EveryNSteps(100),
           readout_config=readout_mnist.get_config(),
       ),
   }

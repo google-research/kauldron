@@ -43,8 +43,7 @@ def get_config():
   cfg.evals = {}
   for split in ["train", "test"]:
     cfg.evals[f"eval_{split}"] = kd.evals.Evaluator(
-        # TODO(epot): Use `StandaloneFinalCheckpoint`
-        run=kd.evals.RunOnce(0),
+        run=kd.evals.StandaloneLastCheckpoint(),
         num_batches=None,
         ds=_make_ds(split=split),
         losses={

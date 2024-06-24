@@ -14,9 +14,17 @@
 
 r"""Minimal example training a simple Autoencoder on MNIST.
 
+This example shows how to run evaluation in a separate job. Each work-unit
+will contain 3 jobs:
+
+  - train: The main training job
+  - grouped_evals: Executing `eval_train` and `eval_test`.
+  - isolated_eval: Another standalone eval job, running on a different platform.
+
 ```sh
 xmanager launch third_party/py/kauldron/xm/launch.py -- \
-  --cfg=third_party/py/kauldron/examples/mnist_autoencoder_remote_shared_eval.py \
+  --cfg=third_party/py/kauldron/examples/mnist_standalone_eval.py \
+  --xp.use_interpreter \
   --xp.platform=jf=2x2
 ```
 
@@ -28,10 +36,7 @@ from examples import mnist_autoencoder
 # pylint: disable=g-import-not-at-top
 with konfig.imports():
   from kauldron import kd
-  import tensorflow_datasets as tfds
 # pylint: enable=g-import-not-at-top
-
-# TODO(epot): Merge this file with `remove_eval.py`
 
 
 def get_config():
@@ -40,14 +45,19 @@ def get_config():
 
   cfg.num_train_steps = 10_000  # Longer train step to trigger multiple evals
 
-  shared_run = kd.evals.RunSharedXM(shared_name="evals")
-
+  # Shared job for both `eval_train` and `eval_test`.
+  shared_run = kd.evals.StandaloneEveryCheckpoint(job_group="grouped_evals")
   cfg.evals = {
       "eval_train": kd.evals.Evaluator(
           run=shared_run,
           num_batches=None,
           ds=_make_ds(split="train"),
-          metrics={},
+          metrics={
+              "ssim": kd.metrics.Ssim(
+                  pred="preds.image",
+                  target="batch.image",
+              ),
+          },
       ),
       "eval_test": kd.evals.Evaluator(
           run=shared_run,
@@ -55,15 +65,32 @@ def get_config():
           ds=_make_ds(split="test"),
           metrics={},
       ),
+      # Eval other uses a different `run` without `job_group=`, so is run in
+      # a separate job.
+      "isolated_eval": kd.evals.Evaluator(
+          run=kd.evals.StandaloneEveryCheckpoint(),
+          num_batches=None,
+          ds=_make_ds(split="test"),
+          metrics={
+              "ssim": kd.metrics.Ssim(
+                  pred="preds.image",
+                  target="batch.image",
+              ),
+          },
+      ),
   }
 
   return cfg
 
 
 def _make_ds(split: str):
-  return kd.data.PyGrainPipeline(
-      data_source=tfds.data_source("mnist", split=split),
+  # return kd.data.PyGrainPipeline(
+  #    data_source=tfds.data_source("mnist", split=split),
+  return kd.data.Tfds(
+      name="mnist",
+      split=split,
       shuffle=False,
+      num_epochs=1,
       transforms=[
           kd.data.Elements(keep=["image"]),
           kd.data.ValueRange(key="image", vrange=(0, 1)),
