@@ -24,7 +24,20 @@ import tensorflow as tf
 
 @dataclasses.dataclass(frozen=True)
 class SampleFromDatasets(base.TFDataPipeline):
-  """Dataset mixture."""
+  """Dataset mixture.
+
+  Attributes are forwarded to `tf.data.Dataset.sample_from_datasets`.
+
+  Attributes:
+    datasets: List of datasets to sample from.
+    weights: Weights for each dataset. If None, all datasets are sampled with
+      equal weights. Weights are normalized to sum to 1. So sampling among [2,
+      4, 2] is the same as [0.25, 0.5, 0.25].
+    stop_on_empty_dataset: If True, the iteration will stop on the first empty
+      dataset.
+    rerandomize_each_iteration: If True, the mixture will reshuffle the datasets
+      each time it is iterated over.
+  """
 
   datasets: list[base.TFDataPipeline]
   _: dataclasses.KW_ONLY
