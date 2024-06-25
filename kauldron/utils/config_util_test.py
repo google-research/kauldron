@@ -29,7 +29,7 @@ def test_trainer_replace():
       },
       evals={
           'eval': kd.evals.Evaluator(
-              run=kd.evals.RunEvery(100),
+              run=kd.evals.EveryNSteps(100),
           ),
       },
       seed=0,

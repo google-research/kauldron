@@ -86,7 +86,7 @@ def _get_model() -> nerf.nn.NerfRender:
 
 def _get_eval(split: str) -> kd.evals.Evaluator:
   return kd.evals.Evaluator(
-      run=kd.evals.RunEvery(100),
+      run=kd.evals.EveryNSteps(100),
       ds=_get_ds(training=False, split=split),
       num_batches=3,
       metrics={

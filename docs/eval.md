@@ -10,7 +10,7 @@ Eval can be defined on the `evals` attribute of `kd.train.Trainer`:
 cfg = kd.train.Trainer()
 cfg.evals = {
     'eval': kd.evals.Evaluator(
-        run=kd.evals.RunEvery(100),
+        run=kd.evals.EveryNSteps(100),
         num_batches=None,
         ds=_make_ds(training=False),
         metrics={},

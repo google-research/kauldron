@@ -204,5 +204,6 @@ class JobParams:
       return epy.pretty_repr_top_level(self, force=True)
 
 
-# TODO(epot): Pytype bug and using this as decorator make `RunXM` fail.
+# TODO(epot): Pytype bug and using this as decorator make
+# `StandaloneEveryCheckpoint` fail.
 merge_utils.add_merge_support(JobParams)
