@@ -82,7 +82,7 @@ class Setup:
           ctx=self.flatboard_build_context,
       )
 
-    if self.tags and status.is_lead_host:
+    if self.tags and status.is_lead_host and status.on_xmanager:
       assert isinstance(self.tags, list)
       experiment = exm.current_experiment()
       experiment.add_tags(*self.tags)
