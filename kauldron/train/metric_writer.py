@@ -32,10 +32,10 @@ from kauldron import konfig
 from kauldron import kontext
 from kauldron import summaries
 from kauldron.data import utils as data_utils
-from kauldron.train import timer as timer_module
 from kauldron.train import train_step
 from kauldron.train import trainer_lib
 from kauldron.typing import Array, Float, Scalar  # pylint: disable=g-multiple-import
+from kauldron.utils import chrono_utils
 from kauldron.utils import config_util
 from kauldron.utils import constants
 from kauldron.utils import kdash
@@ -154,7 +154,7 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
       model_with_aux: train_step.ModelWithAux,
       schedules: Mapping[str, optax.Schedule],
       log_summaries: bool,
-      timer: Optional[timer_module.PerformanceTimer] = None,
+      timer: Optional[chrono_utils.Chrono] = None,
   ) -> None:
     """Logs scalar and image summaries."""
     aux_result = aux.compute(flatten=True)
@@ -170,7 +170,7 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
     if timer:
       performance_stats = {
           f"perf_stats/{k}": v
-          for k, v in timer.log_stats(step_num=step).items()
+          for k, v in timer.flush_metrics().items()
       }
     else:
       performance_stats = {}
@@ -549,7 +549,7 @@ class NoopWriter(NoopMetadataWriter):
       model_with_aux: train_step.ModelWithAux,
       schedules: Mapping[str, optax.Schedule],
       log_summaries: bool,
-      timer: Optional[timer_module.PerformanceTimer] = None,
+      timer: Optional[chrono_utils.Chrono] = None,
   ) -> None:
     pass
 

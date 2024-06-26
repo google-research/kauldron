@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import collections
 import dataclasses
 import itertools
 
@@ -74,6 +75,8 @@ class Plot:
     collections: List of collections to plot.
     facet_to_collections: Group the collections by facet. Each facet is
       displayed as a separate plot. If set, `collections=` is optional.
+    collection_to_ykeys: Allow to display multiple `y_keys` from the same
+      collection together. If set, `collections=` is optional.
     remove_prefix: Remove the `losses/`, `metrics/`,... prefixes.
   """
 
@@ -83,26 +86,76 @@ class Plot:
   facet_to_collections: dict[str, list[str]] = dataclasses.field(
       default_factory=dict
   )
+  collection_to_ykeys: dict[str, list[str]] = dataclasses.field(
+      default_factory=dict
+  )
 
   remove_prefix: bool = True
 
   def __post_init__(self):
     # Normalize the values.
     if self.facet_to_collections:
-      collections = itertools.chain.from_iterable(
+      assert not self.collection_to_ykeys
+      collections_ = itertools.chain.from_iterable(
           self.facet_to_collections.values()
       )
-      if self.collections and set(collections) != set(self.collections):
+      if self.collections and set(collections_) != set(self.collections):
         raise ValueError(
             'The `collections` and `facet_to_collections` values are not'
             f' consistent. {self.collections} vs {self.facet_to_collections}'
         )
       if not self.collections:
-        object.__setattr__(self, 'collections', list(collections))
+        object.__setattr__(self, 'collections', list(collections_))
+    # Normalize the values.
+    if self.collection_to_ykeys:
+      assert not self.facet_to_collections
+      collections_ = list(self.collection_to_ykeys)
+      if self.collections and set(collections_) != set(self.collections):
+        raise ValueError(
+            'The `collections` and `collection_to_ykeys` values are not'
+            f' consistent. {self.collections} vs'
+            f' {collections_}'
+        )
+      if not self.collections:
+        object.__setattr__(self, 'collections', list(collections_))
+
+  @classmethod
+  def merge(cls, plots: list[Plot]) -> Plot:
+    """Merges multiple plots with the same y_key."""
+    assert len(plots)  # pylint: disable=g-explicit-length-test
+    if len(plots) == 1:
+      return plots[0]
+    # Cannot merge plots with different x_key or y_key.
+    # TODO(epot): Signature should be a plot property
+    signature = set((p.x_key, p.y_key) for p in plots)
+    if len(signature) != 1:
+      raise ValueError(
+          f'Cannot merge plots with different x_key or y_key: {signature}'
+      )
+
+    # TODO(epot): Remove duplicates while keeping order.
+    merged_collections = list(
+        itertools.chain.from_iterable(p.collections for p in plots)
+    )
+    merged_facet_to_collections = collections.defaultdict(list)
+    merged_collection_to_ykeys = collections.defaultdict(list)
+    for p in plots:
+      for facet, collections_ in p.facet_to_collections.items():
+        merged_facet_to_collections[facet].extend(collections_)
+      for collection, ykeys in p.collection_to_ykeys.items():
+        merged_collection_to_ykeys[collection].extend(ykeys)
+
+    # TODO(epot): Generic validation which check all fields except a list match
+    return dataclasses.replace(
+        plots[0],
+        collections=merged_collections,
+        facet_to_collections=dict(merged_facet_to_collections),
+        collection_to_ykeys=dict(merged_collection_to_ykeys),
+    )
 
   def build(self, ctx: BuildContext) -> fb.Plot:
     """Build the flatboard plot."""
-    title = self.y_key.partition('/')[-1] if self.remove_prefix else self.y_key
+    title = self._normalize_key(self.y_key)
 
     # Some heuristics for visualizing the plots.
     # TODO(epot): Add option to override grouping, facet,...
@@ -155,6 +208,22 @@ class Plot:
               queries=queries,
           )
       ]
+    elif self.collection_to_ykeys:
+      facets = fb.Facets()
+      data_groups = []
+      for c, ykeys in self.collection_to_ykeys.items():
+        for ykey in ykeys:
+          data_group = fb.DataGroup(
+              name=f'{c}/{self._normalize_key(ykey)}',
+              queries=[
+                  fb.DataQuery(
+                      query=f'{ctx.collection_path_prefix}{c}',
+                      ykey=ykey,
+                  )
+              ],
+          )
+          data_groups.append(data_group)
+
     else:
       # We are not faceting over collections, so we add one data group per
       # collection with the appropriate name. That way the labels will be
@@ -177,3 +246,10 @@ class Plot:
         groups=groups,
         facets=facets,
     )
+
+  def _normalize_key(self, key: str) -> str:
+    """Normalize the key to remove the prefix."""
+    if self.remove_prefix:
+      return key.partition('/')[-1]
+    else:
+      return key

@@ -14,6 +14,12 @@
 
 """Utils public API."""
 
-# pylint: disable=unused-import
+# pylint: disable=unused-import,g-importing-member,g-import-not-at-top
 
-from kauldron.utils import colab
+from etils import epy as _epy
+
+# Namespaces
+with _epy.lazy_api_imports(globals()):
+  from kauldron.utils import chrono_utils as chrono
+  from kauldron.utils import colab
+  from kauldron.utils.status_utils import status
