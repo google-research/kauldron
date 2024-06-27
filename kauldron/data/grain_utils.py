@@ -15,11 +15,15 @@
 """Grain utils to abstract the meta features."""
 
 import functools
+import sys
 from typing import Any
 
 from etils import epy
 from etils.etree import nest as etree  # pylint: disable=g-importing-member
 import grain.tensorflow as grain
+from kauldron import random
+
+import tensorflow as tf
 
 
 class MapTransform(grain.MapTransform):
@@ -90,3 +94,27 @@ def merge_grain_meta_features(meta_features, ex_features):
   if not isinstance(ex_features, dict):
     ex_features = {grain.RECORD: ex_features}
   return meta_features | ex_features
+
+
+def maybe_add_grain_meta_features(
+    ds,
+    *,
+    rng: random.PRNGKey,
+) -> Any:
+  """Add grain meta features."""
+  # Dataset already has grain meta features.
+  if isinstance(ds.element_spec, dict) and grain.INDEX in ds.element_spec:
+    return ds
+
+  # This should be deterministic as long as the `ds` is deterministic.
+  sampler = grain.TfDefaultIndexSampler(
+      num_records=sys.maxsize,  # Infinite iterator
+      shuffle=False,
+      seed=int(rng.fold_in("grain_metadata").bits()),
+      shard_options=grain.ShardByJaxProcess(),
+      num_epochs=None,
+  )
+  index_ds = sampler.get_index_dataset(grain.FirstIndex())
+  ds = tf.data.Dataset.zip(index_ds, ds)
+  ds = ds.map(merge_grain_meta_features)
+  return ds

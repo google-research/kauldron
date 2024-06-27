@@ -18,7 +18,6 @@ import abc
 from collections.abc import Sequence
 import dataclasses
 import functools
-import sys
 from typing import Any, Optional, TypeAlias
 
 from absl import logging
@@ -121,7 +120,7 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
       self, ds: tf.data.Dataset, *, rng: random.PRNGKey
   ) -> tf.data.Dataset:
     """Eventually apply transforms to the dataset."""
-    ds = _maybe_add_grain_meta_features(
+    ds = grain_utils.maybe_add_grain_meta_features(
         ds,
         rng=rng,
     )
@@ -257,30 +256,6 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
       return self._supports_symbolic_checkpoint
     else:
       return self.checkpoint
-
-
-def _maybe_add_grain_meta_features(
-    ds,
-    *,
-    rng: random.PRNGKey,
-) -> Any:
-  """Add grain meta features."""
-  # Dataset already has grain meta features.
-  if isinstance(ds.element_spec, dict) and grain.INDEX in ds.element_spec:
-    return ds
-
-  # This should be deterministic as long as the `ds` is deterministic.
-  sampler = grain.TfDefaultIndexSampler(
-      num_records=sys.maxsize,  # Infinite iterator
-      shuffle=False,
-      seed=int(rng.fold_in("grain_metadata").bits()),
-      shard_options=grain.ShardByJaxProcess(),
-      num_epochs=None,
-  )
-  index_ds = sampler.get_index_dataset(grain.FirstIndex())
-  ds = tf.data.Dataset.zip(index_ds, ds)
-  ds = ds.map(grain_utils.merge_grain_meta_features)
-  return ds
 
 
 def _get_if_root(value, *, default, is_root: bool):
