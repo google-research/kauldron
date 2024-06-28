@@ -161,28 +161,3 @@ class StandaloneLastCheckpoint(Standalone):
   If `job_group='group_name'`, all the evaluators sharing the same `job_group`
   will share the same XManager job (to save resources).
   """
-
-
-# ******************************************************************************
-# TODO(epot): Backward compatibility. REMOVE once all users are migrated.
-
-
-class RunEvery(EveryNSteps):
-  """Backward compatibility."""
-
-  def __init__(self, every: int):
-    super().__init__(n=every)
-
-
-RunOnce = Once
-RunXM = StandaloneEveryCheckpoint
-
-
-class RunSharedXM(RunStrategy):
-  """Backward compatibility."""
-
-  def __new__(cls, shared_name: str, *, final_eval: bool = False, **kwargs):
-    if final_eval:
-      return StandaloneLastCheckpoint(job_group=shared_name, **kwargs)
-    else:
-      return StandaloneEveryCheckpoint(job_group=shared_name, **kwargs)

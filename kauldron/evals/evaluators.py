@@ -136,8 +136,9 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
 class Evaluator(EvaluatorBase):
   """Evaluator running `num_batches` times.
 
-  Evaluators can be launched as separate XManager jobs (`run=kd.evals.RunXM()`)
-  or along train `run=kd.evals.RunEvery(100)`.
+  Evaluators can be launched as separate XManager jobs
+  (e.g. `run=kd.evals.StandaloneEveryCheckpoint()`) or along train
+  (e.g. `run=kd.evals.EveryNSteps(100)`).
 
   If not provided, losses, metrics, summaries are reused from train.
 
@@ -145,7 +146,7 @@ class Evaluator(EvaluatorBase):
 
   ```
   evaluator = kd.evals.Evaluator(
-      run=kd.evals.RunEvery(100),
+      run=kd.evals.EveryNSteps(100),
       ds=test_ds,
       base_cfg=cfg,
   )
