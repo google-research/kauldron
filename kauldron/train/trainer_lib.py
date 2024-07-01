@@ -149,8 +149,8 @@ class Trainer(config_util.BaseConfig):
     trainstep: Training loop step. Do not set this field unless you need a
       custom training step.
     evals: Evaluators to use (e.g. `{'eval': kd.eval.Evaluator()}`)
-    aux: Arbitrary additional values (e.g. can be set once and referenced
-      elsewhere `cfg.model.num_layer = cfg.ref.aux.num_layers`)
+    aux: A dict of arbitrary additional values (e.g. can be set once and
+      referenced elsewhere `cfg.model.num_layer = cfg.ref.aux.num_layers`).
     setup: Global setup options
     xm_job: XManager runtime parameters (e.g. which target is the config using)
     raw_cfg: Original config from which this `Config` was created. Automatically
@@ -221,7 +221,9 @@ class Trainer(config_util.BaseConfig):
 
   # Additional arbitrary config values
   # Should this be renamed `extra` ?
-  aux: MutableMapping[str, Any] = dataclasses.field(default_factory=FrozenDict)
+  # In practice this is a `dict[str, Any]` but use `Any` to avoid pytype
+  # error in the config (`cfg.ref.aux.some_field`)
+  aux: Any = dataclasses.field(default_factory=FrozenDict)
 
   # XManager and other environement parameters
   setup: setup_utils.Setup = dataclasses.field(
