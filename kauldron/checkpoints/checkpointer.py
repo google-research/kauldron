@@ -190,6 +190,13 @@ class Checkpointer(BaseCheckpointer):
         async_options=ocp.AsyncOptions(
             timeout_secs=60 * 30,  # 30 minutes
         ),
+        # Ensure that checkpoints are not world-readable.
+        # This file mode removes permission bits for OTHER in the POSIX format.
+        # See
+        #/checkpoint#do-not-set-the-checkpoint-directory-to-be-world-readable
+        file_options=ocp.checkpoint_manager.FileOptions(
+            path_permission_mode=0o770
+        ),
     )
 
     return lazy_checkpoint_manager.LazyCheckpointManager(
