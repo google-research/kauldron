@@ -208,6 +208,10 @@ class Evaluator(EvaluatorBase):
     """Run one full evaluation."""
     self._assert_root_cfg_resolved()
 
+    # TODO(epot): Add chrono to evals. Note: One issue is that the
+    # write metric time will be excluded from the chrono (including the final).
+    # metric computation time. Is there a better way ?
+
     merged_aux = None
     for eval_step, batch in utils.enum_iter(self.ds_iter, desc=self.name):
       eval_step = sharding_lib.device_put(eval_step, sharding_lib.REPLICATED)
