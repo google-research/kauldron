@@ -405,6 +405,9 @@ def plot_batch(batch: _Example) -> None:
     if isinstance(v, Images):
       _, height, _, _ = v.shape
       height = _normalize_height(height)
+      # Because mediapy doesn't support bfloat16, convert to float32
+      if jax.numpy.issubdtype(v.dtype, jax.numpy.bfloat16):
+        v = v.astype(jax.numpy.float32)
       media.show_images(
           v[:8],
           ylabel=f'<span style="font-size: 20;">batch.{k}</span>',
@@ -417,7 +420,9 @@ def plot_batch(batch: _Example) -> None:
       fps = min(num_frames / 5.0, 25.0)
       if isinstance(v, VideosGrayscale):
         v = v[..., 0]  # because mediapy expects no channel dim for grayscale
-
+      # Because mediapy doesn't support bfloat16, convert to float32
+      if jax.numpy.issubdtype(v.dtype, jax.numpy.bfloat16):
+        v = v.astype(jax.numpy.float32)
       media.show_videos(
           v[:8],
           ylabel=f'<span style="font-size: 20;">batch.{k}</span>',
