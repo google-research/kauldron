@@ -109,10 +109,6 @@ def continuous_eval(
   ):
     logging.info(f'Processing checkpoint for step {step}...')
 
-    # Refresh the checkpoint manager cache used by `.all_steps()`
-    # (b/315316885#6)
-    ckpt.reload()
-
     state = ckpt.restore(state, step=step)
     assert int(state.step) == step
 

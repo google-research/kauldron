@@ -24,6 +24,7 @@ import functools
 import time
 from typing import Any, Optional, Sequence, TypeVar
 
+from absl import logging
 from etils import epath
 import jax
 from kauldron.checkpoints import checkpoint_items
@@ -36,6 +37,8 @@ _FnT = TypeVar("_FnT", bound=Callable[..., Any])
 _StateT = TypeVar("_StateT", bound=_State)
 
 CHECKPOINT_FOLDER_NAME = "checkpoints"
+
+# pylint: disable=logging-fstring-interpolation
 
 
 class BaseCheckpointer(config_util.UpdateFromRootCfg, abc.ABC):
@@ -138,7 +141,7 @@ def _retry(
         try:
           return func(*args, **kwargs)
         except exceptions as e:
-          print(
+          logging.exception(
               f"Exception occurred: {e}. Retrying (attempt"
               f" {attempt + 1}/{num_retries})..."
           )
@@ -291,7 +294,7 @@ class Checkpointer(BaseCheckpointer):
 
   # TODO(b/330748987): Remove the loop. Currently required because `.reload`
   # sometimes crashes during race conditions.
-  @_retry(num_retries=5, exceptions=(OSError, ValueError))
+  @_retry(num_retries=5, exceptions=(OSError,))
   def reload(self) -> None:
     self._ckpt_mgr.reload()
 
@@ -316,12 +319,30 @@ class Checkpointer(BaseCheckpointer):
       timeout: Optional[int] = None,
       timeout_fn: Optional[Callable[[], bool]] = None,
   ) -> Iterator[int]:
-    for step in self._ckpt_mgr.iter_new_checkpoints(
-        min_interval_secs=min_interval_secs,
-        timeout=timeout,
-        timeout_fn=timeout_fn,
-    ):
-      yield step
+    num_retries = 4
+    attempt = num_retries
+    while True:
+      try:
+        for step in self._ckpt_mgr.iter_new_checkpoints(
+            min_interval_secs=min_interval_secs,
+            timeout=timeout,
+            timeout_fn=timeout_fn,
+        ):
+          self.reload()
+          yield step
+          attempt = num_retries  # After every successful steps, reset.
+          # Refresh the checkpoint manager cache used by `.all_steps()`
+          # (b/315316885#6)
+        return  # If finish, exit
+      except ValueError:
+        if attempt > 0:
+          logging.exception(
+              f"Retrying (remaining attempt {attempt})...Retrying..."
+          )
+          attempt -= 1
+          time.sleep(3)
+        else:
+          raise
 
   def wait_until_finished(self) -> None:
     self._ckpt_mgr.wait_until_finished()
