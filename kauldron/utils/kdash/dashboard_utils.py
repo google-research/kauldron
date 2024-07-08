@@ -17,10 +17,8 @@
 from __future__ import annotations
 
 import abc
-import collections
 from collections.abc import Iterable
 import dataclasses
-import itertools
 
 from etils import epy
 from kauldron.utils.kdash import plot_utils
@@ -216,28 +214,6 @@ def _merge_plots(plots: list[plot_utils.Plot]) -> list[plot_utils.Plot]:
   plots_by_key = epy.groupby(plots, key=lambda p: (p.x_key, p.y_key))
   merged_plots = []
   for plot_for_key in plots_by_key.values():
-    if len(plot_for_key) == 1:
-      new_plot = plot_for_key[0]
-    else:
-      new_plot = _merge_single_plots(plot_for_key)
+    new_plot = plot_utils.Plot.merge(plot_for_key)
     merged_plots.append(new_plot)
   return merged_plots
-
-
-def _merge_single_plots(plots: list[plot_utils.Plot]) -> plot_utils.Plot:
-  """Merges multiple plots with the same y_key."""
-  # TODO(epot): Remove duplicates while keeping order.
-  merged_collections = list(
-      itertools.chain.from_iterable(p.collections for p in plots)
-  )
-  merged_facet_to_collections = collections.defaultdict(list)
-  for p in plots:
-    for facet, collections_ in p.facet_to_collections.items():
-      merged_facet_to_collections[facet].extend(collections_)
-
-  # TODO(epot): Generic validation which check all fields except a list
-  return dataclasses.replace(
-      plots[0],
-      collections=merged_collections,
-      facet_to_collections=dict(merged_facet_to_collections),
-  )

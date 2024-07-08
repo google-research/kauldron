@@ -14,6 +14,15 @@
 
 """Utils public API."""
 
-# pylint: disable=unused-import
+# Use `api.py` rather than `__init__.py` to allow importing submodules here
+# without triggering a full import.
 
-from kauldron.utils import colab
+# pylint: disable=unused-import,g-importing-member,g-import-not-at-top
+
+from etils import epy as _epy
+
+# Namespaces
+with _epy.lazy_api_imports(globals()):
+  from kauldron.utils import chrono_utils as chrono
+  from kauldron.utils import colab
+  from kauldron.utils.status_utils import status

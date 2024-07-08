@@ -20,8 +20,8 @@ import typing
 
 from kauldron import checkpoints
 from kauldron.data import iterators
-from kauldron.train import timer as timer_module
 from kauldron.train import train_step
+from kauldron.utils import chrono_utils
 
 
 class _CheckpointState(typing.NamedTuple):
@@ -32,7 +32,7 @@ class _CheckpointState(typing.NamedTuple):
   `NamedTuple`, like:
 
   ```python
-  state, timer = ckptr.restore(CheckpointState(state, timer))
+  state, timer, ds_iter = ckptr.restore(CheckpointState(state, timer, ds_iter))
   ```
 
   The indirection (`class CheckpointState(_CheckpointState)`) is required
@@ -41,7 +41,7 @@ class _CheckpointState(typing.NamedTuple):
   """
 
   train_state: train_step.TrainState
-  timer: timer_module.PerformanceTimer
+  timer: chrono_utils.Chrono
   ds_iter: iterators.Iterator
 
   # `train_state` is saved as the default name

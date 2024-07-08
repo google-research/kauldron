@@ -44,6 +44,7 @@ from kauldron.train import rngs_lib
 from kauldron.train import setup_utils
 from kauldron.train import train_lib
 from kauldron.train import train_step
+from kauldron.utils import chrono_utils
 from kauldron.utils import config_util
 from kauldron.utils import kdash
 from kauldron.utils.sharding_utils import sharding as sharding_utils  # pylint: disable=g-importing-member
@@ -409,6 +410,22 @@ class Trainer(config_util.BaseConfig):
     return context
 
   @functools.cached_property
+  def _chrono(self) -> chrono_utils.Chrono:
+    """Chrono for the main training loop to compute and report the perfs."""
+    return chrono_utils.Chrono(
+        name='train',
+        batch_size=self.train_ds.batch_size,
+        # Currently hardcode the additional `pause('name')` for them to be
+        # reported in the dashboard. Ideally the dahsboard should be
+        # automatically updated.
+        pause_names=[
+            chrono_utils.Pause.CHECKPOINT,
+            chrono_utils.Pause.EVALS_ALONG_TRAIN,
+            chrono_utils.Pause.METRICS_WRITING,
+        ],
+    )
+
+  @functools.cached_property
   def __dashboards__(self) -> kdash.DashboardsBase:
     all_dashboards = []
 
@@ -434,23 +451,5 @@ class Trainer(config_util.BaseConfig):
         ),
     )
     if not self.setup.eval_only:
-      # TODO(epot): This should dynamically updated once we move to better
-      # chrono system!!!
-      # TODO(epot): Restore this for `eval_only` once `Chrono` is implemented
-      # and available in evals.
-
-      PERF_KEYS = [  # pylint: disable=invalid-name
-          'steps_per_sec',
-          'data_points_per_sec_global',
-          'data_points_per_sec_per_device',
-          'total_training_time_hours',
-      ]
-      all_dashboards.append(
-          kdash.SingleDashboard.from_y_keys(
-              name='perf_stats',
-              title='{xid}: Performance Statistics',
-              y_keys=[f'perf_stats/{p}' for p in PERF_KEYS],
-              collections=['train'],
-          ),
-      )
+      all_dashboards.append(self._chrono.__dashboards__)
     return kdash.MultiDashboards.from_iterable(all_dashboards)

@@ -28,9 +28,9 @@ from kauldron.evals import eval_impl
 from kauldron.inspect import profile_utils
 from kauldron.train import checkpoint_state
 from kauldron.train import setup_utils
-from kauldron.train import timer as timer_module
 from kauldron.train import train_step
 from kauldron.train import trainer_lib
+from kauldron.utils import chrono_utils
 from kauldron.utils import utils
 from kauldron.utils.sharding_utils import sharding as sharding_lib  # pylint: disable=g-importing-member
 from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
@@ -59,17 +59,12 @@ def train_impl(
       elem_spec=trainer.train_ds.element_spec,
       skip_transforms=latest_step is not None,
   )
-  timer = timer_module.PerformanceTimer(
-      initial_step_num=initial_step,
-      initial_training_time_hours=0.0,
-      per_device_batch_size=trainer.train_ds.batch_size / jax.device_count(),
-      global_batch_size=trainer.train_ds.batch_size,
-  )
+  chrono = trainer._chrono  # pylint: disable=protected-access
   ds_iter = iter(trainer.train_ds)
 
   # Initialize CheckpointManager and attempt to restore state.
-  (state, timer, ds_iter) = ckpt.restore(
-      checkpoint_state.CheckpointState(state, timer, ds_iter),
+  (state, chrono, ds_iter) = ckpt.restore(
+      checkpoint_state.CheckpointState(state, chrono, ds_iter),
       noop_if_missing=True,
   )
 
@@ -88,6 +83,7 @@ def train_impl(
   setup.log_status(f"Starting training loop at step {initial_step}")
   with _transfer_guard():
     # NOTE: DO *NOT* CHANGE THE ORDER OF OPERATIONS IN THE TRAINING LOOP!
+    chrono.start_loop()
     for i in _enum_steps_with_hooks(
         initial_step=initial_step,
         num_train_steps=trainer.num_train_steps,
@@ -95,16 +91,19 @@ def train_impl(
         profiler=trainer.profiler,
         tqdm_info=trainer.setup.tqdm_info,
     ):
-      with timer.exclude_from_step_stats():
-        if ckpt.should_save(i):
-          # Take the time after executing the last training step so
-          # that the times logged and stored with the checkpoint match.
-          # TODO(epot): Should check `i` and `state.step` match
+      if ckpt.should_save(i):
+        # Take the time after executing the last training step so
+        # that the times logged and stored with the checkpoint match.
+        # TODO(epot): Should check `i` and `state.step` match
+        with chrono.pause(chrono_utils.Pause.CHECKPOINT):
           ckpt.save(
-              checkpoint_state.CheckpointState(state, timer, ds_iter),
+              checkpoint_state.CheckpointState(state, chrono, ds_iter),
               step=i,
           )
 
+      # Evaluation metrics are computed from the OLD model state *before*
+      # backprop gradients are applied.
+      with chrono.pause(chrono_utils.Pause.EVALS_ALONG_TRAIN):
         for evaluator in trainer.evals.values():
           evaluator.maybe_eval(step=i, state=state)
 
@@ -122,21 +121,23 @@ def train_impl(
           return_summaries=log_summaries,
           checkify_error_categories=trainer.checkify_error_categories,
       )
-      timer.finish_step()
 
       # TODO(epot): Should be a `@checkify` decorator in `trainstep.step`.
       if trainer.checkify_error_categories:
         jax.device_get(aux.error).throw()
 
+      # Finish the steps before writing the metrics.
+      chrono.finish_step()
+
       if log_any and status.is_lead_host:
-        # NOTE: ensure that evaluation metrics are computed from the OLD model
-        # state *before* backprop gradients are applied.
+        # TODO(epot): Could report metrics writing separately
+        # with chrono.pause(chrono_utils.Pause.METRICS_WRITING):
         writer.write_step_metrics(
             step=i,
             aux=aux,
             schedules=trainer.schedules,
             model_with_aux=trainstep.model_with_aux,
-            timer=timer,
+            timer=chrono,
             log_summaries=log_summaries,
         )
 
