@@ -71,16 +71,11 @@ def _freeze(v: Any) -> Hashable:
 
 def add_flatboard_artifact(name: str, url: str) -> None:
   xp = exm.current_experiment()
-
-  for old_artifact in xp.get_artifacts(
-      artifact_types=[xmanager_api.ArtifactType.ARTIFACT_TYPE_FLATBOARD_URL]
-  ):
-    if old_artifact.description == name:
-      # Already exists, do not create it to avoid duplicates between work-units.
-      return
-
   xp.create_artifact(
       artifact_type=xmanager_api.ArtifactType.ARTIFACT_TYPE_FLATBOARD_URL,
       artifact=url,
       description=name,
+      # Already exists, overwrite to avoid duplicates between work-units.
+      # This also means a new url is created every time after preemption.
+      replace=True,
   )
