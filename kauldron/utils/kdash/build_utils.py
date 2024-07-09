@@ -64,7 +64,9 @@ def build_and_upload(
     status.log(f'* {k}: {url}')
 
   # Add the XManager atrifacts to setup the UI on XManager.
-  if status.on_xmanager:
+  # Only add the flatboard artifacts for the first work-unit due to a race
+  # condition between work-units (b/351986366).
+  if status.on_xmanager and status.wid == 1:
     for k, url in urls.items():
       xm_utils.add_flatboard_artifact(k, url)
 
