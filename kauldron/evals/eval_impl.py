@@ -33,6 +33,7 @@ from kauldron.utils.status_utils import status  # pylint: disable=g-importing-me
 # XManager API do not have API for jobs within a work-unit to communicate,
 # so use files for communication.
 TRAIN_COMPLETE_FILENAME = 'train_complete.txt'
+EVAL_COMPLETE_FILENAME = 'eval_{}_complete.txt'
 
 
 def continuous_eval(
@@ -120,10 +121,24 @@ def continuous_eval(
 
     final_step = step
 
+  # All every_checkpoint_evals have been processed. Marks those as complete.
+  if trainer.workdir.exists():  # `TrainEvaluator` do not have a workdir
+    for ev in every_checkpoint_evals:
+      epath.Path(trainer.workdir).joinpath(
+          EVAL_COMPLETE_FILENAME.format(ev.name)
+      ).touch()
+
   logging.info('Running final evals...')
   for ev in last_checkpoint_evals:
     with tracker.catch_exception(name=ev.name, step=final_step):
       aux[ev.name] = ev.evaluate(state=state, step=final_step)
+
+  # All last_checkpoint_evals have been processed. Marks those as complete.
+  if trainer.workdir.exists():  # `TrainEvaluator` do not have a workdir
+    for ev in last_checkpoint_evals:
+      epath.Path(trainer.workdir).joinpath(
+          EVAL_COMPLETE_FILENAME.format(ev.name)
+      ).touch()
 
   tracker.maybe_reraise()
 
