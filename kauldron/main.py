@@ -74,10 +74,17 @@ def main(_):
     )
     _update_xm_configuration(cfg)
 
-    trainer: kd.train.Trainer = kd.konfig.resolve(cfg)
     if eval_names is None:
+      trainer: kd.train.Trainer = kd.konfig.resolve(cfg)
       trainer.train()
     else:
+      # Orbax does not support CheckpointManagers creating the same root
+      # directory. By setting `create=False`, we ensure that the checkpoint
+      # manager does not create a new root directory.
+      if hasattr(cfg, "checkpointer"):
+        if hasattr(cfg.checkpointer, "create"):
+          cfg.checkpointer.create = False
+      trainer: kd.train.Trainer = kd.konfig.resolve(cfg)
       trainer.continuous_eval(eval_names)
 
 

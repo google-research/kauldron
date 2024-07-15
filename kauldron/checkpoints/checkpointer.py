@@ -166,6 +166,9 @@ class Checkpointer(BaseCheckpointer):
     keep_time_interval: See `ocp.CheckpointManagerOptions`
     keep_period: See `ocp.CheckpointManagerOptions`
     fast: (internal) Activate some optimizations
+    create: (internal) Whether to create the checkpoint directory, this is set
+      by kauldron automatically based on whether the job is a training job
+      (True) or an eval job (False).
   """
 
   workdir: epath.PathLike = config_util.ROOT_CFG_REF.workdir
@@ -176,6 +179,7 @@ class Checkpointer(BaseCheckpointer):
   keep_period: Optional[int] = None
 
   fast: bool = True
+  create: bool = True
 
   @functools.cached_property
   def _ckpt_mgr(self) -> lazy_checkpoint_manager.LazyCheckpointManager:
@@ -188,7 +192,7 @@ class Checkpointer(BaseCheckpointer):
         step_prefix="ckpt",
         # TODO(msajjadi): Re-enable this once we've figured it out.
         # step_format_fixed_length=9,
-        create=True,
+        create=self.create,
         # TODO(epot): Add `best_fn` to allow `ckpt_mngr.best_step()`
         async_options=ocp.AsyncOptions(
             timeout_secs=60 * 30,  # 30 minutes
