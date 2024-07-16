@@ -190,6 +190,12 @@ def _reduce_states(
   }
 
 
+def _gather_kwargs_with_reraise(k, summary, context):
+  """Gathers summary kwargs with an error stating the offending key."""
+  with epy.maybe_reraise(lambda: f"Error with key `{k}`: "):
+    return summary.gather_kwargs(context)
+
+
 @dataclasses.dataclass(kw_only=True, eq=True, frozen=True)
 class ModelWithAux(config_util.UpdateFromRootCfg):
   """Wrapper around model which also compute the summaries and metrics."""
@@ -337,7 +343,7 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
     if return_summaries:
       aux = aux.replace(
           summary_kwargs={
-              k: summary.gather_kwargs(context)
+              k: _gather_kwargs_with_reraise(k, summary, context)
               for k, summary in self.summaries.items()
           }
       )
