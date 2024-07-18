@@ -171,7 +171,7 @@ def _assert_no_missing_keys(context, key_paths, key_values) -> None:
   }
   if missing_values:
     missing_keys = {
-        k: v
+        k: str(v)
         for k, v in paths.flatten_with_path(key_paths).items()
         if k in missing_values
     }
@@ -192,7 +192,7 @@ def _get_missing_key_error_message(
       missing_path, all_paths, n=3, cutoff=0
   )
 
-  def common_prefix_length(x, path):
+  def common_prefix_length(x, path) -> int:
     return len(os.path.commonprefix((x, path)))
 
   sorted_by_common_prefix = sorted(
