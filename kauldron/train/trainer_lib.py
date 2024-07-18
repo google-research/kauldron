@@ -263,6 +263,8 @@ class Trainer(config_util.BaseConfig):
         'writer',
     ):
       if (value := getattr(self, attr_name)) is not None:
+        if not isinstance(value, config_util.UpdateFromRootCfg):
+          raise ValueError(f'Invalid `trainer.{attr_name}`: {type(value)}')
         object.__setattr__(self, attr_name, value.update_from_root_cfg(self))
     if self.evals:
       evals = evaluators.normalize_evaluators(self.evals)
