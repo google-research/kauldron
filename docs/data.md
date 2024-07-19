@@ -52,6 +52,7 @@ The following `tf.data` sources are available:
     ( e.g. in `tfrecord` format)
 *   `kd.data.SeqIOTask`: SeqIO task
 *   `kd.data.SeqIOMixture`: SeqIO mixture
+*   Your custom `tf.data` pipeline. See: https://kauldron.rtfd.io/en/latest-kmix#implement-your-own
 
 Additionally, any of those sources dataset can be combined using:
 
