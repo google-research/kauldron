@@ -157,16 +157,13 @@ class ShowImages(ImageSummary):
     if not isinstance(images, Float["n h w #3"]):
       raise ValueError(f"Bad shape or dtype: {images.shape} {images.dtype}")
 
-    num_images_per_device = math.ceil(
-        self.num_images / jax.local_device_count()
-    )
-    images = images[:num_images_per_device]
+    images = images[: self.num_images]
     if masks is not None:
       if not isinstance(masks, Bool["n h w 1"]):
         raise ValueError(
             f"Bad mask shape or dtype: {masks.shape} {masks.dtype}"
         )
-      masks = masks[:num_images_per_device]
+      masks = masks[: self.num_images]
 
     return {"images": images, "masks": masks}
 
