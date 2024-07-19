@@ -90,17 +90,6 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
     """Write histograms for the step."""
 
   @abc.abstractmethod
-  def write_pointcloud(
-      self,
-      step: int,
-      point_clouds: Mapping[str, Array],
-      *,
-      point_colors: Optional[Array] = None,
-      configs: Optional[Mapping[str, Any]] = None,
-  ) -> None:
-    """Write point cloud summaries for the step."""
-
-  @abc.abstractmethod
   def write_videos(
       self,
       step: int,
@@ -231,35 +220,6 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
             arrays={k: tensor for k, (_, tensor) in hist_summaries.items()},
             num_buckets={
                 k: n_buckets for k, (n_buckets, _) in hist_summaries.items()
-            },
-        )
-
-      with jax.spmd_mode("allow_all"), jax.transfer_guard("allow"):
-        # point clouds
-        pc_summaries = {
-            name: summary.get_point_cloud(**aux.summary_kwargs[name])
-            for name, summary in model_with_aux.summaries.items()
-            if isinstance(summary, summaries.PointCloudSummary)
-        }
-        for name, point_clouds_data in pc_summaries.items():
-          if point_clouds_data.point_clouds.size == 0:
-            raise ValueError(
-                f"Point cloud summary `{name}` is empty array of shape"
-                f" {point_clouds_data.point_clouds.shape}."
-            )
-        self.write_pointcloud(
-            step=step,
-            point_clouds={
-                k: point_clouds_data.point_clouds
-                for k, point_clouds_data in pc_summaries.items()
-            },
-            point_colors={
-                k: point_clouds_data.point_colors
-                for k, point_clouds_data in pc_summaries.items()
-            },
-            configs={
-                k: point_clouds_data.configs
-                for k, point_clouds_data in pc_summaries.items()
             },
         )
 
@@ -499,21 +459,6 @@ class KDMetricWriter(MetadataWriter):
     self._log_writer.write_texts(step, texts)
     self._tf_summary_writer.write_texts(step, texts)
 
-  def write_pointcloud(
-      self,
-      step: int,
-      point_clouds: Mapping[str, Array["n 3"]],
-      *,
-      point_colors: Optional[Mapping[str, Array]] = None,
-      configs: Optional[Mapping[str, Any]] = None,
-  ) -> None:
-    self._tf_summary_writer.write_pointcloud(
-        step=step,
-        point_clouds=point_clouds,
-        point_colors=point_colors,
-        configs=configs,
-    )
-
   def write_hparams(self, hparams: Mapping[str, Any]) -> None:
     self._log_writer.write_hparams(hparams)
     self._tf_summary_writer.write_hparams(hparams)
@@ -576,15 +521,6 @@ class NoopWriter(NoopMetadataWriter):
       step: int,
       arrays: Mapping[str, Array],
       num_buckets: Mapping[str, int] | None = None,
-  ) -> None:
-    pass
-
-  def write_pointcloud(
-      self,
-      step: int,
-      point_clouds: Array["n 3"],
-      point_colors: Optional[Array] = None,
-      configs: Optional[Mapping[str, Any]] = None,
   ) -> None:
     pass
 
