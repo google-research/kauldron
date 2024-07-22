@@ -18,6 +18,7 @@
 from kauldron.losses.base import compute_losses
 from kauldron.losses.base import Loss
 from kauldron.losses.simple import AbsoluteValue
+from kauldron.losses.simple import Huber
 from kauldron.losses.simple import L1
 from kauldron.losses.simple import L2
 from kauldron.losses.simple import NegativeCosineSimilarity
