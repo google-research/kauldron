@@ -77,6 +77,21 @@ class L2(base.Loss):
     return jnp.square(preds - targets)
 
 
+@dataclasses.dataclass(eq=True, frozen=True, kw_only=True)
+class Huber(base.Loss):
+  """Huber loss."""
+  delta: float = 1.0
+
+  preds: kontext.Key = kontext.REQUIRED
+  targets: kontext.Key = kontext.REQUIRED
+
+  @typechecked
+  def get_values(self, preds: Float["*a"], targets: Float["*a"]) -> Float["*a"]:
+    l2_term = 0.5 * jnp.square(preds - targets)
+    l1_term = self.delta * (jnp.abs(preds - targets) - 0.5 * self.delta)
+    return jnp.where(jnp.abs(preds - targets) < self.delta, l2_term, l1_term)
+
+
 @dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
 class NegativeCosineSimilarity(base.Loss):
   """Negative Cosine Similarity loss."""
