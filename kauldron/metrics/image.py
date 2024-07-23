@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Optional
+from typing import Optional, Sequence
 
 import flax
 import flax.struct
@@ -31,7 +31,7 @@ from kauldron.typing import Bool, Float, typechecked  # pylint: disable=g-multip
 
 
 def rescale_image(
-    x: Float["*b h w c"], in_vrange: tuple[float, float]
+    x: Float["*b h w c"], in_vrange: Sequence[float, float]
 ) -> Float["*b h w c"]:
   """Rescale an image from in_vrange to (0, 1)."""
   vmin, vmax = in_vrange
@@ -56,7 +56,7 @@ class Psnr(base.Metric):
   target: kontext.Key = kontext.REQUIRED
   mask: Optional[kontext.Key] = None
 
-  in_vrange: tuple[float, float] = (0.0, 1.0)
+  in_vrange: Sequence[float, float] = (0.0, 1.0)
   clip: float | None = None
 
   @flax.struct.dataclass
@@ -158,7 +158,7 @@ class Ssim(base.Metric):
   target: kontext.Key = kontext.REQUIRED
   mask: Optional[kontext.Key] = None
 
-  in_vrange: tuple[float, float] = (0.0, 1.0)
+  in_vrange: Sequence[float, float] = (0.0, 1.0)
   filter_size: int = 11
   filter_sigma: float = 1.5
   k1: float = 0.01

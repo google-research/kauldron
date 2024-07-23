@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import dataclasses
 import functools
-from typing import Optional
+from typing import Optional, Sequence
 
 from etils import epath
 import flax
@@ -158,7 +158,7 @@ class LpipsVgg(base.Metric):
   pred: kontext.Key = kontext.REQUIRED
   target: kontext.Key = kontext.REQUIRED
   mask: Optional[kontext.Key] = None
-  in_vrange: tuple[float, float] = (0.0, 1.0)
+  in_vrange: Sequence[float, float] = (0.0, 1.0)
 
   @flax.struct.dataclass
   class State(base_state.AverageState):
