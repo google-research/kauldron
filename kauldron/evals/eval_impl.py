@@ -19,9 +19,11 @@ from __future__ import annotations
 from collections.abc import Iterator
 import contextlib
 import dataclasses
+import hashlib
 
 from absl import logging
 from etils import epath
+from kauldron.checkpoints import checkpointer
 from kauldron.evals import evaluators as evaluators_lib
 from kauldron.evals import run_strategies
 from kauldron.train import train_step
@@ -61,7 +63,18 @@ def continuous_eval(
       raise ValueError(f'Invalid eval name. Available: {list(trainer.evals)}')
 
   logging.info('Initialize the state...')
-  ckpt = trainer.checkpointer
+  trainer_ckpt = trainer.checkpointer
+  if isinstance(trainer_ckpt, checkpointer.Checkpointer):
+    suffix = hashlib.sha256(':'.join(eval_names).encode('utf-8')).hexdigest()[
+        :8
+    ]
+    eval_ckpt = dataclasses.replace(
+        trainer_ckpt,
+        workdir=trainer_ckpt.workdir / f'_eval_{suffix}',
+        max_to_keep=1,
+    )
+  else:
+    raise ValueError(f'Unsupported checkpointer type: {type(trainer_ckpt)}')
   # Skip transforms as checkpoint is restored anyway afterward. We need to
   # be careful that step 0 is indeed computed from the checkpoint.
   # In eval-only mode, the model weights are restored from the init_transforms
@@ -91,11 +104,30 @@ def continuous_eval(
           f'Remote eval ({name!r}) should be standalone. Got run={ev.run}'
       )
 
+  # If the eval checkpoint exists, there is an ongoing eval that was preempted
+  # and we should resume the onging eval.
+  # After the eval is done, we check for new checkpoints and write a new
+  # checkpoint, which then will be picked up if the job gets preempted again.
+  if eval_ckpt.latest_step is not None:
+    logging.info('Resume evaluation...')
+    # Restore the state from the last eval checkpoint
+    state = eval_ckpt.restore(state)
+    step = int(state.step)
+    # Processing checkpoint
+    aux = dict()
+    for ev in every_checkpoint_evals:
+      assert isinstance(ev.run, run_strategies.StandaloneEveryCheckpoint)
+      if ev.run.resume_after_preemption:
+        with tracker.catch_exception(name=ev.name, step=step):
+          aux[ev.name] = ev.evaluate(state=state, step=step)
+    # Eval is done, remove the duplicated checkpoint.
+    eval_ckpt.delete(eval_ckpt.latest_step)
+
   logging.info('Start evaluating...')
   # Initialize the final step from the state for eval-only jobs which restore
   # the step from the `init_transforms`.
   final_step = int(state.step)
-  for step in ckpt.iter_new_checkpoints(
+  for step in trainer_ckpt.iter_new_checkpoints(
       min_interval_secs=10,
       timeout=10,
       timeout_fn=lambda: (
@@ -109,7 +141,10 @@ def continuous_eval(
   ):
     logging.info(f'Processing checkpoint for step {step}...')
 
-    state = ckpt.restore(state, step=step)
+    state = trainer_ckpt.restore(state, step=step)
+    # Temporarily copy the state to the eval checkpoint, to ensure that
+    # it won't be deleted by the train job until the current eval is done.
+    eval_ckpt.save(state, step=step)
     assert int(state.step) == step
 
     # Processing checkpoint
@@ -117,7 +152,8 @@ def continuous_eval(
     for ev in every_checkpoint_evals:
       with tracker.catch_exception(name=ev.name, step=step):
         aux[ev.name] = ev.evaluate(state=state, step=step)
-
+    # Eval is done, remove the duplicated checkpoint
+    eval_ckpt.delete(step)
     final_step = step
 
   logging.info('Running final evals...')

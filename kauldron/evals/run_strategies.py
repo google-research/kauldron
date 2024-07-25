@@ -141,7 +141,16 @@ class StandaloneEveryCheckpoint(Standalone):
 
   If `job_group='group_name'`, all the evaluators sharing the same `job_group`
   will share the same XManager job (to save resources).
+
+  Attributes:
+    resume_after_preemption: Whether to resume the eval job after preemption. If
+      `True`, the eval job will be called again with the same state as the last
+      run. If `False`, a new checkpoint will be loaded from the train job. If
+      the underlying evaluator does not support checkpointing, resuming after
+      preemption will be equivalent to restarting the eval job.
   """
+
+  resume_after_preemption: bool = False
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True)

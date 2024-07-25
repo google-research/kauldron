@@ -258,6 +258,9 @@ class Checkpointer(BaseCheckpointer):
   def should_save(self, step: int) -> bool:
     return self._ckpt_mgr.should_save(step)
 
+  def delete(self, step: int) -> None:
+    return self._ckpt_mgr.delete(step)
+
   # TODO(b/299684331) workaround for the flaky orbax checkpointing.
   @_retry(num_retries=3, exceptions=(ValueError,))
   def save(
