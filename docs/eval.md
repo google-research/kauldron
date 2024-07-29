@@ -77,13 +77,13 @@ Note: `kd.train.Trainer.eval_only()` only works when used inside `konfig`.
 ### Train / eval in Module
 
 Model can detect if they are in training / eval mode by using the
-`kd.train.train_property`.
+`kd.nn.train_property`.
 
 ```python
 class MyModel(nn.Module):
   # Create a `@property` that will look-up the global `is_training` value
   # when called
-  is_training = kd.train.train_property()  # No annotations here !!
+  is_training = kd.nn.train_property()  # No annotations here !!
 
   @nn.compact
   def __call__(self, x):
