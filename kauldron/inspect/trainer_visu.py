@@ -33,9 +33,9 @@ def show_trainer_info(
     trainer: trainer_lib.Trainer,
     *,
     print_cfg: bool,
+    inspect_dataset: bool,
     inspect_params: bool,
     inspect_sharding: bool,
-    inspect_dataset: bool,
     inspect_connected: bool,
     profile_statix: bool,
 ):
@@ -45,6 +45,15 @@ def show_trainer_info(
   if print_cfg:
     with ecolab.collapse("Config (modified)"):
       ecolab.disp(cfg)
+
+  if inspect_dataset:
+    batch = next(iter(trainer.train_ds))
+
+    with ecolab.collapse("Batch statistics"):
+      ecolab.disp(inspect_lib.get_batch_stats(batch))
+
+    with ecolab.collapse("Batch images"):
+      inspect_lib.plot_batch(batch)
 
   if inspect_params:
 
@@ -87,12 +96,3 @@ def show_trainer_info(
       print("Peak Memory: ", statix.peak_memory(lowered))
       print("Terra-Flops: ", statix.flops(lowered) / 1e12)
       print("Memory Viewer URL: ", statix.memory_viewer_url(lowered))
-
-  if inspect_dataset:
-    batch = next(iter(trainer.train_ds))
-
-    with ecolab.collapse("Batch statistics"):
-      ecolab.disp(inspect_lib.get_batch_stats(batch))
-
-    with ecolab.collapse("Batch images"):
-      inspect_lib.plot_batch(batch)
