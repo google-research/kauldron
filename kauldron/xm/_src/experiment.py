@@ -22,7 +22,7 @@ import dataclasses
 import functools
 import os
 import typing
-from typing import Optional
+from typing import Any, Optional
 
 from etils import epy
 from etils import exm
@@ -82,6 +82,7 @@ class Experiment(job_params.JobParams):
   name: Optional[str] = None
   tags: list[str] = dataclasses.field(default_factory=list)
   note: str = ""
+  aux: Any = dataclasses.field(default_factory=dict)
 
   # Job, sweep & execution
   jobs: dict[str, job_lib.Job] = dataclasses.field(default_factory=dict)
