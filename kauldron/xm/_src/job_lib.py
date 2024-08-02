@@ -89,6 +89,9 @@ class Job(job_params.JobParams):
     # non-GPU workloads, so we're always enabling it for simplicity.
     bazel_args = bazel_args + ("--define=cuda_compress=1",)
 
+    # Add any additional bazel args specified in JobParams.
+    bazel_args = bazel_args + tuple(self.bazel_args)
+
     # Not sure where the original =TRUE comes from, but it needs overwriting.
     if not self.debug.pytype:
       bazel_args = tuple(

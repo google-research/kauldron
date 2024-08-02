@@ -134,6 +134,7 @@ class JobParams:
     files: Additional files to include (Mapping from filename to
       pkgdef-reference)
     add_jax_flags: Can be disabled for non-jax jobs.
+    bazel_args: Additional job-specific bazel arguments as list of strings.
     debug: Additional debug options.
   """
 
@@ -167,6 +168,7 @@ class JobParams:
   files: dict[str, str] = dataclasses.field(default_factory=dict)
 
   add_jax_flags: bool = True
+  bazel_args: list[str] = dataclasses.field(default_factory=list)
   debug: Debug = dataclasses.field(default_factory=Debug)
 
   # Internal variable to prevent `dataclasses.replace`
