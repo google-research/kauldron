@@ -438,6 +438,84 @@ class RandomCrop(ElementWiseRandomTransform):
     return tf.slice(element, offset, target_shape)  # crop
 
 
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class RandomMultiCrop(ElementWiseRandomTransform):
+  """Randomly crop the input data to the specified shape, multiple times.
+
+  Can be used on data of any shape or type including images and videos.
+  Replicates all dataset tensors num_crops times so it can be unbatched later.
+
+  Attributes:
+    shape: A tuple of integers describing the target shape of the crop. Entries
+      can be also be None to keep the original shape of the data in that dim.
+    num_crops: The number of crops to generate.
+  """
+
+  shape: tuple[Optional[int], ...]
+  num_crops: int = 1
+
+  def random_map(self, features, seed):
+    if not all([d is None or d >= 0 for d in self.shape]):
+      raise ValueError(
+          "Target shape can contain only non-negative ints or None. Got"
+          f" {self.shape=}"
+      )
+    shapes = {k: v.shape for k, v in features.items() if k in self.key}
+    for key, shape in shapes.items():
+      if len(shape) != len(self.shape):
+        raise ValueError(
+            "Rank of self.shape has to match element shape. But got"
+            f" {self.shape=} and {shape=} for {key!r}"
+        )
+    ref_key, ref_shape = next(iter(shapes.items())) if shapes else (None, None)
+    # ensure dimensions match except where self.shape is None
+    for key, shape in shapes.items():
+      for ref_dim, key_dim, target_dim in zip(ref_shape, shape, self.shape):
+        if ref_dim != key_dim and (target_dim is not None):
+          raise ValueError(
+              "Shapes of different keys for random crop have to be compatible,"
+              f" but got {ref_shape} ({ref_key}) != {shape} ({key}) with"
+              f" {self.shape=}"
+          )
+
+    # replicate all tensors not in self.key
+    for k, v in features.items():
+      if k in self.key:
+        continue
+
+      features[k] = tf.stack([v] * self.num_crops, axis=0)
+
+    return super().random_map(features, seed)
+
+  @typechecked
+  def random_map_element(self, element: TfArray["..."], seed) -> TfArray["..."]:
+    shape = tf.shape(element)
+    # resolve dynamic portions of self.shape to a static target_shape
+    target_shape = _get_target_shape(element, self.shape)
+    # compute the range of the offset for the tf.slice
+    offset_range = shape - target_shape
+    clipped_offset_range = tf.clip_by_value(offset_range, 1, tf.int32.max)
+
+    # Generate multiple random offsets
+    rand_ints = tf.random.stateless_uniform(
+        [self.num_crops, shape.shape[0]],  # Shape for multiple crops
+        seed=seed,
+        minval=None,
+        maxval=None,
+        dtype=tf.int32,
+    )
+    offsets = tf.where(offset_range > 0, rand_ints % clipped_offset_range, 0)
+
+    # Crop multiple times using tf.map_fn
+    crops = tf.map_fn(
+        lambda offset: tf.slice(element, offset, target_shape),
+        offsets,
+        fn_output_signature=element.dtype,
+    )
+
+    return crops  # Return a tensor with multiple crops
+
+
 def _get_target_shape(t: tf.Tensor, target_shape):
   """Resolve the `dynamic` portions of `target_shape`."""
   finale_shape = []
