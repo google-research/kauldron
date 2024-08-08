@@ -17,6 +17,8 @@
 import dataclasses
 import functools
 
+from etils import epy
+import grain.tensorflow as grain
 from kauldron import random
 from kauldron.data.kmix import base
 import tensorflow as tf
@@ -71,3 +73,48 @@ class SampleFromDatasets(base.TFDataPipeline):
   @functools.cached_property
   def _supports_symbolic_checkpoint(self) -> bool:
     return all(ds._supports_symbolic_checkpoint for ds in self.datasets)  # pylint: disable=protected-access
+
+
+@dataclasses.dataclass(frozen=True)
+class ZipDatasets(base.TFDataPipeline):
+  """Creates a Dataset by zipping together the given datasets.
+
+  Attributes:
+    datasets: Dictionary of datasets to sample from.
+  """
+
+  datasets: dict[str, base.TFDataPipeline]
+  _: dataclasses.KW_ONLY
+
+  def __post_init__(self):
+    if not all(
+        isinstance(ds, base.TFDataPipeline) for ds in [*self.datasets.values()]
+    ):
+      raise ValueError(
+          'All datasets in `ZipDatasets` should inherit from `TFDataPipeline`.'
+      )
+
+  def ds_for_current_process(self, rng: random.PRNGKey) -> tf.data.Dataset:
+    datasets = {
+        ds_name: ds.ds_with_transforms(rng.fold_in(i))
+        for i, (ds_name, ds) in enumerate(self.datasets.items())
+    }
+    datasets = {
+        ds_name: ds.map(self._drop_grain_meta_features)
+        for ds_name, ds in datasets.items()
+    }
+
+    ds = tf.data.Dataset.zip(datasets)
+    return ds
+
+  def _drop_grain_meta_features(self, features: tf.data.Dataset):
+    ex_features, _ = epy.splitby(
+        features.items(),
+        predicate=lambda key_and_value: key_and_value[0] in grain.META_FEATURES,
+    )
+    return dict(ex_features)
+
+  @functools.cached_property
+  def _supports_symbolic_checkpoint(self) -> bool:
+    datasets = list(self.datasets.values())
+    return all(ds._supports_symbolic_checkpoint for ds in datasets)  # pylint: disable=protected-access

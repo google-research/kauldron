@@ -23,3 +23,4 @@ from kauldron.data.kmix.loaders.seqio import SeqIOTask
 from kauldron.data.kmix.loaders.tfds_legacy import TfdsLegacy
 from kauldron.data.kmix.loaders.with_shuffle_buffer import WithShuffleBuffer
 from kauldron.data.kmix.mixture import SampleFromDatasets
+from kauldron.data.kmix.mixture import ZipDatasets

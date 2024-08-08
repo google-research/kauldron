@@ -66,7 +66,7 @@ def _unpexected_example_structure(ex: Any) -> Exception:
 
 
 def split_grain_meta_features(
-    features: dict[str, Any]
+    features: dict[str, Any],
 ) -> tuple[dict[str, Any], Any]:
   """Extract the non-grain features."""
   if not isinstance(features, dict) or grain.INDEX not in features:
