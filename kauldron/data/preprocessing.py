@@ -474,10 +474,7 @@ class CenterCrop(ElementWiseTransform):
       )
     # resolve dynamic portions (-1) of self.shape
     shape = tf.shape(element)
-    target_shape = tf.constant(  # convert None to -1
-        [-1 if s is None else s for s in self.shape], dtype=tf.int32
-    )
-    target_shape = tf.where(target_shape >= 0, target_shape, shape)
+    target_shape = _get_target_shape(element, self.shape)
     # compute the offset for the tf.slice
     offset = (shape - target_shape) // 2
     crop = tf.slice(element, offset, target_shape)
