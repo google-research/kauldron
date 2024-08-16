@@ -42,3 +42,4 @@ from kauldron.modules.pos_embeddings import AddLearnedEmbedding
 from kauldron.modules.pos_embeddings import FourierEmbedding
 from kauldron.modules.pos_embeddings import LearnedEmbedding
 from kauldron.modules.pos_embeddings import ZeroEmbedding
+from kauldron.modules.pos_embeddings import Add2DRoPE
