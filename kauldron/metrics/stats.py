@@ -92,7 +92,18 @@ class Norm(base.Metric):
       tensor: Float["*any"],
       mask: Optional[Bool["*#any"] | Float["*#any"]] = None,
   ) -> Norm.State:
-    norm = jnp.linalg.norm(tensor, ord=self.ord, axis=self.axis, keepdims=True)
+    if self.ord is not None and self.axis is None:
+      # self.ord is None and self.axis is None is a special case that calls
+      # .ravel()
+      # If we need ord, but axis is None, we are going to call ravel()
+      # ourselves.
+      norm = jnp.linalg.norm(tensor.ravel(), ord=self.ord, keepdims=False)
+      # manual keepdims
+      norm = norm.reshape((1,) * tensor.ndim)
+    else:
+      norm = jnp.linalg.norm(
+          tensor, ord=self.ord, axis=self.axis, keepdims=True
+      )
 
     if mask is not None:
       mask = jnp.broadcast_to(mask, norm.shape)
