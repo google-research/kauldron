@@ -17,9 +17,8 @@
 import dataclasses
 import functools
 
-from etils import epy
-import grain.tensorflow as grain
 from kauldron import random
+from kauldron.data import grain_utils
 from kauldron.data.kmix import base
 import tensorflow as tf
 
@@ -99,22 +98,18 @@ class ZipDatasets(base.TFDataPipeline):
         ds_name: ds.ds_with_transforms(rng.fold_in(i))
         for i, (ds_name, ds) in enumerate(self.datasets.items())
     }
+
+    # Drop grain meta features
     datasets = {
-        ds_name: ds.map(self._drop_grain_meta_features)
+        ds_name: ds.map(lambda ex: grain_utils.split_grain_meta_features(ex)[1])
         for ds_name, ds in datasets.items()
     }
 
     ds = tf.data.Dataset.zip(datasets)
     return ds
 
-  def _drop_grain_meta_features(self, features: tf.data.Dataset):
-    ex_features, _ = epy.splitby(
-        features.items(),
-        predicate=lambda key_and_value: key_and_value[0] in grain.META_FEATURES,
-    )
-    return dict(ex_features)
-
   @functools.cached_property
   def _supports_symbolic_checkpoint(self) -> bool:
-    datasets = list(self.datasets.values())
-    return all(ds._supports_symbolic_checkpoint for ds in datasets)  # pylint: disable=protected-access
+    return all(
+        ds._supports_symbolic_checkpoint for ds in self.datasets.values()  # pylint: disable=protected-access
+    )
