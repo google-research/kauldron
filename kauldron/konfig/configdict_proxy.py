@@ -128,7 +128,7 @@ def resolve(cfg, *, freeze=True):
   try:
     return _ConstructorResolver(freeze=freeze)._resolve_value(cfg)  # pylint: disable=protected-access
   except Exception as e:  # pylint: disable=broad-exception-caught
-    epy.reraise(e, 'Error resolving the config: ')
+    epy.reraise(e, 'Error resolving the config:\n')
 
 
 class _ConfigDictVisitor:
@@ -237,7 +237,8 @@ class _ConstructorResolver(_ConfigDictVisitor):
         for k, v in kwargs.items()
     }
     args = [kwargs.pop(str(i)) for i in range(num_args(kwargs))]
-    obj = constructor(*args, **kwargs)
+    with epy.maybe_reraise(prefix=lambda: _make_cfg_error_msg(value)):
+      obj = constructor(*args, **kwargs)
     # Allow the object to save the config it is comming from.
     if hasattr(type(obj), '__post_konfig_resolve__'):
       obj.__post_konfig_resolve__(value)
@@ -267,6 +268,14 @@ def num_args(obj: Mapping[str, Any]) -> int:
     if str(arg_id) not in obj:
       break
   return arg_id  # pylint: disable=undefined-loop-variable,undefined-variable
+
+
+def _make_cfg_error_msg(cfg: ml_collections.ConfigDict) -> str:
+  cfg_str = repr(cfg)
+  cfg_str = cfg_str.removeprefix('<ConfigDict[').removesuffix(']>')
+  if len(cfg_str) > 300:  # `textwrap.shorten` remove `\n` so don't use it
+    cfg_str = cfg_str[:295] + '[...]'
+  return f'Error while constructing cfg: {cfg_str}\n'
 
 
 def _as_dict(values: Mapping[str, Any]) -> dict[str, Any]:
