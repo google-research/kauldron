@@ -19,9 +19,11 @@ from __future__ import annotations
 from collections.abc import Iterator
 import contextlib
 import dataclasses
+import hashlib
 
 from absl import logging
 from etils import epath
+from kauldron.checkpoints import checkpointer
 from kauldron.evals import evaluators as evaluators_lib
 from kauldron.evals import run_strategies
 from kauldron.train import train_step
@@ -61,7 +63,6 @@ def continuous_eval(
       raise ValueError(f'Invalid eval name. Available: {list(trainer.evals)}')
 
   logging.info('Initialize the state...')
-  ckpt = trainer.checkpointer
   # Skip transforms as checkpoint is restored anyway afterward. We need to
   # be careful that step 0 is indeed computed from the checkpoint.
   # In eval-only mode, the model weights are restored from the init_transforms
@@ -95,29 +96,18 @@ def continuous_eval(
   # Initialize the final step from the state for eval-only jobs which restore
   # the step from the `init_transforms`.
   final_step = int(state.step)
-  for step in ckpt.iter_new_checkpoints(
-      min_interval_secs=10,
-      timeout=10,
-      timeout_fn=lambda: (
-          # Skip the `iter_new_checkpoints` for eval-only jobs.
-          trainer.setup.eval_only
-          # Exit when train job has completed
-          or epath.Path(trainer.workdir)
-          .joinpath(TRAIN_COMPLETE_FILENAME)
-          .exists()
-      ),
+  for state in _preemptable_iter_new_checkpoints(
+      trainer=trainer,
+      eval_names=eval_names,
+      state=state,
   ):
+    step = int(state.step)
     logging.info(f'Processing checkpoint for step {step}...')
-
-    state = ckpt.restore(state, step=step)
-    assert int(state.step) == step
-
     # Processing checkpoint
     aux = dict()
     for ev in every_checkpoint_evals:
       with tracker.catch_exception(name=ev.name, step=step):
         aux[ev.name] = ev.evaluate(state=state, step=step)
-
     final_step = step
 
   logging.info('Running final evals...')
@@ -161,3 +151,71 @@ class _ExceptionTracker:
   def maybe_reraise(self) -> None:
     if self.exceptions:
       raise ExceptionGroup('One or more evaluators failed', self.exceptions)
+
+
+def _preemptable_iter_new_checkpoints(
+    *,
+    trainer: trainer_lib.Trainer,
+    eval_names: list[str],
+    state: train_step.TrainState,
+) -> Iterator[train_step.TrainState]:
+  """Yields the new checkpoints."""
+  trainer_ckpt = trainer.checkpointer
+  eval_ckpt = _get_eval_ckpt(trainer_ckpt, eval_names)
+  # If the eval checkpoint exists, there is an ongoing eval that was preempted
+  # and we should resume the onging eval.
+  # After the eval is done, we check for new checkpoints and write a new
+  # checkpoint, which then will be picked up if the job gets preempted again.
+  if eval_ckpt.latest_step is not None:
+    logging.info('Resume evaluation...')
+    # Restore the state from the last eval checkpoint
+    state = eval_ckpt.restore(state)
+    yield state
+    # Eval is done, remove the duplicated checkpoint
+    eval_ckpt.delete(state.step)
+
+  for step in trainer_ckpt.iter_new_checkpoints(
+      min_interval_secs=10,
+      timeout=10,
+      timeout_fn=lambda: (
+          # Skip the `iter_new_checkpoints` for eval-only jobs.
+          trainer.setup.eval_only
+          # Exit when train job has completed
+          or epath.Path(trainer.workdir)
+          .joinpath(TRAIN_COMPLETE_FILENAME)
+          .exists()
+      ),
+  ):
+    state = trainer_ckpt.restore(state, step=step)
+    assert int(state.step) == step
+    # Temporarily copy the state to the eval checkpoint, to ensure that
+    # it won't be deleted by the train job until the current eval is done.
+    eval_ckpt.save(state, step=step)
+    yield state
+    # Eval is done, remove the duplicated checkpoint
+    eval_ckpt.delete(state.step)
+
+
+def _get_eval_ckpt(
+    trainer_ckpt: checkpointer.Checkpointer,
+    eval_names: list[str],
+) -> checkpointer.Checkpointer:
+  """Returns the checkpoint to use for the eval."""
+  if isinstance(trainer_ckpt, checkpointer.Checkpointer):
+    suffix = ':'.join(eval_names)
+    # Use hash if suffix is too long.
+    if len(suffix) > 100:
+      suffix = hashlib.sha256(suffix.encode('utf-8')).hexdigest()[:8]
+    workdir = epath.Path(trainer_ckpt.workdir) / f'_eval_{suffix}'
+    (workdir / checkpointer.CHECKPOINT_FOLDER_NAME).mkdir(
+        parents=True, exist_ok=True
+    )
+    logging.info('Create checkpointer with: workdir: %s', workdir)
+    return checkpointer.Checkpointer(
+        workdir=workdir,
+        save_interval_steps=1,
+        max_to_keep=1,
+        create=False,
+    )
+  else:
+    raise ValueError(f'Unsupported checkpointer type: {type(trainer_ckpt)}')

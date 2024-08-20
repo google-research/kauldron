@@ -129,6 +129,14 @@ class LazyCheckpointManager:
     """Wrapper around `ocp.CheckpointManager.should_save`."""
     return self._get_manager().should_save(step)
 
+  def delete(self, step: int) -> None:
+    """Wrapper around `ocp.CheckpointManager.delete`.
+
+    Args:
+      step: The step to delete.
+    """
+    self._get_manager().delete(step)
+
   def latest_step(self) -> int | None:
     """Wrapper around `ocp.CheckpointManager.latest_step`."""
     return self._get_manager().latest_step()
