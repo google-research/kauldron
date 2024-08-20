@@ -28,9 +28,6 @@ import ml_collections
 from ml_collections import config_flags
 import tensorflow as tf
 
-with epy.binary_adhoc(reload="etils"):
-  from etils import epy  # pylint: disable=g-import-not-at-top,reimported
-
 # Imports adhoc-imported when running with `ml_python`
 with epy.binary_adhoc():
   # pylint: disable=g-import-not-at-top
