@@ -28,10 +28,10 @@ dependencies = [
     "graphviz",
     "jax",
     "jaxtyping",
-    "lark==0.12.0",
+    "lark==0.12.0",  # TODO(klausg): fix and remove this version pin
     "mediapy",
     # we use features/fixes that are newer than the current (0.1.1) release
-    "ml_collections@git+https://github.com/google/ml_collections#egg=295c938d98168d8ea05ee55d2721f808c07f4203",
+    "ml_collections@git+https://github.com/google/ml_collections@master",
     "numpy",
     "numpy",
     "optax",
@@ -44,7 +44,7 @@ dependencies = [
     "tensorflow_datasets",
     "tqdm",
     # closest match to the internal typeguard
-    "typeguard@git+https://github.com/agronholm/typeguard#egg=0dd7f7510b7c694e66a0d17d1d58d185125bad5d",
+    "typeguard@git+https://github.com/agronholm/typeguard@0dd7f7510b7c694e66a0d17d1d58d185125bad5d",
     "typing_extensions",
     "xmanager",
     # lazy deps (should ideally remove those)
