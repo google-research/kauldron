@@ -28,16 +28,8 @@ import ml_collections
 from ml_collections import config_flags
 import tensorflow as tf
 
-# Imports adhoc-imported when running with `ml_python`
-with epy.binary_adhoc():
-  # pylint: disable=g-import-not-at-top
-  from etils import exm
-  from kauldron import kd
-  from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
-  from kauldron.utils import utils
-  from kauldron.utils import sweep_utils
-  # pylint: enable=g-import-not-at-top
-
+from kauldron import kd
+from kauldron.utils import sweep_utils
 
 _CONFIG = config_flags.DEFINE_config_file(
     "cfg",
@@ -87,24 +79,11 @@ def main(_):
 
 @contextlib.contextmanager
 def _wu_error_handling(post_mortem: bool = False):
-  """Catch and log error."""
-  context = contextlib.nullcontext
-  with context():
-    try:
-      yield
-    except Exception as e:
-      exc_name = type(e).__name__
-      status.log_status(f"🚨 {exc_name}: {e!s}")
-      status.xp.add_tags(f"🚨 {exc_name} 🚨")
-      # Add links to the logs of the failing work units.
-      utils.add_log_artifacts(add_experiment_artifact=True)
-      raise
+  yield  # not yet supported externally
 
 
 def _update_xm_configuration(cfg: ml_collections.ConfigDict) -> None:
-  """Update the XManager configuration tab with the sweep."""
-  if not exm.is_running_under_xmanager():
-    return
+  pass  # not supported externally
 
 
 def _flags_parser(args: list[str]) -> None:
