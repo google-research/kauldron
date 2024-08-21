@@ -388,8 +388,6 @@ class TrainStep(config_util.UpdateFromRootCfg):
     state = self._init_model(elem_spec, model_method=model_method)
     if not skip_transforms:
       # If restoring a checkpoint we can skip the (potentially slow) transforms
-      # Note: Transforms should be responsible to correclty propagate the
-      # sharding from the state.
       state = self._init_transforms(state)
     if self.optimizer is not None:
       # Eval-only jobs do not have optimizer.
@@ -425,7 +423,9 @@ class TrainStep(config_util.UpdateFromRootCfg):
     """Run any additional init transformations and return the updated state."""
     for init_transf in self.init_transforms.values():
       state = init_transf.transform(state)
-    return state
+    # Transforms should ideally propagate the sharding from the state, but in
+    # case they forget, we explicitly re-apply the sharding.
+    return sharding_lib.with_sharding_constraint(state, self.sharding.state)
 
   @functools.partial(
       jax.jit,
