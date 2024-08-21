@@ -19,31 +19,36 @@ keywords = []
 dependencies = [
     "absl-py",
     "altair",
+    "chex",
     "clu",
     "einops",
     "etils[edc,enp,epath,epy,etree]",
     "flax",
-    # "grain",  # TODO(epot)
+    "grain",
+    "graphviz",
     "jax",
     "jaxtyping",
-    "lark",
+    "lark==0.12.0",
     "mediapy",
-    "ml_collections",
+    # we use features/fixes that are newer than the current (0.1.1) release
+    "ml_collections@git+https://github.com/google/ml_collections#egg=295c938d98168d8ea05ee55d2721f808c07f4203",
     "numpy",
     "numpy",
     "optax",
     "orbax-checkpoint",
+    "pandas",
     "regex",
+    "scikit-image",
     "scikit-learn",
     "tensorflow",
     "tensorflow_datasets",
     "tqdm",
-    "typeguard",
+    # closest match to the internal typeguard
+    "typeguard@git+https://github.com/agronholm/typeguard#egg=0dd7f7510b7c694e66a0d17d1d58d185125bad5d",
     "typing_extensions",
+    "xmanager",
     # lazy deps (should ideally remove those)
     # "grand_vision",
-    # jax3d
-    # "tf-models-official",
 ]
 
 # This is set automatically by flit using `kauldron.__version__`
@@ -62,6 +67,7 @@ documentation = "https://kauldron.readthedocs.io"
 dev = [
     "pytest",
     "pytest-xdist",
+    "hypothesis==6.80.0",
     "pylint>=2.6.0",
     "pyink",
 ]
