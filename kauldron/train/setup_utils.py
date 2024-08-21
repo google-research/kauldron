@@ -21,10 +21,7 @@ import typing
 
 from absl import logging
 from etils import epath
-from etils import exm
 from kauldron.utils import kdash
-from kauldron.utils import utils
-from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
 import tensorflow as tf
 
 # Do not import `trainer_lib` at runtime to avoid circular imports
@@ -71,24 +68,10 @@ class Setup:
     """Perform the initial setup."""
     tf.config.set_visible_devices([], "GPU")
 
-    utils.add_log_artifacts()
-    if not trainer.setup.eval_only:
-      utils.add_colab_artifacts()
     _create_workdir(trainer.workdir)
 
-    if self.add_flatboard:
-      kdash.build_and_upload(
-          trainer.__dashboards__,
-          ctx=self.flatboard_build_context,
-      )
-
-    if self.tags and status.is_lead_host and status.on_xmanager:
-      assert isinstance(self.tags, list)
-      experiment = exm.current_experiment()
-      experiment.add_tags(*self.tags)
-
   def log_status(self, msg: str) -> None:
-    status.log_status(msg)
+    logging.info(msg)
 
 
 def _create_workdir(workdir: epath.PathLike):

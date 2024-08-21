@@ -27,8 +27,10 @@ from typing import Any
 
 from etils import epath
 from etils import epy
+from etils import exm
 from kauldron import konfig
 from kauldron.utils import constants
+from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
 
 from unittest import mock as _mock ; xmanager_api = _mock.Mock()
 
@@ -182,3 +184,36 @@ def _get_module_name(values: dict[str, Any]) -> str | None:
     return qualname.split(':', 1)[0]
   else:
     return None
+
+
+def add_log_artifacts(add_experiment_artifact: bool = False) -> None:
+  """Add XManager artifacts for easy access to the Python logs."""
+  if not status.on_xmanager or not status.is_lead_host:
+    return
+
+
+def add_colab_artifacts() -> None:
+  """Add a link to the kd-infer colab."""
+  if not status.on_xmanager or not status.is_lead_host:
+    return
+
+  exm.add_work_unit_artifact('https://kauldron.rtfd.io/en/latest-infer (Colab)', _get_kd_infer_url())
+
+
+def add_tags_to_xm(tags: list[str] | None) -> None:
+  """Add tags to the xmanager experiment."""
+  if not tags or not status.on_xmanager or not status.is_lead_host:
+    return
+
+  assert isinstance(tags, list)
+  experiment = exm.current_experiment()
+  experiment.add_tags(*tags)
+
+
+def _get_kd_infer_url() -> str:
+  wu = exm.current_work_unit()
+  template_params = {
+      'XID': wu.experiment_id,
+      'WID': wu.id,
+  }
+  return f'http://https://kauldron.rtfd.io/en/latest-infer#templateParams={json.dumps(template_params)}'

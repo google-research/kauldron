@@ -80,7 +80,7 @@ def train_impl(
 
   aux = None
 
-  setup.log_status(f"Starting training loop at step {initial_step}")
+  status.log_status(f"Starting training loop at step {initial_step}")
   with _transfer_guard():
     # NOTE: DO *NOT* CHANGE THE ORDER OF OPERATIONS IN THE TRAINING LOOP!
     chrono.start_loop()

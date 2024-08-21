@@ -16,13 +16,9 @@
 
 from collections.abc import Iterable, Iterator
 import itertools
-import json
 from typing import Optional, TypeVar
 
-from etils import exm
-from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
 from tqdm import auto as tqdm
-from xmanager.contrib.internal import xm_tqdm
 
 _T = TypeVar('_T')
 
@@ -73,10 +69,7 @@ def enum_iter(
     range_ = range(init_step, total_steps)
     total = total_steps
 
-  if log_xm:
-    tqdm_class = xm_tqdm.tqdm
-  else:
-    tqdm_class = tqdm.tqdm
+  tqdm_class = tqdm.tqdm
 
   for i, ex in tqdm_class(
       zip(range_, iter),
@@ -86,26 +79,3 @@ def enum_iter(
       **tqdm_kwargs,
   ):
     yield i, ex
-
-
-def add_log_artifacts(add_experiment_artifact: bool = False) -> None:
-  """Add XManager artifacts for easy access to the Python logs."""
-  if not status.on_xmanager or not status.is_lead_host:
-    return
-
-
-def add_colab_artifacts() -> None:
-  """Add a link to the kd-infer colab."""
-  if not status.on_xmanager or not status.is_lead_host:
-    return
-
-  exm.add_work_unit_artifact('https://kauldron.rtfd.io/en/latest-infer (Colab)', _get_kd_infer_url())
-
-
-def _get_kd_infer_url() -> str:
-  wu = exm.current_work_unit()
-  template_params = {
-      'XID': wu.experiment_id,
-      'WID': wu.id,
-  }
-  return f'http://https://kauldron.rtfd.io/en/latest-infer#templateParams={json.dumps(template_params)}'
