@@ -26,6 +26,7 @@ dependencies = [
     "flax",
     "grain",
     "graphviz",
+    "immutabledict",
     "jax",
     "jaxtyping",
     "lark==0.12.0",  # TODO(klausg): fix and remove this version pin

@@ -22,6 +22,11 @@ from typing import Any, ClassVar
 
 from etils import epy
 import immutabledict as immutabledict_lib
+from packaging import version
+
+_IMMUTABLE_DICT_V4 = version.parse(
+    immutabledict_lib.__version__
+) >= version.Version('4.0.0')
 
 
 class ImmutableDict(immutabledict_lib.immutabledict):
@@ -31,7 +36,6 @@ class ImmutableDict(immutabledict_lib.immutabledict):
   _flax_registered: ClassVar[bool] = False
 
   def __new__(cls, *args: Any, **kwargs: Any) -> ImmutableDict:
-    del args, kwargs  # Unused
     if not cls._dca_jax_tree_registered and 'jax' in sys.modules:
       import jax  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
 
@@ -60,7 +64,12 @@ class ImmutableDict(immutabledict_lib.immutabledict):
       )
       cls._flax_registered = True
 
-    return super().__new__(cls)  # pylint: disable=no-value-for-parameter
+    if _IMMUTABLE_DICT_V4:
+      # immutabledict 4.0.0 switched from using __init__ to __new__ and thus
+      # requires passing the args and kwargs along here.
+      return super().__new__(cls, *args, **kwargs)  # pylint: disable=no-value-for-parameter
+    else:
+      return super().__new__(cls)
 
   def __getattr__(self, name: str) -> str:
     # The base-class has a `dict_cls` attribute, but collisions should be

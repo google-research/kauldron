@@ -19,7 +19,6 @@ import dataclasses
 import jax.numpy as jnp
 from kauldron import kontext
 from kauldron.losses import base
-from kauldron.train import context as context_lib
 import numpy as np
 
 
@@ -49,7 +48,7 @@ def test_ten_x_loss_weight():
 def test_ten_x_loss_apply_to_context():
   l = TenX()
   x = jnp.ones((2, 3))
-  context = context_lib.Context(step=100, batch={'x': x})
+  context = dict(step=100, batch={'x': x})
   y = l(context=context)
   np.testing.assert_allclose(y, 10)
 
@@ -57,7 +56,7 @@ def test_ten_x_loss_apply_to_context():
 def test_ten_x_loss_weight_schedule():
   l = TenX(weight=lambda step: step / 20)  # pylint: disable=unexpected-keyword-arg
   x = jnp.ones((2, 3))
-  context = context_lib.Context(step=100, batch={'x': x})
+  context = dict(step=100, batch={'x': x})
   y = l(context=context)
   np.testing.assert_allclose(y, 10 * 5)
 
