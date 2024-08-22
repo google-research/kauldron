@@ -231,7 +231,11 @@ class Evaluator(EvaluatorBase):
       # metrics
       with jax.spmd_mode('allow_all'), jax.transfer_guard('allow'):
         merged_aux = merged_aux | aux
-    assert merged_aux is not None  # At least one iteration
+    if merged_aux is None:  # At least one iteration
+      raise ValueError(
+          f'Dataset for eval {self.name!r} did not yield any elements:\n'
+          f'{epy.pretty_repr(self.ds)}'
+      )
 
     self.writer.write_step_metrics(
         step=step,
