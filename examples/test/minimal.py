@@ -56,19 +56,14 @@ def get_config():
   cfg.train_summaries = {}
 
   cfg.writer = kd.train.metric_writer.NoopWriter()
-  cfg.profiler = kd.inspect.profile_utils.NoopProfiler()
 
   # Optimizer
   cfg.schedules = {}
 
   cfg.optimizer = optax.sgd(0.1)
 
-  # Checkpointer
-  cfg.checkpointer = kd.ckpts.NoopCheckpointer()
-
   cfg.evals = {}
 
-  cfg.xm_job = None
   cfg.setup = kd.train.setup_utils.Setup(  # pytype: disable=wrong-arg-types
       add_flatboard=False, flatboard_build_context=None
   )
