@@ -21,7 +21,6 @@ from typing import Any
 
 from etils import edc
 from etils import epy
-from etils import g3_utils
 from kauldron.xm._src import merge_utils
 from typing_extensions import Self
 
@@ -145,7 +144,7 @@ class JobParams:
   platform: None | str = None
   cell: None | str = None
 
-  citc_source: None | g3_utils.Source = None
+  citc_source: None | str | tuple[str, ...]
   use_interpreter: bool = False
   interpreter_info: InterpreterInfo = dataclasses.field(
       default_factory=InterpreterInfo

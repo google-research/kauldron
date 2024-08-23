@@ -16,47 +16,15 @@
 
 """
 
-# TODO(epot): Make imports lazy
+# pylint: disable=g-import-not-at-top
+import etils.epy as _epy
 
-# pylint: disable=g-importing-member,g-bad-import-order
-from kauldron.data import deprecated
-from kauldron.data.data_utils import IterableDataset
+with _epy.lazy_api_imports(globals()):
+  # pylint: disable=g-importing-member,g-bad-import-order
+  from kauldron.data.data_utils import IterableDataset
+  # Top-level pipelines
+  from kauldron.data.pipelines import Pipeline
+  from kauldron.data.in_memory import InMemoryPipeline
+  from kauldron.data.pipelines import PyGrainPipeline
 
-# Top-level pipelines
-from kauldron.data.pipelines import Pipeline
-from kauldron.data.in_memory import InMemoryPipeline
-from kauldron.data.pipelines import PyGrainPipeline
-
-# `tf.data` based API
-from kauldron.data.kmix.base import TFDataPipeline
-from kauldron.data.kmix.loaders.graintfds import Tfds
-from kauldron.data.kmix.loaders.seqio import SeqIOMixture
-from kauldron.data.kmix.loaders.seqio import SeqIOTask
-from kauldron.data.kmix.loaders.spec_ds import ElementSpecDataset
-from kauldron.data.kmix.loaders.tfds_legacy import TfdsLegacy
-from kauldron.data.kmix.loaders.with_shuffle_buffer import WithShuffleBuffer
-from kauldron.data.kmix.mixture import SampleFromDatasets
-from kauldron.data.kmix.mixture import ZipDatasets
-
-# *****************************************************************************
-# DO NOT ADD new preprocessing ops here. Instead, add them to `kd.contrib.data`
-# *****************************************************************************
-from kauldron.data.grain_utils import MapTransform
-from kauldron.data.preprocessing import Cast
-from kauldron.data.preprocessing import CenterCrop
-from kauldron.data.preprocessing import Elements
-from kauldron.data.preprocessing import ElementWiseRandomTransform
-from kauldron.data.preprocessing import ElementWiseTransform
-from kauldron.data.preprocessing import Gather
-from kauldron.data.preprocessing import InceptionCrop
-from kauldron.data.preprocessing import OneHot
-from kauldron.data.preprocessing import RandomCrop
-from kauldron.data.preprocessing import RandomFlipLeftRight
-from kauldron.data.preprocessing import Rearrange
-# TODO(epot): Unify Resize & ResizeSmall and have better API.
-from kauldron.data.preprocessing import Resize
-from kauldron.data.preprocessing import ResizeSmall
-from kauldron.data.preprocessing import TreeFlattenWithPath
-from kauldron.data.preprocessing import ValueRange
-from kauldron.data.utils import BatchSize
-# pylint: enable=g-importing-member
+# TODO(klausg): Temporary removal until importing works

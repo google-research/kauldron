@@ -20,6 +20,10 @@ from __future__ import annotations
 
 import contextlib
 
+import sys
+from unittest import mock
+# TODO(klausg): remove once we have a better solution
+sys.modules['etils.exm'] = mock.MagicMock()
 from absl import app
 from absl import flags
 from etils import epy
