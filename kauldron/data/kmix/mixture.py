@@ -42,7 +42,7 @@ class SampleFromDatasets(base.TFDataPipeline):
 
   datasets: list[base.TFDataPipeline]
   _: dataclasses.KW_ONLY
-  weights: None | list[float] = None
+  weights: None | list[float | int] = None
   stop_on_empty_dataset: bool = False
   rerandomize_each_iteration: bool = True
 
