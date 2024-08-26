@@ -338,6 +338,12 @@ class UpdateFromRootCfg:
           f'fields from parent classes are automatically merged): {all_fields}'
       )
 
+    def _apply_fn(x):
+      if hasattr(x, 'update_from_root_cfg'):
+        return x.update_from_root_cfg(root_cfg)
+      else:
+        return x
+
     for field_name in all_fields:
       if field_name in fields_to_replace:  # Field already updated.
         new_value = fields_to_replace[field_name]
@@ -346,7 +352,7 @@ class UpdateFromRootCfg:
 
       # Apply `.update_from_root_cfg()` on the field
       fields_to_replace[field_name] = jax.tree.map(
-          lambda x: x.update_from_root_cfg(root_cfg),
+          _apply_fn,
           new_value,
           is_leaf=lambda x: isinstance(x, UpdateFromRootCfg),
       )
