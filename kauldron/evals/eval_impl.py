@@ -160,6 +160,10 @@ def _preemptable_iter_new_checkpoints(
     state: train_step.TrainState,
 ) -> Iterator[train_step.TrainState]:
   """Yields the new checkpoints."""
+  # Skip the `iter_new_checkpoints` for eval-only jobs.
+  if trainer.setup.eval_only:
+    return
+
   trainer_ckpt = trainer.checkpointer
   eval_ckpt = _get_eval_ckpt(trainer_ckpt, eval_names)
   # If the eval checkpoint exists, there is an ongoing eval that was preempted
@@ -178,10 +182,8 @@ def _preemptable_iter_new_checkpoints(
       min_interval_secs=10,
       timeout=10,
       timeout_fn=lambda: (
-          # Skip the `iter_new_checkpoints` for eval-only jobs.
-          trainer.setup.eval_only
           # Exit when train job has completed
-          or epath.Path(trainer.workdir)
+          epath.Path(trainer.workdir)
           .joinpath(TRAIN_COMPLETE_FILENAME)
           .exists()
       ),
