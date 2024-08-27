@@ -22,7 +22,7 @@ import dataclasses
 import functools
 import os
 import typing
-from typing import Optional
+from typing import Any, Optional
 
 from etils import epy
 from etils import exm
@@ -76,6 +76,7 @@ class Experiment(job_params.JobParams):
     emoji_tags: Whether to use cool emoji tags.
     add_tensorboard_borg: Add TensorBoard
     add_tensorboard_corp: Add TensorBoard corp
+    aux: A dict of arbitrary additional values.
   """
 
   # Base experiment information
@@ -114,6 +115,9 @@ class Experiment(job_params.JobParams):
   # Auxiliary units (TB,...)
   add_tensorboard_borg: bool = False
   add_tensorboard_corp: bool = False
+
+  # Additional arbitrary config values
+  aux: Any = dataclasses.field(default_factory=dict)
 
   def __post_init__(self):
     super().__post_init__()
