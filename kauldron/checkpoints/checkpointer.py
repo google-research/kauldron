@@ -165,6 +165,7 @@ class Checkpointer(BaseCheckpointer):
     max_to_keep: See `ocp.CheckpointManagerOptions`
     keep_time_interval: See `ocp.CheckpointManagerOptions`
     keep_period: See `ocp.CheckpointManagerOptions`
+    enable_async_checkpointing: See `ocp.CheckpointManagerOptions`
     fast: (internal) Activate some optimizations
     create: (internal) Whether to create the checkpoint directory, this is set
       by kauldron automatically based on whether the job is a training job
@@ -177,6 +178,7 @@ class Checkpointer(BaseCheckpointer):
   max_to_keep: Optional[int] = 3
   keep_time_interval: Optional[datetime.timedelta] = None
   keep_period: Optional[int] = None
+  enable_async_checkpointing: bool = True
 
   fast: bool = True
   create: bool = True
@@ -194,6 +196,7 @@ class Checkpointer(BaseCheckpointer):
         # step_format_fixed_length=9,
         create=self.create,
         # TODO(epot): Add `best_fn` to allow `ckpt_mngr.best_step()`
+        enable_async_checkpointing=self.enable_async_checkpointing,
         async_options=ocp.AsyncOptions(
             timeout_secs=60 * 30,  # 30 minutes
         ),

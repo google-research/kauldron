@@ -216,6 +216,8 @@ def _get_eval_ckpt(
         save_interval_steps=1,
         max_to_keep=1,
         create=False,
+        # Ensure that checkpoint is written synchronously.
+        enable_async_checkpointing=False,
     )
   else:
     raise ValueError(f'Unsupported checkpointer type: {type(trainer_ckpt)}')
