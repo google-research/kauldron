@@ -24,6 +24,7 @@ import itertools
 import typing
 from typing import Any, TypeVar
 
+from absl import logging
 from etils import epy
 from kauldron.konfig import configdict_base
 from kauldron.konfig import fake_import_utils
@@ -128,6 +129,7 @@ def resolve(cfg, *, freeze=True):
   try:
     return _ConstructorResolver(freeze=freeze)._resolve_value(cfg)  # pylint: disable=protected-access
   except Exception as e:  # pylint: disable=broad-exception-caught
+    logging.info(f'Full config (failing): {cfg}')  # pylint: disable=logging-fstring-interpolation
     epy.reraise(e, 'Error resolving the config:\n')
 
 
