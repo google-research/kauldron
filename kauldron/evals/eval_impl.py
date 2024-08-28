@@ -166,6 +166,7 @@ def _preemptable_iter_new_checkpoints(
     return
 
   trainer_ckpt = trainer.checkpointer
+  trainer_ckpt = dataclasses.replace(trainer_ckpt, create=False)
   eval_ckpt = _get_eval_ckpt(trainer_ckpt, eval_names)
   # If the eval checkpoint exists, there is an ongoing eval that was preempted
   # and we should resume the onging eval.
