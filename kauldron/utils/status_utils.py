@@ -84,11 +84,11 @@ class _Status:
 
   def log_status(self, msg: str) -> None:
     """Log a message (from lead host), will be displayed on the XM UI."""
-    self.log(msg)
+    self.log(msg, _stacklevel_increment=1)
     if self.on_xmanager and self.is_lead_host:
       self.wu.set_notes(msg)
 
-  def log(self, msg: str) -> None:
+  def log(self, msg: str, *, _stacklevel_increment: int = 0) -> None:
     """Print a message.
 
     * On Colab: Use `print`
@@ -98,11 +98,13 @@ class _Status:
 
     Args:
       msg: the message to print.
+      _stacklevel_increment: If wrapping this function, indicate the number of
+        frame to skip so logging display the correct caller site.
     """
     if (
         not epy.is_notebook()
     ):
-      logging.info(msg)
+      logging.info(msg, stacklevel=2 + _stacklevel_increment)
       return
     else:
       print(msg, flush=True)  # Colab or local
