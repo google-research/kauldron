@@ -165,6 +165,7 @@ class Checkpointer(BaseCheckpointer):
     max_to_keep: See `ocp.CheckpointManagerOptions`
     keep_time_interval: See `ocp.CheckpointManagerOptions`
     keep_period: See `ocp.CheckpointManagerOptions`
+    multiprocessing_options: See `ocp.MultiprocessingOptions`
     fast: (internal) Activate some optimizations
     create: (internal) Whether to create the checkpoint directory, this is set
       by kauldron automatically based on whether the job is a training job
@@ -177,6 +178,9 @@ class Checkpointer(BaseCheckpointer):
   max_to_keep: Optional[int] = 3
   keep_time_interval: Optional[datetime.timedelta] = None
   keep_period: Optional[int] = None
+  multiprocessing_options: ocp.options.MultiprocessingOptions = (
+      dataclasses.field(default_factory=ocp.options.MultiprocessingOptions)
+  )
 
   fast: bool = True
   create: bool = True
@@ -197,6 +201,7 @@ class Checkpointer(BaseCheckpointer):
         async_options=ocp.AsyncOptions(
             timeout_secs=60 * 30,  # 30 minutes
         ),
+        multiprocessing_options=self.multiprocessing_options,
         # Ensure that checkpoints are not world-readable.
         # This file mode removes permission bits for OTHER in the POSIX format.
         # See

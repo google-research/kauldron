@@ -29,6 +29,7 @@ from kauldron.evals import run_strategies
 from kauldron.train import train_step
 from kauldron.train import trainer_lib
 from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
+import orbax.checkpoint as ocp
 
 # pylint: disable=logging-fstring-interpolation
 
@@ -218,6 +219,10 @@ def _get_eval_ckpt(
         save_interval_steps=1,
         max_to_keep=1,
         create=False,
+        # Adding an explicit prefix to avoid collisions with the train-eval job.
+        multiprocessing_options=ocp.options.MultiprocessingOptions(
+            barrier_sync_key_prefix='eval'
+        ),
     )
   else:
     raise ValueError(f'Unsupported checkpointer type: {type(trainer_ckpt)}')
