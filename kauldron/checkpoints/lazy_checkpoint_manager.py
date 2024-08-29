@@ -77,6 +77,13 @@ class LazyCheckpointManager:
       item_handlers = state.__kd_ocp_handlers__()
       object.__setattr__(self, "_item_handlers", item_handlers)
 
+    # Create root directory.
+    # This avoids triggering a race-condition when multiple orbax
+    # CheckpointManager jobs are trying to create the same checkpoint directory
+    # at the same time.
+    if self.options.create:
+      epath.Path(self.directory).mkdir(parents=True, exist_ok=True)
+
     # Set `_mgr`
     if self.fast:
       manager_cls = _FastCheckpointManager
