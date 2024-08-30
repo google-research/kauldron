@@ -46,10 +46,12 @@ class PRNGKey(_Base):
 
   * Object oriented API (`jax.random.uniform(key)` -> `key.uniform()`)
   * `fold_in` supports `str` (`key.fold_in('dropout')`)
+  * Additional `as_seed()` method to get a seed `int` from the rng (to pass
+    to third party APIs, like `grain`, `np.random`,...)
 
   Usage:
 
-  ```
+  ```python
   key = kd.random.PRNGKey(0)
   key0, key1 = key.split()
   x = key0.uniform()
@@ -161,6 +163,17 @@ class PRNGKey(_Base):
     assert dtype is None
     assert copy is None
     return np.asarray(self.rng)
+
+  def as_seed(self) -> int:
+    """Returns a `seed` integer (alias of `int(rng.bits())`).
+
+    Note this is non-reversible (the returned seed is not the one passed to
+    construct the rng).
+
+    Returns:
+      An integer seed.
+    """
+    return int(self.bits())  # pytype: disable=missing-parameter
 
   ball = jax.random.ball
   bernoulli = jax.random.bernoulli

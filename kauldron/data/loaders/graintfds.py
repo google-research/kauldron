@@ -64,7 +64,7 @@ class GrainTfds(base.DataLoader):
       with jax.transfer_guard("allow"):
         rng = random.PRNGKey(seed)
         rng = rng.fold_in(jax.process_index())  # Derive RNG for this host.
-        seed = int(rng.bits())
+        seed = rng.as_seed()
     else:
       seed = None
 

@@ -52,7 +52,7 @@ class TfdsLegacy(with_shuffle_buffer.WithShuffleBuffer):
 
     if self.shuffle:
       # Each process has its own seed.
-      seed = int(rng.fold_in(jax.process_index()).bits())
+      seed = rng.fold_in(jax.process_index()).as_seed()
       read_config.shuffle_seed = seed
       # read_config.shuffle_reshuffle_each_iteration = True
       read_config.enable_ordering_guard = False

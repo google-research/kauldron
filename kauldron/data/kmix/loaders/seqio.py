@@ -83,7 +83,7 @@ class SeqIOTask(_SeqIO):
         split=self.split,
         shuffle=self.shuffle,
         shuffle_buffer_size=self.shuffle_buffer_size,
-        seed=int(rng.bits()),
+        seed=rng.as_seed(),
         shard_info=self.shard_info,
         num_epochs=self.num_epochs,
     )
@@ -111,7 +111,7 @@ class SeqIOMixture(_SeqIO):
         sequence_length=self.sequence_length,
         split=self.split,
         shuffle=self.shuffle,
-        seed=int(rng.bits()),
+        seed=rng.as_seed(),
         num_epochs=self.num_epochs,
         shard_info=self.shard_info,
     )

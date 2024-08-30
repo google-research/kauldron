@@ -63,7 +63,7 @@ class SampleFromDatasets(base.TFDataPipeline):
     ds = tf.data.Dataset.sample_from_datasets(
         datasets,
         weights=self.weights,
-        seed=int(rng.fold_in('sample_from_datasets').bits()),
+        seed=rng.fold_in('sample_from_datasets').as_seed(),
         stop_on_empty_dataset=self.stop_on_empty_dataset,
         rerandomize_each_iteration=self.rerandomize_each_iteration,
     )

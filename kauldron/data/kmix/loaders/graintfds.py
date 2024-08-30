@@ -57,7 +57,7 @@ class Tfds(base.TFDataPipeline):
     sampler = grain.TfDefaultIndexSampler(
         num_records=len(source),
         shuffle=self.shuffle,
-        seed=int(rng.bits()),
+        seed=rng.as_seed(),
         shard_options=grain.ShardByJaxProcess(
             drop_remainder=self.shard_drop_remainder
         ),

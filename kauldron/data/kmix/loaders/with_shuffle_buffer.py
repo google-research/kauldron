@@ -62,7 +62,7 @@ class WithShuffleBuffer(base.TFDataPipeline):
       rng = rng.fold_in('shuffle_buffer')
       ds = ds.shuffle(
           self.shuffle_buffer_size,
-          seed=int(rng.bits()),
+          seed=rng.as_seed(),
           # reshuffle_each_iteration=True,
       )
 

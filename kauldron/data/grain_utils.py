@@ -110,7 +110,7 @@ def maybe_add_grain_meta_features(
   sampler = grain.TfDefaultIndexSampler(
       num_records=sys.maxsize,  # Infinite iterator
       shuffle=False,
-      seed=int(rng.fold_in("grain_metadata").bits()),
+      seed=rng.fold_in("grain_metadata").as_seed(),
       shard_options=grain.ShardByJaxProcess(),
       num_epochs=None,
   )
