@@ -188,6 +188,21 @@ class _ConfigDictVisitor:
     return value
 
 
+@dataclasses.dataclass(frozen=True, slots=True, kw_only=True)
+class _CachedObj:
+  """Keep track of the config with it's associated resolved value.
+
+  Keeps a reference to the config object so that Python's garbage collector
+  doesn't clear the object from memory. As otherwise its `id(config)` could be
+  taken by another unrelated config2 object. This can be the case with ref_fn
+  where the config object is dynamically created every time (thus is not kept
+  alive).
+  """
+
+  config: Any
+  resolved: Any
+
+
 class _ConstructorResolver(_ConfigDictVisitor):
   """Instanciate all `ConfigDict` proxy object."""
 
@@ -200,7 +215,7 @@ class _ConstructorResolver(_ConfigDictVisitor):
   def _resolve_dict(self, value):
     # If the value was already resolved, return it (shared object)
     if id(value) in self._id_to_obj:
-      return self._id_to_obj[id(value)]
+      return self._id_to_obj[id(value)].resolved
 
     # Dict proxies have `__const__` or `__qualname__` keys
     if QUALNAME_KEY in value:
@@ -244,7 +259,7 @@ class _ConstructorResolver(_ConfigDictVisitor):
     # Allow the object to save the config it is comming from.
     if hasattr(type(obj), '__post_konfig_resolve__'):
       obj.__post_konfig_resolve__(value)
-    self._id_to_obj[id(value)] = obj
+    self._id_to_obj[id(value)] = _CachedObj(config=value, resolved=obj)
     return obj
 
 
