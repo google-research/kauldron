@@ -216,7 +216,8 @@ class Experiment(job_params.JobParams):
           file_content=repr(self),
           description="kxm.Experiment",
       )
-      xp.set_importance(self.importance)
+      if self.importance != xm.Importance.NORMAL:
+        xp.set_importance(self.importance)
       # Let the jobs builder perform additional customization
       self.jobs_provider.experiment_creation(xp)
       # Add the config flags artifacts
