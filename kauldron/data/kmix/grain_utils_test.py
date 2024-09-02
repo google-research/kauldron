@@ -19,6 +19,7 @@ from typing import Any
 
 from grain import tensorflow as grain
 from kauldron import kd
+from kauldron.data.kmix import grain_utils
 import pytest
 import tensorflow as tf
 
@@ -72,7 +73,7 @@ def test_source(is_supervised: bool):
   ds = data_loader.as_dataset(start_index=grain.FirstIndex())
   (ex,) = ds.take(1).as_numpy_iterator()
 
-  meta, ex = kd.data.grain_utils.split_grain_meta_features(ex)
+  meta, ex = grain_utils.split_grain_meta_features(ex)
 
   assert all(k.startswith('_') for k in meta.keys())
 

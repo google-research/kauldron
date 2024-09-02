@@ -28,9 +28,9 @@ from grain._src.tensorflow import transforms as grain_transforms
 import grain.tensorflow as grain
 import jax
 from kauldron import random
-from kauldron.data import grain_utils
 from kauldron.data import iterators
 from kauldron.data import pipelines
+from kauldron.data.kmix import grain_utils
 from kauldron.typing import PyTree  # pylint: disable=g-importing-member,g-multiple-import
 import tensorflow as tf
 import tensorflow_datasets as tfds
