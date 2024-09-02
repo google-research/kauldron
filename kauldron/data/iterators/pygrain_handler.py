@@ -45,7 +45,7 @@ class PyGrainCheckpointRestore(grain.PyGrainCheckpointRestore):
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class PyGrainIterator(iterators.Iterator):
   """PyGrain iterator."""
-  iter: grain.PyGrainDatasetIterator
+  iter: grain.DatasetIterator
 
   def __next__(self):
     return next(self.iter)
@@ -61,10 +61,8 @@ class PyGrainIterator(iterators.Iterator):
   def __kd_ocp_restore_args__(self) -> ocp.args.CheckpointArgs:
     return PyGrainCheckpointRestore(self.iter)
 
-  def __kd_ocp_restore_post__(
-      self, value: grain.PyGrainDatasetIterator
-  ) -> Self:
-    assert isinstance(value, grain.PyGrainDatasetIterator)
+  def __kd_ocp_restore_post__(self, value: grain.DatasetIterator) -> Self:
+    assert isinstance(value, grain.DatasetIterator)
     # Note that like TF, the `self.iter` is mutated in-place, so could return
     # `self` here.
     return PyGrainIterator(source=self.source, iter=value)

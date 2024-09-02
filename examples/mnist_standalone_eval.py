@@ -84,8 +84,7 @@ def get_config():
 
 
 def _make_ds(split: str):
-  # return kd.data.PyGrainPipeline(
-  #    data_source=tfds.data_source("mnist", split=split),
+  # return kd.data.py.Tfds(
   return kd.data.Tfds(
       name="mnist",
       split=split,

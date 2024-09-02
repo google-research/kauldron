@@ -25,7 +25,6 @@ with _epy.lazy_api_imports(globals()):
   # Top-level pipelines
   from kauldron.data.pipelines import Pipeline
   from kauldron.data.in_memory import InMemoryPipeline
-  from kauldron.data.pipelines import PyGrainPipeline
 
   # PyGrain based data pipeline.
   from kauldron.data import pymix as py

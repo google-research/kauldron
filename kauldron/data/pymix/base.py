@@ -108,9 +108,10 @@ class PyGrainPipeline(pipelines.Pipeline):
     ds = ds.to_iter_dataset(read_options=self.read_options)
 
     # Distribute the execution across multiple worker processes.
-    if self.num_workers > 0:
+    num_workers = _get_num_workers(self.num_workers)
+    if num_workers > 0:
       multiprocessing_options = grain.MultiprocessingOptions(
-          num_workers=_get_num_workers(self.num_workers),
+          num_workers,
           enable_profiling=self.enable_profiling,
       )
       ds = ds.prefetch(multiprocessing_options)

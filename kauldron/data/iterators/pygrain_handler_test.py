@@ -36,11 +36,11 @@ class RangeDataSource(grain.RandomAccessDataSource):
 
 
 def _make_pipeline() -> kd.data.Pipeline:
-  return kd.data.PyGrainPipeline(
+  return kd.data.py.DataSource(
       seed=12,
       shuffle=False,
       data_source=RangeDataSource(num_elems=100),
-      worker_count=0,
+      num_workers=0,
       batch_size=None,
   )
 

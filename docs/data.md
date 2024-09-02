@@ -5,8 +5,23 @@
 All Kauldron data pipelines inherit from the `kd.data.Pipeline` abstract base class.
 By default, Kauldron provides two main pipelines implementations:
 
-*   Recommended: `tf.data` based: `kd.data.TFDataPipeline` base class which
-    itself implements multiple sub-classes (see next section). For example:
+*   Recommended: PyGrain based: `kd.data.py`, which takes any custom
+    `grain.RandomAccessDataSource` as input. Example:
+
+    ```python
+    cfg.train_ds = kd.data.py.DataSource(
+        data_source=tfds.data_source("mnist", split='train'),
+        shuffle=True,
+        batch_size=256,
+        transforms=[
+            kd.data.Elements(keep=["image"]),
+            kd.data.ValueRange(key="image", vrange=(0, 1)),
+        ],
+    )
+    ```
+
+*   `tf.data` based: `kd.data.TFDataPipeline` base class which itself implements
+    multiple sub-classes (see next section). For example:
 
     ```python
     cfg.train_ds = kd.data.Tfds(
@@ -16,21 +31,6 @@ By default, Kauldron provides two main pipelines implementations:
         shuffle=True,
 
         # `kd.data.TFDataPipeline` args (common to all TFDataPipeline)
-        batch_size=256,
-        transforms=[
-            kd.data.Elements(keep=["image"]),
-            kd.data.ValueRange(key="image", vrange=(0, 1)),
-        ],
-    )
-    ```
-
-*   PyGrain based: `kd.data.PyGrainPipeline`, which takes any custom
-    `grain.RandomAccessDataSource` as input. Example:
-
-    ```python
-    cfg.train_ds = kd.data.PyGrainPipeline(
-        data_source=tfds.data_source("mnist", split='train'),
-        shuffle=True,
         batch_size=256,
         transforms=[
             kd.data.Elements(keep=["image"]),
@@ -94,7 +94,7 @@ cfg.train_ds = kd.data.SampleFromDatasets(
 
 ## Transformations
 
-Both `kd.data.PyGrainPipeline` and `kd.data.TFDataPipeline` can be customized
+Both `kd.data.py.PyGrainPipeline` and `kd.data.TFDataPipeline` can be customized
 through a list of grain transformations.
 
 Common transforms include:
