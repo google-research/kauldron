@@ -5,7 +5,7 @@ https://kauldron.rtfd.io/en/latest-kmix
 [TOC]
 
 Kmix is a small wrapper around `kd.data.Pipeline` to build flexible data
-pipelines.
+pipelines based on `tf.data`.
 
 ## Example
 
@@ -74,7 +74,7 @@ TODO(epot): Add more source options.
 
 -->
 
-Additionally, sources dataset can be combined using:
+Additionally, sources datasets can be combined using:
 
 * `kmix.SampleFromDatasets`: Sample from a combination of datasets.
 

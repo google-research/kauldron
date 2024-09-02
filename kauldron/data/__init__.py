@@ -27,4 +27,10 @@ with _epy.lazy_api_imports(globals()):
   from kauldron.data.in_memory import InMemoryPipeline
   from kauldron.data.pipelines import PyGrainPipeline
 
+  # PyGrain based data pipeline.
+  from kauldron.data import pymix as py
+  # TODO(epot): Migrate all existing symbols to `kd.data.tf.`
+  # tf.data base data pipeline.
+  from kauldron.data import kmix as tf
+
 # TODO(klausg): Temporary removal until importing works

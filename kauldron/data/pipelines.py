@@ -59,7 +59,7 @@ class Pipeline(data_utils.IterableDataset, config_util.UpdateFromRootCfg):
       preprocessing. Defaults to the seed from the root config.
   """
 
-  batch_size: int | None
+  batch_size: int | None = None
   seed: Optional[PRNGKeyLike] = config_util.ROOT_CFG_REF.seed
 
   @functools.cached_property

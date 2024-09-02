@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Data pipelines."""
+"""`tf.data` data pipeline."""
 
 import abc
 from collections.abc import Sequence
 import dataclasses
 import functools
+import typing
 from typing import Any, Optional, TypeAlias
 
 from absl import logging
@@ -55,7 +56,6 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
   returns the `tf.data.Dataset` for the current process.
 
   Attributes:
-    batch_size: Batch size.
     transforms: A list of `grain.Transformation` to apply to the dataset. Can be
       a dict to allow easier CLI / sweep access (
       `--cfg.train_ds.transforms.img_scale.in_vrange=(-1,1)`)
@@ -68,8 +68,13 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
       not otherwise.
   """
 
+  # TODO(epot): Need to duplicate `batch_size` because pytype fail to detect
+  # the parent class
+  if typing.TYPE_CHECKING:
+    batch_size: int | None = ...
+    seed: int = ...
+
   # TODO(epot): Users should also be able to specify drop_reminder or mask
-  batch_size: int | None = None
   batch_drop_remainder: bool = True
   transforms: (
       Sequence[grain.Transformation] | dict[str, grain.Transformation]
