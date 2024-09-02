@@ -27,6 +27,7 @@ import jax
 from kauldron import random
 from kauldron.data import iterators
 from kauldron.data import pipelines
+from kauldron.typing import PRNGKeyLike  # pylint: disable=g-importing-member,g-multiple-import
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True, eq=True)
@@ -53,7 +54,7 @@ class PyGrainPipeline(pipelines.Pipeline):
   # the parent class
   if typing.TYPE_CHECKING:
     batch_size: int | None = ...
-    seed: int = ...
+    seed: PRNGKeyLike | None = ...
 
   transforms: grain.Transformations = dataclasses.field(default_factory=list)
 

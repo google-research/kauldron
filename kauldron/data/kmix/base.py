@@ -31,7 +31,7 @@ from kauldron import random
 from kauldron.data import iterators
 from kauldron.data import pipelines
 from kauldron.data.kmix import grain_utils
-from kauldron.typing import PyTree  # pylint: disable=g-importing-member,g-multiple-import
+from kauldron.typing import PRNGKeyLike, PyTree  # pylint: disable=g-importing-member,g-multiple-import
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
@@ -72,7 +72,7 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
   # the parent class
   if typing.TYPE_CHECKING:
     batch_size: int | None = ...
-    seed: int = ...
+    seed: PRNGKeyLike | None = ...
 
   # TODO(epot): Users should also be able to specify drop_reminder or mask
   batch_drop_remainder: bool = True
