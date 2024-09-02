@@ -170,7 +170,7 @@ def _json_to_config(json_value, *, lazy: bool):
           )
       return konfig.ConfigDict(values)
     case list():
-      return tuple(_json_to_config(v, lazy=lazy) for v in json_value)
+      return [_json_to_config(v, lazy=lazy) for v in json_value]
     case _:
       return json_value
 
