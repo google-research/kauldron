@@ -24,6 +24,7 @@ import hashlib
 from absl import logging
 from etils import epath
 from kauldron.checkpoints import checkpointer
+from kauldron.checkpoints import partial_loader
 from kauldron.evals import evaluators as evaluators_lib
 from kauldron.evals import run_strategies
 from kauldron.train import train_step
@@ -69,6 +70,8 @@ def continuous_eval(
   # In eval-only mode, the model weights are restored from the init_transforms
   # and not the checkpoint, so we cannot skip it.
   state = trainer.init_state(skip_transforms=not trainer.setup.eval_only)
+  # Remove optimizer state to avoid using additional memory.
+  state = state.replace(opt_state=None)
   aux = {eval_name: train_step.Auxiliaries() for eval_name in eval_names}
 
   # If preempted, the last checkpoint might be re-computed. There could be
@@ -166,6 +169,7 @@ def _preemptable_iter_new_checkpoints(
     return
 
   trainer_ckpt = trainer.checkpointer
+  assert isinstance(trainer_ckpt, checkpointer.Checkpointer)
   eval_ckpt = _get_eval_ckpt(trainer_ckpt, eval_names)
   # If the eval checkpoint exists, there is an ongoing eval that was preempted
   # and we should resume the onging eval.
@@ -175,9 +179,11 @@ def _preemptable_iter_new_checkpoints(
     logging.info('Resume evaluation...')
     # Restore the state from the last eval checkpoint
     state = eval_ckpt.restore(state)
+    step = int(state.step)
     yield state
+    # state might have been donated, we should not access it after this point.
     # Eval is done, remove the duplicated checkpoint
-    eval_ckpt.delete(state.step)
+    eval_ckpt.delete(step)
 
   for step in trainer_ckpt.iter_new_checkpoints(
       min_interval_secs=10,
@@ -189,14 +195,27 @@ def _preemptable_iter_new_checkpoints(
           .exists()
       ),
   ):
-    state = trainer_ckpt.restore(state, step=step)
+    # TODO(epot): Rather than `PartialKauldronLoader`, should instead
+    # have some `trainer_ckpt.restore(state, partial_restore=True)`
+    # Only restore the params and step from the trainer checkpoint.
+    state = partial_loader.PartialKauldronLoader(
+        workdir=trainer_ckpt.workdir,
+        # Load everything except the optimizer state.
+        new_to_old={
+            f.name: f.name
+            for f in dataclasses.fields(state)
+            if f.name != 'opt_state'
+        },
+        step=step,
+    ).transform(state)
     assert int(state.step) == step
     # Temporarily copy the state to the eval checkpoint, to ensure that
     # it won't be deleted by the train job until the current eval is done.
     eval_ckpt.save(state, step=step)
     yield state
+    # state might have been donated, we should not access it after this point.
     # Eval is done, remove the duplicated checkpoint
-    eval_ckpt.delete(state.step)
+    eval_ckpt.delete(step)
 
 
 def _get_eval_ckpt(
