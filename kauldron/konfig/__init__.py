@@ -46,6 +46,7 @@ from kauldron.konfig.configdict_proxy import resolve
 from kauldron.konfig.fake_import_utils import imports
 from kauldron.konfig.fake_import_utils import mock_modules
 from kauldron.konfig.fake_import_utils import set_lazy_imported_modules
+from kauldron.konfig.flags_utils import DEFINE_config_file
 from kauldron.konfig.ref_utils import ref_copy
 from kauldron.konfig.ref_utils import ref_fn
 from kauldron.konfig.ref_utils import WithRef

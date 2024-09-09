@@ -28,19 +28,16 @@ from absl import app
 from absl import flags
 from etils import epy
 import jax
-import ml_collections
-from ml_collections import config_flags
 import tensorflow as tf
 
 from kauldron import kd
 from kauldron.utils import sweep_utils
 
-_CONFIG = config_flags.DEFINE_config_file(
+_CONFIG = kd.konfig.DEFINE_config_file(
     "cfg",
     None,
     "Training configuration.",
     lock_config=False,
-    accept_new_attributes=True,
 )
 _SWEEP_CONFIG = sweep_utils.define_sweep_flag()
 _EVAL_NAMES = flags.DEFINE_list(
@@ -86,7 +83,7 @@ def _wu_error_handling(post_mortem: bool = False):
   yield  # not yet supported externally
 
 
-def _update_xm_configuration(cfg: ml_collections.ConfigDict) -> None:
+def _update_xm_configuration(cfg: kd.konfig.ConfigDict) -> None:
   pass  # not supported externally
 
 

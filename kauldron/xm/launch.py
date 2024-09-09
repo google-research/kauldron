@@ -27,7 +27,6 @@ from absl import flags
 from etils import epy
 # Import jax outside the `binary_adhoc` scope to avoid some errors
 import jax  # pylint: disable=unused-import
-from ml_collections import config_flags
 
 # Re-import `epy` from HEAD (as the XManager CLI might contain an old version)
 with epy.binary_adhoc(reload="etils"):
@@ -45,21 +44,19 @@ flags.FLAGS.xm_progress_reporting_use_notes = True
 
 
 try:
-  _XP = config_flags.DEFINE_config_file(
+  _XP = konfig.DEFINE_config_file(
       "xp",
       "third_party/py/kauldron/xm/configs/kd_base.py",
       "Path to the XManager config to be run.",
-      accept_new_attributes=True,
       lock_config=False,
   )
 except Exception as e_:  # pylint: disable=broad-exception-caught
   epy.reraise(e_, suffix="See all flags at")
 
-_CONFIG = config_flags.DEFINE_config_file(
+_CONFIG = konfig.DEFINE_config_file(
     "cfg",
     None,
     "Path to the configuration file to be run.",
-    accept_new_attributes=True,
     lock_config=False,
 )
 
