@@ -124,6 +124,22 @@ def _link_metric_to_state(fn: _FnT) -> _FnT:
   return new_get_state
 
 
+def skip_link_metric(fn: _FnT) -> _FnT:
+  """Decorator to disable the `_link_metric_to_state` magic.
+
+  This is important for wrapper metrics like `kd.metrics.TreeReduce` where
+  the state.parent should remain the wrapped metric.
+
+  Args:
+    fn: The `get_state` or `empty` function to skip.
+
+  Returns:
+    The function with the `_has_link_metric` flag set to True.
+  """
+  fn._has_link_metric = True  # pylint: disable=protected-access
+  return fn
+
+
 @flax.struct.dataclass
 class TreeState(base_state.State):
   """Holds a pytree of metric states."""
@@ -227,7 +243,7 @@ class TreeMap(_TreeMetric):
   class State(TreeState):
     pass
 
-  def get_state(self, **kwargs):
+  def get_state(self, **kwargs) -> TreeMap.State:
     state_tree = self._get_tree_state(**kwargs)
     return self.State(state_tree)
 
@@ -239,6 +255,7 @@ class TreeReduce(_TreeMetric):
   The given metric defines the aggregation method.
   """
 
+  @skip_link_metric
   def get_state(self, **kwargs) -> base_state.State:
     state_tree = self._get_tree_state(**kwargs)
     reduced_state = jax.tree.reduce(
@@ -248,6 +265,10 @@ class TreeReduce(_TreeMetric):
         is_leaf=base_state.State.isinstance,
     )
     return reduced_state
+
+  @skip_link_metric
+  def empty(self) -> base_state.State:
+    return self.metric.empty()
 
 
 def _tree_map_with_kwargs(fun, **kwargs):
