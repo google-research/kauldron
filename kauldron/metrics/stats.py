@@ -17,7 +17,8 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Optional
+from typing import Literal, Optional
+import warnings
 
 import flax.struct
 import jax.numpy as jnp
@@ -74,17 +75,54 @@ class Norm(base.Metric):
       default is None.
     ord: Order of the norm. Possible values: None, "fro", "nuc", np.inf,
       -np.inf, -2, -1, 0, or any integer or float. See `np.linalg.norm`.
+    aggregation_type: How to aggregate the norms in TreeReduce. Average will
+      compute the average of the norms. Concat will compute the norm as if all
+      nodes of a tree were concatenated into a single vector. Average by
+      default.
   """
 
   tensor: kontext.Key = kontext.REQUIRED
   mask: Optional[kontext.Key] = None
 
   axis: None | int | tuple[int, int] = -1
-  ord: float | int | str | None = None
+  ord: float | int | None = None
+
+  aggregation_type: Literal["average", "concat"] | None = None
 
   @flax.struct.dataclass
   class State(base_state.AverageState):
-    pass
+    """Wrapper around AverageState for Norm."""
+
+    def merge(self, other: base_state.AverageState) -> base_state.AverageState:
+      assert isinstance(other, Norm.State)
+
+      if self.parent.axis is None and self.parent.aggregation_type is None:  # pytype: disable=attribute-error
+        warnings.warn(
+            "When setting axis=None in kd.metrics.Norm and running a TreeReduce"
+            " over it, Norm will average the norms of individual leaves, rather"
+            " than computing the norm as if everything was concatenated. Please"
+            ' specify an aggregation_type to "concat" to get the norm of'
+            ' concatenated values. Set the aggregation_type to "average" to'
+            " suppress this warning."
+        )
+      return super().merge(other)
+
+    def compute(self) -> Float[""]:
+      parent = self.parent  # pytype: disable=attribute-error
+      aggregation_type = (
+          parent.aggregation_type
+          if parent.aggregation_type is not None
+          else "average"
+      )
+      if aggregation_type == "average":
+        return super().compute()
+      elif aggregation_type == "concat":
+        # norm(v) = (\sum_i |v_i|**ord)**(1/ord)
+        # Note that there is no averaging here, as expected by the formula.
+        return self.total ** (1 / (parent.ord or 2))
+      raise ValueError(
+          f"Unsupported aggregation_type: {parent.aggregation_type}"
+      )
 
   @typechecked
   def get_state(
@@ -108,8 +146,18 @@ class Norm(base.Metric):
     if mask is not None:
       mask = jnp.broadcast_to(mask, norm.shape)
 
-    # averaging of norms is done by the State
-    return self.State.from_values(values=norm, mask=mask)
+    aggregation_type = (
+        self.aggregation_type
+        if self.aggregation_type is not None
+        else "average"
+    )
+    values_for_averaging = (
+        norm if aggregation_type == "average" else norm ** (self.ord or 2)
+    )
+    return self.State.from_values(
+        values=values_for_averaging,
+        mask=mask,
+    )
 
 
 @flax.struct.dataclass
