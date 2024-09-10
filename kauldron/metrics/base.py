@@ -117,7 +117,10 @@ def _link_metric_to_state(fn: _FnT) -> _FnT:
   @functools.wraps(fn)
   def new_get_state(self, *args, **kwargs):
     state = fn(self, *args, **kwargs)
-    state = dataclasses.replace(state, parent=self)
+    if state.parent is None:  # preserve the parent if it is already set
+      # this is important for wrapper metrics like `kd.metrics.TreeReduce`
+      #  where the parent should remain set to the inner metric.
+      state = dataclasses.replace(state, parent=self)
     return state
 
   new_get_state._has_link_metric = True  # pylint: disable=protected-access
@@ -248,6 +251,9 @@ class TreeReduce(_TreeMetric):
         is_leaf=base_state.State.isinstance,
     )
     return reduced_state
+
+  def empty(self) -> base_state.State:
+    return self.metric.empty()
 
 
 def _tree_map_with_kwargs(fun, **kwargs):

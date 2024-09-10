@@ -87,6 +87,20 @@ def test_tree_reduce():
   assert y == 4  # IntAverage of a, c, and d
 
 
+def test_tree_reduce_state_and_parent():
+  m = base.TreeReduce(metric=IntAverage())
+  d = {
+      "a": np.arange(12).reshape((3, 4)),
+      "b": np.arange(8).reshape((8)),
+  }
+  state = m.get_state(x=d)
+  empty = m.empty()
+  assert isinstance(state, IntAverage.State)
+  assert isinstance(empty, IntAverage.State)
+  assert state.parent is m.metric
+  assert empty.parent is m.metric
+
+
 def test_tree_map_glob():
   m = base.TreeMap(metric=IntAverage(x="batch.**.d"))
   d = {
