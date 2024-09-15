@@ -23,6 +23,7 @@ import functools
 import typing
 from typing import Any, TypeVar
 
+from clu import checkpoint as clu_checkpoint
 from etils import epath
 from etils import epy
 import flax
@@ -62,6 +63,71 @@ class AbstractPartialLoader(abc.ABC):
       The updated `state`
     """
     raise NotImplementedError
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class PartialCLULoader(AbstractPartialLoader):
+  """Parial loader for CLU checkpoints.
+
+  Allow to use pretrained weights from a CLU checkpoint.
+
+  Usage:
+
+  ```python
+  cfg.init_transforms = {
+      'pretrained_init': kd.ckpts.PartialCLULoader(
+          workdir='/path/to/original/work_unit/',
+          new_to_old={  # Mapping params
+              # '<new_path>':            '<source_path>'
+              'params.decoder.layers_0': 'params.endoder',
+          },
+      )
+  }
+
+  trainer = konfig.resolve(cfg)
+
+  # When initializing the weights, the `init_transform` is applied
+  init_state = trainer.init_state()
+
+  # `init_state.params['decoder']['layers_0']` now contain the previous encoder
+  # weights
+  ```
+
+  Attributes:
+    ckpt_dir: The directory from which the checkpoint should be loaded.
+    new_to_old: Mapping the pytree to copy to the new state from the original
+      checkpoint. By default, copy all model `params` and `collections`
+  """
+
+  ckpt_dir: epath.PathLike
+  new_to_old: MutableMapping[str, str] = dataclasses.field(
+      default_factory=lambda: FrozenDict({
+          'params': 'params',
+          'collections': 'collections',
+      })
+  )
+
+  def transform(self, state: _T) -> _T:
+    restored = clu_checkpoint.load_state_dict(self.ckpt_dir)
+
+    # Extract the sub-tree from the old state
+    sub_state = {
+        new_path: kontext.get_by_path(restored, old_path)
+        for new_path, old_path in self.new_to_old.items()
+    }
+
+    # `state` is not a PyTree so we make a mutable deep copy first.
+    state_serialized = ocp.utils.serialize_tree(state, keep_empty_nodes=True)
+
+    # Update keys in `state_serialized` using new values from `sub_state`.
+    for new_path, _ in self.new_to_old.items():
+      kontext.set_by_path(state_serialized, new_path, sub_state[new_path])
+
+    # Writes back into `state` from the updated `state_serialized`.
+    ocp.utils.deserialize_tree(
+        state_serialized, target=state, keep_empty_nodes=True
+    )
+    return state
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
