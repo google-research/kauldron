@@ -182,6 +182,10 @@ class LazyCheckpointManager:
     ):
       yield step
 
+  def close(self) -> None:
+    """Wrapper around `ocp.CheckpointManager.close`."""
+    return self._get_manager().close()
+
 
 class _FastCheckpointManager(ocp.CheckpointManager):
   """Wrapper around Checkpointmanager that speeds up loading."""

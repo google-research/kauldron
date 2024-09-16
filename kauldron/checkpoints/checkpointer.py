@@ -22,10 +22,11 @@ import dataclasses
 import datetime
 import functools
 import time
-from typing import Any, Optional, Sequence, TypeVar
+from typing import Any, Iterable, Optional, Self, Sequence, TypeVar
 
 from absl import logging
 from etils import epath
+from etils import epy
 import jax
 from kauldron.checkpoints import checkpoint_items
 from kauldron.checkpoints import lazy_checkpoint_manager
@@ -41,7 +42,9 @@ CHECKPOINT_FOLDER_NAME = "checkpoints"
 # pylint: disable=logging-fstring-interpolation
 
 
-class BaseCheckpointer(config_util.UpdateFromRootCfg, abc.ABC):
+class BaseCheckpointer(
+    config_util.UpdateFromRootCfg, epy.ContextManager, abc.ABC
+):
   """Basic checkpointing interface.
 
   2 implementations:
@@ -116,6 +119,18 @@ class BaseCheckpointer(config_util.UpdateFromRootCfg, abc.ABC):
     """Wrapper around `ocp.checkpoint_utils.checkpoints_iterator`."""
     del min_interval_secs, timeout, timeout_fn
     yield from []
+
+  def close(self) -> None:
+    """Closes the checkpointer."""
+    pass
+
+  def __contextmanager__(
+      self,
+  ) -> Iterable[Self]:
+    try:
+      yield self
+    finally:
+      self.close()
 
 
 def _retry(
@@ -358,6 +373,9 @@ class Checkpointer(BaseCheckpointer):
 
   def wait_until_finished(self) -> None:
     self._ckpt_mgr.wait_until_finished()
+
+  def close(self) -> None:
+    self._ckpt_mgr.close()
 
 
 @dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
