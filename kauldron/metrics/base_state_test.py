@@ -36,6 +36,13 @@ class AveragePrecision(kd.metrics.CollectingState):
     )
 
 
+def test_empty_state():
+  state = kd.metrics.EmptyState.empty()
+  assert not state.compute() and isinstance(state.compute(), dict)
+  state1 = state.merge(kd.metrics.EmptyState.empty())
+  assert not state1.compute() and isinstance(state1.compute(), dict)
+
+
 def test_collecting():
   # Examples from
   # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.average_precision_score.html

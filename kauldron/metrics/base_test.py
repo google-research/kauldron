@@ -39,6 +39,13 @@ class IntAverage(base.Metric):
     return IntAverage.State.from_values(values=x)
 
 
+def test_noop_metric():
+  noop_metric = base.NoopMetric()
+  assert not noop_metric.get_state().compute() and isinstance(
+      noop_metric.get_state().compute(), dict
+  )
+
+
 def test_avgerage_x_metric():
   m = IntAverage()
   x = np.arange(12).reshape((3, 4))

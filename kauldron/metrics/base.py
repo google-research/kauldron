@@ -127,6 +127,18 @@ def _link_metric_to_state(fn: _FnT) -> _FnT:
   return new_get_state
 
 
+class NoopMetric(Metric):
+  """Metric that does nothing. Can be used in sweeps to remove a metric."""
+
+  @flax.struct.dataclass
+  class State(base_state.EmptyState):
+    pass
+
+  def get_state(self, **kwargs: Any) -> NoopMetric.State:
+    del kwargs
+    return self.State.empty()
+
+
 @flax.struct.dataclass
 class TreeState(base_state.State):
   """Holds a pytree of metric states."""

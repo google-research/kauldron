@@ -131,6 +131,21 @@ def _propagate_parent_in_merge(old_merge: _FnT) -> _FnT:
 
 
 @flax.struct.dataclass
+class EmptyState(State):
+  """Empty state."""
+
+  @classmethod
+  def empty(cls) -> EmptyState:
+    return cls()
+
+  def merge(self, other: EmptyState) -> EmptyState:
+    return self
+
+  def compute(self) -> dict[Any, Any]:
+    return {}
+
+
+@flax.struct.dataclass
 class CollectingState(State):
   """Accumulate outputs across multiple steps (without reducing).
 
