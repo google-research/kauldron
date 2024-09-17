@@ -21,7 +21,7 @@ from collections.abc import MutableMapping
 import dataclasses
 import functools
 import typing
-from typing import Any, TypeVar
+from typing import Any, Iterable, Self, TypeVar
 
 from etils import epath
 from etils import epy
@@ -65,8 +65,8 @@ class AbstractPartialLoader(abc.ABC):
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class PartialKauldronLoader(AbstractPartialLoader):
-  """Parial loader for Kauldron checkpoints.
+class PartialKauldronLoader(epy.ContextManager, AbstractPartialLoader):
+  """Partial loader for Kauldron checkpoints.
 
   Allow to use pretrained weights from another Kauldron checkpoint.
 
@@ -123,6 +123,17 @@ class PartialKauldronLoader(AbstractPartialLoader):
         workdir=self.workdir,
         save_interval_steps=1,
     )
+
+  def close(self) -> None:
+    self._ckpt_mgr.close()
+
+  def __contextmanager__(
+      self,
+  ) -> Iterable[Self]:
+    try:
+      yield self
+    finally:
+      self.close()
 
 
 @dataclasses.dataclass(frozen=True)
