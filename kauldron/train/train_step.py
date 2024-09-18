@@ -370,6 +370,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
       *,
       model_method: Optional[str] = None,
       skip_transforms: bool = False,
+      skip_optimizer: bool = False,
   ) -> TrainState:
     """Initialize the model and return the initial TrainState.
 
@@ -378,6 +379,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
       model_method: Name of the flax model method (default to `__call__`)
       skip_transforms: If `False`, apply the `init_transform` on the state (e.g.
         to overwrite the weights with ones from another checkpoint).
+      skip_optimizer: If `True`, do not initialize the optimizer.
 
     Returns:
       state: The training state
@@ -389,7 +391,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
     if not skip_transforms:
       # If restoring a checkpoint we can skip the (potentially slow) transforms
       state = self._init_transforms(state)
-    if self.optimizer is not None:
+    if self.optimizer is not None and not skip_optimizer:
       # Eval-only jobs do not have optimizer.
       state = self._init_optimizer(state)
     return state

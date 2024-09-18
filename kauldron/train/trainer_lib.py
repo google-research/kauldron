@@ -331,11 +331,13 @@ class Trainer(config_util.BaseConfig):
 
   # Do not use property to make it explicit this is recomputed each time
   def init_state(
-      self, *, skip_transforms: bool = False
+      self, *, skip_transforms: bool = False, skip_optimizer: bool = False
   ) -> train_step.TrainState:
     """Create the state: `cfg.trainstep.init(cfg.train_ds.element_spec)`."""
     return self.trainstep.init(
-        self.train_ds.element_spec, skip_transforms=skip_transforms
+        self.train_ds.element_spec,
+        skip_transforms=skip_transforms,
+        skip_optimizer=skip_optimizer,
     )
 
   def train(self) -> tuple[train_step.TrainState, train_step.Auxiliaries]:

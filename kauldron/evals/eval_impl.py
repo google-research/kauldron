@@ -68,7 +68,12 @@ def continuous_eval(
   # be careful that step 0 is indeed computed from the checkpoint.
   # In eval-only mode, the model weights are restored from the init_transforms
   # and not the checkpoint, so we cannot skip it.
-  state = trainer.init_state(skip_transforms=not trainer.setup.eval_only)
+  state = trainer.init_state(
+      skip_transforms=not trainer.setup.eval_only,
+      skip_optimizer=all(
+          trainer.evals[name].discard_opt for name in eval_names
+      ),
+  )
   aux = {eval_name: train_step.Auxiliaries() for eval_name in eval_names}
 
   # If preempted, the last checkpoint might be re-computed. There could be
