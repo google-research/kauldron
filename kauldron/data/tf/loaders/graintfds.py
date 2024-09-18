@@ -20,7 +20,7 @@ from typing import Any, ClassVar, Mapping, Optional
 from etils import epath
 import grain.tensorflow as grain
 from kauldron import random
-from kauldron.data.kmix import base
+from kauldron.data.tf import base
 import tensorflow as tf
 
 

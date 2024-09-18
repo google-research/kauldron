@@ -19,7 +19,7 @@ from typing import ClassVar, Optional
 
 import jax
 from kauldron import kd
-from kauldron.data.kmix import base
+from kauldron.data.tf import base
 import tensorflow as tf
 
 
@@ -27,9 +27,9 @@ import tensorflow as tf
 class WithShuffleBuffer(base.TFDataPipeline):
   """Loader with shuffle buffer.
 
-  Note that due to `ds.shuffle`, iterating twice over the `kmix.TFDataPipeline`
-  will yield different order. You need to recreate the `kmix.TFDataPipeline`
-  object to fully reset the iterator.
+  Note that due to `ds.shuffle`, iterating twice over the
+  `kd.data.tf.TFDataPipeline` will yield different order. You need to recreate
+  the `kd.data.tf.TFDataPipeline` object to fully reset the iterator.
 
   Attributes:
     cache: Whether to cache the dataset.

@@ -16,26 +16,36 @@
 
 """
 
-# pylint: disable=g-import-not-at-top
+# pylint: disable=g-import-not-at-top,g-importing-member,g-bad-import-order
+
 import etils.epy as _epy
 
 with _epy.lazy_api_imports(globals()):
-  # pylint: disable=g-importing-member,g-bad-import-order
   from kauldron.data.data_utils import IterableDataset
   # Top-level pipelines
   from kauldron.data.pipelines import Pipeline
   from kauldron.data.in_memory import InMemoryPipeline
 
   # PyGrain based data pipeline.
-  from kauldron.data import pymix as py
+  # TODO(epot): Somehow importing here create infinite recursion when the
+  # import is resolved, likely because there's some special handling of the
+  # suffix `py` to support `third_party.py`. I don't have time to investigate
+  # so instead the module is imported below in `lazy_imports` rather than
+  # `lazy_api_imports`.
+  # from kauldron.data import py
+
   # TODO(epot): Migrate all existing symbols to `kd.data.tf.`
   # tf.data based data pipeline.
-  from kauldron.data import kmix as tf
+  from kauldron.data import tf
 
   # User should inherit from those base classes to have transformations
   # supported by both TfGrain (`kd.data.tf`) and PyGrain (`kd.data.py`)
   from kauldron.data.transforms.abc import MapTransform
   # from kauldron.data.transforms.abc import RandomMapTransform
   from kauldron.data.transforms.abc import FilterTransform
+
+
+with _epy.lazy_imports():
+  from kauldron.data import py
 
 # TODO(klausg): Temporary removal until importing works

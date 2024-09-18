@@ -1,10 +1,10 @@
-# Kmix - tf.data pipelines
+# tf.data pipelines
 
 https://kauldron.rtfd.io/en/latest-kmix
 
 [TOC]
 
-Kmix is a small wrapper around `kd.data.Pipeline` to build flexible data
+`kd.data.tf` is a small wrapper around `kd.data.Pipeline` to build flexible data
 pipelines based on `tf.data`.
 
 ## Example
@@ -12,12 +12,12 @@ pipelines based on `tf.data`.
 Minimal example:
 
 ```python
-cfg.train_ds = kd.data.Tfds(
+cfg.train_ds = kd.data.tf.Tfds(
     # TFDS parameters
     name='mnist',
     split='train',
 
-    # `kmix.TFDataPipeline` optional parameters (common to all objects)
+    # `kd.data.tf.TFDataPipeline` optional parameters (common to all objects)
     batch_size=32,
     transforms=[
         kd.data.Elements(keep=["image"]),
@@ -28,16 +28,16 @@ cfg.train_ds = kd.data.Tfds(
 Example of dataset mixture with nested transforms:
 
 ```python
-cfg.train_ds = kd.data.SampleFromDatasets(
+cfg.train_ds = kd.data.tf.SampleFromDatasets(
     datasets=[
-        kd.data.Tfds(
+        kd.data.tf.Tfds(
             name='cifar100',
             split='train',
             transforms=[
                 kd.data.Elements(keep=["image", "label"]),
             ],
         ),
-        kd.data.Tfds(
+        kd.data.tf.Tfds(
             name='imagenet2012',
             split='train',
             transforms=[
@@ -56,14 +56,14 @@ cfg.train_ds = kd.data.SampleFromDatasets(
 
 ## API
 
-`kmix` provides the following sources:
+`kd.data.tf` provides the following sources:
 
-* `kmix.Tfds`: TFDS dataset (note this require the dataset to be ArrayRecord
-  format)
-* `kmix.TfdsLegacy`: TFDS dataset for datasets not supporting random access (
-   e.g. in `tfrecord` format)
-* `kmix.SeqIOTask`: SeqIO task
-* `kmix.SeqIOMixture`: SeqIO mixture
+* `kd.data.tf.Tfds`: TFDS dataset (note this require the dataset to be
+  ArrayRecord format)
+* `kd.data.tf.TfdsLegacy`: TFDS dataset for datasets not supporting random
+  access (e.g. in `tfrecord` format)
+* `kd.data.tf.SeqIOTask`: SeqIO task
+* `kd.data.tf.SeqIOMixture`: SeqIO mixture
 
 Other sources will be added in the future. If your dataset is not yet supported,
 please [contact us](https://kauldron.rtfd.io/en/latest-help#bugs-feedback).
@@ -76,11 +76,11 @@ TODO(epot): Add more source options.
 
 Additionally, sources datasets can be combined using:
 
-* `kmix.SampleFromDatasets`: Sample from a combination of datasets.
+* `kd.data.tf.SampleFromDatasets`: Sample from a combination of datasets.
 
 ## Implement your own
 
-All kmix classes inherit from this simple protocol.
+All classes inherit from this simple protocol.
 
 ```python
 class TFDataPipeline(kd.data.Pipeline):
@@ -102,11 +102,12 @@ class TFDataPipeline(kd.data.Pipeline):
 
 `transforms`, `batch_size`,... are automatically taken cared of.
 
-See `kmix.Tfds` for an example.
+See `kd.data.tf.Tfds` for an example.
 
-If your dataset does not support random access, you can inherit from `kmix.WithShuffleBuffer` that will automatically take care of adding `ds.cache`,
-`ds.shuffle`, `ds.repeat`. Note that the source dataset should still make sure
-each process yields non-overlapping examples.
+If your dataset does not support random access, you can inherit from
+`kd.data.tf.WithShuffleBuffer` that will automatically take care of adding
+`ds.cache`, `ds.shuffle`, `ds.repeat`. Note that the source dataset should
+still make sure each process yields non-overlapping examples.
 
 Transformations should be added using `transforms=` kwargs, rather than
 hardcoded in the implementation.
@@ -139,7 +140,7 @@ Mixtures should take care of:
 should **not** call `sub_ds.ds_for_current_process()` directly as this would
 skip the transformations from the sub dataset.
 
-See `kmix.SampleFromDatasets` for an example.
+See `kd.data.tf.SampleFromDatasets` for an example.
 
 ## Pipeline API
 

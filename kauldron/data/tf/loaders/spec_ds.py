@@ -21,7 +21,7 @@ from etils import enp
 from etils.etree import jax as etree  # pylint: disable=g-importing-member
 import jax
 from kauldron import random
-from kauldron.data.kmix import base
+from kauldron.data.tf import base
 from kauldron.typing import PyTree  # pylint: disable=g-importing-member
 import tensorflow as tf
 

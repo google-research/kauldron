@@ -23,7 +23,7 @@ from typing import Any, ClassVar, Optional
 from etils import epy
 import jax
 from kauldron import random
-from kauldron.data.kmix import base
+from kauldron.data.tf import base
 import tensorflow as tf
 
 with epy.lazy_imports(

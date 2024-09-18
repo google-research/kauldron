@@ -18,8 +18,8 @@ import dataclasses
 import functools
 
 from kauldron import random
-from kauldron.data.kmix import base
-from kauldron.data.kmix import grain_utils
+from kauldron.data.tf import base
+from kauldron.data.tf import grain_utils
 import tensorflow as tf
 
 

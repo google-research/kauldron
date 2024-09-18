@@ -20,7 +20,7 @@ from typing import Any, Mapping, Optional
 from etils import epath
 import jax
 from kauldron import kd
-from kauldron.data.kmix.loaders import with_shuffle_buffer
+from kauldron.data.tf.loaders import with_shuffle_buffer
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
@@ -29,8 +29,8 @@ import tensorflow_datasets as tfds
 class TfdsLegacy(with_shuffle_buffer.WithShuffleBuffer):
   """Simple wrapper around `tfds.load`.
 
-  `kmix.Tfds` should be preferred as it supports random access nativelly. This
-  class is provided for old datasets still using TFRecord format.
+  `kd.data.tf.Tfds` should be preferred as it supports random access nativelly.
+  This class is provided for old datasets still using TFRecord format.
   """
 
   name: str

@@ -19,7 +19,7 @@ from typing import Any
 
 from grain import tensorflow as grain
 from grain._src.tensorflow import transforms as grain_transforms
-from kauldron.data.kmix import grain_utils
+from kauldron.data.tf import grain_utils
 from kauldron.data.transforms import abc as tr_abc
 from kauldron.data.transforms import normalize as tr_normalize
 import tensorflow as tf

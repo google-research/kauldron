@@ -19,8 +19,8 @@ from typing import Any
 
 from grain import tensorflow as grain
 from kauldron import kd
-from kauldron.data.kmix import grain_utils
-from kauldron.data.kmix import transform_utils
+from kauldron.data.tf import grain_utils
+from kauldron.data.tf import transform_utils
 import pytest
 import tensorflow as tf
 

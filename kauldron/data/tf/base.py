@@ -29,8 +29,8 @@ import jax
 from kauldron import random
 from kauldron.data import iterators
 from kauldron.data import pipelines
-from kauldron.data.kmix import grain_utils
-from kauldron.data.kmix import transform_utils as tr_utils
+from kauldron.data.tf import grain_utils
+from kauldron.data.tf import transform_utils as tr_utils
 from kauldron.typing import PRNGKeyLike, PyTree  # pylint: disable=g-importing-member,g-multiple-import
 import tensorflow as tf
 import tensorflow_datasets as tfds

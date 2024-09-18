@@ -20,7 +20,7 @@ import dataclasses
 
 import grain.python as grain
 from kauldron import random
-from kauldron.data.pymix import base
+from kauldron.data.py import base
 
 
 @dataclasses.dataclass(frozen=True)

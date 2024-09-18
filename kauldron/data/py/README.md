@@ -4,8 +4,8 @@
 
 [TOC]
 
-Pymix is a small wrapper around `kd.data.Pipeline` to build flexible data
-pipelines based on `PyGrain`. Then namespace is exposed as `kd.data.py`
+`kd.data.py` is a small wrapper around `kd.data.Pipeline` to build flexible data
+pipelines based on `PyGrain`.
 
 ## Example
 
@@ -17,7 +17,7 @@ cfg.train_ds = kd.data.py.Tfds(
     name='mnist',
     split='train',
 
-    # `kmix.PyGrainPipeline` optional parameters (common to all objects)
+    # `kd.data.py.PyGrainPipeline` optional parameters (common to all objects)
     batch_size=32,
     transforms=[
         kd.data.py.Elements(keep=["image"]),

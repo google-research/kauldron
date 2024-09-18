@@ -21,7 +21,6 @@ from unittest import mock
 
 import grain.tensorflow as grain
 from kauldron import kd
-from kauldron.data import kmix
 import numpy as np
 import pytest
 import tensorflow as tf
@@ -39,7 +38,7 @@ class _DummyRandomTransform(grain.RandomMapTransform):
 
 
 dummy_tfds_ds = functools.partial(
-    kmix.Tfds,
+    kd.data.tf.Tfds,
     name='dummy_dataset',
     split='train',
     seed=0,
@@ -48,7 +47,7 @@ dummy_tfds_ds = functools.partial(
 
 
 dummy_tfds_legacy_ds = functools.partial(
-    kmix.TfdsLegacy,
+    kd.data.tf.TfdsLegacy,
     name='dummy_dataset',
     split='train',
     seed=0,
@@ -56,7 +55,7 @@ dummy_tfds_legacy_ds = functools.partial(
     transforms=[_DummyRandomTransform()],
 )
 
-_TfdsCls = type[kmix.Tfds | kmix.TfdsLegacy]
+_TfdsCls = type[kd.data.tf.Tfds | kd.data.tf.TfdsLegacy]
 
 
 with_ds_cls = pytest.mark.parametrize(
@@ -140,7 +139,7 @@ def test_shuffle(
   # Iterating twice on the dataset yields the same results.
   exs = list(ds)
   ids = _ids(exs)
-  if isinstance(ds, kmix.WithShuffleBuffer):
+  if isinstance(ds, kd.data.tf.WithShuffleBuffer):
     # When `ds.shuffle` is used, the dataset has to be re-created as
     # `reshuffle_each_iteration` is persistent on the cached iterator.
     ds = dataclasses.replace(ds)
@@ -214,7 +213,7 @@ def test_sample_from_datasets(dummy_builder: tfds.core.GeneratorBasedBuilder):  
           kd.contrib.data.AddConstants({'src': 1}),
       ],
   )
-  dsmix = kmix.SampleFromDatasets(  # pytype: disable=wrong-keyword-args
+  dsmix = kd.data.tf.SampleFromDatasets(  # pytype: disable=wrong-keyword-args
       [ds1, ds2], seed=0
   )
   exs = list(dsmix)
@@ -244,7 +243,7 @@ def test_checkpoint(
   )
 
   checkpoint_kwargs = {}
-  if issubclass(ds_cls.func, kmix.TfdsLegacy):  # pytype: disable=attribute-error
+  if issubclass(ds_cls.func, kd.data.tf.TfdsLegacy):  # pytype: disable=attribute-error
     checkpoint_kwargs['checkpoint'] = True
 
   def _make_ds_iter():

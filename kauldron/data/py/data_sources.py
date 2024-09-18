@@ -23,7 +23,7 @@ from typing import Any, Optional
 
 from etils import epath
 from grain import python as grain
-from kauldron.data.pymix import base
+from kauldron.data.py import base
 import tensorflow_datasets as tfds
 
 
