@@ -20,6 +20,7 @@ from typing import Any
 from grain import tensorflow as grain
 from kauldron import kd
 from kauldron.data.kmix import grain_utils
+from kauldron.data.kmix import transform_utils
 import pytest
 import tensorflow as tf
 
@@ -59,16 +60,18 @@ def test_source(is_supervised: bool):
       shard_options=grain.NoSharding(),
       num_epochs=1,
   )
+  tr = _MyTransform(
+      expected_struct=(None, None)
+      if is_supervised
+      else {'image': None, 'label': None}
+  )
+  assert not isinstance(tr, grain.MapTransform)
+  tr = transform_utils._normalize_transform(tr)
+  assert isinstance(tr, grain.MapTransform)
   data_loader = grain.TfDataLoader(
       source=source,
       sampler=sampler,
-      transformations=[
-          _MyTransform(
-              expected_struct=(None, None)
-              if is_supervised
-              else {'image': None, 'label': None}
-          )
-      ],
+      transformations=[tr],
   )
   ds = data_loader.as_dataset(start_index=grain.FirstIndex())
   (ex,) = ds.take(1).as_numpy_iterator()

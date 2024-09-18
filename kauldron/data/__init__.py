@@ -32,4 +32,10 @@ with _epy.lazy_api_imports(globals()):
   # tf.data based data pipeline.
   from kauldron.data import kmix as tf
 
+  # User should inherit from those base classes to have transformations
+  # supported by both TfGrain (`kd.data.tf`) and PyGrain (`kd.data.py`)
+  from kauldron.data.transforms.abc import MapTransform
+  # from kauldron.data.transforms.abc import RandomMapTransform
+  from kauldron.data.transforms.abc import FilterTransform
+
 # TODO(klausg): Temporary removal until importing works

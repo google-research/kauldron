@@ -24,13 +24,13 @@ from typing import Any, Optional, TypeAlias
 from absl import logging
 from etils import enp
 from etils.etree import jax as etree  # pylint: disable=g-importing-member
-from grain._src.tensorflow import transforms as grain_transforms
 import grain.tensorflow as grain
 import jax
 from kauldron import random
 from kauldron.data import iterators
 from kauldron.data import pipelines
 from kauldron.data.kmix import grain_utils
+from kauldron.data.kmix import transform_utils as tr_utils
 from kauldron.typing import PRNGKeyLike, PyTree  # pylint: disable=g-importing-member,g-multiple-import
 import tensorflow as tf
 import tensorflow_datasets as tfds
@@ -77,7 +77,7 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
   # TODO(epot): Users should also be able to specify drop_reminder or mask
   batch_drop_remainder: bool = True
   transforms: (
-      Sequence[grain.Transformation] | dict[str, grain.Transformation]
+      Sequence[tr_utils.Transformation] | dict[str, tr_utils.Transformation]
   ) = dataclasses.field(default_factory=tuple)
 
   # Those fields are only applied once at the top level
@@ -210,7 +210,7 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
               drop_remainder=self.batch_drop_remainder,
           )
       )
-    ds = grain_transforms.apply_transformations(ds, transforms, strict=True)
+    ds = tr_utils.apply_transformations(ds, transforms)
     return ds
 
   def _apply_options(

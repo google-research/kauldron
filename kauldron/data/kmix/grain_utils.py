@@ -14,7 +14,6 @@
 
 """Grain utils to abstract the meta features."""
 
-import functools
 import sys
 from typing import Any
 
@@ -22,41 +21,7 @@ from etils import epy
 from etils.etree import nest as etree  # pylint: disable=g-importing-member
 import grain.tensorflow as grain
 from kauldron import random
-
 import tensorflow as tf
-
-
-class MapTransform(grain.MapTransform):
-  """Base class for map transform, hiding grain internals.
-
-  Required due to b/326590491.
-
-  Usage:
-
-  ```python
-  class MyTransform(kd.data.MapTransform):
-
-    def map(self, element: grain.Element) -> grain.Element:
-      return element  # Here all grain internal features are abstracted
-  ```
-  """
-
-  def __init_subclass__(cls, **kwargs):
-    super().__init_subclass__(**kwargs)
-    if "map" in cls.__dict__:
-      cls.map = _wrap_map(cls.map)
-
-
-def _wrap_map(map_fn):
-  """Wrap the map function."""
-
-  @functools.wraps(map_fn)
-  def new_map(self, element: dict[str, Any]) -> dict[str, Any]:
-    meta_features, ex_features = split_grain_meta_features(element)
-    ex_features = map_fn(self, ex_features)
-    return merge_grain_meta_features(meta_features, ex_features)
-
-  return new_map
 
 
 def _unpexected_example_structure(ex: Any) -> Exception:
