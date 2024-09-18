@@ -65,6 +65,9 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
       `kd.evals.StandaloneEveryCheckpoint()`)
     writer: Metric writer (set automatically)
     base_cfg: reference to the experiment configuration (set automatically).
+    discard_opt: Whether to discard the optimizer state for the evaluator. This
+      is useful to save memory in case the evaluator does not need access to the
+      optimizer state.
   """
 
   # Evaluators can be used as standalone, so keep a default name
@@ -78,6 +81,8 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
   base_cfg: trainer_lib.Trainer = dataclasses.field(
       default=config_util.ROOT_CFG_REF, repr=False
   )
+
+  discard_opt: bool = False
 
   __root_cfg_fields_to_recurse__ = ('writer',)
 
@@ -207,6 +212,8 @@ class Evaluator(EvaluatorBase):
   ) -> train_step.Auxiliaries:
     """Run one full evaluation."""
     self._assert_root_cfg_resolved()
+    if self.discard_opt:
+      state = state.replace(opt_state=None)
 
     # TODO(epot): Add chrono to evals. Note: One issue is that the
     # write metric time will be excluded from the chrono (including the final).
