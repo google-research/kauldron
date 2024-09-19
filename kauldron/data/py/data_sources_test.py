@@ -27,6 +27,12 @@ def test_tfds():
       name='mnist',
       split='train',
       shuffle=True,
+      transforms=[
+          kd.data.py.ValueRange(
+              key='image',
+              vrange=(0.0, 1.0),
+          ),
+      ],
       batch_size=batch_size,
       seed=0,
       num_epochs=num_epochs,

@@ -13,7 +13,17 @@
 # limitations under the License.
 
 from etils import enp
+from etils.array_types import f32, ui8  # pylint: disable=g-multiple-import
 from kauldron import kd
+import pytest
+import tensorflow as tf
+
+
+@pytest.fixture(autouse=True)
+def graph_mode():
+  # Run in graph mode since that is what the data pipeline will do
+  with tf.Graph().as_default():
+    yield
 
 
 @enp.testing.parametrize_xnp(restrict=["np", "tnp"])
@@ -28,3 +38,46 @@ def test_value_range(xnp: enp.NpModule):
   after = vr.map(before)
   assert after["other"] == before["other"]
   xnp.allclose(after["values"], xnp.array([0.0, 0.0, 1.0, 1.0]))
+
+
+# Test which only check the array input/output specs
+@pytest.mark.parametrize(
+    "tr, in_spec, out_spec",
+    (
+        (
+            kd.data.py.ValueRange(
+                key="values",
+                in_vrange=(0.0, 255.0),
+                vrange=(0.0, 1.0),
+                clip_values=True,
+            ),
+            ui8["2 3"],
+            f32["2 3"],
+        ),
+        (
+            kd.data.py.Rearrange(
+                key="values",
+                pattern="h w -> w h",
+            ),
+            ui8["2 3"],
+            ui8["3 2"],
+        ),
+    ),
+)
+@enp.testing.parametrize_xnp(restrict=["np", "tnp"])
+def test_transforms(
+    xnp: enp.NpModule,
+    tr,
+    in_spec,
+    out_spec,
+):
+  before = {
+      "values": xnp.ones(_as_shape(in_spec.shape), in_spec.dtype.np_dtype)
+  }
+  after = tr.map(before)
+  assert after["values"].shape == _as_shape(out_spec.shape)
+  assert enp.lazy.as_np_dtype(after["values"].dtype) == out_spec.dtype.np_dtype
+
+
+def _as_shape(shape: str) -> tuple[int, ...]:
+  return tuple(int(d) for d in shape.split())
