@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 import dataclasses
 import functools
 import typing
@@ -30,6 +31,8 @@ from kauldron.data import pipelines
 from kauldron.data.transforms import abc as tr_abc
 from kauldron.data.transforms import normalize as tr_normalize
 from kauldron.typing import PRNGKeyLike  # pylint: disable=g-importing-member,g-multiple-import
+
+_Transforms = Sequence[grain.Transformation] | dict[str, grain.Transformation]
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True, eq=True)
@@ -58,7 +61,7 @@ class PyGrainPipeline(pipelines.Pipeline):
     batch_size: int | None = ...
     seed: PRNGKeyLike | None = ...
 
-  transforms: grain.Transformations = dataclasses.field(default_factory=list)
+  transforms: _Transforms = dataclasses.field(default_factory=tuple)
 
   # Params only relevant for the root top-level dataset (when dataset mixture)
   num_epochs: Optional[int] = None
@@ -180,9 +183,11 @@ def _get_num_workers(num_workers: int) -> int:
 
 
 def _apply_transforms(
-    ds: grain.MapDataset, transforms: grain.Transformations
+    ds: grain.MapDataset, transforms: _Transforms
 ) -> grain.MapDataset:
   """Apply the transformations to the dataset."""
+  if isinstance(transforms, Mapping):
+    transforms = transforms.values()
   for tr in transforms:
     tr = tr_normalize.normalize_transform(
         tr,

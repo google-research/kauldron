@@ -63,7 +63,7 @@ class TFDataPipeline(pipelines.Pipeline):
   """
 
   loader: base_data_loader.DataLoader
-  transformations: grain.Transformations
+  transformations: Any
   # TODO(epot): Users should also be able to specify drop_reminder or mask
   tf_data_options: Optional[tf.data.Options] = None
   prefetch_size: Optional[int] = tf.data.AUTOTUNE

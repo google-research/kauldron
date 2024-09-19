@@ -15,7 +15,7 @@
 """`tf.data` data pipeline."""
 
 import abc
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 import dataclasses
 import functools
 import typing
@@ -44,6 +44,8 @@ _NpArray: TypeAlias = Any
 # Sentinel value that indicate the field should only be activated at the top
 # level node.
 _ROOT_ONLY: Any = object()
+
+_Transforms = Sequence[grain.Transformation] | dict[str, grain.Transformation]
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True, eq=True)
@@ -76,9 +78,7 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
 
   # TODO(epot): Users should also be able to specify drop_reminder or mask
   batch_drop_remainder: bool = True
-  transforms: (
-      Sequence[tr_utils.Transformation] | dict[str, tr_utils.Transformation]
-  ) = dataclasses.field(default_factory=tuple)
+  transforms: _Transforms = dataclasses.field(default_factory=tuple)
 
   # Those fields are only applied once at the top level
   tf_data_options: Optional[tf.data.Options] = None
@@ -199,7 +199,7 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
     """Apply transforms to the dataset."""
 
     transforms = []
-    if isinstance(self.transforms, dict):
+    if isinstance(self.transforms, Mapping):
       transforms.extend(self.transforms.values())
     else:
       transforms.extend(self.transforms)

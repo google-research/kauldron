@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Basic tests for preprocessing ops."""
-
 from etils import enp
-from kauldron.data import preprocessing
+from grain import tensorflow as grain
+from kauldron import kd
 import numpy as np
 import pytest
 import tensorflow as tf
@@ -28,79 +27,9 @@ def graph_mode():
     yield
 
 
-def test_elements_keep():
-  el = preprocessing.Elements(
-      keep={"yes", "definitely"}, rename={"old": "new"}, copy={"no": "no_copy"}
-  )
-  before = {"yes": 1, "definitely": 2, "old": 3, "no": 4, "drop": 5}
-  after = el.map(before)
-  assert set(after.keys()) == {"yes", "definitely", "new", "no_copy"}
-  assert after["yes"] == before["yes"]
-  assert after["definitely"] == before["definitely"]
-  assert after["new"] == before["old"]
-  assert after["no_copy"] == before["no"]
-
-
-def test_elements_drop():
-  el = preprocessing.Elements(
-      drop={"no", "drop"}, rename={"old": "new"}, copy={"yes": "yes_copy"}
-  )
-  before = {"yes": 1, "definitely": 2, "old": 3, "no": 4, "drop": 5}
-  after = el.map(before)
-  assert set(after.keys()) == {"yes", "definitely", "new", "yes_copy"}
-  assert after["yes"] == before["yes"]
-  assert after["definitely"] == before["definitely"]
-  assert after["new"] == before["old"]
-  assert after["yes_copy"] == before["yes"]
-
-
-def test_elements_rename_only():
-  el = preprocessing.Elements(rename={"old": "new"})
-  before = {"yes": 1, "definitely": 2, "old": 3, "no": 4, "drop": 5}
-  after = el.map(before)
-  assert set(after.keys()) == {"yes", "definitely", "new", "no", "drop"}
-  assert after["yes"] == before["yes"]
-  assert after["definitely"] == before["definitely"]
-  assert after["no"] == before["no"]
-  assert after["drop"] == before["drop"]
-  assert after["new"] == before["old"]
-
-
-def test_elements_rename_overwrite_raises():
-  el = preprocessing.Elements(rename={"old": "oops"})
-  before = {"old": 1, "oops": 2}
-  with pytest.raises(KeyError):
-    el.map(before)
-
-
-def test_elements_copy_only():
-  el = preprocessing.Elements(copy={"yes": "no", "old": "new"})
-  before = {"yes": 1, "old": 2}
-  after = el.map(before)
-  assert set(after.keys()) == {"yes", "no", "old", "new"}
-  assert after["yes"] == before["yes"]
-  assert after["no"] == before["yes"]
-  assert after["old"] == before["old"]
-  assert after["new"] == before["old"]
-
-
-def test_elements_copy_overwrite_raises():
-  # copy to an existing key
-  el = preprocessing.Elements(copy={"old": "oops"})
-  before = {"old": 1, "oops": 2}
-  with pytest.raises(KeyError):
-    el.map(before)
-  # copy to a key that is also a rename target
-  with pytest.raises(KeyError):
-    _ = preprocessing.Elements(copy={"old": "oops"}, rename={"yes": "oops"})
-  # copy two fields to the same target name
-  with pytest.raises(ValueError):
-    _ = preprocessing.Elements(copy={"old": "oops", "yes": "oops"})
-
-
 @enp.testing.parametrize_xnp(restrict=["np", "tnp"])
 def test_value_range(xnp: enp.NpModule):
-  vr = preprocessing.ValueRange(
+  vr = kd.data.tf.ValueRange(
       key="values",
       in_vrange=(0.0, 255.0),
       vrange=(0.0, 1.0),
@@ -113,7 +42,7 @@ def test_value_range(xnp: enp.NpModule):
 
 
 def test_center_crop():
-  cc = preprocessing.CenterCrop(
+  cc = kd.data.tf.CenterCrop(
       key="values",
       shape=(2, 2),
   )
@@ -124,7 +53,7 @@ def test_center_crop():
 
 
 def test_center_crop_dynamic_dim():
-  cc = preprocessing.CenterCrop(
+  cc = kd.data.tf.CenterCrop(
       key="values",
       shape=(3, None, 1),
   )
@@ -134,11 +63,14 @@ def test_center_crop_dynamic_dim():
 
 
 def test_random_crop():
-  cc = preprocessing.RandomCrop(
+  cc = kd.data.tf.RandomCrop(
       key="values",
       shape=(7, None, 3),
   )
-  before = {"values": tf.zeros((16, 5, 3))}
+  before = {
+      "values": tf.zeros((16, 5, 3)),
+      grain.INDEX: tf.constant(0),
+  }
   after = cc.random_map(before, seed=(0, 0))
   assert after["values"].shape == (7, 5, 3)
 
@@ -153,7 +85,7 @@ def test_resize():
   img_int = tf.convert_to_tensor(img, dtype=tf.int32)
   img_float = tf.convert_to_tensor(img, dtype=tf.float32)
 
-  r = preprocessing.Resize(key="image", height=2, width=2, method="AUTO")
+  r = kd.data.tf.Resize(key="image", height=2, width=2, method="AUTO")
 
   # for int images preserve dtype and use nearest
   before = {"image": img_int}
@@ -187,7 +119,7 @@ def test_resize_small():
   img_int = tf.convert_to_tensor(img, dtype=tf.int32)
   img_float = tf.convert_to_tensor(img, dtype=tf.float32)
 
-  r = preprocessing.ResizeSmall(key="image", smaller_size=2, method="AUTO")
+  r = kd.data.tf.ResizeSmall(key="image", smaller_size=2, method="AUTO")
 
   # for int images preserve dtype and use nearest
   before = {"image": img_int}

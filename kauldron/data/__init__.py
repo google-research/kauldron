@@ -44,6 +44,8 @@ with _epy.lazy_api_imports(globals()):
   # from kauldron.data.transforms.abc import RandomMapTransform
   from kauldron.data.transforms.abc import FilterTransform
 
+  from kauldron.data.utils import BatchSize
+
 
 with _epy.lazy_imports():
   from kauldron.data import py

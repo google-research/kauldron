@@ -19,34 +19,52 @@ TfGrain.
 """
 
 import abc
+import typing
+from typing import Any
 
+if typing.TYPE_CHECKING:
+  # For type checking, the `MapTransform` classes can be both used as
+  # `pygrain.Transformation` and `tfgrain.Transformation` without raising
+  # error.
+  from grain import python as pygrain
+  from grain import tensorflow as tfgrain
 
-class MapTransform(abc.ABC):
-  """Abstract base class for all 1:1 transformations of elements."""
+  class MapTransform(tfgrain.MapTransform, pygrain.MapTransform):
+    pass
 
-  @abc.abstractmethod
-  def map(self, element):
-    """Maps a single element."""
+  class FilterTransform(tfgrain.MapTransform, pygrain.MapTransform):
+    pass
 
+  Transformation = Any
 
-# class RandomMapTransform(abc.ABC):
-#   """Abstract base class for all random 1:1 transformations of elements."""
+else:
 
-#   @abc.abstractmethod
-#   def random_map(self, element, rng: np.random.Generator):
-#     """Maps a single element."""
+  class MapTransform(abc.ABC):
+    """Abstract base class for all 1:1 transformations of elements."""
 
+    @abc.abstractmethod
+    def map(self, element):
+      """Maps a single element."""
 
-class FilterTransform(abc.ABC):
-  """Abstract base class for filter transformations for individual elements.
+  # class RandomMapTransform(abc.ABC):
+  #   """Abstract base class for all random 1:1 transformations of elements."""
 
-  The pipeline will drop any element for which the filter function returns
-  False.
-  """
+  #   # TODO(epot): `rng` can be either a `tf.Tensor` (TfGrain) or
+  #   # `np.random.Generator` (PyGrain)
+  #   # Unclear how to unify the twos
+  #   @abc.abstractmethod
+  #   def random_map(self, element, rng):
+  #     """Maps a single element."""
 
-  @abc.abstractmethod
-  def filter(self, element) -> bool:
-    """Filters a single element; returns True if the element should be kept."""
+  class FilterTransform(abc.ABC):
+    """Abstract base class for filter transformations for individual elements.
 
+    The pipeline will drop any element for which the filter function returns
+    False.
+    """
 
-Transformation = MapTransform | FilterTransform
+    @abc.abstractmethod
+    def filter(self, element) -> bool:
+      """Filters a single element; returns True if the element should be kept."""
+
+  Transformation = MapTransform | FilterTransform

@@ -14,7 +14,7 @@
 
 """Kauldron `tf.data` public API."""
 
-# pylint: disable=g-importing-member
+# pylint: disable=g-importing-member,g-bad-import-order
 
 from kauldron.data.tf.base import TFDataPipeline
 from kauldron.data.tf.loaders.graintfds import Tfds
@@ -25,3 +25,29 @@ from kauldron.data.tf.loaders.tfds_legacy import TfdsLegacy
 from kauldron.data.tf.loaders.with_shuffle_buffer import WithShuffleBuffer
 from kauldron.data.tf.mixture import SampleFromDatasets
 from kauldron.data.tf.mixture import ZipDatasets
+
+# *****************************************************************************
+# DO NOT ADD new preprocessing ops here. Instead, add them to `kd.contrib.data`
+# *****************************************************************************
+
+# ====== Structure transforms ======
+from kauldron.data.transforms.base import Elements
+from kauldron.data.transforms.base import ElementWiseTransform
+from kauldron.data.transforms.base import TreeFlattenWithPath
+# ====== Random transforms ======
+# TODO(epot): Currently there's no generic `ElementWiseRandomTransform` as
+# there's no standardized random API between TF and numpy.
+from kauldron.data.tf.random_transforms import ElementWiseRandomTransform
+from kauldron.data.tf.random_transforms import InceptionCrop
+from kauldron.data.tf.random_transforms import RandomCrop
+from kauldron.data.tf.random_transforms import RandomFlipLeftRight
+# ====== Map transforms ======
+from kauldron.data.tf.map_transforms import Cast
+from kauldron.data.tf.map_transforms import CenterCrop
+from kauldron.data.tf.map_transforms import Gather
+from kauldron.data.tf.map_transforms import OneHot
+from kauldron.data.tf.map_transforms import Rearrange
+# TODO(epot): Unify Resize & ResizeSmall and have better API.
+from kauldron.data.tf.map_transforms import Resize
+from kauldron.data.tf.map_transforms import ResizeSmall
+from kauldron.data.tf.map_transforms import ValueRange

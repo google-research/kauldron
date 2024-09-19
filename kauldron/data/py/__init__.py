@@ -14,9 +14,20 @@
 
 """PyGrain public API."""
 
-# pylint: disable=g-importing-member
+# pylint: disable=g-importing-member,g-bad-import-order
 
 from kauldron.data.py.base import DataSourceBase
 from kauldron.data.py.data_sources import DataSource
 from kauldron.data.py.data_sources import Tfds
 from kauldron.data.py.mixtures import Mix
+
+# *****************************************************************************
+# DO NOT ADD new preprocessing ops here. Instead, add them to `kd.contrib.data`
+# *****************************************************************************
+
+# ====== Structure transforms ======
+from kauldron.data.transforms.base import Elements
+from kauldron.data.transforms.base import ElementWiseTransform
+from kauldron.data.transforms.base import TreeFlattenWithPath
+# ====== Random transforms ======
+# ====== Map transforms ======
