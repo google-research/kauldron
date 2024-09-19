@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Optional
+from typing import List, Optional
 
 from etils import epy
 import flax.linen as nn
@@ -110,6 +110,7 @@ class RocAuc(base.Metric):
   logits: kontext.Key = kontext.REQUIRED  # e.g. "preds.logits"
   labels: kontext.Key = kontext.REQUIRED  # e.g. "batch.label"
   mask: Optional[kontext.Key] = None
+  unique_labels: Optional[List[int]] = None
 
   multi_class_mode: str = "ovr"  # One-vs-Rest ("ovr") or One-vs-One ("ovo")
 
@@ -130,20 +131,33 @@ class RocAuc(base.Metric):
       # for which there are no GT examples and renormalize probabilities
       # This will give wrong results, but allows getting a value during training
       # where it cannot be guaranteed that each batch contains all classes.
-      unique_labels = np.unique(labels).tolist()
+      if self.parent.unique_labels is None:
+        unique_labels = np.unique(labels).tolist()
+      else:
+        # If we are testing on a small subset of data and by chance it does not
+        # contain all classes, we need to provide the groundtruth labels
+        # separately.
+        unique_labels = self.parent.unique_labels
+
       probs = out.probs[..., unique_labels]
       probs /= probs.sum(axis=-1, keepdims=True)  # renormalize
       check_type(probs, Float["b n"])
+      if len(unique_labels) == 2:
+        # Binary mode: make it binary, otherwise sklearn complains.
+        probs = probs[..., 1]
       mask = out.mask[..., 0].astype(np.float32)
       check_type(mask, Float["b"])
-
-      return sklearn_metrics.roc_auc_score(
-          y_true=labels,
-          y_score=probs,
-          sample_weight=mask,
-          labels=unique_labels,
-          multi_class=self.parent.multi_class_mode,
-      )
+      if len(np.unique(labels).tolist()) > 1:
+        # See comment above about small data subsets.
+        return sklearn_metrics.roc_auc_score(
+            y_true=labels,
+            y_score=probs,
+            sample_weight=mask,
+            labels=unique_labels,
+            multi_class=self.parent.multi_class_mode,
+        )
+      else:
+        return 0.0
 
   @typechecked
   def get_state(
