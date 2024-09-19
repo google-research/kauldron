@@ -23,6 +23,7 @@ from typing import Any, Sequence
 import flax
 from kauldron import kontext
 from kauldron.data.transforms import abc as tr_abc
+import tensorflow as tf
 
 _FrozenDict = dict if typing.TYPE_CHECKING else flax.core.FrozenDict
 
@@ -260,3 +261,16 @@ class TreeFlattenWithPath(_ElementWise, tr_abc.MapTransform):
       else:
         output[key] = element
     return output
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class CopyTensor(_ElementWise, tr_abc.MapTransform):
+  """Creates a copy of a tensor with a new key."""
+
+  def map(self, features):
+    assert isinstance(
+        self.key, Mapping
+    ), f"key is not Mapping but {type(self.key)}"
+    for key_in, key_out in self.key.items():
+      features[key_out] = tf.identity(features[key_in])
+    return features
