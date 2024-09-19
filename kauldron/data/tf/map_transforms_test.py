@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from etils import enp
 from grain import tensorflow as grain
 from kauldron import kd
 import numpy as np
@@ -25,20 +24,6 @@ def graph_mode():
   # Run in graph mode since that is what the data pipeline will do
   with tf.Graph().as_default():
     yield
-
-
-@enp.testing.parametrize_xnp(restrict=["np", "tnp"])
-def test_value_range(xnp: enp.NpModule):
-  vr = kd.data.tf.ValueRange(
-      key="values",
-      in_vrange=(0.0, 255.0),
-      vrange=(0.0, 1.0),
-      clip_values=True,
-  )
-  before = {"values": xnp.array([-100, 0.0, 255.0, 400.0]), "other": 42}
-  after = vr.map(before)
-  assert after["other"] == before["other"]
-  xnp.allclose(after["values"], xnp.array([0.0, 0.0, 1.0, 1.0]))
 
 
 def test_center_crop():

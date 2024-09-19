@@ -31,3 +31,5 @@ from kauldron.data.transforms.base import ElementWiseTransform
 from kauldron.data.transforms.base import TreeFlattenWithPath
 # ====== Random transforms ======
 # ====== Map transforms ======
+from kauldron.data.transforms.map_transforms import Rearrange
+from kauldron.data.transforms.map_transforms import ValueRange

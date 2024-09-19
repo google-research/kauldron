@@ -42,12 +42,12 @@ from kauldron.data.tf.random_transforms import InceptionCrop
 from kauldron.data.tf.random_transforms import RandomCrop
 from kauldron.data.tf.random_transforms import RandomFlipLeftRight
 # ====== Map transforms ======
+from kauldron.data.transforms.map_transforms import Rearrange
+from kauldron.data.transforms.map_transforms import ValueRange
 from kauldron.data.tf.map_transforms import Cast
 from kauldron.data.tf.map_transforms import CenterCrop
 from kauldron.data.tf.map_transforms import Gather
 from kauldron.data.tf.map_transforms import OneHot
-from kauldron.data.tf.map_transforms import Rearrange
 # TODO(epot): Unify Resize & ResizeSmall and have better API.
 from kauldron.data.tf.map_transforms import Resize
 from kauldron.data.tf.map_transforms import ResizeSmall
-from kauldron.data.tf.map_transforms import ValueRange
