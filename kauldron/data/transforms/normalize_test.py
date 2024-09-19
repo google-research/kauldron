@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for grain_utils."""
+"""Tests for transform normalization."""
 
 import dataclasses
 from typing import Any
@@ -20,7 +20,7 @@ from typing import Any
 from grain import tensorflow as grain
 from kauldron import kd
 from kauldron.data.tf import grain_utils
-from kauldron.data.tf import transform_utils
+from kauldron.data.transforms import normalize
 import pytest
 import tensorflow as tf
 
@@ -66,7 +66,7 @@ def test_source(is_supervised: bool):
       else {'image': None, 'label': None}
   )
   assert not isinstance(tr, grain.MapTransform)
-  tr = transform_utils._normalize_transform(tr)
+  tr = normalize.adapt_for_tfgrain(tr)
   assert isinstance(tr, grain.MapTransform)
   data_loader = grain.TfDataLoader(
       source=source,

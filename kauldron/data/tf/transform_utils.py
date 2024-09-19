@@ -15,68 +15,28 @@
 """Transform utils."""
 
 import functools
-from typing import Any, TypeVar
+from typing import Any
 
-from grain import tensorflow as grain
 from grain._src.tensorflow import transforms as grain_transforms
+import grain.tensorflow as grain
 from kauldron.data.tf import grain_utils
 from kauldron.data.transforms import abc as tr_abc
 from kauldron.data.transforms import normalize as tr_normalize
 import tensorflow as tf
 
-_FnT = TypeVar('_FnT')
 
 # Kauldron transforms for kd.data.tf supports both `kd.data.MapTransform` and
 # `tfgrain.MapTransform`
 Transformation = grain.Transformation | tr_abc.Transformation
 
 
-_KD_TO_GRAIN_TRANSFORM = {
-    tr_abc.MapTransform: grain.MapTransform,
-    # tr_abc.RandomMapTransform: grain.RandomMapTransform,
-    tr_abc.FilterTransform: grain.FilterTransform,
-}
-
-
 def apply_transformations(
     ds: tf.data.Dataset,
-    transforms: list[Transformation],
+    transforms: list[tr_normalize.Transformation],
 ) -> tf.data.Dataset:
   """Wrapper around grain to apply the transformations."""
-  transforms = [_normalize_transform(tr) for tr in transforms]
+  transforms = [tr_normalize.adapt_for_tfgrain(tr) for tr in transforms]
   return grain_transforms.apply_transformations(ds, transforms, strict=True)
-
-
-def _normalize_transform(tr: Transformation) -> grain.Transformation:
-  """Convert the kd transform to a `grain.Transformation`."""
-  return tr_normalize.normalize_transform(
-      tr,
-      grain_module=grain,
-      kd_to_grain_transform=_KD_TO_GRAIN_TRANSFORM,
-      grain_transform_to_apply_wrapper=_GRAIN_TRANSFORM_TO_APPLY_WRAPPER,
-  )
-
-
-def _apply_wrapper(
-    cls: type[grain.Transformation],
-    *,
-    fn_name: str,
-    restore_meta_features: bool,
-) -> None:
-  """Wrap the function to remove the grain internals."""
-  old_fn = getattr(cls, fn_name)
-  new_fn = wrap_map(old_fn, restore_meta_features=restore_meta_features)
-  setattr(cls, fn_name, new_fn)
-
-
-_GRAIN_TRANSFORM_TO_APPLY_WRAPPER = {
-    grain.MapTransform: functools.partial(
-        _apply_wrapper, fn_name='map', restore_meta_features=True
-    ),
-    grain.FilterTransform: functools.partial(
-        _apply_wrapper, fn_name='filter', restore_meta_features=False
-    ),
-}
 
 
 # TODO(b/279722981): Pytype do not bind methods correctly when calling

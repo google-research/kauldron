@@ -28,7 +28,6 @@ import jax
 from kauldron import random
 from kauldron.data import iterators
 from kauldron.data import pipelines
-from kauldron.data.transforms import abc as tr_abc
 from kauldron.data.transforms import normalize as tr_normalize
 from kauldron.typing import PRNGKeyLike  # pylint: disable=g-importing-member,g-multiple-import
 
@@ -189,14 +188,7 @@ def _apply_transforms(
   if isinstance(transforms, Mapping):
     transforms = transforms.values()
   for tr in transforms:
-    tr = tr_normalize.normalize_transform(
-        tr,
-        grain_module=grain,
-        kd_to_grain_transform={
-            tr_abc.MapTransform: grain.MapTransform,
-            tr_abc.FilterTransform: grain.FilterTransform,
-        },
-    )
+    tr = tr_normalize.adapt_for_pygrain(tr)
     ds = _apply_transform(ds, tr)
   return ds
 

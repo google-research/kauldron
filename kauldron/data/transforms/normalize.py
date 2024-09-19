@@ -16,67 +16,120 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-import types
-import typing
-from typing import Any
+from typing import Any, Callable, Type
 
-from etils import epy
+import grain.python as pygrain
+# TODO(klausg): split this file into 3 parts to isolate the grain deps
+import grain.tensorflow as tfgrain
+from kauldron.data.tf import grain_utils
 from kauldron.data.transforms import abc as tr_abc
 
-if typing.TYPE_CHECKING:
-  _grain = Any  # Either TfGrain or PyGrain  # pylint: disable=invalid-name
-  _Transformation = tr_abc.Transformation | _grain.Transformation
+
+Transformation = (
+    tr_abc.Transformation
+    | pygrain.Transformation
+    | tfgrain.Transformation
+    # Treat callables as MapTransforms to keep support for
+    # grand-vision preprocessing ops.
+    | Callable[[Any], Any]
+)
 
 
-def normalize_transform(
-    tr: _Transformation,
-    *,
-    grain_module: types.ModuleType,  # Literal[_grain]
-    kd_to_grain_transform: dict[
-        type[tr_abc.Transformation], type[_grain.Transformation]
-    ],
-    grain_transform_to_apply_wrapper: (
-        None
-        | dict[
-            type[_grain.Transformation],
-            Callable[[type[_grain.Transformation]], None],
-        ]
-    ) = None,
-) -> _grain.Transformation:
-  """Convert the kd transform to PyGrain or TfGrain."""
-  if isinstance(tr, grain_module.Transformation):
-    return tr
-  if not isinstance(tr, tr_abc.Transformation):
-    raise TypeError(
-        f'Unexpected transform: {type(tr).__qualname__} is neither a'
-        ' `grain.Transformation` nor a Kauldron transform object. Are you'
-        ' mixing PyGrain and TfGrain ?'
-    )
+class TransformAdapter:
+  """Base class for adapters from Kauldron transforms to grain transforms."""
 
-  # Find the grain classe to inherit from
-  for kd_cls, grain_cls in kd_to_grain_transform.items():
-    if isinstance(tr, kd_cls):
+  def __init__(self, transform):
+    self.transform = transform
+
+  # TODO(klausg): maybe forward num_parallel_calls_hint
+
+  def __repr__(self):
+    """Return the repr of the wrapped transform with the adaptor as prefix."""
+    return f'{self.__class__.__name__}({self.transform!r})'
+
+
+class TfGrainMapAdapter(TransformAdapter, tfgrain.MapTransform):
+  """Adapter for `kd.data.MapTransform` to tfgrain."""
+
+  def map(self, element: Any) -> Any:
+    # Required due to b/326590491.
+    meta_features, ex_features = grain_utils.split_grain_meta_features(element)
+    out = self.transform.map(ex_features)
+    return grain_utils.merge_grain_meta_features(meta_features, out)
+
+
+class TfGrainCallableAdapter(TransformAdapter, tfgrain.MapTransform):
+  """Adapter for any callable to a tfgrain MapTransform."""
+
+  def map(self, element: Any) -> Any:
+    # Required due to b/326590491.
+    meta_features, ex_features = grain_utils.split_grain_meta_features(element)
+    out = self.transform(ex_features)
+    return grain_utils.merge_grain_meta_features(meta_features, out)
+
+
+class TfGrainFilterAdapter(TransformAdapter, tfgrain.FilterTransform):
+  """Adapter from `kd.data.FilterTransform` to tfgrain."""
+
+  def filter(self, elements: Any) -> Any:
+    # Required due to b/326590491.
+    _, ex_features = grain_utils.split_grain_meta_features(elements)
+    return self.transform.filter(ex_features)
+
+
+class PyGrainMapAdapter(TransformAdapter, pygrain.MapTransform):
+  """Adapter from `kd.data.MapTransform` to pygrain."""
+
+  def map(self, element: Any) -> Any:
+    return self.transform.map(element)
+
+
+class PyGrainFilterAdapter(TransformAdapter, pygrain.FilterTransform):
+  """Adapter from `kd.data.FilterTransform` to pygrain."""
+
+  def filter(self, element: Any) -> bool:
+    return self.transform.filter(element)
+
+
+class PyGrainCallableAdapter(TransformAdapter, pygrain.MapTransform):
+  """Adapter for any callable to a pygrain MapTransform."""
+
+  def map(self, element: Any) -> Any:
+    return self.transform(element)
+
+
+_KD_TO_TFGRAIN_ADAPTERS: dict[Any, Type[tfgrain.Transformation]] = {
+    tr_abc.MapTransform: TfGrainMapAdapter,
+    tr_abc.FilterTransform: TfGrainFilterAdapter,
+    Callable: TfGrainCallableAdapter,  # support grand-vision preprocessing ops
+}
+
+_KD_TO_PYGRAIN_ADAPTERS: dict[Any, Type[pygrain.Transformation]] = {
+    tr_abc.MapTransform: PyGrainMapAdapter,
+    tr_abc.FilterTransform: PyGrainFilterAdapter,
+    Callable: PyGrainCallableAdapter,
+}
+
+
+def adapt_for_tfgrain(transform: Transformation) -> tfgrain.Transformation:
+  if isinstance(transform, tfgrain.Transformation):
+    return transform
+  return _adapt(transform, _KD_TO_TFGRAIN_ADAPTERS)
+
+
+def adapt_for_pygrain(transform: Transformation) -> pygrain.Transformation:
+  if isinstance(transform, pygrain.Transformation):
+    return transform
+  return _adapt(transform, _KD_TO_PYGRAIN_ADAPTERS)
+
+
+def _adapt(transform, adapter_mapping):
+  for kd_cls, Adapter in adapter_mapping.items():  # pylint: disable=invalid-name
+    if isinstance(transform, kd_cls):
       break
   else:
     raise TypeError(
-        f'Unexpected Kauldron transform: {type(tr).__qualname__}. This is'
-        ' likely a Kauldron bug. Please repoort.'
+        f'Unexpected Kauldron transform: {type(transform).__qualname__}. This'
+        ' is likely a Kauldron bug. Please report.'
     )
-
-  tr_cls = type(tr)
-
-  @epy.wraps_cls(tr_cls)
-  class _WrappedTransform(tr_cls, grain_cls):
-    """Wrapped transform."""
-
-    def __init__(self):
-      # Transform should be immutable, so should be fine
-      self.__dict__.update(tr.__dict__)
-
-  if grain_transform_to_apply_wrapper:
-    # Eventually filter the `grain.META_FEATURES`
-    grain_transform_to_apply_wrapper[grain_cls](_WrappedTransform)
-
-  wrapped_tr = _WrappedTransform()
-  return wrapped_tr
+  return Adapter(transform)  # pytype: disable=missing-parameter,wrong-arg-count,not-instantiable
