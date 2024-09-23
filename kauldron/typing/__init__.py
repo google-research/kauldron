@@ -42,8 +42,9 @@ from kauldron.typing.array_types import (  # pylint: disable=g-multiple-import
     UInt8,
     XArray,
 )
-from kauldron.typing.shape_spec import Dim, Memo, Shape  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing.shape_spec import Dim, Shape  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.typing.type_check import TypeCheckError, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing.utils import Memo  # pylint: disable=g-importing-member
 import numpy as np
 import typeguard as _typeguard
 # make typeguard.check_type accessible in this namespace
