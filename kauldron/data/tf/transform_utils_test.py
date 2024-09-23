@@ -20,7 +20,7 @@ from typing import Any
 from grain import tensorflow as grain
 from kauldron import kd
 from kauldron.data.tf import grain_utils
-from kauldron.data.transforms import normalize
+from kauldron.data.tf import transform_utils
 import pytest
 import tensorflow as tf
 
@@ -66,7 +66,7 @@ def test_source(is_supervised: bool):
       else {'image': None, 'label': None}
   )
   assert not isinstance(tr, grain.MapTransform)
-  tr = normalize.adapt_for_tfgrain(tr)
+  tr = transform_utils._adapt_for_tfgrain(tr)
   assert isinstance(tr, grain.MapTransform)
   data_loader = grain.TfDataLoader(
       source=source,

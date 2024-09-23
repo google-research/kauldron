@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Transform utils."""
+"""Utils for using Kauldron transforms with tfgrain."""
 
 import functools
-from typing import Any
+from typing import Any, Callable, Mapping
 
 from grain._src.tensorflow import transforms as grain_transforms
 import grain.tensorflow as grain
@@ -25,17 +25,82 @@ from kauldron.data.transforms import normalize as tr_normalize
 import tensorflow as tf
 
 
-# Kauldron transforms for kd.data.tf supports both `kd.data.MapTransform` and
-# `tfgrain.MapTransform`
-Transformation = grain.Transformation | tr_abc.Transformation
+class TfGrainMapAdapter(tr_normalize.TransformAdapter, grain.MapTransform):
+  """Adapter for `kd.data.MapTransform` to tfgrain."""
+
+  @property
+  def name(self):
+    """Forward the name of this transformation (if any), to aid in debugging."""
+    # Used by tfgrain to name the operations in the tf graph.
+    return getattr(self.transform, 'name', getattr(super(), 'name'))
+
+  @property
+  def num_parallel_calls_hint(self):
+    """Forward the num_parallel_calls_hint of this transformation (if any)."""
+    # Can be used to modify the default parallelization behavior of tfgrain.
+    return getattr(
+        self.transform,
+        'num_parallel_calls_hint',
+        getattr(super(), 'num_parallel_calls_hint'),
+    )
+
+  def map(self, element: Any) -> Any:
+    # Required due to b/326590491.
+    meta_features, ex_features = grain_utils.split_grain_meta_features(element)
+    out = self.transform.map(ex_features)
+    return grain_utils.merge_grain_meta_features(meta_features, out)
+
+
+class TfGrainCallableAdapter(tr_normalize.TransformAdapter, grain.MapTransform):
+  """Adapter for any callable to a tfgrain MapTransform."""
+
+  def map(self, element: Any) -> Any:
+    # Required due to b/326590491.
+    meta_features, ex_features = grain_utils.split_grain_meta_features(element)
+    out = self.transform(ex_features)
+    return grain_utils.merge_grain_meta_features(meta_features, out)
+
+
+class TfGrainFilterAdapter(
+    tr_normalize.TransformAdapter, grain.FilterTransform
+):
+  """Adapter from `kd.data.FilterTransform` to tfgrain."""
+
+  @property
+  def name(self):
+    """Forward the name of this transformation (if any), to aid in debugging."""
+    # Used by tfgrain to name the operations in the tf graph.
+    return getattr(self.transform, 'name', getattr(super(), 'name'))
+
+  def filter(self, elements: Any) -> Any:
+    # Required due to b/326590491.
+    _, ex_features = grain_utils.split_grain_meta_features(elements)
+    return self.transform.filter(ex_features)
+
+
+_KD_TO_TFGRAIN_ADAPTERS = {
+    tr_abc.MapTransform: TfGrainMapAdapter,
+    tr_abc.FilterTransform: TfGrainFilterAdapter,
+    Callable: TfGrainCallableAdapter,  # support grand-vision preprocessing ops
+}
+
+
+def _adapt_for_tfgrain(
+    transform: tr_normalize.Transformation,
+) -> grain.Transformation:
+  if isinstance(transform, grain.Transformation):
+    return transform
+  return tr_normalize.adapt_transform(transform, _KD_TO_TFGRAIN_ADAPTERS)
 
 
 def apply_transformations(
     ds: tf.data.Dataset,
-    transforms: list[tr_normalize.Transformation],
+    transforms: tr_normalize.Transformations,
 ) -> tf.data.Dataset:
   """Wrapper around grain to apply the transformations."""
-  transforms = [tr_normalize.adapt_for_tfgrain(tr) for tr in transforms]
+  if isinstance(transforms, Mapping):
+    transforms = transforms.values()
+  transforms = [_adapt_for_tfgrain(tr) for tr in transforms]
   return grain_transforms.apply_transformations(ds, transforms, strict=True)
 
 

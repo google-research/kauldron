@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 import dataclasses
 import functools
 import typing
@@ -28,10 +27,9 @@ import jax
 from kauldron import random
 from kauldron.data import iterators
 from kauldron.data import pipelines
+from kauldron.data.py import transform_utils
 from kauldron.data.transforms import normalize as tr_normalize
 from kauldron.typing import PRNGKeyLike  # pylint: disable=g-importing-member,g-multiple-import
-
-_Transforms = Sequence[grain.Transformation] | dict[str, grain.Transformation]
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True, eq=True)
@@ -60,7 +58,9 @@ class PyGrainPipeline(pipelines.Pipeline):
     batch_size: int | None = ...
     seed: PRNGKeyLike | None = ...
 
-  transforms: _Transforms = dataclasses.field(default_factory=tuple)
+  transforms: tr_normalize.Transformations = dataclasses.field(
+      default_factory=tuple
+  )
 
   # Params only relevant for the root top-level dataset (when dataset mixture)
   num_epochs: Optional[int] = None
@@ -82,7 +82,7 @@ class PyGrainPipeline(pipelines.Pipeline):
     """Create the `tf.data.Dataset` and apply all the transforms."""
     ds = self.ds_for_current_process(rng)
 
-    ds = _apply_transforms(ds, self.transforms)
+    ds = transform_utils.apply_transforms(ds, self.transforms)
 
     if self.batch_size:
       ds = ds.batch(self.batch_size, drop_remainder=self.batch_drop_remainder)
@@ -179,33 +179,3 @@ def _get_num_workers(num_workers: int) -> int:
     return 0
   else:
     return num_workers
-
-
-def _apply_transforms(
-    ds: grain.MapDataset, transforms: _Transforms
-) -> grain.MapDataset:
-  """Apply the transformations to the dataset."""
-  if isinstance(transforms, Mapping):
-    transforms = transforms.values()
-  for tr in transforms:
-    tr = tr_normalize.adapt_for_pygrain(tr)
-    ds = _apply_transform(ds, tr)
-  return ds
-
-
-def _apply_transform(
-    ds: grain.MapDataset, tr: grain.Transformation
-) -> grain.MapDataset:
-  """Apply a list of single transformation."""
-  match tr:
-    case grain.MapTransform():
-      ds = ds.map(tr)
-    case grain.RandomMapTransform():
-      ds = ds.random_map(tr)
-    case grain.FilterTransform():
-      ds = ds.filter(tr)
-    case grain.Batch():
-      ds = ds.batch(tr.batch_size, drop_remainder=tr.drop_remainder)
-    case _:
-      raise ValueError(f"Unexpected transform type: {tr}")
-  return ds
