@@ -41,8 +41,6 @@ class TransformAdapter:
   def __init__(self, transform):
     self.transform = transform
 
-  # TODO(klausg): maybe forward num_parallel_calls_hint
-
   def __repr__(self):
     """Return the repr of the wrapped transform with the adaptor as prefix."""
     return f'{self.__class__.__name__}({self.transform!r})'
@@ -50,6 +48,22 @@ class TransformAdapter:
 
 class TfGrainMapAdapter(TransformAdapter, tfgrain.MapTransform):
   """Adapter for `kd.data.MapTransform` to tfgrain."""
+
+  @property
+  def name(self):
+    """Forward the name of this transformation (if any), to aid in debugging."""
+    # Used by tfgrain to name the operations in the tf graph.
+    return getattr(self.transform, 'name', getattr(super(), 'name'))
+
+  @property
+  def num_parallel_calls_hint(self):
+    """Forward the num_parallel_calls_hint of this transformation (if any)."""
+    # Can be used to modify the default parallelization behavior of tfgrain.
+    return getattr(
+        self.transform,
+        'num_parallel_calls_hint',
+        getattr(super(), 'num_parallel_calls_hint'),
+    )
 
   def map(self, element: Any) -> Any:
     # Required due to b/326590491.
@@ -70,6 +84,12 @@ class TfGrainCallableAdapter(TransformAdapter, tfgrain.MapTransform):
 
 class TfGrainFilterAdapter(TransformAdapter, tfgrain.FilterTransform):
   """Adapter from `kd.data.FilterTransform` to tfgrain."""
+
+  @property
+  def name(self):
+    """Forward the name of this transformation (if any), to aid in debugging."""
+    # Used by tfgrain to name the operations in the tf graph.
+    return getattr(self.transform, 'name', getattr(super(), 'name'))
 
   def filter(self, elements: Any) -> Any:
     # Required due to b/326590491.
