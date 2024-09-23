@@ -22,6 +22,7 @@ import functools
 import json
 from typing import Any, Mapping, Optional
 
+from absl import logging
 from clu import metric_writers
 from clu import parameter_overview
 from etils import epath
@@ -45,6 +46,8 @@ import optax
 import pandas as pd
 
 from unittest import mock as _mock ; xmanager_api = _mock.Mock()
+
+# pylint: disable=logging-fstring-interpolation
 
 COLLECTION_NOT_SET = "$not_set$"
 
@@ -496,6 +499,11 @@ class KDMetricWriter(MetadataWriter):
     self._tf_summary_writer.write_audios(step, audios, sample_rate=sample_rate)
 
   def write_texts(self, step: int, texts: Mapping[str, str]) -> None:
+    # log_writer.write_texts does not display new lines, making it hard to
+    # parse the text.
+    logging.info("Writing texts:")
+    for k, v in texts.items():
+      logging.info(f"{k}: {v}")
     self._log_writer.write_texts(step, texts)
     self._tf_summary_writer.write_texts(step, texts)
 
