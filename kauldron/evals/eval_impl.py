@@ -24,6 +24,7 @@ import hashlib
 from absl import logging
 from etils import epath
 from kauldron.checkpoints import checkpointer
+from kauldron.checkpoints import partial_loader
 from kauldron.evals import evaluators as evaluators_lib
 from kauldron.evals import run_strategies
 from kauldron.train import train_step
@@ -171,37 +172,63 @@ def _preemptable_iter_new_checkpoints(
     return
 
   trainer_ckpt = trainer.checkpointer
-  eval_ckpt = _get_eval_ckpt(trainer_ckpt, eval_names)
-  # If the eval checkpoint exists, there is an ongoing eval that was preempted
-  # and we should resume the onging eval.
-  # After the eval is done, we check for new checkpoints and write a new
-  # checkpoint, which then will be picked up if the job gets preempted again.
-  if eval_ckpt.latest_step is not None:
-    logging.info('Resume evaluation...')
-    # Restore the state from the last eval checkpoint
-    state = eval_ckpt.restore(state)
-    yield state
-    # Eval is done, remove the duplicated checkpoint
-    eval_ckpt.delete(state.step)
+  assert isinstance(trainer_ckpt, checkpointer.Checkpointer)
+  with _get_eval_ckpt(trainer_ckpt, eval_names) as eval_ckpt:
+    # If the eval checkpoint exists, there is an ongoing eval that was preempted
+    # and we should resume the onging eval.
+    # After the eval is done, we check for new checkpoints and write a new
+    # checkpoint, which then will be picked up if the job gets preempted again.
+    if eval_ckpt.latest_step is not None:
+      logging.info('Resume evaluation...')
+      # Restore the state from the last eval checkpoint
+      state = eval_ckpt.restore(state)
+      step = int(state.step)
+      yield state
+      # state might have been donated, we should not access it after this point.
+      # Eval is done, remove the duplicated checkpoint
+      eval_ckpt.delete(step)
+    for step in trainer_ckpt.iter_new_checkpoints(
+        min_interval_secs=10,
+        timeout=10,
+        timeout_fn=lambda: (
+            # Exit when train job has completed
+            epath.Path(trainer.workdir)
+            .joinpath(TRAIN_COMPLETE_FILENAME)
+            .exists()
+        ),
+    ):
+      state = _restore_checkpoint(
+          trainer_ckpt=trainer_ckpt,
+          state=state,
+          step=step,
+      )
+      assert int(state.step) == step
+      # Temporarily copy the state to the eval checkpoint, to ensure that
+      # it won't be deleted by the train job until the current eval is done.
+      eval_ckpt.save(state, step=step)
+      yield state
+      # state might have been donated, we should not access it after this point.
+      # Eval is done, remove the duplicated checkpoint
+      eval_ckpt.delete(step)
 
-  for step in trainer_ckpt.iter_new_checkpoints(
-      min_interval_secs=10,
-      timeout=10,
-      timeout_fn=lambda: (
-          # Exit when train job has completed
-          epath.Path(trainer.workdir)
-          .joinpath(TRAIN_COMPLETE_FILENAME)
-          .exists()
-      ),
-  ):
-    state = trainer_ckpt.restore(state, step=step)
-    assert int(state.step) == step
-    # Temporarily copy the state to the eval checkpoint, to ensure that
-    # it won't be deleted by the train job until the current eval is done.
-    eval_ckpt.save(state, step=step)
-    yield state
-    # Eval is done, remove the duplicated checkpoint
-    eval_ckpt.delete(state.step)
+
+def _restore_checkpoint(
+    *,
+    trainer_ckpt: checkpointer.Checkpointer,
+    state: train_step.TrainState,
+    step: int,
+) -> train_step.TrainState:
+  """Restores the checkpoint."""
+  # TODO(epot): Rather than `PartialKauldronLoader`, should instead
+  # have some `trainer_ckpt.restore(state, partial_restore=True)`
+  if state.opt_state is None:
+    # PartialKauldronLoader restores params and collections
+    with partial_loader.PartialKauldronLoader(
+        workdir=trainer_ckpt.workdir,
+        step=step,
+    ) as loader:
+      return loader.transform(state)
+  return trainer_ckpt.restore(state, step=step)
 
 
 def _get_eval_ckpt(
