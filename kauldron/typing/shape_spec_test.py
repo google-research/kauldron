@@ -14,20 +14,19 @@
 
 # pylint: disable=g-importing-member
 from kauldron.typing import Float, Shape, typechecked  # pylint: disable=g-multiple-import
-from kauldron.typing.shape_spec import (  # pylint: disable=g-multiple-import
+from kauldron.typing.shape_parser import (  # pylint: disable=g-multiple-import
     BinaryOpDim,
-    Dim,
     FunctionDim,
     IntDim,
-    Memo,
     NAME_2_FUNC,
     NegDim,
     SYMBOL_2_OPERATOR,
     ShapeSpec,
     SingleDim,
     VariadicDim,
-    parse_shape_spec,
 )
+from kauldron.typing.shape_spec import Dim, parse_shape_spec  # pylint: disable=g-multiple-import
+from kauldron.typing.utils import Memo
 import numpy as np
 import pytest
 

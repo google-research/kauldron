@@ -29,6 +29,7 @@ from etils import enp
 from etils import epy
 import jaxtyping
 from kauldron.typing import shape_spec
+from kauldron.typing import utils
 import typeguard
 
 
@@ -49,7 +50,7 @@ class TypeCheckError(typeguard.TypeCheckError):
       return_value: Any,
       annotations: dict[str, Any],
       return_annotation: Any,
-      memo: shape_spec.Memo,
+      memo: utils.Memo,
   ):
     super().__init__(message)
     self.arguments = arguments
@@ -136,7 +137,7 @@ def typechecked(fn):
           return_value=retval,
           annotations=annotations,
           return_annotation=sig.return_annotation,
-          memo=shape_spec.Memo.from_current_context(),
+          memo=utils.Memo.from_current_context(),
       ) from e
 
   return _reraise_with_shape_info

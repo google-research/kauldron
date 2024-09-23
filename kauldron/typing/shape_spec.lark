@@ -1,0 +1,81 @@
+// To generate the serialized parser run:
+// python -m lark.tools.standalone -c shape_spec.lark > tmp.py
+// then copy the DATA and MEMO lines from the end of the file into shape_parser.py
+// IMPORTANT: make sure to use lark==1.2.1
+
+// shape_spec is a list of dim_specs separated by whitespace
+// e.g. "*b h w//2 3"
+start: _WS_INLINE* dim_spec (_WS_INLINE+ dim_spec)* _WS_INLINE*
+          | _WS_INLINE* // allow empty
+
+?dim_spec: expr
+         | var_dim
+         | other_dim
+
+// Dim expressions are sub-structured into term, factor, unary, power, and atom
+// to account for operator precedence:
+// expr (lowest precedence): sum operations (+, -)
+?expr: term
+     | expr SUM_OP term    -> binary_op
+SUM_OP: "+" | "-"
+
+// multiplication operations (*, /, //, %)
+?term: unary
+     | term MUL_OP unary   -> binary_op
+MUL_OP: "*" | "/" | "//" | "%"
+
+// unary operators (we only support "-", not "+" or "~")
+?unary: power
+      | "-" unary          -> neg
+
+// raising a value to the power of another (**)
+?power: atom
+      | atom POW_OP unary  -> binary_op
+POW_OP.2: "**"
+
+// atoms (highest precedence): include ints, named dims,  parenthesized
+// expressions, and functions.
+?atom: INT  -> int_dim
+     | FUNC "(" arg_list ")"  -> func
+     | NAME -> name_dim
+     | "(" expr ")"
+
+
+FUNC.2: "min" | "max" | "sum" | "prod"
+
+
+// named variadic dim spec (can be part of a function)
+var_dim: "*" NAME
+
+// Other dim specs (cannot be part of an expression)
+other_dim: "_" NAME?    -> anon_dim
+         | "..."        -> anon_var_dim
+         | "*_" NAME?   -> anon_var_dim
+         | "#" NAME     -> broadcast_dim
+         | "#" INT      -> broadcast_dim
+         | "#*" NAME    -> broadcast_var_dim
+         | "*#" NAME    -> broadcast_var_dim
+
+// argument list for min, max, sum etc. can be either
+//   - a single variadic dim e.g. min(*channel)
+//   - a list of at least two normal dims e.g. min(a,b,c)
+//     (but not a single normal dim like min(a))
+//   - a combination: e.g. sum(a,*b)
+?arg_list: expr ("," (expr | var_dim))+
+         | var_dim ("," (expr | var_dim))*
+
+// TODO: maybe add composition to atom?
+// composition: "(" name_dim (_WS_INLINE (name_dim | var_dim))+ ")"
+//            | "(" var_dim (_WS_INLINE (name_dim | var_dim))* ")"
+
+
+
+// dimension names consist of letters, digits and underscores but have to start
+// with a letter (underscores are used to indicate anonymous dims)
+NAME: LETTER ("_"|LETTER|DIGIT)*
+
+_WS_INLINE: (" "|/\t/)+
+
+%import common.INT
+%import common.LETTER
+%import common.DIGIT
