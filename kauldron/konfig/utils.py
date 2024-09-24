@@ -14,11 +14,12 @@
 
 """Utils."""
 
+import dataclasses
 import functools
 import itertools
 import os
 import typing
-from typing import Any, TypeVar
+from typing import Any, Generic, TypeVar
 
 import ml_collections
 
@@ -78,18 +79,33 @@ def to_json(obj: Any) -> str:
   return _ToJson().convert(obj)
 
 
+@dataclasses.dataclass(slots=True, kw_only=True)
+class CachedObj(Generic[_T]):
+  """Keep track of the config with its associated resolved value.
+
+  Keeps a reference to the config object so that Python's garbage collector
+  doesn't clear the object from memory. As otherwise its `id(config)` could be
+  taken by another unrelated config2 object. This can be the case with ref_fn
+  where the config object is dynamically created every time (thus is not kept
+  alive).
+  """
+
+  ref: Any
+  value: _T
+
+
 class _ToJson:
   """Convert a ConfigDict to JSON."""
 
   def __init__(self):
-    self._id_to_json = {}
+    self._id_to_json: dict[int, CachedObj[Any]] = {}
     self._counter = itertools.count()
 
   def convert(self, obj: Any) -> Any:
     """Convert a ConfigDict to JSON nested dict."""
     # Object already encountered: Cycles & support shared references
     if id(obj) in self._id_to_json:
-      json_ = self._id_to_json[id(obj)]
+      json_ = self._id_to_json[id(obj)].value
       # Eventually assign the `__id__` so deserializing conserve the shared
       # objects.
       if isinstance(json_, dict) and '__id__' not in json_:
@@ -98,7 +114,7 @@ class _ToJson:
 
     # New object: Convert it to json
     json_ = self._convert_inner(obj)
-    self._id_to_json[id(obj)] = json_
+    self._id_to_json[id(obj)] = CachedObj(ref=obj, value=json_)
     return json_
 
   def _convert_inner(self, obj: Any) -> Any:

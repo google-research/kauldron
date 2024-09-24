@@ -333,7 +333,9 @@ class _VisitedTracker:
 
   count: itertools.count = dataclasses.field(default_factory=itertools.count)
   # Mapping id(obj) -> &001
-  pyid_to_id: dict[int, int | None] = dataclasses.field(default_factory=dict)
+  pyid_to_id: dict[int, utils.CachedObj[int | None]] = dataclasses.field(
+      default_factory=dict
+  )
   # Whether the object is displayed once or not
   pyid_was_repr: set[int] = dataclasses.field(default_factory=set)
 
@@ -373,10 +375,10 @@ class _VisitedTracker:
   def track_if_visited(self, obj: Any) -> bool:
     pyid = id(obj)
     if pyid not in self.pyid_to_id:  # Never visited, track
-      self.pyid_to_id[pyid] = None
+      self.pyid_to_id[pyid] = utils.CachedObj(ref=obj, value=None)
       return False
-    elif self.pyid_to_id[pyid] is None:  # Already visited, set a new id
-      self.pyid_to_id[pyid] = next(self.count)  # pytype: disable=container-type-mismatch
+    elif self.pyid_to_id[pyid].value is None:  # Already visited, set a new id
+      self.pyid_to_id[pyid].value = next(self.count)  # pytype: disable=container-type-mismatch
       return True
     else:  # Already visited and id set, do nothing
       return True
@@ -384,10 +386,10 @@ class _VisitedTracker:
   def get_id_and_was_repr(self, obj) -> tuple[int, bool]:
     # With `konfig.ref_fn`, some objects are re-created everytime the attribute
     # is accessed. So some objects might have new `id()`
-    id_ = self.pyid_to_id.get(id(obj))
-    if not id_:  # Object has no duplicate
+    if not (cached := self.pyid_to_id.get(id(obj))):  # Object has no duplicate
       return 0, False
     # Object has duplicate
+    id_ = cached.value
     if id_ in self.pyid_was_repr:
       return id_, True  # Object was already repr  # pytype: disable=bad-return-type
     else:
