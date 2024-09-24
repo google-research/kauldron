@@ -35,6 +35,7 @@ dependencies = [
     "ml_collections@git+https://github.com/google/ml_collections@master",
     "numpy",
     "numpy",
+    "opencv-python",  # speeds up pygrain image loading
     "optax",
     "orbax-checkpoint",
     "pandas",

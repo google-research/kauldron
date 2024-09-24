@@ -46,8 +46,16 @@ with _epy.lazy_api_imports(globals()):
 
   from kauldron.data.utils import BatchSize
 
+# ****************************************************************************
+# DO NOT ADD preprocessing ops here. Instead, add them to `kd.contrib.data`
+# ****************************************************************************
+
+# TODO(epot): Should migrate all users to use explicitly `kd.data.tf`
+from kauldron.data.transforms.base import Elements
+from kauldron.data.transforms.base import ElementWiseTransform
+from kauldron.data.transforms.base import TreeFlattenWithPath
+from kauldron.data.transforms.map_transforms import Rearrange
+from kauldron.data.transforms.map_transforms import ValueRange
 
 with _epy.lazy_imports():
   from kauldron.data import py
-
-# TODO(klausg): Temporary removal until importing works

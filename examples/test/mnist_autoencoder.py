@@ -28,8 +28,6 @@ with konfig.imports():
   from flax import linen as nn
   from kauldron import kd
   import optax
-  from examples.test import mock_data  # pytype: disable=import-error
-
 # pylint: enable=g-import-not-at-top
 
 
@@ -100,8 +98,14 @@ def get_config():
 
 
 def _make_ds(training: bool):
-  return kd.data.InMemoryPipeline(
-      loader=mock_data.get_mnist_mockup,
-      batch_size=32,
+  return kd.data.py.Tfds(
+      name="mnist",
+      split="train" if training else "test",
+      shuffle=True if training else False,
       num_epochs=None if training else 1,
+      transforms=[
+          kd.data.Elements(keep=["image"]),
+          kd.data.ValueRange(key="image", vrange=(0, 1)),
+      ],
+      batch_size=256,
   )
