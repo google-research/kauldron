@@ -87,6 +87,10 @@ class Auxiliaries:
   metric_states: Mapping[str, kd_metrics.State] = dataclasses.field(
       default_factory=flax.core.FrozenDict
   )
+  summary_states: Mapping[str, kd_metrics.State] = dataclasses.field(
+      default_factory=flax.core.FrozenDict
+  )
+  # TODO(klausg): Remove `summary_kwargs` once all summaries are migrated
   summary_kwargs: Mapping[str, Any] = dataclasses.field(
       default_factory=flax.core.FrozenDict
   )
@@ -101,10 +105,12 @@ class Auxiliaries:
     """Accumulate auxiliary."""
     if other is None:
       return self
-    # TODO(epot): How to merge summaries ?
     return self.replace(
         loss_states=_reduce_states(self.loss_states, other.loss_states),
         metric_states=_reduce_states(self.metric_states, other.metric_states),
+        summary_states=_reduce_states(
+            self.summary_states, other.summary_states
+        ),
     )
 
   def __or__(self, other: Auxiliaries | None) -> Auxiliaries:
@@ -121,7 +127,7 @@ class Auxiliaries:
 
   def compute(self, *, flatten: bool = True) -> AuxiliariesOutput:
     """Compute losses and metrics."""
-    # train losses
+    # losses
     loss_values = jax.tree.map(
         _compute_metric, self.loss_states, is_leaf=kd_metrics.State.isinstance
     )
@@ -134,9 +140,16 @@ class Auxiliaries:
     if loss_values.values():  # if there are any losses also add a total
       loss_values[dashboard_utils.TOTAL_LOSS_KEY] = total_loss
 
-    # train metrics
+    # metrics
     metric_values = jax.tree.map(
         _compute_metric, self.metric_states, is_leaf=kd_metrics.State.isinstance
+    )
+
+    # summaries
+    summary_values = jax.tree.map(
+        _compute_metric,
+        self.summary_states,
+        is_leaf=kd_metrics.State.isinstance,
     )
 
     if flatten:
@@ -146,12 +159,14 @@ class Auxiliaries:
       loss_values = kontext.flatten_with_path(
           loss_values, prefix="losses", separator="/"
       )
+      summary_values = kontext.flatten_with_path(
+          summary_values, prefix="summaries", separator="/"
+      )
 
     return AuxiliariesOutput(
         loss_values=loss_values,
         metric_values=metric_values,
-        # hist_summaries=hist_summaries,
-        # image_summaries=image_summaries,
+        summary_values=summary_values,
     )
 
 
@@ -168,7 +183,7 @@ class AuxiliariesOutput:
 
   loss_values: dict[str, Any] = dataclasses.field(default_factory=dict)
   metric_values: dict[str, Any] = dataclasses.field(default_factory=dict)
-  # TODO(klausg): Add summaries
+  summary_values: dict[str, Any] = dataclasses.field(default_factory=dict)
 
 
 def _reduce_states_single(

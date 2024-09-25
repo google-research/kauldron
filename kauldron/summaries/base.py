@@ -75,17 +75,6 @@ class ImageSummary(Summary, abc.ABC):
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
-class HistogramSummary(Summary):
-  """Basic histogram summary."""
-
-  tensor: kontext.Key
-  num_buckets: int = 30
-
-  def get_tensor(self, tensor: Array["..."]) -> tuple[int, Array["n"]]:
-    return self.num_buckets, tensor.flatten()
-
-
-@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class PointCloudsData():
   """Basic point data class."""
   point_clouds: Array["n 3"]

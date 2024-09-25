@@ -219,21 +219,16 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
       with jax.spmd_mode("allow_all"), jax.transfer_guard("allow"):
         # histograms
         hist_summaries = {
-            name: summary.get_tensor(**aux.summary_kwargs[name])
-            for name, summary in model_with_aux.summaries.items()
-            if isinstance(summary, summaries.HistogramSummary)
+            name: value
+            for name, value in aux_result.summary_values.items()
+            if isinstance(value, summaries.Histogram)
         }
-        for name, (_, tensor) in hist_summaries.items():
-          if tensor.size == 0:
-            raise ValueError(
-                f"Histogram summary `{name}` is empty array of shape"
-                f" {tensor.shape}."
-            )
+
         self.write_histograms(
             step=step,
-            arrays={k: tensor for k, (_, tensor) in hist_summaries.items()},
+            arrays={k: hist.tensor for k, hist in hist_summaries.items()},
             num_buckets={
-                k: n_buckets for k, (n_buckets, _) in hist_summaries.items()
+                k: hist.num_buckets for k, hist in hist_summaries.items()
             },
         )
 
