@@ -541,7 +541,7 @@ class KDMetricWriter(MetadataWriter):
     # convert flat spec into a pandas dataframe
     ctx_df = pd.DataFrame(
         # wrap entries in backticks to avoid interpreting __x__ as markdown bold
-        [(f"`{k}`", f"`{v}`") for k, v in context_spec.items()],
+        [(f"`{k}`", f"`{v}`") for k, v in context_spec.items()],  # pylint: disable=attribute-error
         columns=["Path", "Spec"],
     )
     # export pandas dataframe as markdown text

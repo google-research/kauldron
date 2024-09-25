@@ -161,7 +161,7 @@ class ShowImages(ImageSummary):
     if masks is not None:
       if not isinstance(masks, Bool["n h w 1"]):
         raise ValueError(
-            f"Bad mask shape or dtype: {masks.shape} {masks.dtype}"
+            f"Bad mask shape or dtype: {masks.shape} {masks.dtype}"  # pylint: disable=attribute-error
         )
       masks = masks[: self.num_images]
 
@@ -242,7 +242,7 @@ class ShowDifferenceImages(ImageSummary):
     if masks is not None:
       if not isinstance(masks, Bool["n h w 1"]):
         raise ValueError(
-            f"Bad mask shape or dtype: {masks.shape} {masks.dtype}"
+            f"Bad mask shape or dtype: {masks.shape} {masks.dtype}"  # pylint: disable=attribute-error
         )
       masks = masks[:num_images_per_device]
 

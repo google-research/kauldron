@@ -220,7 +220,7 @@ class CollectingState(State):
     merged_fields = {
         k: _merge_normalize_tuple(v1, v2)
         for k, (v1, v2) in epy.zip_dict(
-            self._accumulated_fields, other._accumulated_fields  # pylint: disable=protected-access
+            self._accumulated_fields, other._accumulated_fields  # pylint: disable=protected-access,attribute-error
         )
     }
     return dataclasses.replace(self, **merged_fields)
@@ -375,7 +375,7 @@ class CollectFirstState(State):
     merged_fields = {
         k: _concat_truncate(v1, v2, self.keep_first)  # merge & truncate
         for k, (v1, v2) in epy.zip_dict(
-            self._accumulated_fields, other._accumulated_fields  # pylint: disable=protected-access
+            self._accumulated_fields, other._accumulated_fields  # pylint: disable=protected-access,attribute-error
         )
     }
     return dataclasses.replace(self, **merged_fields)
