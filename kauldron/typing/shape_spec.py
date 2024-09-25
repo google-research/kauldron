@@ -105,10 +105,12 @@ def Dim(spec_str: str) -> int:  # pylint: disable=invalid-name
 shape_parser = lark.Lark(
     start="shape_spec",
     regex=True,
+    parser="lalr",
     grammar=r"""
-// shape_spe is a list of dim_specs separated by whitespace
+// shape_spec is a list of dim_specs separated by whitespace
 // e.g. "*b h w//2 3"
-shape_spec: (_WS_INLINE* dim_spec)? (_WS_INLINE+ dim_spec)*
+shape_spec: _WS_INLINE* dim_spec (_WS_INLINE+ dim_spec)* _WS_INLINE*
+          | _WS_INLINE* // allow empty
 
 ?dim_spec: expr
          | var_dim
@@ -133,7 +135,7 @@ MUL_OP: "*" | "/" | "//" | "%"
 // raising a value to the power of another (**)
 ?power: atom
       | atom POW_OP unary  -> binary_op
-POW_OP: "**"
+POW_OP.2: "**"
 
 // atoms (highest precedence): include ints, named dims,  parenthesized
 // expressions, and functions.
@@ -142,7 +144,7 @@ POW_OP: "**"
      | "(" expr ")"
      | FUNC "(" arg_list ")"  -> func
 
-FUNC: "min" | "max" | "sum" | "prod"
+FUNC.2: "min" | "max" | "sum" | "prod"
 
 
 // named variadic dim spec (can be part of a function)
