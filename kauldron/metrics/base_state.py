@@ -68,9 +68,8 @@ class State(abc.ABC, Generic[_MetricT]):
       added by `metric.get_state()`.
   """
 
-  if not typing.TYPE_CHECKING:
-    _: dataclasses.KW_ONLY
-    parent: _MetricT = flax.struct.field(pytree_node=False, default=None)
+  _: dataclasses.KW_ONLY
+  parent: _MetricT = flax.struct.field(pytree_node=False, default=None)
 
   def __init_subclass__(cls, **kwargs):
     super().__init_subclass__(**kwargs)
@@ -131,7 +130,7 @@ def _propagate_parent_in_merge(old_merge: _FnT) -> _FnT:
 
 
 @flax.struct.dataclass
-class EmptyState(State):
+class EmptyState(State[_MetricT]):
   """Empty state."""
 
   @classmethod
@@ -146,7 +145,7 @@ class EmptyState(State):
 
 
 @flax.struct.dataclass
-class CollectingState(State):
+class CollectingState(State[_MetricT]):
   """Accumulate outputs across multiple steps (without reducing).
 
   Example:
@@ -253,7 +252,7 @@ class _CollectingStateOutput(types.SimpleNamespace):
 
 # TODO(epot): Could be unified with `AllReduceMean` in `kd.losses`
 @flax.struct.dataclass
-class AverageState(State):
+class AverageState(State[_MetricT]):
   """Computes the average of a scalar or a batch of tensors.
 
   Supports the following types of masks:
@@ -322,7 +321,7 @@ class AverageState(State):
 
 
 @flax.struct.dataclass
-class CollectFirstState(State):
+class CollectFirstState(State[_MetricT]):
   """Get the first outputs (possibly) across multiple steps (no reducing).
 
   Example:
@@ -340,11 +339,8 @@ class CollectFirstState(State):
   ```
   """
 
-  if typing.TYPE_CHECKING:
-    keep_first: int
-  else:
-    _: dataclasses.KW_ONLY
-    keep_first: int = flax.struct.field(pytree_node=False)
+  _: dataclasses.KW_ONLY
+  keep_first: int = flax.struct.field(pytree_node=False)
 
   # TODO(klausg) dynamically check type annotations in post_init
 

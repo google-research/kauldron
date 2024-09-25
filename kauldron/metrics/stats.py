@@ -90,13 +90,13 @@ class Norm(base.Metric):
   aggregation_type: Literal["average", "concat"] | None = None
 
   @flax.struct.dataclass
-  class State(base_state.AverageState):
+  class State(base_state.AverageState["Norm"]):
     """Wrapper around AverageState for Norm."""
 
     def merge(self, other: base_state.AverageState) -> base_state.AverageState:
       assert isinstance(other, Norm.State)
 
-      if self.parent.axis is None and self.parent.aggregation_type is None:  # pytype: disable=attribute-error
+      if self.parent.axis is None and self.parent.aggregation_type is None:
         warnings.warn(
             "When setting axis=None in kd.metrics.Norm and running a TreeReduce"
             " over it, Norm will average the norms of individual leaves, rather"
@@ -108,7 +108,7 @@ class Norm(base.Metric):
       return super().merge(other)
 
     def compute(self) -> Float[""]:
-      parent = self.parent  # pytype: disable=attribute-error
+      parent = self.parent
       aggregation_type = (
           parent.aggregation_type
           if parent.aggregation_type is not None

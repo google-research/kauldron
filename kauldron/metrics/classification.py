@@ -126,7 +126,7 @@ class RocAuc(base.Metric):
   multi_class_mode: str = "ovr"  # One-vs-Rest ("ovr") or One-vs-One ("ovo")
 
   @flax.struct.dataclass
-  class State(base_state.CollectingState):
+  class State(base_state.CollectingState["RocAuc"]):
     """RocAuc state."""
 
     labels: Int["*b 1"]
