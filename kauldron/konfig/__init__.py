@@ -52,6 +52,7 @@ from kauldron.konfig.ref_utils import ref_fn
 from kauldron.konfig.ref_utils import WithRef
 from kauldron.konfig.utils import ConfigDictLike
 from kauldron.konfig.utils import placeholder
+from kauldron.konfig.utils import required
 # pylint: enable=g-importing-member
 
 # Register the default `ConfigDict` overwrites

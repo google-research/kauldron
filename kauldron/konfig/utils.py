@@ -47,7 +47,7 @@ else:
 def placeholder(
     field_type: Any = object,
     *,
-    required: bool = False,
+    required: bool = False,  # pylint: disable=redefined-outer-name
     default: Any = None,
 ) -> Any:
   """Defines an entry in a ConfigDict that has no value yet.
@@ -64,6 +64,14 @@ def placeholder(
   return ml_collections.FieldReference(
       default, field_type=field_type, required=required
   )
+
+
+# TODO(epot): konfig should raise error if `_required` field is not set. This
+# could be done by having resolve check for the presence of any placeholder
+# not set.
+def required(field_type: type[Any]) -> Any:
+  """Defines a required attribute in the config that has no value yet."""
+  return placeholder(field_type)
 
 
 @typing.runtime_checkable
