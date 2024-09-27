@@ -340,6 +340,8 @@ class CollectFirstState(State[_MetricT]):
   """
 
   _: dataclasses.KW_ONLY
+  # TODO(klausg): support None for unlimited collection?
+  # TODO(klausg): Unify with CollectingState?
   keep_first: int = flax.struct.field(pytree_node=False)
 
   # TODO(klausg) dynamically check type annotations in post_init

@@ -235,29 +235,23 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
       with jax.spmd_mode("allow_all"), jax.transfer_guard("allow"):
         # point clouds
         pc_summaries = {
-            name: summary.get_point_cloud(**aux.summary_kwargs[name])
-            for name, summary in model_with_aux.summaries.items()
-            if isinstance(summary, summaries.PointCloudSummary)
+            name: value
+            for name, value in aux_result.summary_values.items()
+            if isinstance(value, summaries.PointCloud)
         }
-        for name, point_clouds_data in pc_summaries.items():
-          if point_clouds_data.point_clouds.size == 0:
-            raise ValueError(
-                f"Point cloud summary `{name}` is empty array of shape"
-                f" {point_clouds_data.point_clouds.shape}."
-            )
         self.write_pointcloud(
             step=step,
             point_clouds={
-                k: point_clouds_data.point_clouds
-                for k, point_clouds_data in pc_summaries.items()
+                k: point_cloud.point_clouds
+                for k, point_cloud in pc_summaries.items()
             },
             point_colors={
-                k: point_clouds_data.point_colors
-                for k, point_clouds_data in pc_summaries.items()
+                k: point_cloud.point_colors
+                for k, point_cloud in pc_summaries.items()
             },
             configs={
-                k: point_clouds_data.configs
-                for k, point_clouds_data in pc_summaries.items()
+                k: point_cloud.configs
+                for k, point_cloud in pc_summaries.items()
             },
         )
 

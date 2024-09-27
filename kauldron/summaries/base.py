@@ -75,50 +75,6 @@ class ImageSummary(Summary, abc.ABC):
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
-class PointCloudsData():
-  """Basic point data class."""
-  point_clouds: Array["n 3"]
-  point_colors: Optional[Array["n 3"]] = None
-  configs: Optional[Mapping[str, Any]] = None
-
-
-@dataclasses.dataclass(kw_only=True, frozen=True)
-class PointCloudSummary(Summary):
-  """Basic point cloud summary."""
-
-  point_clouds: kontext.Key
-  point_colors: Optional[kontext.Key] = None
-  configs: Optional[Mapping[str, Any]] = None
-
-  def get_point_cloud(
-      self,
-      point_clouds: Array["n 3"],
-      *,
-      point_colors: Optional[Array["n 3"]],
-      configs: Optional[Mapping[str, Any]],
-  ) -> PointCloudsData:
-    """Returns a PointCloudsData object."""
-    if configs is None:
-      if self.configs is not None:
-      # To fix write/serialize error with immutable dict (self.configs)
-        configs = {k: dict(v) for k, v in self.configs.items()}
-    else:
-      configs = {
-          "camera": {
-              "cls": "PerspectiveCamera",
-              "near": 1e-4,
-          },
-          "material": {
-              "cls": "PointsMaterial",
-              "size": 0.03,
-          },
-      }
-    return PointCloudsData(
-        point_clouds=point_clouds, point_colors=point_colors, configs=configs
-    )
-
-
-@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class ShowImages(ImageSummary):
   """Show a set of images with optional reshaping and resizing."""
 
