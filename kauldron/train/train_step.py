@@ -207,6 +207,8 @@ def _reduce_states(
 
 def _gather_kwargs_with_reraise(k, summary, context):
   """Gathers summary kwargs with an error stating the offending key."""
+  if not isinstance(summary, kd_summaries.Summary):
+    return {}  # This is not a legacy summary, so no need to gather kwargs
   with epy.maybe_reraise(lambda: f"Error with key `{k}`: "):
     return summary.gather_kwargs(context)
 
@@ -356,11 +358,19 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
       )
 
     if return_summaries:
+      # TODO(klausg): remove legacy summaries protocol once all are migrated
+      # legacy summaries protocol:
       aux = aux.replace(
           summary_kwargs={
               k: _gather_kwargs_with_reraise(k, summary, context)
               for k, summary in self.summaries.items()
           }
+      )
+      # new summaries as metrics protocol:
+      aux.replace(
+          summary_states=jax.tree.map(
+              lambda m: m.get_state_from_context(context), self.metrics
+          )
       )
     return aux
 
