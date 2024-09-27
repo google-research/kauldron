@@ -137,3 +137,18 @@ def test_tree_reduce_glob():
   }
   y = m.get_state_from_context({"batch": d}).compute()
   assert y == 1  # Only d and b.d are included
+
+
+def test_skip_if_missing():
+  m = base.SkipIfMissing(metric=IntAverage(x="batch.d"))
+  context = {
+      "batch": {"d": np.arange(5)},
+  }
+  # should compute correct value if keys are present
+  y = m.get_state_from_context(context).compute()
+  assert y == 2
+
+  # should not error and instead return empty state if keys are missing
+  context = {"batch": {}}
+  y = m.get_state_from_context(context).compute()
+  assert y == 0

@@ -105,8 +105,10 @@ class Metric(abc.ABC):
             "Can either pass context or keyword arguments,"
             f"but got context and {kwargs.keys()}."
         )
-      kwargs = self._resolve_kwargs(context)
-    return self.get_state(**kwargs).compute()
+      state = self.get_state_from_context(context)
+    else:
+      state = self.get_state(**kwargs)
+    return state.compute()
 
 
 def _link_metric_to_state(fn: _FnT) -> _FnT:
@@ -287,3 +289,46 @@ def _tree_map_with_kwargs(fun, **kwargs):
   return jax.tree.map(
       _fun_with_posargs, *posargs, is_leaf=base_state.State.isinstance
   )
+
+
+@dataclasses.dataclass(frozen=True, eq=True)
+class SkipIfMissing(Metric):
+  """Skip this metric if any of the keys are missing.
+
+  This can be useful for example for metrics that are only defined for a
+  subset of the datasets, or for metrics of gradients that would fail during
+  evaluation.
+
+  Usage:
+   cfg.train_metrics["optional_metric"] = kd.metrics.SkipIfMissing(
+       kd.metrics.Norm(tensor="grads.encoder")
+    )
+
+  Attributes:
+    metric: The metric to skip if any of its kontext-keys are missing.
+  """
+
+  metric: Metric
+
+  def _resolve_kwargs(self, context: Any) -> dict[kontext.Key, Any]:
+    # Use the key and get_state signature of self.metric instead of self
+    return kontext.resolve_from_keyed_obj(
+        context, self, func=self.metric.get_state
+    )
+
+  def get_state(self, **kwargs) -> Metric.State:
+    return self.metric.get_state(**kwargs)
+
+  def get_state_from_context(self, context: Any) -> Metric.State:
+    try:
+      kwargs = self._resolve_kwargs(context)
+    except KeyError:
+      return self.metric.empty()
+    return self.metric.get_state(**kwargs)
+
+  def empty(self) -> Metric.State:
+    return self.metric.empty()
+
+  # Forwards `__kontext_keys__` so the keys can be extracted from the top-level
+  def __kontext_keys__(self) -> dict[kontext.Key, kontext.Key]:
+    return kontext.get_keypaths(self.metric)

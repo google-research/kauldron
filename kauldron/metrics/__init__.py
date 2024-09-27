@@ -17,6 +17,7 @@
 # pylint: disable=g-importing-member
 from kauldron.metrics.base import Metric
 from kauldron.metrics.base import NoopMetric
+from kauldron.metrics.base import SkipIfMissing
 from kauldron.metrics.base import TreeMap
 from kauldron.metrics.base import TreeReduce
 from kauldron.metrics.base_state import AverageState
