@@ -173,8 +173,9 @@ class Job(job_params.JobParams):
     # Build up the environment variables:
     env_vars = dict(self.env_vars)
     if self.debug.dump_hlo:
-      assert "XLA_FLAGS" not in env_vars  # Could be supported if required
-      env_vars["XLA_FLAGS"] = f"--xla_dump_to={dir_builder.wu_dir}"
+      xla_flags = env_vars.get("XLA_FLAGS", "")
+      xla_flags += f" --xla_dump_to={dir_builder.wu_dir}"
+      env_vars["XLA_FLAGS"] = xla_flags
     if self.debug.flax_profile:
       env_vars["FLAX_PROFILE"] = "true"  # Could also be experiment-wide.
 
