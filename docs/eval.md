@@ -48,7 +48,7 @@ train and eval jobs (defined both in the config or through flags):
 
 *   `--xp.platform`: Set the value globally (for both train and eval)
 *   `--cfg.xm_job.platform`: Set the value for train only
-*   `--xp.evals.<my-eval>.run.platform`: Set the value for eval only
+*   `--cfg.evals.<my-eval>.run.platform`: Set the value for eval only
 
 Note: Using `--xp.platfom` and `--cfg.xxx.platform` are mutually exclusive!
 
