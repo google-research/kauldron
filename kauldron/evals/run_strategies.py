@@ -50,7 +50,7 @@ class RunStrategy:
   shared_run = kd.evals.StandaloneEveryCheckpoint(
       job_group='separate',
       # Standalone evaluators supports all `kxm.Job` parameters.
-      platforms='a100=1',
+      platform='a100=1',
   ))
 
   cfg.evals = {
@@ -135,7 +135,7 @@ class StandaloneEveryCheckpoint(Standalone):
 
   ```python
   kd.evals.Evaluator(
-      run=kd.evals.StandaloneEveryCheckpoint(platforms='a100=1'),
+      run=kd.evals.StandaloneEveryCheckpoint(platform='a100=1'),
   )
   ```
 
@@ -154,7 +154,7 @@ class StandaloneLastCheckpoint(Standalone):
 
   ```python
   kd.evals.Evaluator(
-      run=kd.evals.StandaloneLastCheckpoint(platforms='a100=1'),
+      run=kd.evals.StandaloneLastCheckpoint(platform='a100=1'),
   )
   ```
 
