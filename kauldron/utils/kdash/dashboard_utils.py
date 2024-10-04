@@ -17,10 +17,13 @@
 from __future__ import annotations
 
 import abc
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
+import copy
 import dataclasses
+from typing import Dict, Union
 
 from etils import epy
+from kauldron.metrics import base
 from kauldron.utils.kdash import plot_utils
 
 TOTAL_LOSS_KEY = 'total'
@@ -137,11 +140,37 @@ class MetricDashboards(DashboardsBase):
   """
   collection: str
   losses: Iterable[str] = dataclasses.field(default_factory=tuple)
-  metrics: Iterable[str] = dataclasses.field(default_factory=tuple)
+  metrics: Union[
+      Dict[str, base.Metric], Iterable[str]
+  ] = dataclasses.field(default_factory=dict)
 
   def __post_init__(self):
     object.__setattr__(self, 'losses', tuple(self.losses))
-    object.__setattr__(self, 'metrics', tuple(self.metrics))
+    if isinstance(self.metrics, Mapping):
+      object.__setattr__(self, 'metrics', copy.copy(self.metrics))
+    elif isinstance(self.metrics, Iterable):
+      object.__setattr__(self, 'metrics', tuple(self.metrics))
+    else:
+      raise TypeError(
+          'metrics should be an Iterable or a Mapping.'
+      )
+
+  def get_keys(self, prefix: str = 'metrics') -> list[str]:
+    """Get metrics' keys."""
+
+    if isinstance(self.metrics, tuple):
+      return [f'{prefix}/{name}' for name in self.metrics]
+    elif isinstance(self.metrics, Mapping):
+      y_keys = [
+          f'{prefix}/{name}/{metric_name}'.rstrip('/')
+          for name, metric in self.metrics.items()
+          for metric_name in metric.__metrics_name__()
+      ]
+      return y_keys
+    else:
+      raise TypeError(
+          'metrics should be a tuple of str or a mapping of str/Metrics pair.'
+      )
 
   def normalize(self) -> MultiDashboards:
     losses = list(self.losses)
@@ -160,7 +189,7 @@ class MetricDashboards(DashboardsBase):
         SingleDashboard.from_y_keys(
             name='metrics',
             title='{xid}: Metrics',
-            y_keys=[f'metrics/{m}' for m in self.metrics],
+            y_keys=self.get_keys(),
             collections=[self.collection],
         ),
     ])

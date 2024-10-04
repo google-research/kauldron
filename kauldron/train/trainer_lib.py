@@ -438,7 +438,7 @@ class Trainer(config_util.BaseConfig):
       train_dashboard = kdash.MetricDashboards(
           collection='train',
           losses=self.train_losses.keys(),
-          metrics=self.train_metrics.keys(),
+          metrics=self.train_metrics,
       )
       all_dashboards.append(train_dashboard)
 

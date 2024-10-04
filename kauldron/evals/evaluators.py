@@ -268,7 +268,7 @@ class Evaluator(EvaluatorBase):
     return kdash.MetricDashboards(
         collection=self.name,
         losses=self.losses.keys(),
-        metrics=self.metrics.keys(),
+        metrics=self.metrics,
     )
 
 

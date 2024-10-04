@@ -79,6 +79,9 @@ class Metric(abc.ABC):
           f" accessing `self.parent`. Raised for {cls}"
       )
 
+  def __metrics_name__(self) -> list[str]:
+    return [""]
+
   @flax.struct.dataclass
   class State(base_state.State):
     pass
