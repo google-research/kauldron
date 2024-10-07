@@ -354,15 +354,6 @@ def _make_emoji_tags(
   if "=" in platform:
     tpu, _, size = platform.partition("=")
     symbol = {
-        "jd": "🪼",
-        "jf": "🪼",
-        "df": "🐲",
-        "dd": "🐲",
-        "pd": "🐡",
-        "pf": "🐡",
-        "vl": "🐍",
-        "vlp": "🐍",
-        "vf": "🐍",
     }.get(tpu, tpu + "=")
     tags.append(f"{symbol}{size}")
   else:
