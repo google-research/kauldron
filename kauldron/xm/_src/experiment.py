@@ -73,6 +73,7 @@ class Experiment(job_params.JobParams):
       individual jobs which have `kxm.CFG_FLAG_VALUES` argument.
     importance: Experiment importance.
     execution_settings: `xm_abc.ExecutionSettings` of the experiment.
+    attribution_urls: Optional list of XM attribution URLs.
     emoji_tags: Whether to use cool emoji tags.
     add_tensorboard_borg: Add TensorBoard
     add_tensorboard_corp: Add TensorBoard corp
@@ -110,6 +111,7 @@ class Experiment(job_params.JobParams):
   execution_settings: xm_abc.ExecutionSettings = dataclasses.field(
       default_factory=xm_abc.ExecutionSettings
   )
+  attribution_urls: list[str] = dataclasses.field(default_factory=list)
   emoji_tags: bool = False
 
   # Auxiliary units (TB,...)
@@ -128,6 +130,10 @@ class Experiment(job_params.JobParams):
     # Support `--xp.tags=my_tag,another_tag`
     if isinstance(self.tags, str):
       object.__setattr__(self, "tags", self.tags.split(","))
+    if isinstance(self.attribution_urls, str):
+      object.__setattr__(
+          self, "attribution_urls", self.attribution_urls.split(",")
+      )
 
     # Propagate the `--cfg` flags values to the job provider
     jobs_provider = dataclasses.replace(
@@ -207,6 +213,7 @@ class Experiment(job_params.JobParams):
     with xm_abc.create_experiment(
         experiment_title=name,
         settings=self.execution_settings,
+        attribution_urls=self.attribution_urls,
     ) as xp:
       xp = typing.cast(xm_abc.XManagerExperiment, xp)
 
