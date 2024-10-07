@@ -180,6 +180,7 @@ class Checkpointer(BaseCheckpointer):
     max_to_keep: See `ocp.CheckpointManagerOptions`
     keep_time_interval: See `ocp.CheckpointManagerOptions`
     keep_period: See `ocp.CheckpointManagerOptions`
+    save_on_steps: See `ocp.CheckpointManagerOptions`
     multiprocessing_options: See `ocp.MultiprocessingOptions`
     fast: (internal) Activate some optimizations
     create: (internal) Whether to create the checkpoint directory, this is set
@@ -193,6 +194,7 @@ class Checkpointer(BaseCheckpointer):
   max_to_keep: Optional[int] = 3
   keep_time_interval: Optional[datetime.timedelta] = None
   keep_period: Optional[int] = None
+  save_on_steps: Optional[Sequence[int]] = None
   multiprocessing_options: ocp.options.MultiprocessingOptions = (
       dataclasses.field(default_factory=ocp.options.MultiprocessingOptions)
   )
@@ -208,6 +210,7 @@ class Checkpointer(BaseCheckpointer):
         max_to_keep=self.max_to_keep,
         keep_time_interval=self.keep_time_interval,
         keep_period=self.keep_period,
+        save_on_steps=self.save_on_steps,
         step_prefix="ckpt",
         # TODO(msajjadi): Re-enable this once we've figured it out.
         # step_format_fixed_length=9,
