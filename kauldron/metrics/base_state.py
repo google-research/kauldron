@@ -18,13 +18,14 @@ from __future__ import annotations
 
 import abc
 import dataclasses
+import enum
 import functools
 import types
 import typing
 from typing import Any, Generic, TypeVar
 
 from etils import epy
-import flax
+import flax.struct
 import jax
 import jax.numpy as jnp
 from kauldron.typing import Array, Bool, Float  # pylint: disable=g-multiple-import
@@ -39,6 +40,19 @@ else:
   _MetricT = TypeVar("_MetricT")
 _SelfT = TypeVar("_SelfT")
 _FnT = TypeVar("_FnT")
+
+
+# define _EMPTY_TYPE as an enum, which allows us to use
+# Literal[_EMPTY_TYPE.EMPTY].
+# See also dataclasses.MISSING and
+# https://github.com/python/typeshed/pull/5900#issuecomment-895513797
+class _EMPTY_TYPE(enum.Enum):  # pylint: disable=invalid-name
+  """Sentinel value to indicate an empty field (e.g. parent)."""
+
+  EMPTY = enum.auto()
+
+
+EMPTY = _EMPTY_TYPE.EMPTY
 
 
 @flax.struct.dataclass
@@ -69,7 +83,7 @@ class State(abc.ABC, Generic[_MetricT]):
   """
 
   _: dataclasses.KW_ONLY
-  parent: _MetricT = flax.struct.field(pytree_node=False, default=None)
+  parent: _MetricT = flax.struct.field(pytree_node=False, default=EMPTY)
 
   def __init_subclass__(cls, **kwargs):
     super().__init_subclass__(**kwargs)
@@ -114,16 +128,19 @@ def _propagate_parent_in_merge(old_merge: _FnT) -> _FnT:
   def new_merge(self, other):
     # TODO(epot): Comparison should ignore the `key: kontext.Key` (valid to
     # merge metrics from 2 differents origins)
-    if self.parent != other.parent:
+
+    if self.parent != other.parent and not (
+        self.parent is EMPTY or other.parent is EMPTY
+    ):
       raise ValueError(
           "Trying to merge state comming from different metrics:"
           f" {self.parent} != {other.parent}\n"
           "If this is raised because the kontext.Keys are differents, you can "
           "open an issue."
       )
-
+    parent = self.parent if self.parent is not EMPTY else other.parent
     new_self = old_merge(self, other)
-    new_self = dataclasses.replace(new_self, parent=self.parent)
+    new_self = dataclasses.replace(new_self, parent=parent)
     return new_self
 
   return new_merge
@@ -181,9 +198,6 @@ class CollectingState(State[_MetricT]):
   *  Because `merge()` keep all values, those metrics uses much more memory and
      can be slow to compute.
   """
-
-  # TODO(epot): Could add a more explicit annotation: `x: Accumulated[Float[]]`
-  # so a metric can have both accumulated and reduced fields
 
   def __post_init__(self):
     # Normalize array values to `tuple()`

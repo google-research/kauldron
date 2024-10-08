@@ -18,10 +18,12 @@ from __future__ import annotations
 
 import dataclasses
 
+import flax.struct
 from kauldron import kontext
 from kauldron.metrics import base
 from kauldron.metrics import base_state
 import numpy as np
+import pytest
 
 
 # --------- Test a custom metric -------
@@ -30,6 +32,7 @@ class IntAverage(base.Metric):
   x: kontext.Key = "batch.x"
   mask: kontext.Key = None
 
+  @flax.struct.dataclass
   class State(base_state.AverageState):
 
     def compute(self):
@@ -152,3 +155,19 @@ def test_skip_if_missing():
   context = {"batch": {}}
   y = m.get_state_from_context(context).compute()
   assert y == 0
+
+
+def test_error_if_state_is_not_flax_dataclass():
+  # With decorator. Should not raise.
+  class ValidMetric(base.Metric):  # pylint: disable=unused-variable
+
+    @flax.struct.dataclass
+    class State(base_state.State):
+      a: int = 3
+
+  with pytest.raises(TypeError, match="@flax.struct.dataclass"):
+
+    class InvalidMetric(base.Metric):  # pylint: disable=unused-variable
+
+      class State(base_state.State):
+        a: int = 3

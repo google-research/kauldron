@@ -78,6 +78,12 @@ class Metric(abc.ABC):
           " `kd.metrics.State` and implement their own `.compute` function"
           f" accessing `self.parent`. Raised for {cls}"
       )
+    # nested State classes are defined with @flax.struct.dataclass decorator
+    if not _is_flax_dataclass(cls.State):
+      raise TypeError(
+          f"Metric state {cls.__name__}.State must be defined with "
+          "@flax.struct.dataclass decorator."
+      )
 
   @flax.struct.dataclass
   class State(base_state.State):
@@ -119,14 +125,23 @@ def _link_metric_to_state(fn: _FnT) -> _FnT:
   @functools.wraps(fn)
   def new_get_state(self, *args, **kwargs):
     state = fn(self, *args, **kwargs)
-    if state.parent is None:  # preserve the parent if it is already set
+    if state.parent is base_state.EMPTY:  # pylint: disable=protected-access
+      # preserve the parent if it is already set
       # this is important for wrapper metrics like `kd.metrics.TreeReduce`
-      #  where the parent should remain set to the inner metric.
+      # where the parent should remain set to the inner metric.
       state = dataclasses.replace(state, parent=self)
     return state
 
   new_get_state._has_link_metric = True  # pylint: disable=protected-access
   return new_get_state
+
+
+def _is_flax_dataclass(cls) -> bool:
+  # Note: We are checking __dict__ instead of using getattr to exclude the
+  # `_flax_dataclass` attribute of the parent class base_state.State.
+  return dataclasses.is_dataclass(cls) and cls.__dict__.get(
+      "_flax_dataclass", False
+  )
 
 
 class NoopMetric(Metric):

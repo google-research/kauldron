@@ -15,6 +15,10 @@
 """Metrics."""
 
 # pylint: disable=g-importing-member
+from kauldron.metrics.auto_state import AutoState
+from kauldron.metrics.auto_state import concat_field
+from kauldron.metrics.auto_state import sum_field
+from kauldron.metrics.auto_state import truncate_field
 from kauldron.metrics.base import Metric
 from kauldron.metrics.base import NoopMetric
 from kauldron.metrics.base import SkipIfMissing
