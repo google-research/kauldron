@@ -367,10 +367,14 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
           }
       )
       # new summaries as metrics protocol:
-      aux.replace(
-          summary_states=jax.tree.map(
-              lambda m: m.get_state_from_context(context), self.metrics
-          )
+      def _get_summary_state(summary):
+        if isinstance(summary, kd_metrics.Metric):
+          return summary.get_state_from_context(context)
+        else:
+          return kd_metrics.EmptyState()
+
+      aux = aux.replace(
+          summary_states=jax.tree.map(_get_summary_state, self.summaries)
       )
     return aux
 

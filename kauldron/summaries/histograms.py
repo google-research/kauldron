@@ -47,7 +47,7 @@ class HistogramSummary(metrics.Metric):
     tensor: Array["n"]
 
     @typechecked
-    def compute(self) -> Array["n"]:
+    def compute(self) -> Histogram:
       """Returns the concatenated and flattened values as a `Histogram`."""
       tensor = super().compute().tensor.reshape((-1,))
       if tensor.size == 0:
