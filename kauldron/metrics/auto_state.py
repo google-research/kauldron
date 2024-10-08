@@ -137,6 +137,32 @@ class AutoState(base_state.State[_MetricT]):
 # TODO(klausg): overloaded type annotation similar to dataclasses.field?
 
 
+def static_field(default: Any = dataclasses.MISSING, **kwargs):
+  """Define an AutoState static field.
+
+  Static fields are not merged, and instead are checked for equality during
+  `merge`. They are also not pytree nodes, so they are not touched by jax
+  transforms (but can lead to recompilation if changed).
+  These can be useful to store some parameters of the metric, e.g. the number
+  of elements to keep. Note that static fields are rarely needed, since it is
+  usually better to define static params in the corresponding metric and access
+  them through the `parent` field.
+
+  Args:
+    default: The default value of the field.
+    **kwargs: Additional arguments to pass to the dataclasses.field.
+
+  Returns:
+    A dataclasses.Field instance with additional metadata that marks this field
+    as a static field.
+  """
+  metadata = kwargs.pop("metadata", {})
+  metadata = metadata | {
+      "pytree_node": False,
+  }
+  return dataclasses.field(default=default, metadata=metadata, **kwargs)
+
+
 def sum_field(
     *,
     default: Any = dataclasses.MISSING,
