@@ -155,7 +155,7 @@ class DataSourceBase(PyGrainPipeline):
     ds = ds.seed(rng.as_seed())
 
     # Shard the dataset
-    ds = ds[jax.process_index() :: jax.process_count()]
+    ds = ds.slice(slice(jax.process_index(), None, jax.process_count()))
 
     # Global shuffle
     if self.shuffle:
