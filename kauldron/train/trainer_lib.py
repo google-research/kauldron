@@ -437,8 +437,8 @@ class Trainer(config_util.BaseConfig):
       # Create all dashboards to display in flatboard
       train_dashboard = kdash.MetricDashboards(
           collection='train',
-          losses=self.train_losses.keys(),
-          metrics=self.train_metrics.keys(),
+          losses=dict(self.train_losses),
+          metrics=dict(self.train_metrics),
       )
       all_dashboards.append(train_dashboard)
 

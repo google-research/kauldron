@@ -267,8 +267,8 @@ class Evaluator(EvaluatorBase):
   def __dashboards__(self) -> kdash.DashboardsBase:
     return kdash.MetricDashboards(
         collection=self.name,
-        losses=self.losses.keys(),
-        metrics=self.metrics.keys(),
+        losses=self.losses,
+        metrics=self.metrics,
     )
 
 

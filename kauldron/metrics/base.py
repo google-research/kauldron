@@ -85,6 +85,15 @@ class Metric(abc.ABC):
           "@flax.struct.dataclass decorator."
       )
 
+  def __metric_names__(self) -> list[str] | None:
+    """Returns the metric names.
+
+    Returns:
+      None: If the metric is a scalar.
+      list[str]: A list of sub-metric names if the metric is a dictionary.
+    """
+    return None
+
   @flax.struct.dataclass
   class State(base_state.State):
     pass

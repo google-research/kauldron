@@ -214,9 +214,10 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
   def __dashboards__(self) -> kdash.DashboardsBase:
     return kdash.MetricDashboards(
         collection=self.name,
-        metrics=[
-            f'{self.metric_prefix}-{shots}shot' for shots in self.num_shots
-        ],
+        metrics={
+            f'{self.metric_prefix}-{shots}shot': None
+            for shots in self.num_shots
+        },
     )
 
 

@@ -18,9 +18,12 @@ from __future__ import annotations
 
 import abc
 from collections.abc import Iterable
+import copy
 import dataclasses
 
 from etils import epy
+from kauldron.losses import base as base_loss
+from kauldron.metrics import base
 from kauldron.utils.kdash import plot_utils
 
 TOTAL_LOSS_KEY = 'total'
@@ -54,13 +57,16 @@ class DashboardsBase(abc.ABC):
   dashboards = kdash.MultiDashboards.from_iterable([
       kdash.MetricDashboards(
           collection='train',
-          losses=['xent'],
-          metrics=['accuracy', 'psnr'],
+          losses={'xent': None},
+          metrics={'accuracy': TopKAccuracy, 'psnr': None},
       ),
       kdash.MetricDashboards(
           collection='eval',
-          losses=['xent'],
-          metrics=['accuracy', 'psnr'],
+          losses={'xent': None},
+          metrics={
+            'accuracy': TopKAccuracy,
+            'precision_recall': PrecisionRecallMetric
+          },
       ),
   ])
 
@@ -136,31 +142,36 @@ class MetricDashboards(DashboardsBase):
   All `MetricDashboards` from the various collections are merged together.
   """
   collection: str
-  losses: Iterable[str] = dataclasses.field(default_factory=tuple)
-  metrics: Iterable[str] = dataclasses.field(default_factory=tuple)
+  losses: dict[str, base_loss.Loss | None] = dataclasses.field(
+      default_factory=dict
+  )
+  metrics: dict[str, base.Metric | None] = dataclasses.field(
+      default_factory=dict
+  )
 
   def __post_init__(self):
-    object.__setattr__(self, 'losses', tuple(self.losses))
-    object.__setattr__(self, 'metrics', tuple(self.metrics))
+    object.__setattr__(self, 'losses', copy.copy(self.losses))
+    object.__setattr__(self, 'metrics', copy.copy(self.metrics))
 
   def normalize(self) -> MultiDashboards:
-    losses = list(self.losses)
+    losses = dict(self.losses)
+
     # If more than one loss, add the total loss. Not the total loss is
     # displayed per-collection.
     if len(losses) > 1:
-      losses = [TOTAL_LOSS_KEY] + losses
+      losses[TOTAL_LOSS_KEY] = None
 
     return MultiDashboards.from_iterable([
         SingleDashboard.from_y_keys(
             name='losses',
             title='{xid}: Losses',
-            y_keys=[f'losses/{l}' for l in losses],
+            y_keys=_get_key(losses, prefix='losses'),
             collections=[self.collection],
         ),
         SingleDashboard.from_y_keys(
             name='metrics',
             title='{xid}: Metrics',
-            y_keys=[f'metrics/{m}' for m in self.metrics],
+            y_keys=_get_key(self.metrics, prefix='metrics'),
             collections=[self.collection],
         ),
     ])
@@ -217,3 +228,20 @@ def _merge_plots(plots: list[plot_utils.Plot]) -> list[plot_utils.Plot]:
     new_plot = plot_utils.Plot.merge(plot_for_key)
     merged_plots.append(new_plot)
   return merged_plots
+
+
+def _get_key(
+    metrics: dict[str, base.Metric | None], prefix: str = 'metrics'
+) -> list[str]:
+  """Get metrics' keys."""
+  y_keys = []
+  for name, sub_names in metrics.items():
+    if isinstance(sub_names, base.Metric):
+      sub_names = sub_names.__metric_names__()
+
+    if sub_names is None:
+      y_keys.append(f'{prefix}/{name}')
+    else:
+      for sub_name in sub_names:
+        y_keys.append(f'{prefix}/{name}/{sub_name}')
+  return y_keys
