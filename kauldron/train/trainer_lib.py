@@ -433,27 +433,4 @@ class Trainer(config_util.BaseConfig):
   def __dashboards__(self) -> kdash.DashboardsBase:
     all_dashboards = []
 
-    if not self.setup.eval_only:
-      # Create all dashboards to display in flatboard
-      train_dashboard = kdash.MetricDashboards(
-          collection='train',
-          losses=dict(self.train_losses),
-          metrics=dict(self.train_metrics),
-      )
-      all_dashboards.append(train_dashboard)
-
-    # Eval dashboards
-    all_dashboards.extend(ev.__dashboards__ for ev in self.evals.values())
-
-    # Extra dashboards
-    all_dashboards.append(
-        kdash.SingleDashboard.from_y_keys(
-            name='schedules',
-            title='{xid}: Schedules',
-            y_keys=[f'schedules/{s}' for s in self.schedules.keys()],
-            collections=['train'],
-        ),
-    )
-    if not self.setup.eval_only:
-      all_dashboards.append(self._chrono.__dashboards__)
     return kdash.MultiDashboards.from_iterable(all_dashboards)
