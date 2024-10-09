@@ -60,12 +60,6 @@ def get_config():
 
   cfg.train_metrics = {
       "latent_norm": kd.metrics.Norm(tensor="interms.encoder.__call__[0]"),
-      "param_norm": kd.metrics.TreeMap(
-          metric=kd.metrics.Norm(tensor="params", axis=None)
-      ),
-      "grad_norm": kd.metrics.TreeReduce(
-          metric=kd.metrics.Norm(tensor="grads", axis=None)
-      ),
   }
 
   cfg.train_summaries = {

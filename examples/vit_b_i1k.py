@@ -85,7 +85,7 @@ def get_config():
   cfg.optimizer = optax.chain(
       optax.clip_by_global_norm(1.0),
       optax.adamw(
-          learning_rate=cfg.ref.schedules.learning_rate, weight_decay=0.0001
+          learning_rate=cfg.ref.schedules["learning_rate"], weight_decay=0.0001
       ),
   )
 

@@ -63,10 +63,6 @@ def get_config():
       "accuracy": kd.metrics.Accuracy(
           logits="preds.logits", labels="batch.label"
       ),
-      "roc_auc": kd.metrics.RocAuc(logits="preds.logits", labels="batch.label"),
-      "final_attention_std": kd.metrics.Std(
-          values="interms.encoder.layers_11.attention.attn_weights[0]"
-      ),
   }
 
   # Optimizer
