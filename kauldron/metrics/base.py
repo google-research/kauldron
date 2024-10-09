@@ -233,6 +233,17 @@ class _TreeMetric(Metric):
         keypaths,
         kwargs,
     )
+
+    # If no values were found matching the metric keys, raise an explicit
+    # KeyError for better understanding and to make this compatible with
+    # `SkipIfMissing`.
+    non_empty_values = [v for v in kwargs.values() if v is not None]
+    if not non_empty_values:
+      raise KeyError(
+          f"{self.__class__.__name__}: No keys found matching any of the given"
+          f" {keypaths=}"
+      )
+
     return _tree_map_with_kwargs(self.metric.get_state, **kwargs)
 
   # Forwards `__kontext_keys__` so the keys can be extracted from the top-level
@@ -346,9 +357,11 @@ class SkipIfMissing(Metric):
   def get_state_from_context(self, context: Any) -> Metric.State:
     try:
       kwargs = self._resolve_kwargs(context)
+      # TODO(klausg): move the get_state out of the try block
+      # (after finding another way to make it compatible with TreeReduce)
+      return self.metric.get_state(**kwargs)
     except KeyError:
       return self.metric.empty()
-    return self.metric.get_state(**kwargs)
 
   def empty(self) -> Metric.State:
     return self.metric.empty()
