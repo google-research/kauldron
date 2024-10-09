@@ -46,6 +46,10 @@ def build_and_upload(
   if status.on_xmanager and not (status.is_lead_host and status.wid == 1):
     return  # Only lead host can create dashboards.
 
+  # If no dashboards are added, do nothing.
+  if not dashboards:
+    return
+
   ctx = ctx or plot_utils.BuildContext()
 
   dashboards = dashboards.normalize().build(ctx)
