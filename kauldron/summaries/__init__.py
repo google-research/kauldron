@@ -19,11 +19,11 @@ from kauldron.summaries.base import ImageSummary
 from kauldron.summaries.base import PerImageChannelPCA
 from kauldron.summaries.base import ShowBoxes
 from kauldron.summaries.base import ShowDifferenceImages
-from kauldron.summaries.base import ShowImages
 from kauldron.summaries.base import ShowSegmentations
 from kauldron.summaries.base import Summary
 from kauldron.summaries.histograms import Histogram
 from kauldron.summaries.histograms import HistogramSummary
+from kauldron.summaries.images import ShowImages
 from kauldron.summaries.pointclouds import PointCloud
 from kauldron.summaries.pointclouds import ShowPointCloud
 # pylint: enable=g-importing-member
