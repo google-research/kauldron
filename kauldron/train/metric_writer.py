@@ -201,12 +201,20 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
 
     if log_summaries:
       with jax.transfer_guard("allow"):
-        # image summaries  # TODO(klausg): unify with metrics
-        image_summaries = {
+        # TODO(klausg): remove once all summaries are migrated to new protocol
+        # image summaries
+        image_summaries_old = {
             name: summary.get_images(**aux.summary_kwargs[name])
             for name, summary in model_with_aux.summaries.items()
             if isinstance(summary, summaries.ImageSummary)
         }
+
+        image_summaries = image_summaries_old | {
+            name: value
+            for name, value in aux_result.summary_values.items()
+            if isinstance(value, Float["n h w #3"])
+        }
+
       # Throw an error if empty arrays are given. TB throws very odd errors
       # and kills Colab runtimes if we don't catch these ourselves.
       for name, image in image_summaries.items():
