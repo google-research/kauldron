@@ -55,8 +55,8 @@ def get_config():
 
   # By default, model params are replicated across all devices, but sharding
   # can be explicitly overwritten
-  # TODO(epot): Use more complicated sharding.
   cfg.sharding = kd.sharding.ShardingStrategy(
+      # TODO(epot): Use more complicated sharding.
       params=kd.sharding.REPLICATED,
   )
 
