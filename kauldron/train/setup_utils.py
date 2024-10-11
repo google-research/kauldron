@@ -21,7 +21,6 @@ import typing
 
 from absl import logging
 from etils import epath
-from kauldron.utils import kdash
 import tensorflow as tf
 
 # Do not import `trainer_lib` at runtime to avoid circular imports
@@ -53,10 +52,6 @@ class Setup:
 
   tags: str | list[str] = dataclasses.field(default_factory=list)
   tqdm_info: TqdmInfo = dataclasses.field(default_factory=TqdmInfo)
-  add_flatboard: bool = True
-  flatboard_build_context: kdash.BuildContext = dataclasses.field(
-      default_factory=kdash.BuildContext
-  )
   eval_only: bool = False
 
   def __post_init__(self):

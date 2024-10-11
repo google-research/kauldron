@@ -90,10 +90,6 @@ def get_config():
       )
   }
 
-  cfg.setup = kd.train.setup_utils.Setup(  # pytype: disable=wrong-arg-types
-      add_flatboard=False, flatboard_build_context=None
-  )
-
   return cfg
 
 
