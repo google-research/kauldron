@@ -49,9 +49,8 @@ class Tfds(base.DataSourceBase):
 
   @functools.cached_property
   def data_source(self) -> grain.RandomAccessDataSource:
-    return tfds.data_source(
-        self.name,
-        split=self.split,
-        data_dir=self.data_dir,
-        decoders=self.decoders,
-    )
+    # TODO(b/373829619): switch back to `tfds.data_source` once that works
+    builder = tfds.builder(self.name, data_dir=self.data_dir)
+    # if not builder.is_prepared():
+    #   builder.download_and_prepare()
+    return builder.as_data_source(split=self.split, decoders=self.decoders)
