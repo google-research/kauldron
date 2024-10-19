@@ -62,8 +62,7 @@ def main(_):
         config=_CONFIG.value,
         sweep_kwargs=_SWEEP_CONFIG.value,
     )
-    _update_xm_configuration(cfg)
-
+    # TODO(b/374268398): add back _update_xm_configuration(cfg) once ACtx good
     if eval_names is None:
       trainer: kd.train.Trainer = kd.konfig.resolve(cfg)
       trainer.train()
