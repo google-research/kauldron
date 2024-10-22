@@ -358,15 +358,9 @@ class KDMetricWriter(MetadataWriter):
 
   add_artifacts: bool = True
 
-  flatboard_build_context: kdash.BuildContext = (
-      config_util.ROOT_CFG_REF.setup.flatboard_build_context
-  )
-
   @functools.cached_property
   def _collection_path_prefix(self) -> str:
-    if self.flatboard_build_context.collection_path_prefix is None:
-      raise ValueError("collection_path_prefix must be set.")
-    return self.flatboard_build_context.collection_path_prefix
+    return ""
 
   @functools.cached_property
   def _scalar_datatable_name(self) -> str:
@@ -416,27 +410,7 @@ class KDMetricWriter(MetadataWriter):
   def _create_datatable_writer(
       self, name: str, description: str
   ) -> metric_writers.MetricWriter:
-    if epy.is_test():
-      return self._noop  # Do not write to datatable inside tests
-    if status.on_xmanager:
-      if not status.is_lead_host:
-        return self._noop
-      if status.wid == 1 and self.add_artifacts:
-        status.xp.create_artifact(
-            artifact_type=xmanager_api.ArtifactType.ARTIFACT_TYPE_STORAGE2_BIGTABLE,
-            artifact=name,
-            description=description,
-        )
-      keys = [("wid", status.wid)]
-    else:
-      keys = []
-
-    return metric_writers.AsyncWriter(
-        metric_writers.DatatableWriter(
-            datatable_name=name,
-            keys=keys,
-        ),
-    )
+    return self._noop
 
   def write_summaries(
       self,
@@ -504,12 +478,9 @@ class KDMetricWriter(MetadataWriter):
       point_colors: Mapping[str, Array["n 3"]] | None = None,
       configs: Mapping[str, str | float | bool | None] | None = None,
   ) -> None:
-    self._tf_summary_writer.write_pointcloud(
-        step=step,
-        point_clouds=point_clouds,
-        point_colors=point_colors,
-        configs=configs,
-    )
+    if not point_clouds:
+      return
+    logging.info("Pointcloud summary not supported.")
 
   def write_hparams(self, hparams: Mapping[str, Any]) -> None:
     self._log_writer.write_hparams(hparams)

@@ -14,13 +14,10 @@
 
 r"""Minimal example training a simple Autoencoder on MNIST.
 
-`--xp.use_interpreter` to launch with `ml_python` (no BUILD rules).
-
+Run:
 ```sh
-xmanager launch third_party/py/kauldron/xm/launch.py -- \
-  --cfg=third_party/py/kauldron/examples/mnist_autoencoder.py \
-  --xp.use_interpreter \
-  --xp.platform=jf=2x2
+python main.py --cfg=examples/mnist_autoencoder.py \
+    --cfg.workdir=/tmp/kauldron_oss/workdir
 ```
 
 """
@@ -90,7 +87,8 @@ def get_config():
 
 
 def _make_ds(training: bool):
-  return kd.data.Tfds(
+  Tfds = kd.data.py.Tfds
+  return Tfds(
       name="mnist",
       split="train" if training else "test",
       shuffle=True if training else False,
