@@ -22,6 +22,7 @@ import types
 from typing import Any, Literal, Self, TypeAlias, TypeVar
 
 import jax
+from kauldron import kontext
 from kauldron.metrics import base_state
 from kauldron.metrics.base_state import EMPTY  # pylint: disable=g-importing-member
 from kauldron.typing import Array  # pylint: disable=g-multiple-import
@@ -135,6 +136,32 @@ class AutoState(base_state.State[_MetricT]):
 
 
 # TODO(klausg): overloaded type annotation similar to dataclasses.field?
+
+
+def static_field(default: Any = dataclasses.MISSING, **kwargs):
+  """Define an AutoState static field.
+
+  Static fields are not merged, and instead are checked for equality during
+  `merge`. They are also not pytree nodes, so they are not touched by jax
+  transforms (but can lead to recompilation if changed).
+  These can be useful to store some parameters of the metric, e.g. the number
+  of elements to keep. Note that static fields are rarely needed, since it is
+  usually better to define static params in the corresponding metric and access
+  them through the `parent` field.
+
+  Args:
+    default: The default value of the field.
+    **kwargs: Additional arguments to pass to the dataclasses.field.
+
+  Returns:
+    A dataclasses.Field instance with additional metadata that marks this field
+    as a static field.
+  """
+  metadata = kwargs.pop("metadata", {})
+  metadata = metadata | {
+      "pytree_node": False,
+  }
+  return dataclasses.field(default=default, metadata=metadata, **kwargs)
 
 
 def sum_field(
@@ -331,7 +358,7 @@ class _Truncate(_FieldMerger):
   Attributes:
     axis: The axis along which to concatenate the two arrays. Defaults to 0.
     num_field: The name of the field that contains the number of elements to
-      keep.
+      keep. Can be any valid kontext.Path (e.g. "parent.num_images").
   """
 
   axis: int | None = 0
@@ -343,7 +370,7 @@ class _Truncate(_FieldMerger):
       v2: ArrayOrEmpty,
       state: base_state.State,
   ) -> ArrayOrEmpty:
-    num = getattr(state, self.num_field)
+    num = kontext.get_by_path(state, self.num_field)
     v1 = self._maybe_truncate(v1, num)
     v2 = self._maybe_truncate(v2, num)
     if v1 is EMPTY and v2 is EMPTY:

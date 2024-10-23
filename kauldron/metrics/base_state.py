@@ -83,7 +83,9 @@ class State(abc.ABC, Generic[_MetricT]):
   """
 
   _: dataclasses.KW_ONLY
-  parent: _MetricT = flax.struct.field(pytree_node=False, default=EMPTY)
+  parent: _MetricT = flax.struct.field(
+      pytree_node=False, default=EMPTY
+  )  # pytype: disable=annotation-type-mismatch
 
   def __init_subclass__(cls, **kwargs):
     super().__init_subclass__(**kwargs)
