@@ -30,8 +30,7 @@ import numpy as np
 
 _MetricT = TypeVar("_MetricT")
 _SelfT = TypeVar("_SelfT")
-
-ArrayOrEmpty: TypeAlias = Array | Literal[base_state._EMPTY_TYPE.EMPTY]  # pylint: disable=protected-access
+Empty: TypeAlias = Literal[base_state._EMPTY_TYPE.EMPTY]  # pylint: disable=protected-access
 
 
 class AutoState(base_state.State[_MetricT]):
@@ -287,13 +286,16 @@ class _FieldMerger(abc.ABC):
 
   @abc.abstractmethod
   def merge(
-      self, v1: ArrayOrEmpty, v2: ArrayOrEmpty, state: base_state.State
-  ) -> ArrayOrEmpty:
+      self,
+      v1: Array | Empty | None,
+      v2: Array | Empty | None,
+      state: base_state.State,
+  ) -> Array | Empty | None:
     ...
 
-  def finalize(self, v: ArrayOrEmpty) -> np.ndarray | None:
+  def finalize(self, v: Array | Empty | None) -> np.ndarray | None:
     # by default convert to numpy array
-    if v is EMPTY:
+    if v is EMPTY or v is None:
       return None
     return np.asarray(v)
 
@@ -308,14 +310,19 @@ class _ReduceSum(_FieldMerger):
 
   def merge(
       self,
-      v1: ArrayOrEmpty,
-      v2: ArrayOrEmpty,
+      v1: Array | Empty | None,
+      v2: Array | Empty | None,
       state: base_state.State,
-  ) -> ArrayOrEmpty:
-    if v1 is EMPTY or v2 is EMPTY:
-      return v1 if v2 is EMPTY else v2
-    else:
-      return v1 + v2
+  ) -> Array | Empty:
+    if v1 is EMPTY:
+      return v2
+    if v2 is EMPTY:
+      return v1
+    if v1 is None or v2 is None:
+      if not (v1 is None and v2 is None):
+        raise ValueError("Cannot sum None and non-None values.")
+      return None
+    return v1 + v2
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True)
@@ -326,23 +333,30 @@ class _Concatenate(_FieldMerger):
 
   def merge(
       self,
-      v1: ArrayOrEmpty | tuple[Array, ...],
-      v2: ArrayOrEmpty | tuple[Array, ...],
+      v1: Array | Empty | None | tuple[Array, ...],
+      v2: Array | Empty | None | tuple[Array, ...],
       state: base_state.State,
-  ) -> tuple[Array, ...]:
+  ) -> tuple[Array, ...] | None:
+    if v1 is None or v2 is None:
+      if not (v1 is None and v2 is None):
+        raise ValueError("Cannot concatenate None and non-None values.")
+      return None
+
     v1 = _normalize_to_tuple(v1)
     v2 = _normalize_to_tuple(v2)
     return v1 + v2  # concatenated tuples
 
-  def finalize(self, v: ArrayOrEmpty | tuple[Array, ...]) -> Array | None:
-    v = _normalize_to_tuple(v)
-    if not v:
+  def finalize(
+      self, v: Array | Empty | None | tuple[Array, ...]
+  ) -> Array | None:
+    if v is EMPTY or v is None:
       return None
+    v = _normalize_to_tuple(v)
     return np.concatenate(v, axis=self.axis)
 
 
 def _normalize_to_tuple(
-    v: ArrayOrEmpty | tuple[Array, ...],
+    v: Array | Empty | tuple[Array, ...],
 ) -> tuple[np.ndarray, ...]:
   if v is EMPTY:
     return ()
@@ -366,27 +380,34 @@ class _Truncate(_FieldMerger):
 
   def merge(
       self,
-      v1: ArrayOrEmpty,
-      v2: ArrayOrEmpty,
+      v1: Array | Empty | None,
+      v2: Array | Empty | None,
       state: base_state.State,
-  ) -> ArrayOrEmpty:
+  ) -> Array | Empty | None:
     num = kontext.get_by_path(state, self.num_field)
     v1 = self._maybe_truncate(v1, num)
     v2 = self._maybe_truncate(v2, num)
-    if v1 is EMPTY and v2 is EMPTY:
-      return EMPTY
-    if v1 is EMPTY or v2 is EMPTY:
-      return v1 if v2 is EMPTY else v2
+    if v1 is EMPTY:
+      return v2
+    if v2 is EMPTY:
+      return v1
+
+    if v1 is None or v2 is None:
+      if not (v1 is None and v2 is None):
+        raise ValueError(
+            "Cannot concatenate (& truncate) None and non-None values."
+        )
+      return None
 
     assert isinstance(v1, Array) and isinstance(v2, Array)
     if v1.shape[self.axis] < num:
       v1 = np.concatenate([v1, v2], axis=self.axis)
     return self._maybe_truncate(v1, num)
 
-  def _maybe_truncate(self, v: ArrayOrEmpty, num: int) -> ArrayOrEmpty:
+  def _maybe_truncate(self, v: Array | Empty, num: int) -> Array | Empty:
     """If v is not None, then truncate it to num elements along axis."""
-    if v is EMPTY:
-      return EMPTY
+    if v is EMPTY or v is None:
+      return v
     assert isinstance(v, Array)
     axis = np.lib.array_utils.normalize_axis_index(self.axis, v.ndim)
     return np.asarray(v[(slice(None),) * axis + (slice(None, num),)])

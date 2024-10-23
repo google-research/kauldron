@@ -18,6 +18,7 @@ from kauldron.metrics import auto_state
 from kauldron.metrics import base_state
 from kauldron.typing import Float  # pylint: disable=g-multiple-import,member-import
 import numpy as np
+import pytest
 
 
 def test_empty():
@@ -57,15 +58,26 @@ def test_merge_sum():
   class SumState(auto_state.AutoState):
     a: int = 3
     b: Float = auto_state.sum_field()
+    c: Float | None = auto_state.sum_field(default=None)
 
   s1 = SumState(a=3, b=np.ones((3, 2)))
   s2 = SumState(a=3, b=np.ones((3, 2)) * 5)
+  s3 = SumState(a=3, b=np.ones((3, 2)) * 10, c=np.ones((1, 1)))
 
   s = s1.merge(s2)
   assert s.a == 3
   result = s.compute()
   assert result.b.shape == (3, 2)
   np.testing.assert_allclose(result.b, 6.0)
+
+  # no error:
+  _ = s3.merge(s3)
+
+  with pytest.raises(ValueError, match="Cannot sum None"):
+    s1.merge(s3)
+
+  with pytest.raises(ValueError, match="Cannot sum None"):
+    s3.merge(s1)
 
 
 def test_merge_concat():
@@ -74,9 +86,11 @@ def test_merge_concat():
     a: str = "irrelevant"
     b: Float = auto_state.concat_field()
     c: Float = auto_state.concat_field(axis=1)
+    d: Float | None = auto_state.concat_field(default=None)
 
   s1 = ConcatState(b=np.ones((3, 2)), c=np.ones((3, 2)))
   s2 = ConcatState(b=np.zeros((3, 2)), c=np.zeros((3, 2)))
+  s3 = ConcatState(b=np.ones((3, 2)), c=np.ones((3, 2)), d=np.ones((1, 1)))
 
   s = s1.merge(s2)
   assert s.a == "irrelevant"
@@ -90,6 +104,15 @@ def test_merge_concat():
   np.testing.assert_allclose(result.c[:, :2], 1.0)
   np.testing.assert_allclose(result.c[:, 2:], 0.0)
 
+  # no error:
+  _ = s3.merge(s3)
+
+  with pytest.raises(ValueError, match="Cannot concatenate None"):
+    s1.merge(s3)
+
+  with pytest.raises(ValueError, match="Cannot concatenate None"):
+    s3.merge(s1)
+
 
 def test_merge_truncate():
   @functools.partial(flax.struct.dataclass, kw_only=True)
@@ -98,9 +121,11 @@ def test_merge_truncate():
     num_c: int = 3
     b: Float = auto_state.truncate_field(num_field="num_b")
     c: Float = auto_state.truncate_field(num_field="num_c", axis=1)
+    d: Float | None = auto_state.truncate_field(num_field="num_b", default=None)
 
   s1 = TruncateState(b=np.ones((3, 2)), c=np.ones((3, 2)))
   s2 = TruncateState(b=np.ones((3, 2)), c=np.ones((3, 2)))
+  s3 = TruncateState(b=np.ones((3, 2)), c=np.ones((3, 2)), d=np.ones((1, 1)))
 
   s = s1.merge(s2)
   assert s.num_b == 4
@@ -111,3 +136,12 @@ def test_merge_truncate():
   assert result.c.shape == (3, 3)
   np.testing.assert_allclose(result.b, 1.0)
   np.testing.assert_allclose(result.c, 1.0)
+
+  # no error:
+  _ = s3.merge(s3)
+
+  with pytest.raises(ValueError, match=r"Cannot .*truncate.* None"):
+    s1.merge(s3)
+
+  with pytest.raises(ValueError, match=r"Cannot .*truncate.* None"):
+    s3.merge(s1)
