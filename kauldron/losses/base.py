@@ -76,7 +76,7 @@ class AllReduceMean(base_state.State):
     )
 
   def compute(self) -> Float[""]:
-    return self.value / jnp.clip(self.count, a_min=1e-8)
+    return self.value / jnp.clip(self.count, min=1e-8)
 
 
 @dataclasses.dataclass(eq=True, frozen=True, kw_only=True)
