@@ -170,7 +170,7 @@ class DataSourceBase(PyGrainPipeline):
 
 def _get_num_workers(num_workers: int) -> int:
   """Set the number of workers."""
-  if epy.is_notebook():  # in colab worker_count has to be 0
+  if epy.is_notebook() or epy.is_test():  # in colab worker_count has to be 0
     # TODO(klausg): autodetect if Kernel supports multiprocessing
     # Could check
     # from multiprocessing import spawn

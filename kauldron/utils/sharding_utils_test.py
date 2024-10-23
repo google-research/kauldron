@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test."""
-
 import os
 
 from etils import epath
@@ -28,7 +26,9 @@ def test_sharding(tmp_path: epath.Path):
   # Load config and reduce size
   cfg = mnist_autoencoder.get_config()
 
-  cfg.train_ds.batch_size = 2
+  # TODO(klausg): remove this once data mocking works correctly with grain
+  cfg.train_ds.__qualname__ = 'kauldron.kd:data.Tfds'
+  cfg.train_ds.batch_size = 1
   cfg.model.encoder.features = 3
   cfg.workdir = os.fspath(tmp_path)
 

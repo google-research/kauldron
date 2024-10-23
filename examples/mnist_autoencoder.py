@@ -87,8 +87,7 @@ def get_config():
 
 
 def _make_ds(training: bool):
-  Tfds = kd.data.py.Tfds
-  return Tfds(
+  return kd.data.py.Tfds(
       name="mnist",
       split="train" if training else "test",
       shuffle=True if training else False,
