@@ -141,15 +141,19 @@ def train_impl(
             log_summaries=log_summaries,
         )
 
+  # Ensure all hosts exit together. See section in dm/jax-faqs.
+  _sync()
+  # Checkpoint saving must be finalized before notifying eval jobs that training
+  # is complete. Otherwise, eval jobs may stop before the last checkpoint
+  # becomes available.
+  ckpt.wait_until_finished()
+
   # Notify the eval job training is complete
   if trainer.workdir.exists():  # `TrainEvaluator` do not have a workdir
     epath.Path(trainer.workdir).joinpath(
         eval_impl.TRAIN_COMPLETE_FILENAME
     ).touch()
 
-  # Ensure all hosts exit together. See section in dm/jax-faqs.
-  _sync()
-  ckpt.wait_until_finished()
   # Returning the final state is convenient for interactive training in colab
   return state, aux
 
