@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
 import flax.struct
 from kauldron.metrics import auto_state
 from kauldron.metrics import base_state
@@ -23,7 +22,7 @@ import pytest
 
 def test_empty():
 
-  @functools.partial(flax.struct.dataclass, kw_only=True)
+  @flax.struct.dataclass(kw_only=True)
   class MyState(auto_state.AutoState):
     a: int = 3
     b: Float = auto_state.sum_field()
@@ -54,7 +53,8 @@ def test_empty():
 
 
 def test_merge_sum():
-  @functools.partial(flax.struct.dataclass, kw_only=True)
+
+  @flax.struct.dataclass(kw_only=True)
   class SumState(auto_state.AutoState):
     a: int = 3
     b: Float = auto_state.sum_field()
@@ -81,7 +81,8 @@ def test_merge_sum():
 
 
 def test_merge_concat():
-  @functools.partial(flax.struct.dataclass, kw_only=True)
+
+  @flax.struct.dataclass(kw_only=True)
   class ConcatState(auto_state.AutoState):
     a: str = "irrelevant"
     b: Float = auto_state.concat_field()
@@ -115,7 +116,8 @@ def test_merge_concat():
 
 
 def test_merge_truncate():
-  @functools.partial(flax.struct.dataclass, kw_only=True)
+
+  @flax.struct.dataclass(kw_only=True)
   class TruncateState(auto_state.AutoState):
     num_b: int = 4
     num_c: int = 3
