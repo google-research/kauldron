@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import dataclasses
 import functools
+import math
 import typing
 from typing import Optional
 
@@ -84,9 +85,6 @@ class PyGrainPipeline(pipelines.Pipeline):
 
     ds = transform_utils.apply_transforms(ds, self.transforms)
 
-    if self.batch_size:
-      ds = ds.batch(self.batch_size, drop_remainder=self.batch_drop_remainder)
-
     return ds
 
   @functools.cached_property
@@ -111,6 +109,10 @@ class PyGrainPipeline(pipelines.Pipeline):
     # `_root_map_ds` because `_root_map_ds` does not propagate `len`
     ds = self._root_map_ds
     ds = ds.to_iter_dataset(read_options=self.read_options)
+    # We do batching after conversion to `IterDataset` to avoid None during
+    # batching.
+    if self.batch_size:
+      ds = ds.batch(self.batch_size, drop_remainder=self.batch_drop_remainder)
 
     # Distribute the execution across multiple worker processes.
     num_workers = _get_num_workers(self.num_workers)
@@ -129,8 +131,15 @@ class PyGrainPipeline(pipelines.Pipeline):
   def __len__(self) -> int:
     if self.num_epochs is None:
       raise TypeError("Cannot get length of infinite dataset.")
+
+    ds_len = len(self._root_map_ds)
+    if not self.batch_size:
+      return ds_len
+
+    if self.batch_drop_remainder:
+      return ds_len // self.batch_size
     else:
-      return len(self._root_map_ds)
+      return math.ceil(ds_len / self.batch_size)
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True, eq=True)
