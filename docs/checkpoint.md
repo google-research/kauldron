@@ -29,11 +29,10 @@ See `kd.ckpts.PartialLoader` for details.
 
 ## Relaunching an experiment
 
-To relaunch an experiment, there's a few options possible:
+To relaunch an experiment, you can:
 
-*   Restart from the XM UI
-*   Relaunch a new job with `init_transform`, to initialize your new model to
-    the previous state:
+*   Continue training in a new separate workdir: Relaunch a new job with
+    `init_transform`, to initialize your new model to the previous state:
 
     ```python
     cfg.init_transforms = {
@@ -49,9 +48,7 @@ To relaunch an experiment, there's a few options possible:
     }
     ```
 
-    This will continue the training in a separate workdir.
-
-*   Restart a new job while re-using the previous workdir. If your work-unit was
+*   Restart a new job while re-using the previous workdir: If your work-unit was
     launched in `/path/to/.../kd/<xid>/<wid>/`, you can relaunch it with:
 
     ```sh
