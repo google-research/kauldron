@@ -44,3 +44,18 @@ from kauldron.modules.pos_embeddings import LearnedEmbedding
 from kauldron.modules.pos_embeddings import ZeroEmbedding
 from kauldron.modules.models import FlatAutoencoder
 from kauldron.modules.models import Sequential
+
+# Models should be open-sourced on a individual basis
+from kauldron.modules.attention import ImprovedMultiHeadDotProductAttention
+from kauldron.modules.attention import MultiHeadDotProductAttention
+from kauldron.modules.input_embeddings import Patchify
+from kauldron.modules.input_embeddings import PatchifyEmbed
+
+# transformer
+from kauldron.modules.transformers import PreNormBlock
+from kauldron.modules.transformers import PostNormBlock
+from kauldron.modules.transformers import ParallelAttentionBlock
+from kauldron.modules.transformers import TransformerMLP
+# vit
+from kauldron.modules.vit import Vit
+from kauldron.modules.vit import VitEncoder
