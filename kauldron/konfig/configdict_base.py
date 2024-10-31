@@ -484,8 +484,31 @@ def _normalize_config_only_value(value, name, *, id_to_dict) -> Any:
       _normalize_config_only_value, id_to_dict=id_to_dict
   )
   match value:
-    case ConfigDict():  # Leafs should have been already validated
-      return value
+    case dict() | ml_collections.ConfigDict():
+      if (id_ := value.get('__id__')) is not None:  # Shared value:
+        del value['__id__']  # ConfigDict do not have `.pop()`
+        if id_ in id_to_dict:  # ConfigDict already constructed
+          return id_to_dict[id_]  # Reuse same instance
+
+      if isinstance(value, ConfigDict):
+        # Leafs should have been already validated but might have a `__id__`
+        # if they are coming from `konfig.register_default_values()` due to
+        # `default_values.update(init_dict)` above.
+        cfg = value
+      else:
+        cfg = ConfigDict(
+            {  # Convert `dict` -> `ConfigDict`
+                k: normalize_fn(v, f'{name}.{k}')
+                for k, v in _items_preserve_reference(value)
+            },
+            # Skip normalization to avoid infinite recursion. Is there a cleaner
+            # way ?
+            _normalized=True,
+        )
+
+      if id_ is not None:  # Save shared value
+        id_to_dict[id_] = cfg
+      return cfg
     case ml_collections.FieldReference():
       return value
     case (
@@ -500,24 +523,6 @@ def _normalize_config_only_value(value, name, *, id_to_dict) -> Any:
         | os.PathLike()  # Exceptionally allow pathlib object
     ):
       return value  # Built-ins
-    case dict() | ml_collections.ConfigDict():
-      if (id_ := value.get('__id__')) is not None:  # Shared value:
-        del value['__id__']  # ConfigDict do not have `.pop()`
-        if id_ in id_to_dict:  # ConfigDict already constructed
-          return id_to_dict[id_]  # Reuse same instance
-
-      cfg = ConfigDict(
-          {  # Convert `dict` -> `ConfigDict`
-              k: normalize_fn(v, f'{name}.{k}')
-              for k, v in _items_preserve_reference(value)
-          },
-          # Skip normalization to avoid infinite recursion. Is there a cleaner
-          # way ?
-          _normalized=True,
-      )
-      if id_ is not None:  # Save shared value
-        id_to_dict[id_] = cfg
-      return cfg
     case list() | tuple() | set() | frozenset():
       return type(value)(
           normalize_fn(v, f'{name}[{i}]') for i, v in enumerate(value)
