@@ -2,7 +2,7 @@
 name = "kauldron"
 description = ""
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = {file = "LICENSE"}
 authors = [{name = "kauldron authors", email="kauldron@google.com"}]
 classifiers = [
@@ -12,8 +12,6 @@ classifiers = [
     "Intended Audience :: Science/Research",
 ]
 keywords = []
-
-# pip dependencies of the project
 
 # pip dependencies of the project
 dependencies = [
