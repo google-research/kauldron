@@ -54,6 +54,7 @@ with _epy.lazy_api_imports(globals()):
 from kauldron.data.transforms.base import Elements
 from kauldron.data.transforms.base import ElementWiseTransform
 from kauldron.data.transforms.base import TreeFlattenWithPath
+from kauldron.data.transforms.map_transforms import Gather
 from kauldron.data.transforms.map_transforms import Rearrange
 from kauldron.data.transforms.map_transforms import ValueRange
 

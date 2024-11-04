@@ -89,3 +89,16 @@ class ValueRange(base.ElementWiseTransform):
     if self.clip_values:
       element = xnp.clip(element, out_min, out_max)
     return element
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class Gather(base.ElementWiseTransform):
+  """Gathers entries along a single dimension."""
+
+  axis: int
+  indices: tuple[int, ...]
+
+  @typechecked
+  def map_element(self, element: XArray) -> XArray:
+    xnp = enp.lazy.get_xnp(element)
+    return xnp.take(element, self.indices, axis=self.axis)

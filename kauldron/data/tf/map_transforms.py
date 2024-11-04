@@ -67,20 +67,6 @@ class CenterCrop(base.ElementWiseTransform):
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
-class Gather(base.ElementWiseTransform):
-  """Gathers entries along a single dimension."""
-
-  axis: int
-  indices: tuple[int, ...]
-
-  @typechecked
-  def map_element(self, element: TfArray) -> TfFloat:
-    data = tf.unstack(element, axis=self.axis)
-    out = [data[idx] for idx in self.indices]
-    return tf.stack(out, axis=self.axis)
-
-
-@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class OneHot(base.ElementWiseTransform):
   """One-hot encodes the input.
 
