@@ -293,8 +293,8 @@ def _get_uniform_colors(n_colors: int) -> Array:
 class ShowBoxes(ImageSummary):
   """Show a set of boxes with optional image reshaping and resizing."""
 
-  images: kontext.Key
-  boxes: kontext.Key
+  images: kontext.Key = kontext.REQUIRED
+  boxes: kontext.Key = kontext.REQUIRED
   boxes_mask: Optional[kontext.Key] = None
 
   num_images: int
@@ -325,7 +325,7 @@ class ShowBoxes(ImageSummary):
   @typechecked
   def get_images(
       self, images: Images, boxes: Boxes, boxes_mask: BoxesMask | None
-  ) -> Float["n _h _w _c"]:
+  ) -> Float["*n _h _w _c"]:
     # convert to numpy
     images = np.array(images, dtype=np.float32)
     boxes = np.array(boxes, dtype=np.float32)
@@ -345,7 +345,7 @@ class ShowBoxes(ImageSummary):
     # proceed with logic from ShowImages()
     if self.rearrange:
       images = einops.rearrange(images, self.rearrange, **self.rearrange_kwargs)
-    if not (len(images.shape) == 4 and images.shape[-1] == 3):
+    if not (len(images.shape) >= 4 and images.shape[-1] == 3):
       raise ValueError(f"Bad shape: {images.shape}")
 
     # maybe rescale
