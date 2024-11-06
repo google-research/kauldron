@@ -88,11 +88,3 @@ def show_trainer_info(
   if inspect_sharding:
     with ecolab.collapse("Sharding"):
       inspect_lib.plot_sharding(trainer)
-
-  if profile_statix:
-
-    with ecolab.collapse("Statix Profile"):
-      lowered = inspect_lib.lower_trainstep(trainer)
-      print("Peak Memory: ", statix.peak_memory(lowered))
-      print("Terra-Flops: ", statix.flops(lowered) / 1e12)
-      print("Memory Viewer URL: ", statix.memory_viewer_url(lowered))
