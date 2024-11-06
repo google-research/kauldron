@@ -461,6 +461,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
   @functools.partial(
       jax.jit,
       static_argnames="self",
+      donate_argnames=("state",),
   )
   def _init_optimizer(
       self,
