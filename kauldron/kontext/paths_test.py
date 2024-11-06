@@ -25,7 +25,7 @@ import pytest
 import regex
 
 
-IDENTIFIER_REGEX = regex.compile(r"[^\d\W]\w*")
+IDENTIFIER_REGEX = regex.compile(r"[_a-zA-Z]\w*")
 identifiers = st.from_regex(IDENTIFIER_REGEX, fullmatch=True)
 strings = st.text(
     alphabet=st.characters(whitelist_categories=["Lu", "Ll", "Lt", "Lo", "Nl"]),
