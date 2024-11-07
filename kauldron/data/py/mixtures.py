@@ -36,7 +36,7 @@ class Mix(base.PyGrainPipeline):
   def ds_for_current_process(self, rng: random.PRNGKey) -> grain.MapDataset:
     # We make sure each nested dataset get a different seed
     datasets = [
-        ds.ds_for_current_process(rng.fold_in(i))
+        ds.ds_with_transforms(rng.fold_in(i))
         for i, ds in enumerate(self.datasets)
     ]
 
