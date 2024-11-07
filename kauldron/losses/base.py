@@ -276,6 +276,6 @@ def compute_losses(
   total_loss = jax.tree.reduce(
       jnp.add,
       loss_values,
-      initializer=0.0,
+      initializer=jnp.asarray(0.0),
   )  # pytype: disable=wrong-arg-types  # numpy-scalars
   return total_loss, loss_states
