@@ -57,7 +57,7 @@ class AutoState(base_state.State[_MetricT]):
 
   Example:
   ```python
-  @functools.partial(flax.struct.dataclass, kw_only=True)
+  @flax.struct.dataclass(kw_only=True)
   class CustomErrorSummaryState(kd.metrics.AutoState):
     # static-fields
     cmap: str = "coolwarm"
