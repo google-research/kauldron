@@ -26,19 +26,16 @@ import flax
 import jax
 import jax.numpy as jnp
 from kauldron import kontext
-from kauldron.typing import Array, Bool, Float, Integer, Shape, UInt8, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Bool, Float, Integer, Shape, UInt8, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import plot_segmentation as segplot  # pylint: disable=g-import-not-at-top
-import matplotlib
+
 import mediapy as media
 import numpy as np
-import tensorflow as tf
 
 
 Images = Float["*b h w c"] | UInt8["*b h w c"]
 Masks = Bool["*b h w 1"]
 Segmentations = Integer["*b h w 1"] | Float["*b h w k"]
-Boxes = Float["*b k #4"]
-BoxesMask = Bool["*b k 1"]
 
 
 class Summary(abc.ABC):
@@ -207,91 +204,6 @@ class ShowSegmentations(ImageSummary):
       shape = _get_height_width(self.width, self.height, Shape("h w"))
       segmentation_images = media.resize_video(segmentation_images, shape)
     return segmentation_images
-
-
-def _get_uniform_colors(n_colors: int) -> Array:
-  """Get n_colors with uniformly spaced hues."""
-  hues = np.linspace(0, 1, n_colors, endpoint=False)
-  hsv_colors = np.concatenate(
-      (np.expand_dims(hues, axis=1), np.ones((n_colors, 2))), axis=1
-  )
-  rgb_colors = matplotlib.colors.hsv_to_rgb(hsv_colors)
-  return rgb_colors  # rgb_colors.shape = (n_colors, 3)
-
-
-@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
-class ShowBoxes(ImageSummary):
-  """Show a set of boxes with optional image reshaping and resizing."""
-
-  images: kontext.Key = kontext.REQUIRED
-  boxes: kontext.Key = kontext.REQUIRED
-  boxes_mask: Optional[kontext.Key] = None
-
-  num_images: int
-  num_colors: int = 16
-  rearrange: Optional[str] = None
-  rearrange_kwargs: Mapping[str, Any] = dataclasses.field(
-      default_factory=flax.core.FrozenDict[str, Any]
-  )
-  width: Optional[int] = None
-  height: Optional[int] = None
-  in_vrange: Optional[tuple[float, float]] = None
-
-  def gather_kwargs(self, context: Any) -> dict[str, Segmentations]:
-    # NOTE: moved all logic to get_images(), which is executed on CPU.
-    kwargs = kontext.resolve_from_keyed_obj(context, self)
-    images = kwargs["images"]
-    boxes = kwargs["boxes"]
-    boxes_mask = kwargs["boxes_mask"]
-
-    return {
-        "images": images[: self.num_images],
-        "boxes": boxes[: self.num_images],
-        "boxes_mask": (
-            boxes_mask[: self.num_images] if boxes_mask is not None else None
-        ),
-    }
-
-  @typechecked
-  def get_images(
-      self, images: Images, boxes: Boxes, boxes_mask: BoxesMask | None
-  ) -> Float["*n _h _w _c"]:
-    # convert to numpy
-    images = np.array(images, dtype=np.float32)
-    boxes = np.array(boxes, dtype=np.float32)
-    if boxes_mask is not None:
-      boxes = boxes * np.array(boxes_mask, dtype=np.float32)
-
-    # first draw boxes on images, before any additional processing takes place
-    images_shape = images.shape
-    images = einops.rearrange(images, "... h w c -> (...) h w c")
-    boxes = einops.rearrange(boxes, "... k d -> (...) k d")
-
-    # draw boxes
-    colors = _get_uniform_colors(self.num_colors)
-    images = tf.image.draw_bounding_boxes(images, boxes, colors)
-    images = np.reshape(images, images_shape)
-
-    # proceed with logic from ShowImages()
-    if self.rearrange:
-      images = einops.rearrange(images, self.rearrange, **self.rearrange_kwargs)
-    if not (len(images.shape) >= 4 and images.shape[-1] == 3):
-      raise ValueError(f"Bad shape: {images.shape}")
-
-    # maybe rescale
-    if self.in_vrange is not None:
-      vmin, vmax = self.in_vrange
-      images = (images - vmin) / (vmax - vmin)
-    # convert to float
-    images = media.to_type(images, np.float32)
-
-    # always clip to avoid display problems in TB and Datatables
-    images = np.clip(images, 0.0, 1.0)
-    # maybe resize
-    if (self.width, self.height) != (None, None):
-      shape = _get_height_width(self.width, self.height, Shape("h w"))
-      images = media.resize_video(images, shape)
-    return images
 
 
 @typechecked
