@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import abc
-from typing import Any, Optional
+from typing import Any
 
 from kauldron import kontext
 from kauldron.typing import Float, UInt8, typechecked  # pylint: disable=g-multiple-import,g-importing-member
@@ -53,18 +53,3 @@ class ImageSummary(Summary, abc.ABC):
           context, self, func=self.get_images
       )
     return self.get_images(**kwargs)
-
-
-@typechecked
-def _get_height_width(
-    width: Optional[int], height: Optional[int], shape: tuple[int, int]
-) -> tuple[int, int]:
-  """Returns (width, height) given optional parameters and image shape."""
-  h, w = shape
-  if width and height:
-    return height, width
-  if width and not height:
-    return int(width * (h / w) + 0.5), width
-  if height and not width:
-    return height, int(height * (w / h) + 0.5)
-  return shape
