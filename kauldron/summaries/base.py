@@ -17,22 +17,13 @@
 from __future__ import annotations
 
 import abc
-import dataclasses
-import math
-from typing import Any, Mapping, Optional
+from typing import Any, Optional
 
-import einops
-import flax
-import jax
-import jax.numpy as jnp
 from kauldron import kontext
-from kauldron.typing import Bool, Float, Shape, UInt8, typechecked  # pylint: disable=g-multiple-import,g-importing-member
-import mediapy as media
-import numpy as np
+from kauldron.typing import Float, UInt8, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 
 Images = Float["*b h w c"] | UInt8["*b h w c"]
-Masks = Bool["*b h w 1"]
 
 
 class Summary(abc.ABC):
@@ -62,95 +53,6 @@ class ImageSummary(Summary, abc.ABC):
           context, self, func=self.get_images
       )
     return self.get_images(**kwargs)
-
-
-@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
-class ShowDifferenceImages(ImageSummary):
-  """Show a set of difference images with optional reshaping and resizing."""
-
-  images1: kontext.Key
-  images2: kontext.Key
-  masks: Optional[kontext.Key] = None
-
-  num_images: int
-  vrange: tuple[float, float]
-  rearrange: Optional[str] = None
-  rearrange_kwargs: Mapping[str, Any] = dataclasses.field(
-      default_factory=flax.core.FrozenDict[str, Any]
-  )
-  width: Optional[int] = None
-  height: Optional[int] = None
-  cmap: str | None = None
-  mask_color: float | tuple[float, float, float] = 0.5
-
-  def gather_kwargs(self, context: Any) -> dict[str, Images | Masks]:
-    # optimize gather_kwargs to only return num_images many images
-    kwargs = kontext.resolve_from_keyed_obj(context, self)
-    images1, images2 = kwargs["images1"], kwargs["images2"]
-    masks = kwargs.get("masks", None)
-    if self.rearrange:
-      images1 = einops.rearrange(
-          images1, self.rearrange, **self.rearrange_kwargs
-      )
-      images2 = einops.rearrange(
-          images2, self.rearrange, **self.rearrange_kwargs
-      )
-
-    images1 = images1.astype(jnp.float32)
-    images2 = images2.astype(jnp.float32)
-    if not isinstance(images1, Float["n h w #3"]):
-      raise ValueError(f"Bad shape or dtype: {images1.shape} {images1.dtype}")
-    if not isinstance(images2, Float["n h w #3"]):
-      raise ValueError(f"Bad shape or dtype: {images2.shape} {images2.dtype}")
-
-    num_images_per_device = math.ceil(
-        self.num_images / jax.local_device_count()
-    )
-    images1 = images1[:num_images_per_device]
-    images2 = images2[:num_images_per_device]
-    if masks is not None:
-      if not isinstance(masks, Bool["n h w 1"]):
-        raise ValueError(
-            f"Bad mask shape or dtype: {masks.shape} {masks.dtype}"  # pylint: disable=attribute-error
-        )
-      masks = masks[:num_images_per_device]
-
-    return {"images1": images1, "images2": images2, "masks": masks}
-
-  @typechecked
-  def get_images(
-      self, images1: Images, images2: Images, masks: Optional[Masks] = None
-  ) -> Float["n _h _w _c"]:
-    # flatten batch dimensions
-    images1 = einops.rearrange(images1, "... h w c -> (...) h w c")
-    images2 = einops.rearrange(images2, "... h w c -> (...) h w c")
-    images1 = np.array(images1[: self.num_images])
-    images2 = np.array(images2[: self.num_images])
-    # convert to float
-    images1 = media.to_type(images1, np.float32)
-    images2 = media.to_type(images2, np.float32)
-
-    # Compute absolute difference and mean across channels
-    vmin, vmax = self.vrange
-    images = np.abs(np.clip(images1, vmin, vmax) - np.clip(images2, vmin, vmax))
-    images = np.mean(images, axis=-1, keepdims=True)
-
-    # Normalize difference image to 0-1 and color.
-    cmap = self.cmap if self.cmap else "gray"
-    images = media.to_rgb(images[..., 0], cmap=cmap, vmin=0, vmax=vmax - vmin)
-
-    if masks is not None:
-      masks = einops.rearrange(masks, "... h w c -> (...) h w c")
-      masks = np.array(masks[: self.num_images, :, :, 0])
-      images[masks] = self.mask_color
-
-    # always clip to avoid display problems in TB and Datatables
-    images = np.clip(images, 0.0, 1.0)
-    # maybe resize
-    if (self.width, self.height) != (None, None):
-      shape = _get_height_width(self.width, self.height, Shape("h w"))
-      images = media.resize_video(images, shape)
-    return images
 
 
 @typechecked

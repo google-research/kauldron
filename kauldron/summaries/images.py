@@ -29,6 +29,7 @@ import numpy as np
 
 with epy.lazy_imports():
   import matplotlib.colors  # pylint: disable=g-import-not-at-top
+  import mediapy as media  # pylint: disable=g-import-not-at-top
   import tensorflow as tf  # pylint: disable=g-import-not-at-top
   from kauldron.utils import plot_segmentation as segplot  # pylint: disable=g-import-not-at-top
 
@@ -226,6 +227,92 @@ class ShowSegmentations(metrics.Metric):
     )
     check_type(segmentations, Integer["n h w 1"] | Float["n h w k"])
     return self.State(segmentations=segmentations)
+
+
+# TODO(klausg): Only 8 uses ATM. Move to contrib?
+@dataclasses.dataclass(kw_only=True, frozen=True)
+class ShowDifferenceImages(metrics.Metric):
+  """Show a set of difference images with optional reshaping.
+
+  Attributes:
+    images1: Key to the first set of images (from which images2 is subtracted).
+    images2: Key to the second set of images (subtracted from images1).
+    num_images: Number of images to collect and display. Default 5.
+    vrange: Optional value range of the input images. Used to clip and then
+      rescale the images to [0, 1].
+    cmap: A `pyplot` color map name, to map from 1D value to 3D color.
+    rearrange: Optional einops string to reshape the images.
+    rearrange_kwargs: Optional keyword arguments for the einops reshape.
+  """
+
+  images1: kontext.Key
+  images2: kontext.Key
+
+  num_images: int
+  vrange: tuple[float, float] | None = None
+  cmap: str = "gray"
+
+  rearrange: Optional[str] = None
+  rearrange_kwargs: Mapping[str, Any] | None = None
+
+  @struct.dataclass
+  class State(metrics.AutoState["ShowDifferenceImages"]):
+    """Collects the first num_images images."""
+
+    diff_images: Float["n h w 1"] = metrics.truncate_field(
+        num_field="parent.num_images"
+    )
+
+    @typechecked
+    def compute(self) -> Float["n h w #3"]:
+      diff_images = super().compute().diff_images
+
+      # Use the vrange bounds for the colormapping if available.
+      if self.parent.vrange is not None:
+        vmin, vmax = self.parent.vrange
+        diff_vmax = vmax - vmin
+        diff_vmin = vmin - vmax
+      else:
+        diff_vmin, diff_vmax = (None, None)
+
+      # Apply the colormap.
+      images = media.to_rgb(
+          diff_images[..., 0],
+          cmap=self.parent.cmap,
+          vmin=diff_vmin,
+          vmax=diff_vmax,
+      )
+
+      # always clip to avoid display problems in TB and Datatables
+      return np.clip(images, 0.0, 1.0)
+
+  @typechecked
+  def get_state(
+      self,
+      images1: Float["..."],
+      images2: Float["..."],
+  ) -> ShowImages.State:
+    # maybe rearrange and then check shape
+    images1 = _maybe_rearrange(images1, self.rearrange, self.rearrange_kwargs)
+    images2 = _maybe_rearrange(images2, self.rearrange, self.rearrange_kwargs)
+    check_type(images1, Float["n h w c"])
+    check_type(images1, Float["n h w c"])
+
+    # Truncate just as an optimization to avoid unnecessary computations.
+    images1 = images1[: self.num_images]
+    images2 = images2[: self.num_images]
+
+    if self.vrange is not None:
+      vmin, vmax = self.vrange
+      images1 = np.clip(images1, vmin, vmax)
+      images2 = np.clip(images2, vmin, vmax)
+      images1 = (images1 - vmin) / (vmax - vmin)
+      images2 = (images2 - vmin) / (vmax - vmin)
+
+    diff_images = np.abs(images1 - images2)
+    diff_images = np.mean(diff_images, axis=-1, keepdims=True)
+
+    return self.State(diff_images=diff_images)
 
 
 def _maybe_rearrange(
