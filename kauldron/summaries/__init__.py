@@ -16,7 +16,6 @@
 
 # pylint: disable=g-importing-member
 from kauldron.summaries.base import ImageSummary
-from kauldron.summaries.base import PerImageChannelPCA
 from kauldron.summaries.base import ShowBoxes
 from kauldron.summaries.base import ShowDifferenceImages
 from kauldron.summaries.base import ShowSegmentations
