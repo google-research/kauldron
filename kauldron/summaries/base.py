@@ -26,16 +26,13 @@ import flax
 import jax
 import jax.numpy as jnp
 from kauldron import kontext
-from kauldron.typing import Bool, Float, Integer, Shape, UInt8, typechecked  # pylint: disable=g-multiple-import,g-importing-member
-from kauldron.utils import plot_segmentation as segplot  # pylint: disable=g-import-not-at-top
-
+from kauldron.typing import Bool, Float, Shape, UInt8, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import mediapy as media
 import numpy as np
 
 
 Images = Float["*b h w c"] | UInt8["*b h w c"]
 Masks = Bool["*b h w 1"]
-Segmentations = Integer["*b h w 1"] | Float["*b h w k"]
 
 
 class Summary(abc.ABC):
@@ -154,56 +151,6 @@ class ShowDifferenceImages(ImageSummary):
       shape = _get_height_width(self.width, self.height, Shape("h w"))
       images = media.resize_video(images, shape)
     return images
-
-
-@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
-class ShowSegmentations(ImageSummary):
-  """Show a set of segmentations with optional reshaping and resizing."""
-
-  segmentations: kontext.Key
-
-  num_images: int
-  rearrange: Optional[str] = None
-  rearrange_kwargs: Mapping[str, Any] = dataclasses.field(
-      default_factory=flax.core.FrozenDict[str, Any]
-  )
-  width: Optional[int] = None
-  height: Optional[int] = None
-  entropy: Optional[bool] = False
-
-  def gather_kwargs(self, context: Any) -> dict[str, Segmentations]:
-    # optimize gather_kwargs to only return num_images many images
-    kwargs = kontext.resolve_from_keyed_obj(context, self)
-    segmentations = kwargs["segmentations"]
-    if self.rearrange:
-      segmentations = einops.rearrange(
-          segmentations, self.rearrange, **self.rearrange_kwargs
-      )
-    if not isinstance(segmentations, Segmentations):
-      raise ValueError(
-          f"Bad shape or dtype: {segmentations.shape} {segmentations.dtype}"
-      )
-
-    num_images_per_device = math.ceil(
-        self.num_images / jax.local_device_count()
-    )
-    segmentations = segmentations[:num_images_per_device]
-
-    return {"segmentations": segmentations}
-
-  @typechecked
-  def get_images(self, segmentations: Segmentations) -> Float["n _h _w c"]:
-    # flatten batch dimensions
-    segmentations = einops.rearrange(segmentations, "... h w k -> (...) h w k")
-    segmentations = segmentations[: self.num_images]
-    segmentation_images = segplot.plot_segmentation(
-        segmentations, entropy=self.entropy
-    )
-    # maybe resize
-    if (self.width, self.height) != (None, None):
-      shape = _get_height_width(self.width, self.height, Shape("h w"))
-      segmentation_images = media.resize_video(segmentation_images, shape)
-    return segmentation_images
 
 
 @typechecked

@@ -24,12 +24,13 @@ from etils import epy
 from flax import struct
 from kauldron import kontext
 from kauldron import metrics
-from kauldron.typing import Array, Bool, Float, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Array, Bool, Float, Integer, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import numpy as np
 
 with epy.lazy_imports():
   import matplotlib.colors  # pylint: disable=g-import-not-at-top
   import tensorflow as tf  # pylint: disable=g-import-not-at-top
+  from kauldron.utils import plot_segmentation as segplot  # pylint: disable=g-import-not-at-top
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True)
@@ -174,6 +175,57 @@ class ShowBoxes(metrics.Metric):
       images = (images - vmin) / (vmax - vmin)
 
     return self.State(images=images, boxes=boxes)
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True)
+class ShowSegmentations(metrics.Metric):
+  """Show a set of segmentations with optional reshaping.
+
+  Attributes:
+    segmentations: Key to the segmentations to display.
+    num_images: Number of segmentations to collect and display. Default 5.
+    entropy: Whether to scale the lightness of the segments in proportion to the
+      (normalized) per-pixel entropy of the soft-segmentation.
+    rearrange: Optional einops string to reshape the images.
+    rearrange_kwargs: Optional keyword arguments for the einops reshape.
+  """
+
+  segmentations: kontext.Key
+
+  num_images: int = 5
+  entropy: bool = False
+
+  rearrange: Optional[str] = None
+  rearrange_kwargs: Mapping[str, Any] | None = None
+
+  @struct.dataclass
+  class State(metrics.AutoState["ShowSegmentations"]):
+    """Collects the first num_images segmentations."""
+
+    segmentations: Integer["*b h w 1"] | Float["*b h w k"] = (
+        metrics.truncate_field(num_field="parent.num_images")
+    )
+
+    @typechecked
+    def compute(self) -> Float["n h w #3"]:
+      segmentations = super().compute().segmentations
+      segmentation_images = segplot.plot_segmentation(
+          segmentations, entropy=self.parent.entropy
+      )
+      # always clip to avoid display problems in TB and Datatables
+      return np.clip(segmentation_images, 0.0, 1.0)
+
+  @typechecked
+  def get_state(
+      self,
+      segmentations: Float["..."],
+  ) -> ShowImages.State:
+    # maybe rearrange and then check shape
+    segmentations = _maybe_rearrange(
+        segmentations, self.rearrange, self.rearrange_kwargs
+    )
+    check_type(segmentations, Integer["n h w 1"] | Float["n h w k"])
+    return self.State(segmentations=segmentations)
 
 
 def _maybe_rearrange(
