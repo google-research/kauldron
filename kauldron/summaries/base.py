@@ -18,10 +18,11 @@ from __future__ import annotations
 
 import abc
 from typing import Any
+import warnings
 
+from etils import epy
 from kauldron import kontext
 from kauldron.typing import Float, UInt8, typechecked  # pylint: disable=g-multiple-import,g-importing-member
-
 
 Images = Float["*b h w c"] | UInt8["*b h w c"]
 
@@ -36,6 +37,17 @@ class Summary(abc.ABC):
 
 class ImageSummary(Summary, abc.ABC):
   """Base class for image summaries."""
+
+  def __init_subclass__(cls, **kwargs):
+    msg = (
+        f"{cls.__name__} will stop working by the end of 2024. "
+        "Migrate to the new kd.metrics.Metric based summaries. "
+        "See kd.summaries.images.ShowImages for an example."
+    )
+    warnings.warn(msg, DeprecationWarning, stacklevel=2)
+    if epy.is_notebook():
+      print(f"WARNING: {msg}")
+    super().__init_subclass__(**kwargs)
 
   @abc.abstractmethod
   def get_images(self, **kwargs) -> Images:
