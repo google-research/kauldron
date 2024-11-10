@@ -168,6 +168,9 @@ class _ElementWise:
     elif isinstance(self.key, Sequence):
       keys = {k: k for k in self.key}
     object.__setattr__(self, "key", keys)
+    # Is there a more generic way to check that subclasses are calling
+    # `super().__post_init__()`?
+    object.__setattr__(self, "_post_init_called", True)
 
   def _per_element(
       self,
@@ -187,6 +190,13 @@ class _ElementWise:
     Raises:
       KeyError: if the key did not match any of the features.
     """
+    if not hasattr(self, "_post_init_called"):
+      raise ValueError(
+          f"{type(self).__qualname__} was not initialized properly. Make sure"
+          " to call `super().__post_init__()` inside the sub-class"
+          " `def __post_init__`."
+      )
+
     is_noop = True
     for k, v in features.items():
       if k in self.key:
