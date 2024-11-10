@@ -14,6 +14,7 @@
 
 """Utils."""
 
+import ast
 import dataclasses
 import functools
 import itertools
@@ -130,9 +131,9 @@ class _ToJson:
 
     match obj:
       case ml_collections.ConfigDict():
-        return {k: self.convert(v) for k, v in obj._fields.items()}
+        return {_encode_key(k): self.convert(v) for k, v in obj._fields.items()}
       case dict():
-        return {k: self.convert(v) for k, v in obj.items()}
+        return {_encode_key(k): self.convert(v) for k, v in obj.items()}
       case ml_collections.FieldReference():
         # TODO(epot): Support field-ref (at least with identity), so
         # deserialization restore the ref.
@@ -145,3 +146,29 @@ class _ToJson:
         return obj
       case _:
         raise TypeError(f'{type(obj)} is not JSON serializable.')
+
+
+# Json exports only support `str` keys. To allow restoring json configs,
+# non-str keys are encoded/decoded to str.
+_JSON_RAW_PREFIX = '__raw__='
+
+
+def _encode_key(key: Any) -> str:
+  """Encode a key to a JSON-compatible string."""
+  if isinstance(key, str):
+    return key
+  elif isinstance(key, (int, bool, float)):
+    return f'{_JSON_RAW_PREFIX}{key!r}'
+  else:
+    raise TypeError(
+        f'Key {key!r} is not (yet) JSON serializable. Please open an issue if'
+        ' you need this.'
+    )
+
+
+def maybe_decode_json_key(key: Any) -> Any:
+  """Decode a key from a JSON-compatible string."""
+  if isinstance(key, str) and key.startswith(_JSON_RAW_PREFIX):
+    return ast.literal_eval(key.removeprefix(_JSON_RAW_PREFIX))
+  else:
+    return key

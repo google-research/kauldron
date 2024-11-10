@@ -112,9 +112,15 @@ class ConfigDict(ml_collections.ConfigDict):
 
     return ecolab.highlight_html(repr(self))
 
-  def _normalize_arg_key(self, key: str | int, can_append: bool = False) -> str:
+  def _normalize_arg_key(
+      self,
+      key: str | int,
+      can_append: bool = False,
+  ) -> str | int:
     """Normalize the argument key."""
-    if isinstance(key, int):
+    key = utils.maybe_decode_json_key(key)
+
+    if isinstance(key, int) and configdict_proxy.QUALNAME_KEY in self:
       num_args = configdict_proxy.num_args(self)
       if key < 0:
         key = num_args + key

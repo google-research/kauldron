@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test."""
-
+import json
 import pathlib
 
 from etils import epy
@@ -97,3 +96,21 @@ def test_aliases():
   assert repr_('tensorflow:int64') == 'tf.int64'
   assert repr_('tensorflow_graphics:Foo') == 'tensorflow_graphics.Foo'
   assert repr_('tensorflow_datasets:load') == 'tfds.load'
+
+
+def test_indices():
+  data = {
+      0: {
+          '1': 1,
+      },
+      '0': 'aaa',
+      'b': 2,
+      -4: 'a',
+  }
+  cfg = konfig.ConfigDict(data)
+  new_cfg = konfig.ConfigDict(json.loads(cfg.to_json()))
+  assert cfg == new_cfg
+  assert new_cfg[0]['1'] == 1
+  assert new_cfg['0'] == 'aaa'
+  assert 1 not in new_cfg[0]
+  assert '1' in new_cfg[0]
