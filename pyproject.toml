@@ -1,6 +1,6 @@
 [project]
 name = "kauldron"
-description = ""
+description = "Kauldron is a ML research library optimized for quick iteration and modularity."
 readme = "README.md"
 requires-python = ">=3.11"
 license = {file = "LICENSE"}
@@ -29,8 +29,7 @@ dependencies = [
     "jaxtyping",
     "lark",
     "mediapy",
-    # we use features/fixes that are newer than the current (0.1.1) release
-    "ml_collections@git+https://github.com/google/ml_collections@master",
+    "ml_collections",
     "numpy",
     "numpy",
     "opencv-python",  # speeds up pygrain image loading
