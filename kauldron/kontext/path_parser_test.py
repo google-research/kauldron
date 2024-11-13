@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests."""
-
 from kauldron.kontext import path_parser
 
 
@@ -27,3 +25,8 @@ def test_parse():
       path_parser.Wildcard.STAR,
       'a',
   ]
+
+
+def test_parse_interms_example():
+  parts = path_parser.parse_parts('interms.model.__call__[0]')
+  assert parts == ['interms', 'model', '__call__', 0]

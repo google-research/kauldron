@@ -14,6 +14,7 @@
 
 """Property based testing for string paths."""
 
+import re
 from typing import Any
 
 import flax.struct
@@ -22,10 +23,9 @@ import hypothesis.strategies as st
 from kauldron import kontext
 import numpy as np
 import pytest
-import regex
 
 
-IDENTIFIER_REGEX = regex.compile(r"[_a-zA-Z]\w*")
+IDENTIFIER_REGEX = re.compile(r"[_a-zA-Z][_a-zA-Z0-9]*")
 identifiers = st.from_regex(IDENTIFIER_REGEX, fullmatch=True)
 strings = st.text(
     alphabet=st.characters(whitelist_categories=["Lu", "Ll", "Lt", "Lo", "Nl"]),

@@ -65,9 +65,8 @@ def parse_parts(str_path: str) -> list[Part]:
 def _path_parser() -> lark.Lark:
   grammar_path = epath.resource_path("kauldron.kontext") / "path_grammar.lark"
   return lark.Lark(
-      start="path",
-      regex=True,
       grammar=grammar_path.read_text(),
+      parser="lalr",
   )
 
 
@@ -75,14 +74,12 @@ class _PathTransformer(lark.Transformer):
   """Transforms a Lark parse-tree into a Path object."""
 
   @staticmethod
-  def path(args: list[Any]) -> list[Part]:
+  def start(args: list[Any]) -> list[Part]:
     return args
 
   @staticmethod
-  def IDENTIFIER(args: lark.Token) -> str:
-    assert isinstance(args, lark.Token)
-    assert isinstance(args.value, str)
-    return args.value
+  def IDENTIFIER(args: str) -> str:
+    return str(args)
 
   @staticmethod
   def slice_key(args: list[int | str | None]) -> slice:
@@ -96,7 +93,7 @@ class _PathTransformer(lark.Transformer):
     return slice(*sargs)
 
   @staticmethod
-  def ellipsis(_):
+  def ELLIPSIS(_):
     return ...
 
   @staticmethod
@@ -108,29 +105,20 @@ class _PathTransformer(lark.Transformer):
     return ast.literal_eval(args[0])
 
   @staticmethod
-  def integer(args: list[str]) -> int:
-    return ast.literal_eval(args[0])
-
-  @staticmethod
-  def none(_) -> None:
+  def NONE(_) -> None:
     return None
 
   @staticmethod
-  def boolean(args: list[str]) -> bool:
-    return {"True": True, "False": False}[args[0]]
+  def BOOLEAN(args: str) -> bool:
+    return {"True": True, "False": False}[args]
 
   @staticmethod
-  def string(args: list[str]) -> str:
-    return args[0][1:-1]
+  def STRING(args: str) -> str:
+    return ast.literal_eval(args)
 
   @staticmethod
   def tuple_key(args: list[Any]) -> tuple[Any, ...]:
     return tuple(args)
-
-  @staticmethod
-  def WS(_):
-    # discard all whitespace tokens
-    raise lark.Discard()
 
   @staticmethod
   def STAR(_):

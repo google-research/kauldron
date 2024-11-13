@@ -1,18 +1,18 @@
 // A path is a series of dot-separated identifiers and [] based item-access.
-path: [(_identifier | _getitem) (("." _identifier) | _getitem)*]
+start: [(_identifier | _getitem) (("." _identifier) | _getitem)*]
 ?key: number   // item-access keys can be any hashable python literal
-    | boolean
-    | none
-    | string
+    | BOOLEAN
+    | NONE
+    | STRING
     | slice_key
     | tensor_slice_key
     | tuple_key
 
-_getitem: "[" [WS] key [WS] "]"
+_getitem: "[" key "]"
 
 tuple_key: "()"
          | "(" key ",)"
-         | "(" key ("," [WS] key)+ [","] [WS]")"
+         | "(" key ("," key)+ [","] ")"
 
 number: DEC_NUMBER
       | HEX_NUMBER
@@ -21,36 +21,30 @@ number: DEC_NUMBER
       | FLOAT_NUMBER
       | COMPLEX_NUMBER
 
-integer: DEC_NUMBER
-       | HEX_NUMBER
-       | BIN_NUMBER
-       | OCT_NUMBER
+?tensor_axis_key.2: number | slice_key | ELLIPSIS | NONE
+tensor_slice_key.2:  tensor_axis_key ","
+                  | tensor_axis_key  ("," tensor_axis_key )+ [","]
+!slice_key: [number] ":" [number]
+          | [number] ":" [number] ":" [number]
 
-?tensor_axis_key: integer | slice_key | ellipsis | none
-tensor_slice_key: tensor_axis_key ["," [WS]]
-                | tensor_axis_key ("," [WS] tensor_axis_key [WS])+ ["," [WS]]
-!slice_key: [integer [WS]] ":" [WS] [integer]
-          | [integer [WS]] ":" [WS] [integer [WS]] ":" [WS] [integer]
-string: /".*?(?<!\\)(\\\\)*?"/ | /'.*?(?<!\\)(\\\\)*?'/
-!none: "None"
-!boolean: "True" | "False"
-!ellipsis: "..."
+_identifier: STAR | DOUBLE_STAR | IDENTIFIER
 
-_identifier: wildcard | IDENTIFIER
-IDENTIFIER: ID_START ID_CONTINUE*
-ID_START: /[\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}_]+/
-ID_CONTINUE: ID_START | /[\p{Mn}\p{Mc}\p{Nd}\p{Pc}·]+/
+NONE: "None"
+BOOLEAN: "True" | "False"
+ELLIPSIS: "..."
 
-?wildcard: STAR | DOUBLE_STAR
 STAR: "*"
 DOUBLE_STAR: "**"
-
-DEC_NUMBER: /-?\d+/
-HEX_NUMBER: /-?0x[\da-f]*/i
-OCT_NUMBER: /-?0o[0-7]*/i
-BIN_NUMBER : /-?0b[0-1]*/i
-FLOAT_NUMBER: /-?((\d+\.\d*|\.\d+|\d+)(e[-+]?\d+)?|\d+(e[-+]?\d+))/i
+IDENTIFIER: /[^\W\d]\w*/
+STRING: /(u?|r?b?|br)("(?!"").*?(?<!\\)(\\\\)*?"|'(?!'').*?(?<!\\)(\\\\)*?')/i
+DEC_NUMBER: /[+-]?\d+/
+HEX_NUMBER.2: /[+-]?0x[\da-f]*/i
+OCT_NUMBER.2: /[+-]?0o[0-7]*/i
+BIN_NUMBER.2 : /[+-]?0b[0-1]*/i
+FLOAT_NUMBER: /[+-]?((\d+\.\d*|\.\d+|\d+)(e[-+]?\d+)?|\d+(e[-+]?\d+))/i
 IMAG_NUMBER: (DEC_NUMBER | FLOAT_NUMBER) "j"i
 COMPLEX_NUMBER: IMAG_NUMBER
               | "(" (FLOAT_NUMBER | DEC_NUMBER) /[+-]/ IMAG_NUMBER ")"
-WS: (" "|/\t/)+
+
+%import common.WS_INLINE
+%ignore WS_INLINE
