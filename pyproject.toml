@@ -36,7 +36,6 @@ dependencies = [
     "optax",
     "orbax-checkpoint",
     "pandas",
-    "regex",
     "scikit-image",
     "scikit-learn",
     "tabulate",  # used by pandas.DataFrame.to_markdown (for logging context)

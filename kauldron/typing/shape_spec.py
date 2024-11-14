@@ -104,7 +104,6 @@ def Dim(spec_str: str) -> int:  # pylint: disable=invalid-name
 # try grammar online: https://www.lark-parser.org/ide/#
 shape_parser = lark.Lark(
     start="shape_spec",
-    regex=True,
     parser="lalr",
     grammar=r"""
 // shape_spec is a list of dim_specs separated by whitespace
