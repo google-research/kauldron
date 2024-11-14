@@ -233,7 +233,7 @@ def _set_in(
 
   # During glob, the object might contains branch which do not match
   if missing_ok and part not in wrapper:
-    return  # Leaf not found, do not assign this branch
+    return  # Leaf not found, do not assign this branch  # pytype: disable=bad-return-type
 
   if not rest:  # Nothing left to recurse on, assign the leaf.
     if isinstance(part, path_parser.Wildcard):
@@ -251,5 +251,5 @@ def _set_in(
       _set_in(new_context, parts, value)  # Propagate the `**` to the leaves
   else:  # Otherwise, recurse.
     for _, new_context in wrapper.get_items(part):
-      _set_in(new_context, rest, value)
+      _set_in(new_context, rest, value)  # pytype: disable=bad-return-type
   # TODO(epot): Reraise with the full path branch in which the error occured
