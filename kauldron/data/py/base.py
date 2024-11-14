@@ -40,8 +40,11 @@ class PyGrainPipeline(pipelines.Pipeline):
   See doc:
 
   Attributes:
-    transforms: A list of transformations to apply to the dataset. Each
-      transformation should be either a `grain.MapTransform` or a
+    transforms: A list of transformations to apply to the dataset before
+      batching. Each transformation should be either a `grain.MapTransform` or a
+      `grain.RandomMapTransform`.
+    post_batch_transforms: A list of transformations to apply after batching.
+      Each transformation should be either a `grain.MapTransform` or a
       `grain.RandomMapTransform`.
     num_epochs: Number of epoch. If missing, iterate indefinitely (number of
       iteration is given by `cfg.num_training_steps`)
@@ -60,6 +63,9 @@ class PyGrainPipeline(pipelines.Pipeline):
     seed: PRNGKeyLike | None = ...
 
   transforms: tr_normalize.Transformations = dataclasses.field(
+      default_factory=tuple
+  )
+  post_batch_transforms: tr_normalize.Transformations = dataclasses.field(
       default_factory=tuple
   )
 
@@ -113,6 +119,7 @@ class PyGrainPipeline(pipelines.Pipeline):
     # batching.
     if self.batch_size:
       ds = ds.batch(self.batch_size, drop_remainder=self.batch_drop_remainder)
+      ds = transform_utils.apply_transforms(ds, self.post_batch_transforms)
 
     # Distribute the execution across multiple worker processes.
     num_workers = _get_num_workers(self.num_workers)
