@@ -15,12 +15,11 @@
 """Colab utils."""
 
 import enum
-import json
 import types
 
 from etils import epy
 from kauldron import konfig
-from kauldron.utils import sweep_utils
+from kauldron import kontext
 
 
 with epy.lazy_imports():
@@ -70,15 +69,16 @@ def iter_sweep_configs(
         cfg = module.get_config(config_args)
       else:
         cfg = module.get_config()
-      # TODO(epot): Display the sweep short name (workdir) and config.
-      sweep_json = sweep_item.job_kwargs[kauldron_utils.SWEEP_FLAG_NAME]
-      cfg = sweep_utils.update_with_sweep(
-          config=cfg,
-          sweep_kwargs=sweep_json,
+
+      sweep_kwargs = kauldron_utils.deserialize_job_kwargs(
+          sweep_item.job_kwargs
       )
+      # TODO(epot): Display the sweep short name (workdir) and config.
+      for k, v in sweep_kwargs.items():
+        kontext.set_by_path(cfg, k, v)
 
       # Only for visualization.
-      sweep_cfg_overwrites = konfig.ConfigDict(json.loads(sweep_json))
+      sweep_cfg_overwrites = konfig.ConfigDict(sweep_kwargs)
       print(f'Work-unit {i+1}:', flush=True)
       ecolab.disp(sweep_cfg_overwrites)
 

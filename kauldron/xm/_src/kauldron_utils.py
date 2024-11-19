@@ -50,9 +50,7 @@ from xmanager import xm
 if typing.TYPE_CHECKING:
   from kauldron import kd  # pylint: disable=g-bad-import-order  # pytype: disable=import-error
 
-# Flag to send the json-serialized sweep overwrites kwargs
-# If modifying this, also modify the value in `kauldron/utils/sweep_utils.py`
-SWEEP_FLAG_NAME = "sweep_config"
+_Json = epy.typing.Json
 
 # TODO(epot): Support sweep on platform,...
 
@@ -269,9 +267,17 @@ def _encode_sweep_item(
   return dataclasses.replace(
       sweep_item,
       # Use custom encoder to support ConfigDict objects
-      job_kwargs={SWEEP_FLAG_NAME: _JsonEncoder().encode(job_kwargs)},
+      job_kwargs=_serialize_job_kwargs(job_kwargs),
       xm_ui_kwargs={k: _ui_repr(v) for k, v in job_kwargs.items()},
   )
+
+
+def _serialize_job_kwargs(job_kwargs: dict[str, _Json]) -> dict[str, _Json]:
+  return {f"cfg.{k}": _JsonEncoder().encode(v) for k, v in job_kwargs.items()}
+
+
+def deserialize_job_kwargs(job_kwargs: dict[str, _Json]) -> dict[str, _Json]:
+  return {k.removeprefix("cfg."): json.loads(v) for k, v in job_kwargs.items()}
 
 
 def _ui_repr(v):

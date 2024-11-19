@@ -39,7 +39,6 @@ _CONFIG = kd.konfig.DEFINE_config_file(
     "Training configuration.",
     lock_config=False,
 )
-_SWEEP_CONFIG = sweep_utils.define_sweep_flag()
 _EVAL_NAMES = flags.DEFINE_list(
     "eval_names",
     None,
@@ -58,11 +57,7 @@ def main(_):
 
   with _wu_error_handling(_POST_MORTEM.value):
     eval_names = _EVAL_NAMES.value
-    cfg = sweep_utils.update_with_sweep(
-        config=_CONFIG.value,
-        sweep_kwargs=_SWEEP_CONFIG.value,
-    )
-    # TODO(b/374268398): add back _update_xm_configuration(cfg) once ACtx good
+    cfg = _CONFIG.value
     if eval_names is None:
       trainer: kd.train.Trainer = kd.konfig.resolve(cfg)
       trainer.train()
@@ -80,10 +75,6 @@ def main(_):
 @contextlib.contextmanager
 def _wu_error_handling(post_mortem: bool = False):
   yield  # not yet supported externally
-
-
-def _update_xm_configuration(cfg: kd.konfig.ConfigDict) -> None:
-  pass  # not supported externally
 
 
 def _flags_parser(args: list[str]) -> None:

@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test."""
+import contextlib
+import shlex
+import sys
 
-import json
-
+from absl import flags
 from kauldron import kd
 from examples import mnist_autoencoder
-from kauldron.utils import sweep_utils
 from kauldron.xm._src import kauldron_utils
 from kauldron.xm._src import sweep_cfg_utils
 
@@ -53,7 +53,8 @@ def test_sweep():
   assert len(all_sweep_info) == 4  # Cross product
 
   sweep0 = kauldron_utils._encode_sweep_item(all_sweep_info[0])
-  assert json.loads(sweep0.job_kwargs[sweep_utils._FLAG_NAME]) == {
+  sweep0 = kauldron_utils.deserialize_job_kwargs(sweep0.job_kwargs)
+  assert sweep0 == {
       'eval_ds.batch_size': 16,
       'train_ds.batch_size': 16,
       'model': {'__qualname__': 'flax.linen:Dense', '0': 12},
@@ -61,19 +62,40 @@ def test_sweep():
 
 
 def test_sweep_overwrite():
-  assert sweep_utils._FLAG_NAME == kauldron_utils.SWEEP_FLAG_NAME
-
-  cfg = mnist_autoencoder.get_config()
-  cfg = sweep_utils.update_with_sweep(  # pytype: disable=wrong-arg-types
-      config=cfg,
-      sweep_kwargs=json.dumps({
-          'seed': 12,
-          'train_ds.name': 'imagenet',
-          'train_ds.transforms[0].keep[0]': 'other_image',
-          'model': {'__qualname__': 'flax.linen:Dense', '0': 12},
-      }),
+  argv = shlex.split(
+      # fmt: off
+      'my_app'
+      f' --cfg={mnist_autoencoder.__file__}'
+      ' --cfg.seed=12'
+      ' --cfg.train_ds.name=imagenet'
+      ' --cfg.train_ds.transforms[0].keep[0]=other_image'
+      ' --cfg.model="{\\"__qualname__\\": \\"flax.linen:Dense\\", \\"0\\": 12}"'
+      # fmt: on
   )
+
+  flag_values = flags.FlagValues()
+  with _replace_sys_argv(argv):
+    sweep_flag = kd.konfig.DEFINE_config_file(
+        'cfg',
+        mnist_autoencoder.__file__,
+        'Config file to use for the sweep.',
+        flag_values=flag_values,
+    )
+    flag_values(argv)
+
+  cfg = sweep_flag.value
   assert cfg.seed == 12
   assert cfg.train_ds.transforms[0].keep == ['other_image']
   assert cfg.train_ds.name == 'imagenet'
   assert cfg.model == nn.Dense(12)
+  assert isinstance(cfg.model, kd.konfig.ConfigDict)
+
+
+@contextlib.contextmanager
+def _replace_sys_argv(argv):
+  old_argv = sys.argv
+  sys.argv = argv
+  try:
+    yield
+  finally:
+    sys.argv = old_argv
