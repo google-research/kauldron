@@ -24,12 +24,31 @@ jobs:
         # cache-dependency-path: '**/pyproject.toml'
 
     - run: pip --version
+
+    # TODO(epot): Delete once all projects have been released
+    - run: pip install git+https://github.com/google/etils
+    - run: pip install git+https://github.com/google/flax
+
     - run: pip install -e .[dev]
     - run: pip freeze
 
     # Run tests (in parallel)
+    # Filter out:
+    # * Projects: Not part of core Kauldron (could be tested separately)
+    # * TF Data pipeline (not supported due to TFGrain not open-sourced)
+    # * XManager tests (not yet supported)
+    # * sweep_utils_test: Depends on kxm
+    # * lpips_test: Missing VGG weights
+    # * partial_loader_test: Orbax partial checkpoint loader not yet open-sourced  (TODO(epot): Restore)
     - name: Run core tests
-      run: pytest -vv -n auto
+      run: |
+        pytest -vv -n auto \
+          --ignore=projects/ \
+          --ignore=kauldron/data/tf/ \
+          --ignore=kauldron/xm/ \
+          --ignore=kauldron/metrics/lpips_test.py \
+          --ignore=kauldron/checkpoints/partial_loader_test.py \
+          --ignore=kauldron/utils/sweep_utils_test.py
 
   # Auto-publish when version is increased
   publish-job:

@@ -23,6 +23,7 @@ poetry.lock
 .pytype/
 
 # Other
+.hypothesis/
 *.DS_Store
 
 # PyCharm

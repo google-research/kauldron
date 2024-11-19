@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test."""
-
 import dataclasses
 
 from kauldron import kd
@@ -22,8 +20,10 @@ from kauldron.train import metric_writer
 
 def test_trainer_replace():
   trainer = kd.train.Trainer(
-      eval_ds=kd.data.Tfds(name='mnist', split='train'),
-      train_ds=kd.data.Tfds(name='mnist', split='train', seed=60),  # pytype: disable=wrong-keyword-args
+      eval_ds=kd.data.py.Tfds(name='mnist', split='train', shuffle=False),
+      train_ds=kd.data.py.Tfds(
+          name='mnist', split='train', shuffle=True, seed=60
+      ),
       init_transforms={
           'base': kd.ckpts.PartialKauldronLoader(workdir='/some/workdir')
       },

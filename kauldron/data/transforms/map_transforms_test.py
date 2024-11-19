@@ -28,7 +28,7 @@ def graph_mode():
 
 @enp.testing.parametrize_xnp(restrict=["np", "tnp"])
 def test_value_range(xnp: enp.NpModule):
-  vr = kd.data.tf.ValueRange(
+  vr = kd.data.ValueRange(
       key="values",
       in_vrange=(0.0, 255.0),
       vrange=(0.0, 1.0),

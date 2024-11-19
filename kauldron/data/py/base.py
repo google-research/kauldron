@@ -121,7 +121,7 @@ class PyGrainPipeline(pipelines.Pipeline):
           num_workers,
           enable_profiling=self.enable_profiling,
       )
-      ds = ds.mp_prefetch(multiprocessing_options)
+      ds = ds.prefetch(multiprocessing_options)
     return ds
 
   def __iter__(self) -> iterators.Iterator:

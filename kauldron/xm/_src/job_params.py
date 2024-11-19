@@ -144,7 +144,7 @@ class JobParams:
   platform: None | str = None
   cell: None | str = None
 
-  citc_source: None | str | tuple[str, ...]
+  citc_source: None | g3_utils.Source = None
   use_interpreter: bool = False
   interpreter_info: InterpreterInfo = dataclasses.field(
       default_factory=InterpreterInfo

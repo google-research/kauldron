@@ -27,14 +27,8 @@ with _epy.lazy_api_imports(globals()):
   from kauldron.data.in_memory import InMemoryPipeline
 
   # PyGrain based data pipeline.
-  # TODO(epot): Somehow importing here create infinite recursion when the
-  # import is resolved, likely because there's some special handling of the
-  # suffix `py` to support `third_party.py`. I don't have time to investigate
-  # so instead the module is imported below in `lazy_imports` rather than
-  # `lazy_api_imports`.
-  # from kauldron.data import py
+  from kauldron.data import py
 
-  # TODO(epot): Migrate all existing symbols to `kd.data.tf.`
   # tf.data based data pipeline.
   from kauldron.data import tf
 
@@ -57,6 +51,3 @@ from kauldron.data.transforms.base import TreeFlattenWithPath
 from kauldron.data.transforms.map_transforms import Gather
 from kauldron.data.transforms.map_transforms import Rearrange
 from kauldron.data.transforms.map_transforms import ValueRange
-
-with _epy.lazy_imports():
-  from kauldron.data import py

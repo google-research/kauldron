@@ -31,7 +31,7 @@ def test_external():
   )
 
   inputs = jnp.ones((5, 5))
-  input_kwargs = kd.kontext.get_from_keys_obj(
+  input_kwargs = kd.kontext.resolve_from_keyed_obj(
       {'a': inputs, 'b': jnp.zeros(())}, model
   )
   out_train = model.apply(

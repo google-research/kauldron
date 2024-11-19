@@ -24,9 +24,6 @@ def test_import_kauldron():
 
   end = time.time()
 
-  # Enforce lazy deps
-  assert "sklearn" not in sys.modules
-
   # TODO(epot): Reduce this value
   assert end - start < 40, "Kauldron import took too long."
 

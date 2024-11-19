@@ -26,8 +26,6 @@ def test_eval_impl(tmp_path: epath.Path):
   # Load config and reduce size
   cfg = mnist_autoencoder.get_config()
 
-  # TODO(klausg): remove this once data mocking works correctly with grain
-  cfg.train_ds.__qualname__ = 'kauldron.kd:data.Tfds'
   cfg.train_ds.batch_size = 1
   cfg.evals.eval.ds.batch_size = 1  # pytype: disable=attribute-error
   cfg.model.encoder.features = 3
