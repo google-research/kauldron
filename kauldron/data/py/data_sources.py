@@ -19,6 +19,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 import dataclasses
 import functools
+import json
 from typing import Any, Optional
 
 from etils import epath
@@ -55,3 +56,40 @@ class Tfds(base.DataSourceBase):
         data_dir=self.data_dir,
         decoders=self.decoders,
     )
+
+
+# Should this be part of Grain ?
+@dataclasses.dataclass(frozen=True)
+class JsonDataSource(grain.RandomAccessDataSource):
+  """Json data source.
+
+  Assumes that the json file is a list of examples. The file will be loaded and
+  kept in memory.
+  """
+
+  path: str
+
+  @functools.cached_property
+  def data(self) -> Mapping[str, Any]:
+    return json.loads(epath.Path(self.path).read_text())
+
+  def __len__(self) -> int:
+    return len(self.data)
+
+  def __getitem__(self, record_key):
+    return self.data[record_key]
+
+
+@dataclasses.dataclass(frozen=True)
+class Json(base.DataSourceBase):
+  """Json pipeline.
+
+  Assumes that the json file is a list of examples. The file will be loaded and
+  kept in memory.
+  """
+
+  path: str
+
+  @functools.cached_property
+  def data_source(self) -> grain.RandomAccessDataSource:
+    return JsonDataSource(path=self.path)
