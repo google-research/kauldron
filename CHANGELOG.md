@@ -8,6 +8,8 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 ## [Unreleased]
 
+## [1.0.0] - 2024-11-21
+
 * `kd.kontext.Path` now supports tensor slicing. So for example using keys like
   `"interm.tensor[..., 0:10, :, -1]"` will now work as expected.
 * `kd.nn.interm_property` now supports accessing any intermediates from within
@@ -89,10 +91,12 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
   ```
 * Added: `kd.nn.ExternalModule(flax_module)` to use any external flax modules
   inside Kauldron.
+* **And many, many more changes...**
 
 ## [0.1.0] - 2022-01-01
 
 * Initial release
 
-[Unreleased]: https://github.com/google-research/kauldron/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/google-research/kauldron/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/google-research/kauldron/releases/tag/v1.0.0
 [0.1.0]: https://github.com/google-research/kauldron/releases/tag/v0.1.0
