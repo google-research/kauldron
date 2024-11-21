@@ -54,17 +54,10 @@ def main(_):
   with _wu_error_handling(_POST_MORTEM.value):
     eval_names = _EVAL_NAMES.value
     cfg = _CONFIG.value
+    trainer: kd.train.Trainer = kd.konfig.resolve(cfg)
     if eval_names is None:
-      trainer: kd.train.Trainer = kd.konfig.resolve(cfg)
       trainer.train()
     else:
-      # Orbax does not support CheckpointManagers creating the same root
-      # directory. By setting `create=False`, we ensure that the checkpoint
-      # manager does not create a new root directory.
-      if hasattr(cfg, "checkpointer"):
-        if hasattr(cfg.checkpointer, "create"):
-          cfg.checkpointer.create = False
-      trainer: kd.train.Trainer = kd.konfig.resolve(cfg)
       trainer.continuous_eval(eval_names)
 
 
