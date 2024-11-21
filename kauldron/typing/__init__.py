@@ -16,11 +16,13 @@
 
 from __future__ import annotations
 
+# pylint: disable=g-multiple-import,g-importing-member
+
 from typing import Any, Callable, Hashable, Sequence, Union
 
-from clu.data.dataset_iterator import ArraySpec, ElementSpec, PyTree  # pylint: disable=g-multiple-import,g-importing-member
+from clu.data.dataset_iterator import ArraySpec, ElementSpec, PyTree
 import jax
-from kauldron.typing.array_types import (  # pylint: disable=g-multiple-import
+from kauldron.typing.array_types import (
     Array,
     Bool,
     Complex,
@@ -42,12 +44,11 @@ from kauldron.typing.array_types import (  # pylint: disable=g-multiple-import
     UInt8,
     XArray,
 )
-from kauldron.typing.shape_spec import Dim, Memo, Shape  # pylint: disable=g-multiple-import,g-importing-member
-from kauldron.typing.type_check import TypeCheckError, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing.shape_spec import Dim, Memo, Shape
+from kauldron.typing.type_check import check_type
+from kauldron.typing.type_check import typechecked
+from kauldron.typing.type_check import TypeCheckError
 import numpy as np
-import typeguard as _typeguard
-# make typeguard.check_type accessible in this namespace
-check_type = _typeguard.check_type
 
 PRNGKey = UInt32["2"]
 PRNGKeyLike = Union[int, Sequence[int], np.ndarray, PRNGKey]

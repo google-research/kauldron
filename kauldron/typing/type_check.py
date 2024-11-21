@@ -29,7 +29,9 @@ from etils import enp
 from etils import epy
 import jaxtyping
 from kauldron.typing import shape_spec
-import typeguard
+
+with epy.lazy_imports():
+  import typeguard  # pylint: disable=g-import-not-at-top
 
 
 # a global switch to disable typechecking
@@ -39,7 +41,18 @@ TYPECHECKING_ENABLED = True
 _undef = object()
 
 
-class TypeCheckError(typeguard.TypeCheckError):
+def check_type(
+    value: Any,
+    expected_type: Any,
+) -> None:
+  """Ensure that value matches expected_type, alias for typeguard.check_type."""
+  if True:  # Typeguard not yet supported
+    return
+  return typeguard.check_type(value, expected_type)
+
+
+exc_cls = Exception
+class TypeCheckError(exc_cls):
   """Indicates a runtime typechecking error from the @typechecked decorator."""
 
   def __init__(
@@ -99,6 +112,9 @@ class TypeCheckError(typeguard.TypeCheckError):
 
 def typechecked(fn):
   """Decorator to enable runtime type-checking and shape-checking."""
+  if True:  # Typeguard not yet supported
+    return fn
+
   if hasattr(fn, "__wrapped__"):
     raise AssertionError("@typechecked should be the innermost decorator")
 
@@ -417,7 +433,3 @@ def add_custom_checker_lookup_fn(lookup_fn):
       break
   else:  # prepend
     checker_lookup_fns[:0] = [lookup_fn]
-
-
-add_custom_checker_lookup_fn(_array_spec_checker_lookup)
-add_custom_checker_lookup_fn(_dataclass_checker_lookup)
