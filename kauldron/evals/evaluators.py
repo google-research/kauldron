@@ -22,6 +22,7 @@ import functools
 from typing import Any, Optional, TypeVar
 
 from etils import epy
+from flax import linen as nn
 import jax
 from kauldron import data
 from kauldron import losses as losses_lib
@@ -168,6 +169,7 @@ class Evaluator(EvaluatorBase):
     losses: Losses
     metrics: Metrics
     summaries: Summaries
+    model: Model to use for evaluation (if different from train).
   """
 
   num_batches: Optional[int] = None
@@ -180,6 +182,7 @@ class Evaluator(EvaluatorBase):
   summaries: dict[str, summaries_lib.Summary] = (
       config_util.ROOT_CFG_REF.train_summaries
   )
+  model: nn.Module = config_util.ROOT_CFG_REF.model
 
   __root_cfg_fields_to_recurse__ = ('ds',)
 
@@ -257,7 +260,7 @@ class Evaluator(EvaluatorBase):
   def model_with_aux(self) -> train_step.ModelWithAux:
     """Model which also compute the auxiliaries (losses, metrics,...)."""
     return train_step.ModelWithAux(
-        model=self.base_cfg.model,
+        model=self.model,
         losses=self.losses,
         metrics=self.metrics,
         summaries=self.summaries,
