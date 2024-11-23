@@ -62,6 +62,8 @@ class Context:
     opt_state: The state of the optimizer prior to the update. (available after
       the backward pass, e.g. for metrics). The old state is chosen to be
       consistent with parameters which are also pre-update.
+    metric_states: The states of the metrics (after the backward pass)
+    summary_states: The states of the summaries (after the backward pass)
   """
 
   # These are always available:
@@ -80,6 +82,9 @@ class Context:
   grads: Any = None
   updates: Any = None
   opt_state: Any = None
+  # Become available after the metrics computation
+  metric_states: Any = None
+  summary_states: Any = None
 
   replace = dataclasses.replace
 
