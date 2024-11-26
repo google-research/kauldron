@@ -31,6 +31,7 @@ def sweep():
     yield {
         'eval_ds.batch_size': bs,
         'train_ds.batch_size': bs,
+        'aux.model_size': 'big' if bs == 16 else 'small',
     }
 
 
@@ -53,10 +54,17 @@ def test_sweep():
   assert len(all_sweep_info) == 4  # Cross product
 
   sweep0 = kauldron_utils._encode_sweep_item(all_sweep_info[0])
+  assert sweep0.job_kwargs == {
+      'cfg.eval_ds.batch_size': '16',
+      'cfg.train_ds.batch_size': '16',
+      'cfg.aux.model_size': 'big',
+      'cfg.model': '{"__qualname__": "flax.linen:Dense", "0": 12}',
+  }
   sweep0 = kauldron_utils.deserialize_job_kwargs(sweep0.job_kwargs)
   assert sweep0 == {
       'eval_ds.batch_size': 16,
       'train_ds.batch_size': 16,
+      'aux.model_size': 'big',
       'model': {'__qualname__': 'flax.linen:Dense', '0': 12},
   }
 

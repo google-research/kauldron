@@ -273,11 +273,27 @@ def _encode_sweep_item(
 
 
 def _serialize_job_kwargs(job_kwargs: dict[str, _Json]) -> dict[str, _Json]:
-  return {f"cfg.{k}": _JsonEncoder().encode(v) for k, v in job_kwargs.items()}
+  return {
+      f"cfg.{k}": v if isinstance(v, str) else _JsonEncoder().encode(v)
+      for k, v in job_kwargs.items()
+  }
 
 
 def deserialize_job_kwargs(job_kwargs: dict[str, _Json]) -> dict[str, _Json]:
-  return {k.removeprefix("cfg."): json.loads(v) for k, v in job_kwargs.items()}
+  return {
+      k.removeprefix("cfg."): _decode_json_or_str(v)
+      for k, v in job_kwargs.items()
+  }
+
+
+def _decode_json_or_str(v: _Json) -> _Json:
+  """Decodes the JSON string or returns the string itself."""
+  # The decoded values should always have been encoded JSON strings from
+  # `_serialize_job_kwargs`, so there shouldn't be risk of badly formatted JSON.
+  try:
+    return json.loads(v)
+  except json.JSONDecodeError:
+    return v
 
 
 def _ui_repr(v):
