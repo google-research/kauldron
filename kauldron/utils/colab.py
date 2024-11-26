@@ -62,6 +62,7 @@ def iter_sweep_configs(
   if sweep_mode == SweepMode.FIRST:
     all_sweep_items = all_sweep_items[:1]
 
+  output_cfg = []
   with ecolab.collapse(f'Resolving {len(all_sweep_items)} sweeps configs'):
     for i, sweep_item in enumerate(all_sweep_items):
       # Re-create the config to avoid mutations leak between iterations.
@@ -76,13 +77,20 @@ def iter_sweep_configs(
       # TODO(epot): Display the sweep short name (workdir) and config.
       for k, v in sweep_kwargs.items():
         kontext.set_by_path(cfg, k, v)
-
       # Only for visualization.
       sweep_cfg_overwrites = konfig.ConfigDict(sweep_kwargs)
       print(f'Work-unit {i+1}:', flush=True)
-      ecolab.disp(sweep_cfg_overwrites)
+      # TODO(epot): Should report IPython.display.HTML bug to Colab team.
+      # Use `print` rather than `ecolab.disp` as HTML display bug here for
+      # some reason and mangle the previous outputs.
+      print(sweep_cfg_overwrites)
+      print()
 
-      yield cfg
+      # Somhow, yield here remove some of the outputs, so instead append and
+      # returns everything at the end.
+      output_cfg.append(cfg)
+
+    return output_cfg
 
 
 def _update_sweep_names_forms(module: types.ModuleType) -> None:
