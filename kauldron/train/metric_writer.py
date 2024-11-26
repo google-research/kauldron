@@ -165,7 +165,6 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
       *,
       step: int,
       aux: train_step.Auxiliaries,
-      model_with_aux: train_step.ModelWithAux,
       schedules: Mapping[str, optax.Schedule],
       log_summaries: bool,
       timer: Optional[chrono_utils.Chrono] = None,
@@ -201,15 +200,7 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
 
     if log_summaries:
       with jax.transfer_guard("allow"):
-        # TODO(klausg): remove once all summaries are migrated to new protocol
-        # image summaries
-        image_summaries_old = {
-            name: summary.get_images(**aux.summary_kwargs[name])
-            for name, summary in model_with_aux.summaries.items()
-            if isinstance(summary, summaries.ImageSummary)
-        }
-
-        image_summaries = image_summaries_old | {
+        image_summaries = {
             name: value
             for name, value in aux_result.summary_values.items()
             if isinstance(value, Float["n h w #3"])
@@ -586,7 +577,6 @@ class NoopWriter(NoopMetadataWriter):
       *,
       step: int,
       aux: train_step.Auxiliaries,
-      model_with_aux: train_step.ModelWithAux,
       schedules: Mapping[str, optax.Schedule],
       log_summaries: bool,
       timer: Optional[chrono_utils.Chrono] = None,

@@ -136,7 +136,6 @@ def train_impl(
             step=i,
             aux=aux,
             schedules=trainer.schedules,
-            model_with_aux=trainstep.model_with_aux,
             timer=chrono,
             log_summaries=log_summaries,
         )

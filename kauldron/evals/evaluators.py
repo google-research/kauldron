@@ -251,7 +251,6 @@ class Evaluator(EvaluatorBase):
         step=step,
         aux=merged_aux,
         schedules={},
-        model_with_aux=self.model_with_aux,
         log_summaries=True,
     )
     return merged_aux
