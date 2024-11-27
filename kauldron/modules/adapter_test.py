@@ -14,6 +14,8 @@
 
 """Test."""
 
+from typing import Any
+
 from flax import linen as nn
 import jax
 import jax.numpy as jnp
@@ -48,3 +50,18 @@ def test_external():
 
   assert not np.array_equal(out_train, inputs)
   np.testing.assert_array_equal(out_eval, inputs)
+
+
+def test_wrapper():
+  class MyWrapper(kd.nn.WrapperModule):
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+      return self.model(*args, **kwargs)
+
+  model = MyWrapper(
+      model=nn.Dense(2),
+  )
+
+  inputs = jnp.ones((5,))
+  params = model.init(jax.random.PRNGKey(0), inputs)
+  assert list(params['params']) == ['kernel', 'bias']

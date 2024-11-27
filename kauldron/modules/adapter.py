@@ -20,7 +20,25 @@ from flax import linen as nn
 from kauldron.utils import train_property
 
 
-class ExternalModule(nn.Module):
+class WrapperModule(nn.Module):
+  """Base class to wrapper a module.
+
+  The wrapper module transparent with respect to the inner parameters (
+  `{'params': inner_params}` instead of nesting
+  `{'params': {'model': inner_params}}`).
+  """
+
+  model: nn.Module
+
+  def __post_init__(self):
+    super().__post_init__()
+    # Share scope, to make the wrapper module transparent with respect to the
+    # parameters (instead of nesting `{'params': {'model': params}}`).
+    if self.scope is not None:
+      nn.share_scope(self, self.model)
+
+
+class ExternalModule(WrapperModule):
   """Module that is defined outside Kauldron.
 
   This is a **very** thin wrapper around `flax.linen.Module` that add:
@@ -52,7 +70,6 @@ class ExternalModule(nn.Module):
       can be inverted with `~` (e.g. `train_kwarg_name='~deterministic'`)
   """
 
-  model: nn.Module
   keys: str | dict[str, str]
   train_kwarg_name: Optional[str] = None
 

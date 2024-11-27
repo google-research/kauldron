@@ -8,6 +8,9 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 ## [Unreleased]
 
+*   Add `kd.nn.WrapperModule` to make a inner-module transparent with
+    respect of .
+
 ## [1.0.0] - 2024-11-21
 
 * `kd.kontext.Path` now supports tensor slicing. So for example using keys like
