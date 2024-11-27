@@ -25,9 +25,8 @@ jobs:
 
     - run: pip --version
 
-    # TODO(epot): Delete once all projects have been released
+    # Should not be required, but it's expected Kauldron can use unreleased etils features.
     - run: pip install git+https://github.com/google/etils
-    - run: pip install git+https://github.com/google/flax
 
     - run: pip install -e .[dev]
     - run: pip freeze
