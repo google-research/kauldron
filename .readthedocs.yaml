@@ -14,7 +14,11 @@ sphinx:
 
 python:
   install:
+    # pip install kauldron[docs] fail: https://github.com/pypa/pip/issues/13092
+    # So try to install the dependencies separately.
+    - method: pip
+      path: sphinx-apitree
+      extra_requirements:
+        - ext
     - method: pip
       path: .
-      extra_requirements:
-        - docs
