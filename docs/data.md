@@ -1,4 +1,4 @@
-# Train, eval, randomness
+# Data pipelines
 
 ## Pipelines options
 
@@ -20,77 +20,8 @@ By default, Kauldron provides two main pipelines implementations:
     )
     ```
 
-*   `tf.data` based: `kd.data.TFDataPipeline` base class which itself implements
-    multiple sub-classes (see next section). For example:
-
-    ```python
-    cfg.train_ds = kd.data.Tfds(
-        # TFDS specific args
-        name='mnist',
-        split='train',
-        shuffle=True,
-
-        # `kd.data.TFDataPipeline` args (common to all TFDataPipeline)
-        batch_size=256,
-        transforms=[
-            kd.data.Elements(keep=["image"]),
-            kd.data.ValueRange(key="image", vrange=(0, 1)),
-        ],
-    )
-    ```
-
 While it's easy to implement your custom pipeline, please contact us if the
 existing pipelines do not fit your use-case.
-
-## TFDataPipeline
-
-The following `tf.data` sources are available:
-
-*   `kd.data.Tfds`: TFDS dataset (note that this requires the dataset to be in
-    ArrayRecord format)
-*   `kd.data.TfdsLegacy`: TFDS dataset for datasets not supporting random access
-    ( e.g. in `tfrecord` format)
-*   `kd.data.SeqIOTask`: SeqIO task
-*   `kd.data.SeqIOMixture`: SeqIO mixture
-*   Your custom `tf.data` pipeline. See: https://kauldron.rtfd.io/en/latest-kmix#implement-your-own
-
-Additionally, any of those sources dataset can be combined using:
-
-*   `kd.data.SampleFromDatasets`: Sample from a combination of datasets.
-
-Other sources will be added in the future. If your dataset is not yet supported,
-please [contact us](https://kauldron.rtfd.io/en/latest-help#bugs-feedback).
-
-See https://kauldron.rtfd.io/en/latest-kmix for details on how to implement a custom `tf.data` source.
-
-Example of dataset mixture with nested transforms:
-
-```python
-cfg.train_ds = kd.data.SampleFromDatasets(
-    datasets=[
-        kd.data.Tfds(
-            name='cifar100',
-            split='train',
-            transforms=[
-                kd.data.Elements(keep=["image", "label"]),
-            ],
-        ),
-        kd.data.Tfds(
-            name='imagenet2012',
-            split='train',
-            transforms=[
-                kd.data.Elements(keep=["image", "label"]),
-                kd.data.Resize(key='image', height=32, width=32),
-            ],
-        ),
-    ],
-    seed=0,
-    batch_size=256,
-    transforms=[
-        kd.data.RandomCrop(shape=(15, 15, None)),
-    ],
-)
-```
 
 ## Transformations
 

@@ -29,9 +29,6 @@ with _epy.lazy_api_imports(globals()):
   # PyGrain based data pipeline.
   from kauldron.data import py
 
-  # tf.data based data pipeline.
-  from kauldron.data import tf
-
   # User should inherit from those base classes to have transformations
   # supported by both TfGrain (`kd.data.tf`) and PyGrain (`kd.data.py`)
   from kauldron.data.transforms.abc import MapTransform

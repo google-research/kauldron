@@ -38,6 +38,7 @@ class AutoState(base_state.State[_MetricT]):
 
   Subclasses of AutoState have to use the @flax.struct.dataclass decorator and
   can define two kinds of fields:
+
   1) Data fields are defined by the `sum_field`, `concat_field` or
      `truncate_field` functions. E.g. `d : Float['n'] = sum_field()`.
      Data fields are pytrees of Jax arrays.
@@ -173,15 +174,16 @@ def sum_field(
   Preserves shape and assumes that the other (merged) field has the same shape.
 
   Usage:
-    ```python
-    @flax.struct.dataclass
-    class ShapePreservingAverage(AutoState):
-      summed_values: Float['*any'] = sum_field()
-      total_values: Float['*any'] = sum_field()
 
-      def compute(self):
-        return self.summed_values / self.total_values
-    ```
+  ```python
+  @flax.struct.dataclass
+  class ShapePreservingAverage(AutoState):
+    summed_values: Float['*any'] = sum_field()
+    total_values: Float['*any'] = sum_field()
+
+    def compute(self):
+      return self.summed_values / self.total_values
+  ```
 
   Args:
     default: The default value of the field.
@@ -212,12 +214,13 @@ def concat_field(
   The final compute() method concatenates the arrays along the given axis.
 
   Usage:
-    ```python
-    @flax.struct.dataclass
-    class CollectTokens(AutoState):
-      # merged along token axis ('n') by concatenation
-      tokens: Float['b n d'] = concat_field(axis=1)
-    ```
+
+  ```python
+  @flax.struct.dataclass
+  class CollectTokens(AutoState):
+    # merged along token axis ('n') by concatenation
+    tokens: Float['b n d'] = concat_field(axis=1)
+  ```
 
   Args:
     axis: The axis along which to concatenate the two arrays. Defaults to 0.
@@ -252,12 +255,13 @@ def truncate_field(
   of a tensor, e.g. the first few images for plotting.
 
   Usage:
-    ```python
-    @flax.struct.dataclass
-    class CollectFirstKImages(AutoState):
-      num_images: int
-      images: Float['n h w 3'] = truncate_field(num_field="num_images")
-    ```
+
+  ```python
+  @flax.struct.dataclass
+  class CollectFirstKImages(AutoState):
+    num_images: int
+    images: Float['n h w 3'] = truncate_field(num_field="num_images")
+  ```
 
   Args:
     num_field: The name of the field (in the state) that determines the number
