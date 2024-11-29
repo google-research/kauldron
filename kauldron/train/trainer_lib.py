@@ -399,7 +399,7 @@ class Trainer(config_util.BaseConfig):
     # Instead just creating the `spec` should be enough.
     m_batch = data_utils.mock_batch_from_elem_spec(elem_spec, elem_sharding)
 
-    context = jax.eval_shape(
+    _, context = jax.eval_shape(
         self.trainstep._step,  # pylint: disable=protected-access
         self.state_specs,
         m_batch,
