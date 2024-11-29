@@ -41,7 +41,7 @@ class ShowImages(metrics.Metric):
   Attributes:
     images: Key to the images to display.
     num_images: Number of images to collect and display. Default 5.
-    vrange: Optional value range of the input images. Used to clip aand then
+    vrange: Optional value range of the input images. Used to clip and then
       rescale the images to [0, 1].
     rearrange: Optional einops string to reshape the images.
     rearrange_kwargs: Optional keyword arguments for the einops reshape.
@@ -54,6 +54,9 @@ class ShowImages(metrics.Metric):
 
   rearrange: Optional[str] = None
   rearrange_kwargs: Mapping[str, Any] | None = None
+
+  subsample_dim: int | None = None
+  subsample_step: int | None = None
 
   @struct.dataclass
   class State(metrics.AutoState["ShowImages"]):
@@ -75,6 +78,9 @@ class ShowImages(metrics.Metric):
       images: Float["..."],
   ) -> ShowImages.State:
     # maybe rearrange and then check shape
+    images = _maybe_subsample(
+        images, self.subsample_dim, step=self.subsample_step
+    )
     images = _maybe_rearrange(images, self.rearrange, self.rearrange_kwargs)
     check_type(images, Float["n h w #3"])
 
@@ -313,6 +319,29 @@ class ShowDifferenceImages(metrics.Metric):
     diff_images = np.mean(diff_images, axis=-1, keepdims=True)
 
     return self.State(diff_images=diff_images)
+
+
+def _maybe_subsample(
+    array: Array["..."] | None,
+    dimension: int | None = None,
+    step: int | None = None,
+) -> Array["..."] | None:
+  """Subsamples the array along the given dimension with the given step.
+
+  Args:
+    array: The array to subsample.
+    dimension: The dimension to subsample along.
+    step: The subsampling step.
+
+  Returns:
+    The subsampled array.
+  """
+  if array is None or step is None:
+    return array
+
+  slices = [slice(None)] * array.ndim
+  slices[dimension] = slice(None, None, step)
+  return array[tuple(slices)]
 
 
 def _maybe_rearrange(
