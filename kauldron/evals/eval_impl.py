@@ -42,7 +42,7 @@ TRAIN_COMPLETE_FILENAME = 'train_complete.txt'
 def continuous_eval(
     trainer: trainer_lib.Trainer,
     eval_names: list[str],
-) -> dict[str, train_step.Auxiliaries]:
+) -> dict[str, train_step.AuxiliariesState]:
   """Continuous evaluation.
 
   Trigger an evaluation everytime a new checkpoint is detected.
@@ -75,7 +75,7 @@ def continuous_eval(
           trainer.evals[name].discard_opt for name in eval_names
       ),
   )
-  aux = {eval_name: train_step.Auxiliaries() for eval_name in eval_names}
+  aux = {eval_name: train_step.AuxiliariesState() for eval_name in eval_names}
 
   # If preempted, the last checkpoint might be re-computed. There could be
   # some race condition where the metrics are written twice for one step, but

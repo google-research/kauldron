@@ -77,7 +77,7 @@ class TrainState(checkpoint_items.StandardCheckpointItem):
 
 
 @flax.struct.dataclass
-class Auxiliaries:
+class AuxiliariesState:
   """Auxiliaries (intermediate states to be accumulated)."""
 
   loss_states: Mapping[str, kd_metrics.State] = dataclasses.field(
@@ -97,10 +97,10 @@ class Auxiliaries:
       _pred={}, _code={}, _metadata={}, _payload={}
   )
 
-  def replace(self, **changes: Any) -> Auxiliaries:
+  def replace(self, **changes: Any) -> AuxiliariesState:
     return dataclasses.replace(self, **changes)
 
-  def merge(self, other: Optional[Auxiliaries]) -> Auxiliaries:
+  def merge(self, other: Optional[AuxiliariesState]) -> AuxiliariesState:
     """Accumulate auxiliary."""
     if other is None:
       return self
@@ -112,13 +112,13 @@ class Auxiliaries:
         ),
     )
 
-  def __or__(self, other: Auxiliaries | None) -> Auxiliaries:
+  def __or__(self, other: AuxiliariesState | None) -> AuxiliariesState:
     """Alias for `.merge()`: `aux = aux1 | aux2`."""
     if other is None:
       return self
     return self.merge(other)
 
-  def __ror__(self, other: Auxiliaries | None) -> Auxiliaries:
+  def __ror__(self, other: AuxiliariesState | None) -> AuxiliariesState:
     """Alias for `.merge()`: `aux = aux1 | aux2`."""
     if other is None:
       return self
@@ -305,9 +305,9 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
       return_losses: bool = False,
       return_metrics: bool = False,
       return_summaries: bool = False,
-  ) -> Auxiliaries:
+  ) -> AuxiliariesState:
     """Get auxilaries."""
-    aux = Auxiliaries()
+    aux = AuxiliariesState()
     if return_losses:
       aux = aux.replace(loss_states=context.loss_states)
 
@@ -456,7 +456,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
       checkify_error_categories: frozenset[
           trainer_lib.CheckifyErrorCategory
       ] = frozenset(),
-  ) -> tuple[TrainState, Auxiliaries]:
+  ) -> tuple[TrainState, AuxiliariesState]:
     """Training step: forward, losses, gradients, update, and metrics."""
     if checkify_error_categories:
       step_fn = checkify.checkify(self._step, errors=checkify_error_categories)
@@ -487,7 +487,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
       return_losses: bool = False,
       return_metrics: bool = False,
       return_summaries: bool = False
-  ) -> tuple[TrainState, Auxiliaries]:
+  ) -> tuple[TrainState, AuxiliariesState]:
     """Training step to be wrapped by checkify and called by `step`."""
     # TODO(epot): Should `jax.named_call` be moved downstream directly in optax?
     # NOTE: ensure that evaluation metrics are computed from the OLD model state

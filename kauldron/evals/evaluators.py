@@ -212,7 +212,7 @@ class Evaluator(EvaluatorBase):
 
   def evaluate(
       self, state: train_step.TrainState, step: int
-  ) -> train_step.Auxiliaries:
+  ) -> train_step.AuxiliariesState:
     """Run one full evaluation."""
     self._assert_root_cfg_resolved()
     if self.discard_opt:
@@ -286,7 +286,7 @@ def basic_eval_step(
     state: train_step.TrainState,
     batch,
     sharding: sharding_lib.ShardingStrategy,
-) -> train_step.Auxiliaries:
+) -> train_step.AuxiliariesState:
   """Call the model (pmap version)."""
   # Note that step is train step (from train state), NOT `eval_step`
   ctx = context_lib.Context.from_state_and_batch(state=state, batch=batch)

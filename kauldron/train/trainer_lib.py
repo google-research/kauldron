@@ -340,7 +340,7 @@ class Trainer(config_util.BaseConfig):
         skip_optimizer=skip_optimizer,
     )
 
-  def train(self) -> tuple[train_step.TrainState, train_step.Auxiliaries]:
+  def train(self) -> tuple[train_step.TrainState, train_step.AuxiliariesState]:
     """Main method that train/evaluate the object.
 
     Similar to:
@@ -361,7 +361,7 @@ class Trainer(config_util.BaseConfig):
   def continuous_eval(
       self,
       names: str | list[str],
-  ) -> dict[str, train_step.Auxiliaries]:
+  ) -> dict[str, train_step.AuxiliariesState]:
     """Main method that perform auxiliary tasks (evaluation, rendering,...).
 
     Trigger an evaluation everytime a new checkpoint is detected.

@@ -42,7 +42,7 @@ jax.config.update("jax_threefry_partitionable", True)
 
 def train_impl(
     trainer: trainer_lib.Trainer,
-) -> tuple[train_step.TrainState, Optional[train_step.Auxiliaries]]:
+) -> tuple[train_step.TrainState, Optional[train_step.AuxiliariesState]]:
   """Implements of `Trainer.train`."""
   setup = trainer.setup
   setup.log_status("Configuring ...")
