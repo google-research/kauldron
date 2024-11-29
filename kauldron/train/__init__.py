@@ -20,8 +20,10 @@ from kauldron.train.rngs_lib import RngStream
 from kauldron.train.rngs_lib import RngStreams
 from kauldron.train.setup_utils import Setup
 from kauldron.train.setup_utils import TqdmInfo
+from kauldron.train.train_step import Auxiliaries
 from kauldron.train.train_step import AuxiliariesState
-from kauldron.train.train_step import ModelWithAux
+from kauldron.train.train_step import forward
+from kauldron.train.train_step import forward_with_loss
 from kauldron.train.train_step import TrainState
 from kauldron.train.train_step import TrainStep
 from kauldron.train.trainer_lib import Trainer

@@ -396,7 +396,6 @@ class Trainer(config_util.BaseConfig):
     elem_spec = self.train_ds.element_spec
     elem_sharding = self.sharding.ds
     rngs = self.rng_streams.init_rngs()
-    mwa = self.trainstep.model_with_aux
 
     state_specs = self.state_specs
 
@@ -407,7 +406,17 @@ class Trainer(config_util.BaseConfig):
         batch=m_batch,
     )
     _, context = jax.eval_shape(
-        functools.partial(mwa.forward, is_training=True),
+        # TODO(epot): Instead add an option for `trainer.trainstep.step` to
+        # return the `context`. For example, could simplify the `._step` to
+        # always compute all summaries and return `context`, and only select
+        # the subset of metrics to write in `step` (so `return_summaries=`,...
+        # would not be propagated to `._step()` but only in `.step()`)
+        functools.partial(
+            train_step.forward_with_loss,
+            is_training=True,
+            model=self.model,
+            losses=self.train_losses,
+        ),
         context,
         rngs=rngs,
     )

@@ -76,6 +76,10 @@ class TrainState(checkpoint_items.StandardCheckpointItem):
     return dataclasses.replace(self, **changes)
 
 
+# TODO(epot): Move auxiliaries to a separate file (`Auxiliaries`,
+# `AuxiliariesOutput`, `AuxiliariesState`)
+
+
 @flax.struct.dataclass
 class AuxiliariesState:
   """Auxiliaries (intermediate states to be accumulated)."""
@@ -212,11 +216,11 @@ def _gather_kwargs_with_reraise(k, summary, context):
     return summary.gather_kwargs(context)
 
 
+# TODO(epot): Not sure about the name. @klausg any ideas ?
 @dataclasses.dataclass(kw_only=True, eq=True, frozen=True)
-class ModelWithAux(config_util.UpdateFromRootCfg):
-  """Wrapper around model which also compute the summaries and metrics."""
+class Auxiliaries(config_util.UpdateFromRootCfg):
+  """Wrapper around the losses, summaries and metrics."""
 
-  model: nn.Module = config_util.ROOT_CFG_REF.model
   losses: Mapping[str, kd_losses.Loss] = config_util.ROOT_CFG_REF.train_losses
   metrics: Mapping[str, kd_metrics.Metric] = (
       config_util.ROOT_CFG_REF.train_metrics
@@ -225,79 +229,8 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
       config_util.ROOT_CFG_REF.train_summaries
   )
 
-  def init(  # pylint:disable=missing-function-docstring
-      self,
-      init_rngs: rngs_lib.Rngs,
-      batch: PyTree[jax.Array],
-      model_method: Optional[str] = None,
-  ) -> tuple[_Params, _Collections]:
-    self._assert_root_cfg_resolved()
-    args, kwargs = data_utils.get_model_inputs_from_batch(self.model, batch)
-    collections = self.model.init(
-        init_rngs,
-        *args,
-        method=model_method,
-        is_training_property=True,
-        capture_intermediates=True,
-        **kwargs,
-    )
-    collections = flax.core.unfreeze(collections)
-    params = collections.pop("params", {})
-    collections.pop("intermediates", None)  # Remove intermediates
-
-    return params, collections
-
   @jax.named_call
-  def forward(
-      self,
-      context: context_lib.Context,
-      *,
-      rngs: rngs_lib.Rngs,
-      is_training: bool,
-  ) -> tuple[float, context_lib.Context]:
-    """Forward pass of the model including losses.
-
-    Arguments:
-      context: Context to use for the forward pass. Should contain `params`,
-        `batch`, `step`, and `collections` (and optionally `opt_state`).
-      rngs: Random numbers to use for the forward pass.
-      is_training: Whether to run the model in training or eval mode.
-
-    Returns:
-      loss_total: Total loss.
-      context: Context with the updated `loss_total`, `loss_states`,
-        `interms`, and `collections`.
-    """
-    args, kwargs = data_utils.get_model_inputs(self.model, context)
-    preds, collections = self.model.apply(
-        {"params": context.params} | context.collections,
-        *args,
-        rngs=rngs,
-        mutable=True,
-        capture_intermediates=True,  # TODO(klausg): check if need a filter here
-        is_training_property=is_training,
-        **kwargs,
-    )
-    # Note the params can be mutable if the model call the same sub-model
-    # internally but with different params. However, the updates are never
-    # propagated
-    collections.pop("params", None)
-    interms = collections.pop("intermediates")
-    context = context.replace(
-        preds=preds,
-        interms=interms,
-        collections=collections,
-    )
-    loss_total, loss_states = kd_losses.compute_losses(
-        losses=self.losses, context=context
-    )
-    return loss_total, context.replace(
-        loss_states=loss_states,
-        loss_total=loss_total,
-    )
-
-  @jax.named_call
-  def get_aux(
+  def get_state(
       self,
       context: context_lib.Context,
       *,
@@ -309,6 +242,13 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
     """Get auxilaries."""
     aux = AuxiliariesState()
     if return_losses:
+      # TODO(epot): Cleanup loss-states:
+      # * Re-compute the states here if `context.loss_states` is None (e.g.
+      #   if in eval)
+      # * Split `kd/losses/base:compute_losses` into `get_state` and
+      #   `compute_losses(loss_states) -> float`
+      # * Unify all the `m.get_state_from_context` patterns for metrics,
+      #   summaries, and losses.
       aux = aux.replace(loss_states=context.loss_states)
 
     if return_metrics:
@@ -342,17 +282,22 @@ class ModelWithAux(config_util.UpdateFromRootCfg):
 
 @dataclasses.dataclass(kw_only=True, eq=True, frozen=True)
 class TrainStep(config_util.UpdateFromRootCfg):
-  """Training Step."""
+  """Base Training Step.
 
-  model_with_aux: ModelWithAux = dataclasses.field(default_factory=ModelWithAux)
+  Subclasses can overwrite the `_step` method to implement custom training
+  steps.
+  """
+
+  model: nn.Module = config_util.ROOT_CFG_REF.model
   optimizer: optax.GradientTransformation = config_util.ROOT_CFG_REF.optimizer
   rng_streams: rngs_lib.RngStreams = config_util.ROOT_CFG_REF.rng_streams
   sharding: sharding_lib.ShardingStrategy = config_util.ROOT_CFG_REF.sharding
   init_transforms: Mapping[str, partial_loader.AbstractPartialLoader] = (
       config_util.ROOT_CFG_REF.init_transforms
   )
+  aux: Auxiliaries = dataclasses.field(default_factory=Auxiliaries)
 
-  __root_cfg_fields_to_recurse__ = ("model_with_aux",)
+  __root_cfg_fields_to_recurse__ = ("aux",)
 
   def init(
       self,
@@ -398,11 +343,19 @@ class TrainStep(config_util.UpdateFromRootCfg):
   ) -> TrainState:
     """Initialize the model and return the initial TrainState."""
     batch = data_utils.mock_batch_from_elem_spec(elem_spec, self.sharding.ds)
-    params, collections = self.model_with_aux.init(
+    args, kwargs = data_utils.get_model_inputs_from_batch(self.model, batch)
+    collections = self.model.init(
         self.rng_streams.init_rngs(),
-        batch,
-        model_method=model_method,
+        *args,
+        method=model_method,
+        is_training_property=True,
+        capture_intermediates=True,
+        **kwargs,
     )
+    collections = flax.core.unfreeze(collections)
+    params = collections.pop("params", {})
+    collections.pop("intermediates", None)  # Remove intermediates
+
     state = TrainState(  # pytype: disable=wrong-arg-types
         step=jnp.asarray(0),
         params=params,
@@ -493,7 +446,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
     # NOTE: ensure that evaluation metrics are computed from the OLD model state
     # *before* backprop gradients are applied.
     grad_fn = jax.grad(
-        self.model_with_aux.forward,
+        forward_with_loss,
         argnums=0,
         has_aux=True,
         allow_int=True,
@@ -503,6 +456,8 @@ class TrainStep(config_util.UpdateFromRootCfg):
     context = context_lib.Context.from_state_and_batch(state=state, batch=batch)
     context_grads, context = grad_fn(
         context,
+        model=self.model,
+        losses=self.aux.losses,
         rngs=self.rng_streams.train_rngs(state.step),
         is_training=True,
     )
@@ -527,7 +482,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
         opt_state=state.opt_state,
     )
 
-    aux = self.model_with_aux.get_aux(
+    aux_state = self.aux.get_state(
         context,
         return_losses=return_losses,
         return_metrics=return_metrics,
@@ -535,6 +490,111 @@ class TrainStep(config_util.UpdateFromRootCfg):
     )
 
     return sharding_lib.with_sharding_constraint(
-        (next_state, aux),
+        (next_state, aux_state),
         (self.sharding.state, self.sharding.aux),
     )
+
+
+def forward(
+    context: context_lib.Context,
+    *,
+    model: nn.Module,
+    rngs: rngs_lib.Rngs,
+    is_training: bool,
+) -> context_lib.Context:
+  """Forward pass of the model.
+
+  Arguments:
+    context: Context to use for the forward pass. Should contain `params`,
+      `batch`, `step`, and `collections` (and optionally `opt_state`).
+    model: Model to use for the forward pass.
+    rngs: Random numbers to use for the forward pass.
+    is_training: Whether to run the model in training or eval mode.
+
+  Returns:
+    loss_total: Total loss.
+    context: Context with the updated `loss_total`, `loss_states`,
+      `interms`, and `collections`.
+  """
+  args, kwargs = data_utils.get_model_inputs(model, context)
+  preds, collections = model.apply(
+      {"params": context.params} | context.collections,
+      *args,
+      rngs=rngs,
+      mutable=True,
+      capture_intermediates=True,  # TODO(klausg): check if need a filter here
+      is_training_property=is_training,
+      **kwargs,
+  )
+  # Note the params can be mutable if the model call the same sub-model
+  # internally but with different params. However, the updates are never
+  # propagated
+  collections.pop("params", None)
+  interms = collections.pop("intermediates")
+  context = context.replace(
+      preds=preds,
+      interms=interms,
+      collections=collections,
+  )
+  return context
+
+
+def forward_with_loss(
+    context: context_lib.Context,
+    *,
+    model: nn.Module,
+    losses: Mapping[str, kd_losses.Loss],
+    rngs: rngs_lib.Rngs,
+    is_training: bool,
+) -> tuple[float, context_lib.Context]:
+  """Forward pass of the model, including losses.
+
+  Arguments:
+    context: Context to use for the forward pass. Should contain `params`,
+      `batch`, `step`, and `collections` (and optionally `opt_state`).
+    model: Model to use for the forward pass.
+    losses: Losses to compute.
+    rngs: Random numbers to use for the forward pass.
+    is_training: Whether to run the model in training or eval mode.
+
+  Returns:
+    loss_total: Total loss.
+    context: Context with the updated `loss_total`, `loss_states`,
+      `interms`, and `collections`.
+  """
+  context = forward(
+      context=context,
+      model=model,
+      rngs=rngs,
+      is_training=is_training,
+  )
+  loss_total, loss_states = kd_losses.compute_losses(
+      losses=losses, context=context
+  )
+  return loss_total, context.replace(
+      loss_states=loss_states,
+      loss_total=loss_total,
+  )
+
+
+@dataclasses.dataclass(kw_only=True, eq=True, frozen=True)
+class ModelWithAux(Auxiliaries):
+  """Model with aux.
+
+  DEPRECATED: Do not use.
+  """
+
+  # TODO(epot): Deprecate this class in eval.
+
+  model: nn.Module
+
+  def forward(self, context, **kwargs):
+    return forward_with_loss(
+        context=context,
+        model=self.model,
+        losses=self.losses,
+        **kwargs,
+    )
+
+  def get_aux(self, context, **kwargs):
+    return self.get_state(context, **kwargs)
