@@ -393,7 +393,22 @@ class TrainStep(config_util.UpdateFromRootCfg):
           trainer_lib.CheckifyErrorCategory
       ] = frozenset(),
   ) -> tuple[TrainState, AuxiliariesState]:
-    """Training step: forward, losses, gradients, update, and metrics."""
+    """Training step: forward, losses, gradients, update, and metrics.
+
+    Args:
+      state: The training state
+      batch: The batch to use for the training step
+      return_losses: Whether to return the losses
+      return_metrics: Whether to return the metrics
+      return_summaries: Whether to return the summaries
+      checkify_error_categories: Categories of errors to checkify. If empty, no
+        checkify is performed.
+
+    Returns:
+      state: The updated training state
+      auxiliaries: Auxiliaries containing the losses, metrics and summaries
+        states.
+    """
     # This function is just a small wrapper around `_step` for:
     # * Checkify errors handling
     # * Select which auxiliaries metrics to return.
@@ -408,8 +423,8 @@ class TrainStep(config_util.UpdateFromRootCfg):
       error = None
       state, ctx = self._step(state, batch)
 
-    # TODO(epot): More flexible way to select the subset of context to return.
-    # Should also have a way to return the full context.
+    # TODO(epot): More flexible way to select the subset of context to return ?
+    # And have a way to return the full context ?
     aux_state = ctx.get_aux_state(
         return_losses=return_losses,
         return_metrics=return_metrics,

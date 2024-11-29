@@ -54,6 +54,7 @@ class ShardingStrategy:
   * Callable: Lazily compute the sharding from the array sub-tree
   """
 
+  # TODO(epot): Rename to `batch` ?
   ds: ShardingTree = dataclasses.field(
       default_factory=lambda: sharding.FIRST_DIM  # pytype: disable=name-error
   )
