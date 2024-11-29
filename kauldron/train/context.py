@@ -62,6 +62,8 @@ class Context:
     opt_state: The state of the optimizer prior to the update. (available after
       the backward pass, e.g. for metrics). The old state is chosen to be
       consistent with parameters which are also pre-update.
+    metric_states: The states of the metrics (after the backward pass)
+    summary_states: The states of the summaries (after the backward pass)
   """
 
   # These are always available:
@@ -80,6 +82,9 @@ class Context:
   grads: Any = None
   updates: Any = None
   opt_state: Any = None
+  # Become available after the metrics computation
+  metric_states: Any = None
+  summary_states: Any = None
 
   replace = dataclasses.replace
 
@@ -100,3 +105,19 @@ class Context:
 
   def flatten(self) -> dict[str, Any]:
     return kontext.flatten_with_path(self)
+
+  def get_aux_state(
+      self,
+      *,
+      return_losses: bool = False,
+      return_metrics: bool = False,
+      return_summaries: bool = False,
+  ) -> train_step.AuxiliariesState:
+    """Returns the auxiliaries for the step."""
+    from kauldron.train import train_step  # pylint: disable=g-import-not-at-top
+
+    return train_step.AuxiliariesState(
+        loss_states=self.loss_states if return_losses else None,
+        metric_states=self.metric_states if return_metrics else None,
+        summary_states=self.summary_states if return_summaries else None,
+    )
