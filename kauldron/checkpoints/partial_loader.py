@@ -73,12 +73,15 @@ class NoopTransform(AbstractPartialLoader):
 class MultiTransform(AbstractPartialLoader):
   """Transform which applies multiple transformations sequentially."""
 
-  def __init__(self, *transforms: AbstractPartialLoader):
+  def __init__(self, **transforms: AbstractPartialLoader):
     self._transforms = transforms
 
   def transform(self, state):
-    for tr in self._transforms:
-      state = tr.transform(state)
+    for k, tr in self._transforms.items():
+      try:
+        state = tr.transform(state)
+      except Exception as e:  # pylint: disable=broad-exception-caught
+        epy.reraise(e, prefix=f'init_transform {k!r} failed: ')
     return state
 
 
