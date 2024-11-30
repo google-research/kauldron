@@ -3,18 +3,16 @@
 ## Partial loading
 
 To load weights from another checkpoint (e.g. restore pretrained encoder), you
-can use the `init_transforms` argument of `kd.train.Trainer`
+can use the `init_transform` argument of `kd.train.Trainer`
 
 ```python
-cfg.init_transforms = {
-    'pretrained_init': kd.ckpts.PartialKauldronLoader(
-        workdir=kd.ckpts.workdir_from_xid(12345, wid=1),
-        new_to_old={  # Mapping params
-            # '<new_path>':            '<source_path>'
-            'params.decoder.layers_0': 'params.endoder',
-        },
-    )
-}
+cfg.init_transform = kd.ckpts.PartialKauldronLoader(
+    workdir=kd.ckpts.workdir_from_xid(12345, wid=1),
+    new_to_old={  # Mapping params
+        # '<new_path>':            '<source_path>'
+        'params.decoder.layers_0': 'params.endoder',
+    },
+)
 
 trainer = konfig.resolve(cfg)
 
@@ -35,17 +33,15 @@ To relaunch an experiment, you can:
     `init_transform`, to initialize your new model to the previous state:
 
     ```python
-    cfg.init_transforms = {
-        'pretrained_init': kd.ckpts.PartialKauldronLoader(
-            workdir=kd.ckpts.workdir_from_xid(12345, wid=1),
-            new_to_old={  # Mapping params
-                'step': 'step',
-                'params': 'params',
-                'collections': 'collections',
-                'opt_state': 'opt_state',
-            },
-        )
-    }
+    cfg.init_transform = kd.ckpts.PartialKauldronLoader(
+        workdir=kd.ckpts.workdir_from_xid(12345, wid=1),
+        new_to_old={  # Mapping params
+            'step': 'step',
+            'params': 'params',
+            'collections': 'collections',
+            'opt_state': 'opt_state',
+        },
+    )
     ```
 
 *   Restart a new job while re-using the previous workdir: If your work-unit was

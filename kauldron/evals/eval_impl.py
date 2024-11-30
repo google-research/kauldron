@@ -67,7 +67,7 @@ def continuous_eval(
   logging.info('Initialize the state...')
   # Skip transforms as checkpoint is restored anyway afterward. We need to
   # be careful that step 0 is indeed computed from the checkpoint.
-  # In eval-only mode, the model weights are restored from the init_transforms
+  # In eval-only mode, the model weights are restored from the init_transform
   # and not the checkpoint, so we cannot skip it.
   state = trainer.init_state(
       skip_transforms=not trainer.setup.eval_only,
@@ -101,7 +101,7 @@ def continuous_eval(
 
   logging.info('Start evaluating...')
   # Initialize the final step from the state for eval-only jobs which restore
-  # the step from the `init_transforms`.
+  # the step from the `init_transform`.
   final_step = int(state.step)
   for state in _preemptable_iter_new_checkpoints(
       trainer=trainer,

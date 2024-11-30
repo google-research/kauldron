@@ -24,9 +24,7 @@ def test_trainer_replace():
       train_ds=kd.data.py.Tfds(
           name='mnist', split='train', shuffle=True, seed=60
       ),
-      init_transforms={
-          'base': kd.ckpts.PartialKauldronLoader(workdir='/some/workdir')
-      },
+      init_transform=kd.ckpts.PartialKauldronLoader(workdir='/some/workdir'),
       evals={
           'eval': kd.evals.Evaluator(
               run=kd.evals.EveryNSteps(100),
@@ -41,15 +39,13 @@ def test_trainer_replace():
   assert trainer.train_ds.seed == 60
   assert trainer.evals['eval'].ds.seed == 0  # pytype: disable=attribute-error
   assert isinstance(trainer.evals['eval'].writer, metric_writer.KDMetricWriter)
-  assert trainer.trainstep.init_transforms['base'].workdir == '/some/workdir'  # pytype: disable=attribute-error
+  assert trainer.trainstep.init_transform.workdir == '/some/workdir'  # pytype: disable=attribute-error
 
   # Replacing the trainer values are correctly propagated.
   new_trainer = dataclasses.replace(
       trainer,
       seed=42,
-      init_transforms={
-          'base': kd.ckpts.PartialKauldronLoader(workdir='/new/workdir')
-      },
+      init_transform=kd.ckpts.PartialKauldronLoader(workdir='/new/workdir'),
       writer=metric_writer.NoopWriter(),
   )
 
@@ -57,4 +53,4 @@ def test_trainer_replace():
   assert new_trainer.train_ds.seed == 60
   assert new_trainer.evals['eval'].ds.seed == 42  # pytype: disable=attribute-error
   assert isinstance(new_trainer.evals['eval'].writer, metric_writer.NoopWriter)
-  assert new_trainer.trainstep.init_transforms['base'].workdir == '/new/workdir'  # pytype: disable=attribute-error
+  assert new_trainer.trainstep.init_transform.workdir == '/new/workdir'  # pytype: disable=attribute-error

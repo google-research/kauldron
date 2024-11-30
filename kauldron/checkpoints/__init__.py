@@ -20,5 +20,7 @@ from kauldron.checkpoints import checkpoint_items as items
 from kauldron.checkpoints.checkpointer import Checkpointer
 from kauldron.checkpoints.checkpointer import NoopCheckpointer
 from kauldron.checkpoints.partial_loader import AbstractPartialLoader
+from kauldron.checkpoints.partial_loader import MultiTransform
+from kauldron.checkpoints.partial_loader import NoopTransform
 from kauldron.checkpoints.partial_loader import PartialKauldronLoader
 from kauldron.checkpoints.partial_loader import workdir_from_xid

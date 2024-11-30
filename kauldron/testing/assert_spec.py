@@ -45,7 +45,7 @@ def assert_step_specs(trainer: trainer_lib.Trainer) -> None:
   elem_spec = trainer.train_ds.element_spec
   elem_sharding = trainer.sharding.ds
 
-  # Skip the `init_transforms`. Indeed, restoring checkpoint (partial
+  # Skip the `init_transform`. Indeed, restoring checkpoint (partial
   # loading) will fail inside `jax.eval_shape / `jax.jit`
   init_fn = functools.partial(trainer.init_state, skip_transforms=True)
   state_spec = jax.eval_shape(init_fn)

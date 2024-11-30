@@ -39,8 +39,7 @@ FrozenDict = dict if typing.TYPE_CHECKING else flax.core.FrozenDict
 _T = TypeVar('_T')
 
 
-# TODO(klausg): maybe rename, since this is now only used in cfg.init_transforms
-# TODO(klausg): move out of checkpoints?
+# TODO(epot): rename to `InitTransform`
 class AbstractPartialLoader(abc.ABC):
   """Abstract class for partial checkpoint loaders."""
 
@@ -64,6 +63,25 @@ class AbstractPartialLoader(abc.ABC):
     raise NotImplementedError
 
 
+class NoopTransform(AbstractPartialLoader):
+  """`init_transform` that does nothing."""
+
+  def transform(self, state):
+    return state
+
+
+class MultiTransform(AbstractPartialLoader):
+  """Transform which applies multiple transformations sequentially."""
+
+  def __init__(self, *transforms: AbstractPartialLoader):
+    self._transforms = transforms
+
+  def transform(self, state):
+    for tr in self._transforms:
+      state = tr.transform(state)
+    return state
+
+
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class PartialKauldronLoader(epy.ContextManager, AbstractPartialLoader):
   """Partial loader for Kauldron checkpoints.
@@ -73,15 +91,13 @@ class PartialKauldronLoader(epy.ContextManager, AbstractPartialLoader):
   Usage:
 
   ```python
-  cfg.init_transforms = {
-      'pretrained_init': kd.ckpts.PartialKauldronLoader(
-          workdir='/path/to/original/work_unit/',
-          new_to_old={  # Mapping params
-              # '<new_path>':            '<source_path>'
-              'params.decoder.layers_0': 'params.endoder',
-          },
-      )
-  }
+  cfg.init_transform = kd.ckpts.PartialKauldronLoader(
+      workdir='/path/to/original/work_unit/',
+      new_to_old={  # Mapping params
+          # '<new_path>':            '<source_path>'
+          'params.decoder.layers_0': 'params.endoder',
+      },
+  )
 
   trainer = konfig.resolve(cfg)
 

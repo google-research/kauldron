@@ -275,8 +275,8 @@ class TrainStep(config_util.UpdateFromRootCfg):
   optimizer: optax.GradientTransformation = config_util.ROOT_CFG_REF.optimizer
   rng_streams: rngs_lib.RngStreams = config_util.ROOT_CFG_REF.rng_streams
   sharding: sharding_lib.ShardingStrategy = config_util.ROOT_CFG_REF.sharding
-  init_transforms: Mapping[str, partial_loader.AbstractPartialLoader] = (
-      config_util.ROOT_CFG_REF.init_transforms
+  init_transform: partial_loader.AbstractPartialLoader = (
+      config_util.ROOT_CFG_REF.init_transform
   )
   aux: Auxiliaries = dataclasses.field(default_factory=Auxiliaries)
 
@@ -308,7 +308,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
     state = self._init_model(elem_spec, model_method=model_method)
     if not skip_transforms:
       # If restoring a checkpoint we can skip the (potentially slow) transforms
-      state = self._init_transforms(state)
+      state = self._init_transform(state)
     if self.optimizer is not None and not skip_optimizer:
       # Eval-only jobs do not have optimizer.
       state = self._init_optimizer(state)
@@ -347,10 +347,9 @@ class TrainStep(config_util.UpdateFromRootCfg):
     )
     return sharding_lib.with_sharding_constraint(state, self.sharding.state)
 
-  def _init_transforms(self, state: TrainState) -> TrainState:
+  def _init_transform(self, state: TrainState) -> TrainState:
     """Run any additional init transformations and return the updated state."""
-    for init_transf in self.init_transforms.values():
-      state = init_transf.transform(state)
+    state = self.init_transform.transform(state)
     # Transforms should ideally propagate the sharding from the state, but in
     # case they forget, we explicitly re-apply the sharding.
     return sharding_lib.with_sharding_constraint(state, self.sharding.state)

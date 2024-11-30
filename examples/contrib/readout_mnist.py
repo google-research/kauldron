@@ -65,14 +65,12 @@ def get_config():
       finetune=False,
   )
 
-  cfg.init_transforms = {
-      "model_init": kd.ckpts.PartialKauldronLoader(
-          workdir=kd.ckpts.workdir_from_xid(xid=cfg.ref.aux.xid),
-          new_to_old={  # Mapping params
-              "params.model": "params",
-          },
-      )
-  }
+  cfg.init_transform = kd.ckpts.PartialKauldronLoader(
+      workdir=kd.ckpts.workdir_from_xid(xid=cfg.ref.aux.xid),
+      new_to_old={  # Mapping params
+          "params.model": "params",
+      },
+  )
 
   # Training
   cfg.num_train_steps = 1000

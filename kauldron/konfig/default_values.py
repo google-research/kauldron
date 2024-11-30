@@ -123,7 +123,7 @@ _eval_only_trainer = kd.train.Trainer.eval_only(
     num_train_steps=0,
     stop_after_steps=0,
     optimizer=None,
-    # No checkpointer. The weights are restored through `init_transforms`.
+    # No checkpointer. The weights are restored through `init_transform`.
     checkpointer=None,
     setup=kd.train.Setup(eval_only=True),
     xm_job=kxm.Job(),
@@ -141,20 +141,18 @@ _eval_only_trainer.update(  # pytype: disable=attribute-error
         wid=_eval_only_trainer.ref.aux['wid'],
         path='model',
     ),
-    init_transforms={
-        'model_init': kd.ckpts.PartialKauldronLoader(
-            workdir=kd.ckpts.workdir_from_xid(
-                xid=_eval_only_trainer.ref.aux['xid'],
-                wid=_eval_only_trainer.ref.aux['wid'],
-            ),
-            new_to_old={
-                # Also restore the step so metrics are reported correctly.
-                'step': 'step',
-                'params': 'params',
-                'collections': 'collections',
-            },
+    init_transform=kd.ckpts.PartialKauldronLoader(
+        workdir=kd.ckpts.workdir_from_xid(
+            xid=_eval_only_trainer.ref.aux['xid'],
+            wid=_eval_only_trainer.ref.aux['wid'],
         ),
-    },
+        new_to_old={
+            # Also restore the step so metrics are reported correctly.
+            'step': 'step',
+            'params': 'params',
+            'collections': 'collections',
+        },
+    ),
     # TODO(epot): If present in the original config, should also re-use
     # `rng_streams`, sharding` !!
 )
