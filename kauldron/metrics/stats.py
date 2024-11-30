@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import dataclasses
 from typing import Literal, Optional
-import warnings
 
 import flax.struct
 import jax.numpy as jnp
@@ -26,6 +25,7 @@ from kauldron import kontext
 from kauldron.metrics import base
 from kauldron.metrics import base_state
 from kauldron.typing import Bool, Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -97,7 +97,7 @@ class Norm(base.Metric):
       assert isinstance(other, Norm.State)
 
       if self.parent.axis is None and self.parent.aggregation_type is None:
-        warnings.warn(
+        status.warn(
             "When setting axis=None in kd.metrics.Norm and running a TreeReduce"
             " over it, Norm will average the norms of individual leaves, rather"
             " than computing the norm as if everything was concatenated. Please"

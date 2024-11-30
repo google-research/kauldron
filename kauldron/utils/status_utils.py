@@ -25,6 +25,7 @@ if status.on_xmanager and status.is_lead_host:
 """
 
 import functools
+import warnings
 
 from absl import logging
 from etils import epy
@@ -84,11 +85,11 @@ class _Status:
 
   def log_status(self, msg: str) -> None:
     """Log a message (from lead host), will be displayed on the XM UI."""
-    self.log(msg, _stacklevel_increment=1)
+    self.log(msg, stacklevel=2)
     if self.on_xmanager and self.is_lead_host:
       self.wu.set_notes(msg)
 
-  def log(self, msg: str, *, _stacklevel_increment: int = 0) -> None:
+  def log(self, msg: str, *, stacklevel: int = 1) -> None:
     """Print a message.
 
     * On Colab: Use `print`
@@ -98,16 +99,29 @@ class _Status:
 
     Args:
       msg: the message to print.
-      _stacklevel_increment: If wrapping this function, indicate the number of
-        frame to skip so logging display the correct caller site.
+      stacklevel: If wrapping this function, indicate the number of frame to
+        skip so logging display the correct caller site.
     """
     if (
         not epy.is_notebook()
     ):
-      logging.info(msg, stacklevel=2 + _stacklevel_increment)
+      logging.info(msg, stacklevel=1 + stacklevel)
       return
     else:
       print(msg, flush=True)  # Colab or local
+
+  def warn(
+      self,
+      msg: str,
+      category: type[Warning] | None = None,
+      *,
+      stacklevel: int = 1,
+  ) -> None:
+    """Print a warning."""
+    warnings.warn(msg, category, stacklevel=1 + stacklevel)
+    if epy.is_notebook():
+      category = category or Warning
+      print(f"{category.__name__}: {msg}")
 
 
 status = _Status()
