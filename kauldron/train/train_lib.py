@@ -74,7 +74,7 @@ def train_impl(
     # `NoopWriter`, the second one is mandatory in order to re-load the model
     # for evals/inference.
     writer.write_config(trainer.raw_cfg)
-    writer.write_param_overview(initial_step, state.params)
+    writer.write_param_overview(initial_step, trainer.process_params_for_writing(state.params))
     writer.write_element_spec(initial_step, ds_iter.element_spec)
     writer.write_context_structure(initial_step, trainer)
 

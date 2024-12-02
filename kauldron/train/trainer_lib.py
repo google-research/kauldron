@@ -20,7 +20,7 @@ from collections.abc import MutableMapping
 import dataclasses
 import functools
 import typing
-from typing import Any, Optional, Self
+from typing import Any, Callable, Optional, Self
 
 from etils import edc
 from etils import epath
@@ -240,6 +240,10 @@ class Trainer(config_util.BaseConfig):
   # Original `konfig.ConfigDict` from which the `Trainer` was created.
   raw_cfg: Optional[konfig.ConfigDict] = dataclasses.field(
       default=None, repr=False
+  )
+
+  process_params_for_writing: Callable[[Any], Any] = dataclasses.field(
+      default=lambda x: x, repr=False
   )
 
   def __post_init__(self):
