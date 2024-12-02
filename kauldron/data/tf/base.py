@@ -58,9 +58,12 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
   returns the `tf.data.Dataset` for the current process.
 
   Attributes:
-    transforms: A list of `grain.Transformation` to apply to the dataset. Can be
-      a dict to allow easier CLI / sweep access (
+    transforms: A list of `grain.Transformation` to apply to the dataset before
+      batching. Can be a dict to allow easier CLI / sweep access (
       `--cfg.train_ds.transforms.img_scale.in_vrange=(-1,1)`)
+    post_batch_transforms: A list of `grain.Transformation` to apply to the
+      dataset after batching. Can be a dict to allow easier CLI / sweep access
+      (`--cfg.train_ds.post_batch_transforms.img_scale.in_vrange=(-1,1)`)
     tf_data_options: An optional tf.data.Options instance to be applied to the
       dataset.
     prefetch_size: Number of batches to prefetch for this dataset. Defaults to
@@ -79,6 +82,7 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
   # TODO(epot): Users should also be able to specify drop_reminder or mask
   batch_drop_remainder: bool = True
   transforms: _Transforms = dataclasses.field(default_factory=tuple)
+  post_batch_transforms: _Transforms = dataclasses.field(default_factory=tuple)
 
   # Those fields are only applied once at the top level
   tf_data_options: Optional[tf.data.Options] = None
@@ -203,6 +207,13 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
       transforms.extend(self.transforms.values())
     else:
       transforms.extend(self.transforms)
+
+    post_batch_transforms = []
+    if isinstance(self.post_batch_transforms, Mapping):
+      post_batch_transforms.extend(self.post_batch_transforms.values())
+    else:
+      post_batch_transforms.extend(self.post_batch_transforms)
+
     if self.batch_size:
       transforms.append(
           grain.TfBatch(
@@ -210,6 +221,7 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
               drop_remainder=self.batch_drop_remainder,
           )
       )
+      transforms.extend(post_batch_transforms)
     ds = tr_utils.apply_transformations(ds, transforms)
     return ds
 

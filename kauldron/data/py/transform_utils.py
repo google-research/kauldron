@@ -14,11 +14,13 @@
 
 """Utils for using Kauldron transforms with PyGrain."""
 
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Mapping, TypeVar
 
 import grain.python as grain
 from kauldron.data.transforms import abc as tr_abc
 from kauldron.data.transforms import normalize as tr_normalize
+
+_T = TypeVar("_T", grain.MapDataset, grain.IterDataset)
 
 
 class PyGrainMapAdapter(tr_normalize.TransformAdapter, grain.MapTransform):
@@ -60,8 +62,8 @@ def _adapt_for_pygrain(
 
 
 def apply_transforms(
-    ds: grain.MapDataset, transforms: tr_normalize.Transformations
-) -> grain.MapDataset:
+    ds: _T, transforms: tr_normalize.Transformations
+) -> _T:
   """Apply the transformations to the dataset."""
   if isinstance(transforms, Mapping):
     transforms = transforms.values()
@@ -72,8 +74,8 @@ def apply_transforms(
 
 
 def _apply_transform(
-    ds: grain.MapDataset, tr: grain.Transformation
-) -> grain.MapDataset:
+    ds: _T, tr: grain.Transformation
+) -> _T:
   """Apply a list of single transformation."""
   match tr:
     case grain.MapTransform():
