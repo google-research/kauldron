@@ -73,6 +73,7 @@ def dot_product_attention_weights(
     softmax_axis: Axes = -1,
     bias: Optional[Float['*b #h #q #k']] = None,
     mask: Optional[Bool['*b #h #q #k']] = None,
+    softmax_dtype: jnp.dtype | None = jnp.float32,
 ) -> Float['*b h q k']:
   """Computes dot-product attention weights given query and key.
 
@@ -91,6 +92,8 @@ def dot_product_attention_weights(
       shape `[*b h q k]`. This can be used for incorporating causal masks.
       Attention weights are masked out if their corresponding mask value is
       `False`.
+    softmax_dtype: The dtype for the softmax operation. If None, the dtype of
+      the input is used.
 
   Returns:
     Attention weights of shape `[*b h q k]`.
@@ -105,7 +108,7 @@ def dot_product_attention_weights(
     big_neg = jnp.finfo(query.dtype).min
     attn_weights = jnp.where(mask, attn_weights, big_neg)
 
-  attn_weights = softmax(attn_weights, axis=softmax_axis)
+  attn_weights = softmax(attn_weights, axis=softmax_axis, dtype=softmax_dtype)
 
   return attn_weights
 
