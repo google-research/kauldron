@@ -19,22 +19,38 @@ r"""Training binary.
 from __future__ import annotations
 
 import contextlib
+import typing
 
 from absl import app
 from absl import flags
 from etils import epy
+from etils.epy import _multiprocess
 import jax
 import tensorflow as tf
 
-from kauldron import kd
-from kauldron.utils import sweep_utils
 
-_CONFIG = kd.konfig.DEFINE_config_file(
-    "cfg",
-    None,
-    "Training configuration.",
-    lock_config=False,
-)
+# ml_python + PyGrain compatibility
+# This code fails when PyGrain create the subprocess on ml_python. This
+# is because the sub-processes re-execute this file before `app.run` is called,
+# thus adhoc-import is not yet available.
+if (
+    typing.TYPE_CHECKING
+    or not _multiprocess.setup_and_get_is_in_ml_python_subprocess()
+):
+  # Imports adhoc-imported when running with `ml_python`
+  with epy.binary_adhoc():
+    # pylint: disable=g-import-not-at-top
+    from kauldron import kd
+    from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
+    # pylint: enable=g-import-not-at-top
+
+  _CONFIG = kd.konfig.DEFINE_config_file(
+      "cfg",
+      None,
+      "Training configuration.",
+      lock_config=False,
+  )
+
 _EVAL_NAMES = flags.DEFINE_list(
     "eval_names",
     None,
