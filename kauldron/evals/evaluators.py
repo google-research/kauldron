@@ -29,6 +29,7 @@ from kauldron import losses as losses_lib
 from kauldron import metrics as metrics_lib
 from kauldron import summaries as summaries_lib
 from kauldron.evals import run_strategies
+from kauldron.train import auxiliaries
 from kauldron.train import context as context_lib
 from kauldron.train import metric_writer
 from kauldron.train import rngs_lib
@@ -212,7 +213,7 @@ class Evaluator(EvaluatorBase):
 
   def evaluate(
       self, state: train_step.TrainState, step: int
-  ) -> train_step.AuxiliariesState:
+  ) -> auxiliaries.AuxiliariesState:
     """Run one full evaluation."""
     self._assert_root_cfg_resolved()
     if self.discard_opt:
@@ -286,7 +287,7 @@ def basic_eval_step(
     state: train_step.TrainState,
     batch,
     sharding: sharding_lib.ShardingStrategy,
-) -> train_step.AuxiliariesState:
+) -> auxiliaries.AuxiliariesState:
   """Call the model (pmap version)."""
   # Note that step is train step (from train state), NOT `eval_step`
   ctx = context_lib.Context.from_state_and_batch(state=state, batch=batch)

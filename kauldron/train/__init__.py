@@ -15,13 +15,14 @@
 """Train."""
 
 # pylint: disable=g-importing-member
+from kauldron.train.auxiliaries import Auxiliaries
+from kauldron.train.auxiliaries import AuxiliariesOutput
+from kauldron.train.auxiliaries import AuxiliariesState
 from kauldron.train.context import Context
 from kauldron.train.rngs_lib import RngStream
 from kauldron.train.rngs_lib import RngStreams
 from kauldron.train.setup_utils import Setup
 from kauldron.train.setup_utils import TqdmInfo
-from kauldron.train.train_step import Auxiliaries
-from kauldron.train.train_step import AuxiliariesState
 from kauldron.train.train_step import forward
 from kauldron.train.train_step import forward_with_loss
 from kauldron.train.train_step import TrainState

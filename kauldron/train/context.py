@@ -22,6 +22,7 @@ from typing import Any, Self
 
 import flax
 from kauldron import kontext
+from kauldron.train import auxiliaries
 
 if typing.TYPE_CHECKING:
   from kauldron.train import train_step
@@ -112,11 +113,9 @@ class Context:
       return_losses: bool = False,
       return_metrics: bool = False,
       return_summaries: bool = False,
-  ) -> train_step.AuxiliariesState:
+  ) -> auxiliaries.AuxiliariesState:
     """Returns the auxiliaries for the step."""
-    from kauldron.train import train_step  # pylint: disable=g-import-not-at-top
-
-    return train_step.AuxiliariesState(
+    return auxiliaries.AuxiliariesState(
         loss_states=self.loss_states if return_losses else None,
         metric_states=self.metric_states if return_metrics else None,
         summary_states=self.summary_states if return_summaries else None,

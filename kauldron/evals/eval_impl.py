@@ -27,6 +27,7 @@ from kauldron.checkpoints import checkpointer
 from kauldron.checkpoints import partial_loader
 from kauldron.evals import evaluators as evaluators_lib
 from kauldron.evals import run_strategies
+from kauldron.train import auxiliaries
 from kauldron.train import train_step
 from kauldron.train import trainer_lib
 from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
@@ -42,7 +43,7 @@ TRAIN_COMPLETE_FILENAME = 'train_complete.txt'
 def continuous_eval(
     trainer: trainer_lib.Trainer,
     eval_names: list[str],
-) -> dict[str, train_step.AuxiliariesState]:
+) -> dict[str, auxiliaries.AuxiliariesState]:
   """Continuous evaluation.
 
   Trigger an evaluation everytime a new checkpoint is detected.
@@ -75,7 +76,7 @@ def continuous_eval(
           trainer.evals[name].discard_opt for name in eval_names
       ),
   )
-  aux = {eval_name: train_step.AuxiliariesState() for eval_name in eval_names}
+  aux = {eval_name: auxiliaries.AuxiliariesState() for eval_name in eval_names}
 
   # If preempted, the last checkpoint might be re-computed. There could be
   # some race condition where the metrics are written twice for one step, but

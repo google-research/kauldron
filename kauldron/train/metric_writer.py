@@ -33,7 +33,7 @@ from kauldron import konfig
 from kauldron import kontext
 from kauldron import summaries
 from kauldron.data import utils as data_utils
-from kauldron.train import train_step
+from kauldron.train import auxiliaries
 from kauldron.train import trainer_lib
 from kauldron.typing import Array, Float, Scalar  # pylint: disable=g-multiple-import
 from kauldron.utils import chrono_utils
@@ -164,7 +164,7 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
       self,
       *,
       step: int,
-      aux: train_step.AuxiliariesState,
+      aux: auxiliaries.AuxiliariesState,
       schedules: Mapping[str, optax.Schedule],
       log_summaries: bool,
       timer: Optional[chrono_utils.Chrono] = None,
@@ -576,7 +576,7 @@ class NoopWriter(NoopMetadataWriter):
       self,
       *,
       step: int,
-      aux: train_step.AuxiliariesState,
+      aux: auxiliaries.AuxiliariesState,
       schedules: Mapping[str, optax.Schedule],
       log_summaries: bool,
       timer: Optional[chrono_utils.Chrono] = None,

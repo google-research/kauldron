@@ -38,6 +38,7 @@ from kauldron.data import utils as data_utils
 from kauldron.evals import eval_impl
 from kauldron.evals import evaluators
 from kauldron.inspect import profile_utils
+from kauldron.train import auxiliaries
 from kauldron.train import context as context_lib
 from kauldron.train import metric_writer
 from kauldron.train import rngs_lib
@@ -361,7 +362,7 @@ class Trainer(config_util.BaseConfig):
         skip_optimizer=skip_optimizer,
     )
 
-  def train(self) -> tuple[train_step.TrainState, train_step.AuxiliariesState]:
+  def train(self) -> tuple[train_step.TrainState, auxiliaries.AuxiliariesState]:
     """Main method that train/evaluate the object.
 
     Similar to:
@@ -382,7 +383,7 @@ class Trainer(config_util.BaseConfig):
   def continuous_eval(
       self,
       names: str | list[str],
-  ) -> dict[str, train_step.AuxiliariesState]:
+  ) -> dict[str, auxiliaries.AuxiliariesState]:
     """Main method that perform auxiliary tasks (evaluation, rendering,...).
 
     Trigger an evaluation everytime a new checkpoint is detected.

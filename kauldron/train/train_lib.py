@@ -26,6 +26,7 @@ import jax
 import jax.numpy as jnp
 from kauldron.evals import eval_impl
 from kauldron.inspect import profile_utils
+from kauldron.train import auxiliaries
 from kauldron.train import checkpoint_state
 from kauldron.train import setup_utils
 from kauldron.train import train_step
@@ -42,7 +43,7 @@ jax.config.update("jax_threefry_partitionable", True)
 
 def train_impl(
     trainer: trainer_lib.Trainer,
-) -> tuple[train_step.TrainState, Optional[train_step.AuxiliariesState]]:
+) -> tuple[train_step.TrainState, Optional[auxiliaries.AuxiliariesState]]:
   """Implements of `Trainer.train`."""
   setup = trainer.setup
   setup.log_status("Configuring ...")
