@@ -150,7 +150,7 @@ def sample_along_rays(
   )
 
   # Convert to sample depth values along the rays
-  # TODO(epot): Remove once https://github.com/google/jax/issues/19334 is fixed
+  # TODO(epot): Remove once https://github.com/jax-ml/jax/issues/19334 is fixed
   near = jnp.asarray(near)
   far = jnp.asarray(far)
   near = jnp.broadcast_to(near, batch_shape)[..., None]

@@ -223,7 +223,7 @@ def _transfer_guard() -> Iterator[None]:
     None
   """
   # Only activate this inside the train loop as there's issues like:
-  # https://github.com/google/jax/issues/16002
+  # https://github.com/jax-ml/jax/issues/16002
   if not jax.config.jax_disable_jit:
     with jax.transfer_guard("disallow"):
       yield
