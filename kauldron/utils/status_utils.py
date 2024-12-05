@@ -51,7 +51,7 @@ class _Status:
 
   @functools.cached_property
   def on_xmanager(self) -> bool:
-    return xmanager_api.is_running_under_xmanager()
+    return False
 
   @functools.cached_property
   def is_lead_host(self) -> bool:

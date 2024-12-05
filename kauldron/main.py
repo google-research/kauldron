@@ -26,8 +26,12 @@ from etils import epy
 import jax
 import tensorflow as tf
 
-from kauldron import kd
-from kauldron.utils import sweep_utils
+# Imports adhoc-imported when running with `ml_python`
+with epy.binary_adhoc():
+  # pylint: disable=g-import-not-at-top
+  from kauldron import kd
+  from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
+  # pylint: enable=g-import-not-at-top
 
 _CONFIG = kd.konfig.DEFINE_config_file(
     "cfg",
@@ -63,7 +67,10 @@ def main(_):
 
 @contextlib.contextmanager
 def _wu_error_handling(post_mortem: bool = False):
-  yield  # not yet supported externally
+  """Catch and log error."""
+  if not status.on_xmanager:
+    yield
+    return
 
 
 def _flags_parser(args: list[str]) -> None:
