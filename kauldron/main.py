@@ -94,5 +94,5 @@ def _flags_parser(args: list[str]) -> None:
 
 if __name__ == "__main__":
   # Adds jax flags to the program.
-  jax.config.parse_flags_with_absl()
+  jax.config.config_with_absl()
   app.run(main)  # external
