@@ -51,7 +51,7 @@ else:
 
   #   # TODO(epot): `rng` can be either a `tf.Tensor` (TfGrain) or
   #   # `np.random.Generator` (PyGrain)
-  #   # Unclear how to unify the twos
+  #   # Unclear how to unify the two
   #   @abc.abstractmethod
   #   def random_map(self, element, rng):
   #     """Maps a single element."""
