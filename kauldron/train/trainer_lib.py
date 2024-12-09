@@ -49,7 +49,6 @@ from kauldron.utils import chrono_utils
 from kauldron.utils import config_util
 from kauldron.utils import kdash
 from kauldron.utils.sharding_utils import sharding as sharding_utils  # pylint: disable=g-importing-member
-from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
 import optax
 
 with konfig.imports(lazy=True):
@@ -149,7 +148,6 @@ class Trainer(config_util.BaseConfig):
     checkpointer: Checkpoint used to save/restore the state
     init_transform: An initial state transformation. Used for partial checkpoint
       loading (re-use pre-trained weights).
-    init_transforms: DEPRECATED. Please use `init_transform` instead.
     trainstep: Training loop step. Do not set this field unless you need a
       custom training step.
     evals: Evaluators to use (e.g. `{'eval': kd.eval.Evaluator()}`)
@@ -214,9 +212,6 @@ class Trainer(config_util.BaseConfig):
   init_transform: checkpoints.AbstractPartialLoader = dataclasses.field(
       default_factory=lambda: checkpoints.NoopTransform(),  # pylint: disable=unnecessary-lambda
   )
-  init_transforms: MutableMapping[str, checkpoints.AbstractPartialLoader] = (
-      dataclasses.field(default_factory=FrozenDict)
-  )
 
   # Train, eval loop
   trainstep: train_step.TrainStep = dataclasses.field(
@@ -244,20 +239,6 @@ class Trainer(config_util.BaseConfig):
   )
 
   def __post_init__(self):
-
-    # Backward compatibility for `init_transforms`
-    if self.init_transforms:
-      # TODO(epot): Gemini should be able to create a script which update all
-      # instances in the project cdebases.
-      status.warn(
-          '`init_transforms` is DEPRECATED and will be removed in the future.'
-          ' Please use `init_transform` instead takes a single transform ('
-          ' you can use `kd.ckpts.MultiTransform` if you have multiple'
-          ' transforms).',
-          DeprecationWarning,
-      )
-      init_transform = checkpoints.MultiTransform(**self.init_transforms)
-      object.__setattr__(self, 'init_transform', init_transform)
 
     # It's convenient to set `cfg.evals = None`,... to disable evaluation
     for name, default_factory in {
