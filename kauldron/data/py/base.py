@@ -112,7 +112,9 @@ class PyGrainPipeline(pipelines.Pipeline):
     # We do batching after conversion to `IterDataset` to avoid None during
     # batching.
     if self.batch_size:
-      ds = ds.batch(self.batch_size, drop_remainder=self.batch_drop_remainder)
+      ds = ds.batch(
+          self.host_batch_size, drop_remainder=self.batch_drop_remainder
+      )
 
     # Distribute the execution across multiple worker processes.
     num_workers = _get_num_workers(self.num_workers)
