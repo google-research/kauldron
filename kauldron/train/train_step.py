@@ -120,12 +120,12 @@ class TrainStep(config_util.UpdateFromRootCfg):
     if isinstance(elem_spec, dict):
       elem_spec = flax.core.freeze(elem_spec)
     state = self._init_model(elem_spec, model_method=model_method)
-    if not skip_transforms:
-      # If restoring a checkpoint we can skip the (potentially slow) transforms
-      state = self._init_transform(state)
     if self.optimizer is not None and not skip_optimizer:
       # Eval-only jobs do not have optimizer.
       state = self._init_optimizer(state)
+    if not skip_transforms:
+      # If restoring a checkpoint we can skip the (potentially slow) transforms
+      state = self._init_transform(state)
     return state
 
   @functools.partial(
