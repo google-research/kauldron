@@ -12,12 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Optimizers etc."""
+"""Freeze utils."""
 
-# pylint: disable=g-importing-member
+import functools
 
-from kauldron.optim._freeze import partial_updates
-from kauldron.optim._masks import exclude
-from kauldron.optim._masks import select
-from kauldron.optim.combine import named_chain
-from kauldron.optim.transform import decay_to_init
+import jax
+import optax
+
+
+def partial_updates(optimizer, mask):
+  return optax.multi_transform(
+      {
+          'train': optimizer,
+          'freeze': optax.set_to_zero(),
+      },
+      functools.partial(_make_labels, mask=mask),
+  )
+
+
+def _make_labels(tree, mask):
+  if callable(mask):
+    mask = mask(tree)
+  tree = jax.tree.map(lambda x: 'train' if mask else 'freeze', tree)
+  return tree
