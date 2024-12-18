@@ -15,6 +15,9 @@
 """Optimizers etc."""
 
 # pylint: disable=g-importing-member
+
+from kauldron.optim._freeze import partial_updates
+from kauldron.optim._masks import exclude
+from kauldron.optim._masks import select
 from kauldron.optim.combine import named_chain
 from kauldron.optim.transform import decay_to_init
-# pylint: enable=g-importing-memberfrom
