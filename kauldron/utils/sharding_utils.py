@@ -24,6 +24,7 @@ from typing import TypeVar
 
 import jax
 from kauldron.typing import PyTree  # pylint: disable=g-importing-member
+from kauldron.utils import _jax
 import numpy as np
 
 if typing.TYPE_CHECKING:
@@ -207,6 +208,12 @@ class _ShardingAPI:
         return x_
       elif callable(s):  # Lazy sharding, resolving & recurse
         return self.with_sharding_constraint(x_, s(x_))
+      elif jax.tree.reduce(_all_shape_dtype_struct, x_, True):
+        # If the tree is a `ShapeDtypeStruct`
+        return jax.tree.map(
+            lambda array: _jax.replace_shape_dtype_struct(array, sharding=s),
+            x_,
+        )
       else:
         return jax.lax.with_sharding_constraint(x_, s)
 
@@ -221,6 +228,10 @@ class _ShardingAPI:
 
   # Typing annotation to annotate sharding pytree
   ShardingTree = ShardingTree  # pylint: disable=invalid-name
+
+
+def _all_shape_dtype_struct(state, x):
+  return state and isinstance(x, jax.ShapeDtypeStruct)
 
 
 sharding = _ShardingAPI()

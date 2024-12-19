@@ -16,6 +16,7 @@ import os
 
 from etils import epath
 from etils.etree import jax as etree  # pylint: disable=g-importing-member
+import jax
 from jax import numpy as jnp
 from kauldron import kd
 from examples import mnist_autoencoder
@@ -63,3 +64,30 @@ def test_with_sharding_constraint():
   etree.backend.assert_same_structure(sharded_x, x)
 
   # TODO(epot): Test the actual values (should mock the devices)
+
+
+def test_with_sharding_constraint_shape_dtype_struct():
+
+  REPL = kd.sharding.REPLICATED  # pylint: disable=invalid-name
+
+  def _shard(x):
+    etree.backend.assert_same_structure(x, {'inner': 0})
+    return REPL
+
+  x = {
+      'a': {'inner': jax.ShapeDtypeStruct((1, 2), jnp.float32)},
+      'b': {'inner': jax.ShapeDtypeStruct((2, 3), jnp.float32)},
+      'c': {'inner': jax.ShapeDtypeStruct((2, 3), jnp.float32)},
+  }
+  sharding = {
+      'a': REPL,
+      'b': None,
+      'c': _shard,
+  }
+  sharded_x = kd.sharding.with_sharding_constraint(x, sharding)
+
+  assert sharded_x == {
+      'a': {'inner': jax.ShapeDtypeStruct((1, 2), jnp.float32, sharding=REPL)},
+      'b': {'inner': jax.ShapeDtypeStruct((2, 3), jnp.float32, sharding=None)},
+      'c': {'inner': jax.ShapeDtypeStruct((2, 3), jnp.float32, sharding=REPL)},
+  }

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 import dataclasses
+import functools
 import inspect
 from typing import Any, Optional
 
@@ -35,8 +36,9 @@ from kauldron import random as kd_random
 from kauldron import train
 from kauldron.data import utils as data_utils
 from kauldron.typing import Float, Num, UInt8  # pylint: disable=g-multiple-import
+from kauldron.utils import _jax
 from kauldron.utils import pd_utils
-from kauldron.utils import sharding_utils
+from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 import mediapy as media
 import ml_collections
 import numpy as np
@@ -46,6 +48,8 @@ with epy.lazy_imports():
   from etils import ecolab  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
 
 _Example = Any
+
+# TODO(epot): Split this file in multiple files
 
 
 def _get_source_link(cls) -> str:
@@ -301,7 +305,7 @@ def _get_styled_df(
 def _get_summary_table(
     model: nn.Module,
     ds: data.Pipeline,
-    ds_sharding: sharding_utils.ShardingTree,
+    ds_sharding: sharding.ShardingTree,
     rngs: dict[str, kd_random.PRNGKey],
 ) -> nn.summary.Table:
   """Return model overview as a `nn.summary.Table`."""
@@ -363,7 +367,7 @@ def get_colab_model_overview(
     *,
     model: nn.Module,
     train_ds: data.Pipeline,
-    ds_sharding: sharding_utils.ShardingTree,
+    ds_sharding: sharding.ShardingTree,
     model_config: konfig.ConfigDict | None = None,
     rngs: dict[str, kd_random.PRNGKey],
 ) -> pd.DataFrame:
@@ -474,12 +478,22 @@ def plot_sharding(trainer: train.Trainer) -> None:
 
 def lower_trainstep(trainer: train.Trainer) -> str:
   """Returns lowered trainerstep.step."""
-  state = trainer.trainstep.init(
-      elem_spec=trainer.train_ds.element_spec,
-      skip_transforms=False,
+  # TODO(epot): Add some `state_specs_with_sharding` method to `trainer` ? Or
+  # wait than Jax provides this natively.
+
+  # Create the state specs
+  state = _jax.eval_shape_with_sharding(
+      functools.partial(
+          trainer.init_state,
+          skip_transforms=True,
+      )
   )
-  # Take sharding of dataset into account.
-  # Note: train_ds.element_spec does not contain the sharding information,
-  # hence we need to explicitly load an element from the dataset.
-  (element,) = trainer.train_ds.take(1).device_put(trainer.sharding.ds)
-  return trainer.trainstep.step.lower(trainer.trainstep, state, element)
+
+  # Create the batch specs
+  batch = jax.tree.map(
+      lambda x: jax.ShapeDtypeStruct(shape=x.shape, dtype=x.dtype),
+      trainer.train_ds.element_spec,
+  )
+  batch = sharding.with_sharding_constraint(batch, trainer.sharding.ds)
+
+  return trainer.trainstep.step.lower(trainer.trainstep, state, batch)
