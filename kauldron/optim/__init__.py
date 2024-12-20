@@ -16,6 +16,7 @@
 
 # pylint: disable=g-importing-member
 
+from kauldron.optim._freeze import partial_updates
 from kauldron.optim._masks import exclude
 from kauldron.optim._masks import select
 from kauldron.optim.combine import named_chain
