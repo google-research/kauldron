@@ -30,6 +30,7 @@ from kauldron.data.py.mixtures import Mix
 from kauldron.data.transforms.base import Elements
 from kauldron.data.transforms.base import ElementWiseTransform
 from kauldron.data.transforms.base import TreeFlattenWithPath
+from kauldron.data.py.transform_utils import Slice
 # ====== Random transforms ======
 # ====== Map transforms ======
 from kauldron.data.transforms.map_transforms import Rearrange
