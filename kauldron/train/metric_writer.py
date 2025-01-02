@@ -230,6 +230,17 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
             },
         )
 
+      # Text summaries
+      text_summaries = {
+          name: value
+          for name, value in aux_result.summary_values.items()
+          if isinstance(value, str)
+      }
+      self.write_texts(
+          step=step,
+          texts={k: text for k, text in text_summaries.items()},
+      )
+
       with jax.spmd_mode("allow_all"), jax.transfer_guard("allow"):
         # point clouds
         pc_summaries = {
