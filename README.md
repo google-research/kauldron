@@ -20,7 +20,7 @@ Kauldron is a library for training machine learning models, optimized for
 **Research velocity**:
 
 *   Everything should work out-of the box. The
-    [example configs](http://https://github.com/google-research/kauldron/tree/HEAD/kauldron/examples/mnist_autoencoder.py)
+    [example configs](https://github.com/google-research/kauldron/blob/main/examples/mnist_autoencoder.py)
     can be used and customized as a starting point.
 *   Colab-first workflow for easy prototyping and fast iteration
 *   Polished user experience (integrated XM plots, profiler,
