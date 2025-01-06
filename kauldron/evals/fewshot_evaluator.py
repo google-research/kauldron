@@ -93,8 +93,6 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
   selected_repr: str = 'pre_logits'
   seed: int | Sequence[int] = config_util.ROOT_CFG_REF.seed
 
-  __root_cfg_fields_to_recurse__ = ('ds_train', 'ds_val', 'ds_test')
-
   @property
   def seeds(self) -> list[int]:
     return list(self.seed) if isinstance(self.seed, Sequence) else [self.seed]
