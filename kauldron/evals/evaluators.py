@@ -86,8 +86,6 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
 
   discard_opt: bool = False
 
-  __root_cfg_fields_to_recurse__ = ('writer',)
-
   def __post_init__(self) -> None:
     if hasattr(super(), '__post_init__'):
       super().__post_init__()  # Future proof to run `__post_init__` in parents  # pylint: disable=attribute-error
@@ -184,8 +182,6 @@ class Evaluator(EvaluatorBase):
       config_util.ROOT_CFG_REF.train_summaries
   )
   model: nn.Module = config_util.ROOT_CFG_REF.model
-
-  __root_cfg_fields_to_recurse__ = ('ds',)
 
   # TODO(klausg): filter out metrics / summaries that access grads/updates
 
