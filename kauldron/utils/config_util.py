@@ -327,17 +327,36 @@ class UpdateFromRootCfg:
   ) -> dict[str, Any]:
     """Return the fields to replace."""
 
+    # Detect the fields to update
     all_fields = []
     for cls in type(self).mro():
       if '__root_cfg_fields_to_recurse__' in cls.__dict__:
         all_fields.extend(cls.__root_cfg_fields_to_recurse__)  # pylint: disable=attribute-error
-    if len(set(all_fields)) != len(all_fields):
+
+    all_fields_set = set(all_fields)
+    if len(all_fields_set) != len(all_fields):
       raise ValueError(
           'Duplicate value in'
           f' `{type(self).__name__}.__root_cfg_fields_to_recurse__` ('
           f'fields from parent classes are automatically merged): {all_fields}'
       )
 
+    # Auto-recurse into fields which are `UpdateFromRootCfg`
+    # It shouldn't be possible to have a ref on a parent object as it would
+    # create a cycle/infinite recursion. Except the `root_cfg` object which
+    # is updated in-place.
+    for f in dataclasses.fields(self):
+      if not f.init:
+        continue
+      if f.name in all_fields_set:
+        continue
+      v = getattr(self, f.name)
+      if v is root_cfg:  # Do not recurse into the root config.
+        continue
+      if isinstance(v, UpdateFromRootCfg):
+        all_fields.append(f.name)
+
+    # Replace the fields
     for field_name in all_fields:
       if field_name in fields_to_replace:  # Field already updated.
         new_value = fields_to_replace[field_name]
