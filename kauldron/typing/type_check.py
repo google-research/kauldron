@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 import functools
 import inspect
@@ -131,29 +132,36 @@ def typechecked(fn):
     # manually reproduce the functionality of typeguard.typechecked, so that
     # we get access to the returnvalue of the function
     localns = sys._getframe(1).f_locals  # pylint: disable=protected-access
-    memo = typeguard.CallMemo(python_func, localns, args=args, kwargs=kwargs)
-    retval = _undef
-    try:
-      typeguard.check_argument_types(memo)
-      retval = fn(*args, **kwargs)
-      typeguard.check_return_type(retval, memo)
-      return retval
-    except typeguard.TypeCheckError as e:
-      # Use function signature to construct a complete list of named arguments
-      sig = inspect.signature(fn)
-      bound_args = sig.bind(*args, **kwargs)
-      bound_args.apply_defaults()
+    # Add custom checker lookup functions only temporarily to avoid
+    # registering them globally. Registering them globally can cause side
+    # effects in other modules that use typeguard.
+    with (
+        with_custom_checker_lookup_fn(_array_spec_checker_lookup),
+        with_custom_checker_lookup_fn(_dataclass_checker_lookup),
+    ):
+      memo = typeguard.CallMemo(python_func, localns, args=args, kwargs=kwargs)
+      retval = _undef
+      try:
+        typeguard.check_argument_types(memo)
+        retval = fn(*args, **kwargs)
+        typeguard.check_return_type(retval, memo)
+        return retval
+      except typeguard.TypeCheckError as e:
+        # Use function signature to construct a complete list of named arguments
+        sig = inspect.signature(fn)
+        bound_args = sig.bind(*args, **kwargs)
+        bound_args.apply_defaults()
 
-      annotations = {k: p.annotation for k, p in sig.parameters.items()}
-      # TODO(klausg): filter the stacktrace to exclude all the typechecking
-      raise TypeCheckError(
-          str(e),
-          arguments=bound_args.arguments,
-          return_value=retval,
-          annotations=annotations,
-          return_annotation=sig.return_annotation,
-          memo=shape_spec.Memo.from_current_context(),
-      ) from e
+        annotations = {k: p.annotation for k, p in sig.parameters.items()}
+        # TODO(klausg): filter the stacktrace to exclude all the typechecking
+        raise TypeCheckError(
+            str(e),
+            arguments=bound_args.arguments,
+            return_value=retval,
+            annotations=annotations,
+            return_annotation=sig.return_annotation,
+            memo=shape_spec.Memo.from_current_context(),
+        ) from e
 
   return _reraise_with_shape_info
 
@@ -415,7 +423,8 @@ def _dataclass_checker_lookup(
   return None
 
 
-def add_custom_checker_lookup_fn(lookup_fn):
+@contextlib.contextmanager
+def with_custom_checker_lookup_fn(lookup_fn):
   """Add custom array spec checker lookup function to typeguard."""
   # Add custom array spec checker lookup function to typguard
   # check not for equality but for qualname, to avoid many copies when
@@ -433,3 +442,12 @@ def add_custom_checker_lookup_fn(lookup_fn):
       break
   else:  # prepend
     checker_lookup_fns[:0] = [lookup_fn]
+
+  yield
+
+  # Remove custom checker
+  for i, f in enumerate(checker_lookup_fns):
+    if f.__qualname__ == lookup_fn.__qualname__:
+      # remove
+      del checker_lookup_fns[i]
+      break
