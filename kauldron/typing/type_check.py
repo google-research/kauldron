@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 import functools
 import inspect
@@ -25,6 +26,7 @@ import types
 import typing
 from typing import Any, Type, TypedDict, Union
 
+from etils import edc
 from etils import enp
 from etils import epy
 import jaxtyping
@@ -131,29 +133,30 @@ def typechecked(fn):
     # manually reproduce the functionality of typeguard.typechecked, so that
     # we get access to the returnvalue of the function
     localns = sys._getframe(1).f_locals  # pylint: disable=protected-access
-    memo = typeguard.CallMemo(python_func, localns, args=args, kwargs=kwargs)
-    retval = _undef
-    try:
-      typeguard.check_argument_types(memo)
-      retval = fn(*args, **kwargs)
-      typeguard.check_return_type(retval, memo)
-      return retval
-    except typeguard.TypeCheckError as e:
-      # Use function signature to construct a complete list of named arguments
-      sig = inspect.signature(fn)
-      bound_args = sig.bind(*args, **kwargs)
-      bound_args.apply_defaults()
+    with _checker.activate():
+      memo = typeguard.CallMemo(python_func, localns, args=args, kwargs=kwargs)
+      retval = _undef
+      try:
+        typeguard.check_argument_types(memo)
+        retval = fn(*args, **kwargs)
+        typeguard.check_return_type(retval, memo)
+        return retval
+      except typeguard.TypeCheckError as e:
+        # Use function signature to construct a complete list of named arguments
+        sig = inspect.signature(fn)
+        bound_args = sig.bind(*args, **kwargs)
+        bound_args.apply_defaults()
 
-      annotations = {k: p.annotation for k, p in sig.parameters.items()}
-      # TODO(klausg): filter the stacktrace to exclude all the typechecking
-      raise TypeCheckError(
-          str(e),
-          arguments=bound_args.arguments,
-          return_value=retval,
-          annotations=annotations,
-          return_annotation=sig.return_annotation,
-          memo=shape_spec.Memo.from_current_context(),
-      ) from e
+        annotations = {k: p.annotation for k, p in sig.parameters.items()}
+        # TODO(klausg): filter the stacktrace to exclude all the typechecking
+        raise TypeCheckError(
+            str(e),
+            arguments=bound_args.arguments,
+            return_value=retval,
+            annotations=annotations,
+            return_annotation=sig.return_annotation,
+            memo=shape_spec.Memo.from_current_context(),
+        ) from e
 
   return _reraise_with_shape_info
 
@@ -361,6 +364,8 @@ def _array_spec_checker_lookup(
 ) -> typeguard.TypeCheckerCallable | None:
   """Lookup function to register custom array type checkers in typeguard."""
   del extras
+  if not _checker.is_active:
+    return None
   if origin_type in [Union, types.UnionType]:
     # TODO(klausg): handle Union of ArrayType with other types
     if all(_is_array_type(arg) for arg in args):
@@ -410,6 +415,8 @@ def _dataclass_checker_lookup(
 ) -> typeguard.TypeCheckerCallable | None:
   """Lookup function to register custom dataclass checkers in typeguard."""
   del args, extras
+  if not _checker.is_active:
+    return None
   if dataclasses.is_dataclass(origin_type):
     return _custom_dataclass_checker
   return None
