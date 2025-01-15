@@ -225,7 +225,7 @@ class Checkpointer(BaseCheckpointer):
         # See
         #/checkpoint#do-not-set-the-checkpoint-directory-to-be-world-readable
         file_options=ocp.checkpoint_manager.FileOptions(
-            path_permission_mode=0o770
+            path_permission_mode=0o770,
         ),
     )
 
