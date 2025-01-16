@@ -386,7 +386,5 @@ class UpdateFromRootCfg:
         raise ValueError(
             f'{type(self).__qualname__}.{f.name} is an unresolved'
             f' `ROOT_CFG_REF` value ({value}).\nTo resolve the value, either'
-            f' explicitly set `{f.name}` in `__init__`, or call'
-            ' `obj.update_from_root_cfg(root_cfg)` to copy the value from the'
-            ' root `kd.train.Trainer` object.'
+            f' explicitly set `{f.name}` in `__init__`.'
         )
