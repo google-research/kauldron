@@ -23,9 +23,17 @@ import json
 from typing import Any, Optional
 
 from etils import epath
+from etils import epy
 from grain import python as grain
 from kauldron.data.py import base
 import tensorflow_datasets as tfds
+
+with epy.lazy_imports(
+    error_callback=(
+        'To use HuggingFace datasets, please use `pip install datasets`.'
+    )
+):
+  import datasets  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
 
 
 @dataclasses.dataclass(frozen=True)
@@ -55,6 +63,24 @@ class Tfds(base.DataSourceBase):
         split=self.split,
         data_dir=self.data_dir,
         decoders=self.decoders,
+    )
+
+
+@dataclasses.dataclass(frozen=True)
+class HuggingFace(base.DataSourceBase):
+  """HuggingFace loader."""
+
+  name: str
+  _: dataclasses.KW_ONLY
+  split: str
+  data_dir: epath.PathLike | None = None
+
+  @functools.cached_property
+  def data_source(self) -> grain.RandomAccessDataSource:
+    return datasets.load_dataset(
+        self.name,
+        split=self.split,
+        data_dir=self.data_dir,
     )
 
 

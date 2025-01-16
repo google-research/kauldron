@@ -20,6 +20,7 @@ from kauldron.data.py.base import DataSourceBase
 from kauldron.data.py.data_sources import DataSource
 from kauldron.data.py.data_sources import Tfds
 from kauldron.data.py.data_sources import Json
+from kauldron.data.py.data_sources import HuggingFace
 from kauldron.data.py.mixtures import Mix
 
 # *****************************************************************************
