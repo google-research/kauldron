@@ -135,11 +135,13 @@ class Trainer(config_util.BaseConfig):
       set, overwrite `num_train_steps`. Allow to debug on Colab without
       modifying the learning rate schedules and other values that depend on
       `num_train_steps`.
-    log_metrics_every: x
-    log_summaries_every: x
-    train_losses: x
-    train_metrics: x
-    train_summaries: x
+    log_metrics_every: How often to compute and log the metrics (in
+      TensorBoard,...)
+    log_summaries_every: How often to compute and log the summaries (in
+      TensorBoard,...)
+    train_losses: A dict of losses
+    train_metrics: A dict of metrics
+    train_summaries: A dict of summaries
     writer: Metric writer used for writing to TB, datatable, etc.
     profiler: Profiler can be customized (see `kd.inspect.Profile`)
     checkify_error_categories: List of errors to enable checkify for.

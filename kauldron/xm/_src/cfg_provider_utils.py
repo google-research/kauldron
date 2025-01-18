@@ -120,7 +120,7 @@ class ConfigProvider(ConfigProviderBase):
     flagvalues = flag._flagvalues  # pylint: disable=protected-access
 
     # Getting the path is tricky because we use DEFINE_config_file for the flag
-    # And This flag returns the evaluated config directly instead of the
+    # And this flag returns the evaluated config directly instead of the
     # filepath.
     # We cannot simply use a DEFINE_string flag instead, because we also need
     # the evaluated config with CLI config overrides. Thus the hack below:
@@ -131,6 +131,7 @@ class ConfigProvider(ConfigProviderBase):
     config_path, *config_parameter = config_path.split(":", 1)
 
     # Import the config module (needed for sweeps etc.).
+    config_path = config_path.replace("/", ".")
     config_module = importlib.import_module(config_path)
 
     # In addition to the filename we also need the config overrides to pass on

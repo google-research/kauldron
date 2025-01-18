@@ -17,6 +17,7 @@
 import abc
 import dataclasses
 import functools
+import random
 from typing import Any, Optional, TypeAlias
 
 from etils import edc
@@ -76,3 +77,12 @@ class Pipeline(data_utils.IterableDataset, config_util.UpdateFromRootCfg):
     raise NotImplementedError()
 
   __repr__ = edc.repr
+
+  # For convenience, it can be annoying to have to manually set the seed when
+  # debugging on Colab.
+  def _assert_root_cfg_resolved(self) -> None:
+    # If the seed is not set when the pipeline is created, we create an
+    # arbitrary random seed.
+    if isinstance(self.seed, config_util._FakeRootCfg):  # pylint: disable=protected-access
+      object.__setattr__(self, 'seed', random.randint(0, 1000000000))
+    super()._assert_root_cfg_resolved()

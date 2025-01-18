@@ -20,6 +20,44 @@ import grain.python as grain
 from kauldron.data.transforms import abc as tr_abc
 from kauldron.data.transforms import normalize as tr_normalize
 
+_MISSING: Any = object()
+
+
+class Slice:
+  """Slice transform.
+
+  Transforms that select a subset of the dataset (e.g. to debug or train on
+  a subset of the data).
+
+  ```python
+  ds = kd.data.py.Tfds(
+      name='mnist',
+      split='train',
+      transforms=[
+          kd.data.py.Slice(10),  # Select ds[:10]
+      ],
+  )
+  ```
+  """
+
+  def __init__(
+      self,
+      start: int | None = _MISSING,
+      stop: int | None = _MISSING,
+      step: int | None = _MISSING,
+  ):
+    # Called as `Slice(stop)`
+    if start is not _MISSING and stop is _MISSING and step is _MISSING:
+      stop = start
+      start = _MISSING
+
+    args = (start, stop, step)
+    args = [None if arg is _MISSING else arg for arg in args]
+    self.slice = slice(*args)
+
+  def __repr__(self) -> str:
+    return f"{self.__class__.__name__}({self.slice})"
+
 
 class PyGrainMapAdapter(tr_normalize.TransformAdapter, grain.MapTransform):
   """Adapter from `kd.data.MapTransform` to pygrain."""
@@ -54,7 +92,7 @@ _KD_TO_PYGRAIN_ADAPTERS = {
 def _adapt_for_pygrain(
     transform: tr_normalize.Transformation,
 ) -> grain.Transformation:
-  if isinstance(transform, grain.Transformation):
+  if isinstance(transform, (grain.Transformation, Slice)):
     return transform
   return tr_normalize.adapt_transform(transform, _KD_TO_PYGRAIN_ADAPTERS)
 
@@ -84,6 +122,8 @@ def _apply_transform(
       ds = ds.filter(tr)
     case grain.Batch():
       ds = ds.batch(tr.batch_size, drop_remainder=tr.drop_remainder)
+    case Slice():
+      ds = ds.slice(tr.slice)
     case _:
       raise ValueError(f"Unexpected transform type: {tr}")
   return ds
