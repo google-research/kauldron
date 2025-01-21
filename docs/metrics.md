@@ -4,9 +4,9 @@ Loss, metrics, summaries all share the same API.
 
 See the available metrics:
 
-*   Metrics: https://github.com/google-research/kauldron/tree/HEAD/kauldron/metrics/__init__.py
-*   Losses: https://github.com/google-research/kauldron/tree/HEAD/kauldron/losses/__init__.py
-*   Summaries: https://github.com/google-research/kauldron/tree/HEAD/kauldron/summaries/__init__.py
+*   [Metrics](https://github.com/google-research/kauldron/tree/main/kauldron/metrics/__init__.py)
+*   [Losses](https://github.com/google-research/kauldron/tree/main/kauldron/losses/__init__.py)
+*   [Summaries](https://github.com/google-research/kauldron/tree/main/kauldron/summaries/__init__.py)
 
 ## Using a metric
 

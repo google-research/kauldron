@@ -40,8 +40,9 @@ same job for multiple evaluators.
 The `StandaloneXxx` supports all `kxm.Job` parameters, if you need to run
 evaluator on a different platform,...
 
-See https://github.com/google-research/kauldron/tree/HEAD/kauldron/examples/mnist_standalone_eval.py for an
-example.
+See
+[mnist_standalone_eval.py](https://github.com/google-research/kauldron/tree/main/examples/mnist_standalone_eval.py)
+for an example.
 
 When run as a standalone job, you can use different XManager options between the
 train and eval jobs (defined both in the config or through flags):
@@ -70,7 +71,9 @@ def config():
   return cfg
 ```
 
-See https://github.com/google-research/kauldron/tree/HEAD/kauldron/examples/mnist_eval_only.py for an example.
+See
+[mnist_eval_only.py](https://github.com/google-research/kauldron/tree/main/examples/mnist_eval_only.py)
+for an example.
 
 Note: `kd.train.Trainer.eval_only()` only works when used inside `konfig`.
 
@@ -133,8 +136,9 @@ model).
 The root trainer object is `kd.train.Trainer` which defines the model, datasets,
 metrics, losses,...
 
-See https://github.com/google-research/kauldron/tree/HEAD/kauldron/examples/mnist_autoencoder.py for an
-example.
+See
+[mnist_autoencoder.py](https://github.com/google-research/kauldron/tree/main/examples/mnist_autoencoder.py)
+for an example.
 
 ### High level API
 
