@@ -141,14 +141,15 @@ class TrainStep(config_util.UpdateFromRootCfg):
     """Initialize the model and return the initial TrainState."""
     batch = data_utils.mock_batch_from_elem_spec(elem_spec, self.sharding.ds)
     args, kwargs = data_utils.get_model_inputs_from_batch(self.model, batch)
-    collections = self.model.init(
-        self.rng_streams.init_rngs(),
-        *args,
-        method=model_method,
-        is_training_property=True,
-        capture_intermediates=True,
-        **kwargs,
-    )
+    with self.sharding.set_global_mesh():
+      collections = self.model.init(
+          self.rng_streams.init_rngs(),
+          *args,
+          method=model_method,
+          is_training_property=True,
+          capture_intermediates=True,
+          **kwargs,
+      )
     collections = flax.core.unfreeze(collections)
     params = collections.pop("params", {})
     collections.pop("intermediates", None)  # Remove intermediates
@@ -222,19 +223,25 @@ class TrainStep(config_util.UpdateFromRootCfg):
       auxiliaries: Auxiliaries containing the losses, metrics and summaries
         states.
     """
-    # This function is just a small wrapper around `_step` for:
-    # * Checkify errors handling
-    # * Select which auxiliaries metrics to return.
-    # * Sharding
     # If reading the code, you can likely skip this function and go directly
     # to `_step`.
 
-    if checkify_error_categories:
-      step_fn = checkify.checkify(self._step, errors=checkify_error_categories)
-      error, (state, ctx) = step_fn(state, batch)
-    else:
-      error = None
-      state, ctx = self._step(state, batch)
+    # This function is just a small wrapper around `_step` for:
+    # * Checkify errors handling
+    # * Select which auxiliaries metrics to return.
+    # * Set the output sharding
+    # * Wrap the step function in the `self.sharding.set_global_mesh()` context
+    #   (as some implementations of models rely on a global mesh).
+
+    with self.sharding.set_global_mesh():
+      if checkify_error_categories:
+        step_fn = checkify.checkify(
+            self._step, errors=checkify_error_categories
+        )
+        error, (state, ctx) = step_fn(state, batch)
+      else:
+        error = None
+        state, ctx = self._step(state, batch)
 
     # TODO(epot): More flexible way to select the subset of context to return ?
     # And have a way to return the full context ?

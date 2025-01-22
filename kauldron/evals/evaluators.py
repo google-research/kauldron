@@ -287,11 +287,14 @@ def basic_eval_step(
   """Call the model (pmap version)."""
   # Note that step is train step (from train state), NOT `eval_step`
   ctx = context_lib.Context.from_state_and_batch(state=state, batch=batch)
-  _, ctx = model_with_aux.forward(
-      context=ctx,
-      rngs=rng_streams.eval_rngs(eval_step),
-      is_training=False,
-  )
+
+  with sharding.set_global_mesh():
+    _, ctx = model_with_aux.forward(
+        context=ctx,
+        rngs=rng_streams.eval_rngs(eval_step),
+        is_training=False,
+    )
+
   aux = model_with_aux.get_aux(
       ctx,
       return_losses=True,

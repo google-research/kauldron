@@ -29,6 +29,7 @@ import jax.numpy as jnp
 from kauldron import kontext
 from kauldron.train import context as context_lib
 from kauldron.typing import ArraySpec, ElementSpec, PyTree  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.utils import _jax
 from kauldron.utils import sharding_utils
 import numpy as np
 
@@ -85,15 +86,11 @@ def mock_batch_from_elem_spec(
   """Create a mock batch from the element_spec of a data iterator."""
   elem_spec = etree.spec_like(elem_spec)
 
-  # We only support FIRST_DIM and REPLICATED sharding for now.
   def _get_global_shape(spec):
-    if elem_sharding is sharding_utils.sharding.FIRST_DIM:
-      shape = (spec.shape[0] * jax.process_count(),) + spec.shape[1:]
-    elif elem_sharding is sharding_utils.sharding.REPLICATED:
-      shape = spec.shape
-    else:
-      raise ValueError(f"Unsupported sharding: {elem_sharding!r}")
-    return ArraySpec(shape=shape, dtype=spec.dtype)
+    return ArraySpec(
+        shape=_jax.local_to_global_shape(spec.shape, sharding=elem_sharding),
+        dtype=spec.dtype,
+    )
 
   elem_spec = jax.tree.map(_get_global_shape, elem_spec)
 

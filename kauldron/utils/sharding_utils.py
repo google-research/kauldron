@@ -16,13 +16,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+import contextlib
 import dataclasses
 import functools
 import typing
 from typing import TypeVar
 
 import jax
+from jax._src import source_info_util
 from kauldron.typing import PyTree  # pylint: disable=g-importing-member
 from kauldron.utils import _jax
 import numpy as np
@@ -40,6 +42,12 @@ ShardingTree = PyTree[
     | Callable[[PyTree[jax.Array]], 'ShardingTree']
 ]
 _T = TypeVar('_T')
+
+# Some error messages raised by jax.jit display the code where
+# `jax.lax.with_sharding_constraint` was called. To be more informative,
+# we skip this util file so the error point to where
+# `kd.sharding.with_sharding_constraint` was called.
+source_info_util.register_exclusion(__file__)
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -84,6 +92,18 @@ class ShardingStrategy:
         opt_state=self.opt_state,
     )
 
+  @contextlib.contextmanager
+  def set_global_mesh(self) -> Iterator[None]:
+    """Might activate the mesh.
+
+    Some codebases/model implementations set the mesh globally so it can be
+    used inside the model, rather than explicitly propagating it.
+
+    Yields:
+      None
+    """
+    yield
+
 
 # Use class so methods are lazily called. Otherwise, `jax.devices` fail because
 # `app.run(main)` is not yet called
@@ -102,37 +122,18 @@ class _ShardingAPI:
   """
 
   @functools.cached_property
-  def _global_mesh(self) -> jax.sharding.Mesh:
+  def _mesh(self) -> jax.sharding.Mesh:
     devices = np.asarray(jax.devices())
     return jax.sharding.Mesh(devices, axis_names=('devices',))
 
   @functools.cached_property
-  def _local_mesh(self) -> jax.sharding.Mesh:
-    devices = np.asarray(jax.local_devices())
-    return jax.sharding.Mesh(devices, axis_names=('devices',))
-
-  @functools.cached_property
   def REPLICATED(self) -> jax.sharding.NamedSharding:  # pylint: disable=invalid-name
-    return jax.sharding.NamedSharding(
-        self._global_mesh, jax.sharding.PartitionSpec()
-    )
+    return jax.sharding.NamedSharding(self._mesh, jax.sharding.PartitionSpec())
 
   @functools.cached_property
   def FIRST_DIM(self) -> jax.sharding.NamedSharding:  # pylint: disable=invalid-name
     return jax.sharding.NamedSharding(
-        self._global_mesh, jax.sharding.PartitionSpec('devices')
-    )
-
-  @functools.cached_property
-  def _LOCAL_REPLICATED(self) -> jax.sharding.NamedSharding:  # pylint: disable=invalid-name
-    return jax.sharding.NamedSharding(
-        self._local_mesh, jax.sharding.PartitionSpec()
-    )
-
-  @functools.cached_property
-  def _LOCAL_FIRST_DIM(self) -> jax.sharding.NamedSharding:  # pylint: disable=invalid-name
-    return jax.sharding.NamedSharding(
-        self._local_mesh, jax.sharding.PartitionSpec('devices')
+        self._mesh, jax.sharding.PartitionSpec('devices')
     )
 
   @functools.cached_property
@@ -144,37 +145,28 @@ class _ShardingAPI:
 
     Args:
       arrays: The nested tree of array to shard/replicate
-      sharding: How to shard the array. Currently, only `kd.sharding.REPLICATED`
-        and `kd.sharding.FIRST_DIM` are supported.
+      sharding: How to shard the array.
 
     Returns:
       The replicated nested tree of array
     """
-    return jax.tree.map(
-        functools.partial(self._put_device_single, sharding=sharding), arrays
-    )
 
-  def _put_device_single(
-      self,
-      array: _T,
-      *,
-      sharding: jax.sharding.NamedSharding,  # pylint: disable=redefined-outer-name
-  ) -> _T:
-    """Shard single element."""
-    if sharding is self.FIRST_DIM:
-      array = jax.device_put(array, self._LOCAL_FIRST_DIM)
-      global_shape = (array.shape[0] * self._process_count,) + array.shape[1:]
-    elif sharding is self.REPLICATED:
-      array = jax.device_put(array, self._LOCAL_REPLICATED)
-      global_shape = array.shape
-    else:
-      raise ValueError(f'Unsupported sharding: {sharding!r}')
+    def _to_global_array(x):
+      if isinstance(x, (int, float, bool)):  # Scalar support (e.g. `step`)
+        x = np.asarray(x)
 
-    return jax.make_array_from_single_device_arrays(
-        global_shape,
-        sharding,
-        [shard.data for shard in array.addressable_shards],
-    )
+      # Contrary to `jax.make_array_from_single_device_arrays`,
+      # `jax.make_array_from_process_local_data` trigger
+      # `Disallowed host-to-device transfer`, so need to wrap it in a
+      # `transfer_guard`
+      with jax.transfer_guard('allow'):
+        return jax.make_array_from_process_local_data(
+            sharding,
+            x,
+            global_shape=_jax.local_to_global_shape(x.shape, sharding=sharding),
+        )
+
+    return jax.tree.map(_to_global_array, arrays)
 
   def with_sharding_constraint(
       self,

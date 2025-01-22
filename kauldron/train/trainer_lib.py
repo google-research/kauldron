@@ -45,6 +45,7 @@ from kauldron.train import rngs_lib
 from kauldron.train import setup_utils
 from kauldron.train import train_lib
 from kauldron.train import train_step
+from kauldron.utils import _jax
 from kauldron.utils import chrono_utils
 from kauldron.utils import config_util
 from kauldron.utils import kdash
@@ -393,7 +394,7 @@ class Trainer(config_util.BaseConfig):
     # Skip the `init_transform`. Indeed, restoring checkpoint (partial
     # loading) will fail inside `jax.eval_shape / `jax.jit`
     init_fn = functools.partial(self.init_state, skip_transforms=True)
-    return jax.eval_shape(init_fn)
+    return _jax.eval_shape_with_sharding(init_fn)
 
   @functools.cached_property
   def context_specs(self) -> context_lib.Context:
@@ -404,6 +405,7 @@ class Trainer(config_util.BaseConfig):
     # Instead just creating the `spec` should be enough.
     m_batch = data_utils.mock_batch_from_elem_spec(elem_spec, elem_sharding)
 
+    # TODO(epot): Returns the sharding too (computed in `trainstep.step`)
     _, context = jax.eval_shape(
         self.trainstep._step,  # pylint: disable=protected-access
         self.state_specs,
