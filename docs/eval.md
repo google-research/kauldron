@@ -197,9 +197,6 @@ cfg.rng_streams = kd.train.RngStreams([
 To get the `{'dropout': rng, ...}` values, call the `rng_streams.train_rngs()`,
 `.eval_rngs()` or `.init_rngs()`.
 
-By default, the train and eval rngs require the `device` index from `@pmap`, so
-each replicated computation uses a different rng.
-
 ```python
 params = model.init(rng_streams.init_rngs(), ...)
 
