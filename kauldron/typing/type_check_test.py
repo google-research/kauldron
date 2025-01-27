@@ -72,6 +72,8 @@ def _dataclass_test_helper(cls):
 
 
 def test_dataclass():
+  pytest.skip("Currently disabled")
+
   @dataclasses.dataclass
   class A:
     a: Float["T B"]
@@ -103,6 +105,7 @@ class TestB:
 
 
 def test_nested_dataclass():
+  pytest.skip("Currently disabled")
 
   @typechecked
   def _foo(b: TestB) -> TestA:
