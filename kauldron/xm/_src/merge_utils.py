@@ -27,7 +27,7 @@ from typing import Any, TypeVar
 from etils import edc
 from etils import epy
 from etils.epy import _internal
-from kauldron.konfig import immutabledict_lib
+from kauldron.utils import immutabledict
 
 # Use lazy-import as this file is imported in Kauldron
 with epy.lazy_imports():
@@ -303,7 +303,7 @@ def _merge_dict(d0: dict[str, Any], d1: dict[str, Any], *, path: str):
 
 
 def _is_mapping(obj) -> bool:
-  return isinstance(obj, (dict, immutabledict_lib.ImmutableDict))
+  return isinstance(obj, (dict, immutabledict.ImmutableDict))
 
 
 # ------- Inspect utils -------

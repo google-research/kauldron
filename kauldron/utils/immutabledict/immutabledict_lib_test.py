@@ -12,25 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test."""
-
 import pickle
 
 import cloudpickle
 from etils import epy
 import jax
-from kauldron.konfig import immutabledict_lib
+from kauldron.utils import immutabledict
 import pytest
 
 
 def test_dict():
-  d = immutabledict_lib.ImmutableDict({
+  d = immutabledict.ImmutableDict({
       'z': 1,
       'a': 2,
       'w': 3,
   })
   d = jax.tree.map(lambda x: x * 10, d)
-  assert d == immutabledict_lib.ImmutableDict({
+  assert d == immutabledict.ImmutableDict({
       'z': 10,
       'a': 20,
       'w': 30,
@@ -41,7 +39,7 @@ def test_dict():
 
 
 def test_dict_repr():
-  d = immutabledict_lib.ImmutableDict({
+  d = immutabledict.ImmutableDict({
       'z': 1,
       'a': 2,
       'w': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
@@ -58,7 +56,7 @@ def test_dict_repr():
 
 @pytest.mark.parametrize('pkl', [pickle, cloudpickle])
 def test_dict_pickle(pkl):
-  a = immutabledict_lib.ImmutableDict({
+  a = immutabledict.ImmutableDict({
       'z': 1,
       'a': 2,
   })

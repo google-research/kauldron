@@ -28,8 +28,8 @@ from absl import logging
 from etils import epy
 from kauldron.konfig import configdict_base
 from kauldron.konfig import fake_import_utils
-from kauldron.konfig import immutabledict_lib
 from kauldron.konfig import utils
+from kauldron.utils import immutabledict
 import ml_collections
 
 
@@ -176,7 +176,7 @@ class _ConfigDictVisitor:
   def _resolve_dict(self, value):
     cls = type(value)
     if self._freeze:
-      cls = immutabledict_lib.ImmutableDict
+      cls = immutabledict.ImmutableDict
     return cls({
         k: _reraise_with_info(self._resolve_value, k)(v)
         for k, v in _as_dict(value).items()

@@ -12,13 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""DEPRECATED: Use `from kauldron.utils import immutabledict` instead."""
+"""Utils to freeze dicts."""
 
-from kauldron.utils import immutabledict
+from typing import Any, Iterable
 
-print(
-    'ImmutableDict was moved. Please uses `from kauldron.utils import'
-    ' immutabledict` instead.'
-)
+from kauldron.utils.immutabledict import immutabledict_lib
 
-ImmutableDict = immutabledict.ImmutableDict
+
+def freeze_dict_attrs(obj: Any, attrs: Iterable[str]) -> None:
+  """Freezes the `dict` attributes of an object."""
+  for key in attrs:
+    value = getattr(obj, key)
+    if isinstance(value, dict):
+      object.__setattr__(obj, key, immutabledict_lib.ImmutableDict(value))
