@@ -20,6 +20,7 @@ import abc
 import dataclasses
 import functools
 import json
+import sys
 from typing import Any, Mapping, Optional
 
 from absl import logging
@@ -585,6 +586,7 @@ class NoopWriter(NoopMetadataWriter):
 
 
 def _get_markdown_param_table(params) -> str:
+  """Returns a markdown table of the parameter overview."""
   param_table = parameter_overview.get_parameter_overview(
       params, include_stats="global"
   )
