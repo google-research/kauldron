@@ -20,7 +20,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 import dataclasses
-import functools
 import inspect
 from typing import Any, Optional
 
@@ -36,7 +35,6 @@ from kauldron import random as kd_random
 from kauldron import train
 from kauldron.data import utils as data_utils
 from kauldron.typing import Float, Num, UInt8  # pylint: disable=g-multiple-import
-from kauldron.utils import _jax
 from kauldron.utils import pd_utils
 from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 import mediapy as media
@@ -470,7 +468,7 @@ def plot_sharding(trainer: train.Trainer) -> None:
   # to simulate multi-host (cpu device 0, 1, ...)
   # TODO(epot): More compact representation (e.g.
   # `SingleDeviceSharding(device=CpuDevice(id=0))` is too long)
-  state = trainer.init_state()
+  state = trainer.state_specs
   spec = etree.spec_like(state)
   state = jax.tree.map(lambda x, s: _Repr(f"{s} {x.sharding}"), state, spec)
   ecolab.disp(state, mode="ph")
@@ -478,16 +476,8 @@ def plot_sharding(trainer: train.Trainer) -> None:
 
 def lower_trainstep(trainer: train.Trainer) -> str:
   """Returns lowered trainerstep.step."""
-  # TODO(epot): Add some `state_specs_with_sharding` method to `trainer` ? Or
-  # wait than Jax provides this natively.
-
   # Create the state specs
-  state = _jax.eval_shape_with_sharding(
-      functools.partial(
-          trainer.init_state,
-          skip_transforms=True,
-      )
-  )
+  state = trainer.state_specs
 
   # Create the batch specs
   batch = jax.tree.map(
