@@ -85,6 +85,55 @@ class ShardingStrategy:
     )
 
 
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class FSDPSharding:
+  """Simple FSDP-like sharding rule.
+
+  Shards the largest dimension that is not sharded already and is divisible
+  by the total device count.
+
+  Usage:
+
+  ```python
+  cfg.sharding = kd.sharding.ShardingStrategy(
+      params=kd.sharding.FSDPSharding(),
+  )
+  ```
+
+  Attributes:
+    min_size_to_shard_mb: minimal tensor size to bother with sharding.
+  """
+
+  min_size_to_shard_mb = 4
+
+  def __call__(self, tree: PyTree[jax.Array]) -> ShardingTree:
+    """Apply the sharding rule to the given tree."""
+    # Implementation inspired from the big_vision codebase:
+    # http://https://github.com/google-research/big_vision/tree/HEAD/big_vision/sharding.py;l=91;rcl=651681534
+    min_size_to_shard_bytes = self.min_size_to_shard_mb * (2**20)
+
+    def _apply(x: jax.Array) -> jax.sharding.Sharding:
+
+      if x.nbytes <= min_size_to_shard_bytes:
+        return sharding.REPLICATED
+
+      # Partition along largest axis that is divisible and not taken.
+      idx = np.argsort(x.shape)[::-1]
+
+      spec = [None] * x.ndim
+      for i in idx:
+        if x.shape[i] % jax.device_count() == 0:
+          spec[i] = 'devices'
+          return jax.sharding.NamedSharding(
+              sharding._global_mesh,  # TODO(epot): Expose `DEVICES_MESH`  # pylint: disable=protected-access
+              jax.sharding.PartitionSpec(*spec),
+          )
+      # TODO(epot): Should log params for weights non-divisible ?
+      return sharding.REPLICATED
+
+    return jax.tree.map(_apply, tree)
+
+
 # Use class so methods are lazily called. Otherwise, `jax.devices` fail because
 # `app.run(main)` is not yet called
 class _ShardingAPI:
@@ -228,6 +277,9 @@ class _ShardingAPI:
 
   # Typing annotation to annotate sharding pytree
   ShardingTree = ShardingTree  # pylint: disable=invalid-name
+
+  # Sharding implementations:
+  FSDPSharding = FSDPSharding  # pylint: disable=invalid-name
 
 
 def _all_shape_dtype_struct(state, x):
