@@ -410,9 +410,42 @@ def _dataclass_checker_lookup(
 ) -> typeguard.TypeCheckerCallable | None:
   """Lookup function to register custom dataclass checkers in typeguard."""
   del args, extras
-  if dataclasses.is_dataclass(origin_type):
+  # Due to conflict with mixing Kauldron with other non-Kauldron jaxtyping
+  # objects, we only activate dataclass support for dataclasses annotated with
+  # Kauldron types.
+  # We do this by recursively checking if any dataclass attribute is annotated
+  # as a Kauldron type.
+  if _is_kd_dataclass(origin_type):
     return _custom_dataclass_checker
   return None
+
+
+@functools.cache
+def _is_kd_dataclass(obj) -> bool:
+  return _is_kd_dataclass_inner(obj, visited=set())
+
+
+def _is_kd_dataclass_inner(obj, visited) -> bool:
+  if not dataclasses.is_dataclass(obj):
+    return False
+
+  visited.add(obj)
+  hints = typing.get_type_hints(obj)
+  return any(_is_kd_type(t, visited=visited) for t in hints.values())
+
+
+def _is_kd_type(t: Any, visited: set[Any]) -> bool:
+  if t in visited:  # Cycle
+    return False
+  origin = typing.get_origin(t)
+  if origin is None:
+    if inspect.getattr_static(t, "_kd_repr", None):
+      return True
+    return _is_kd_dataclass_inner(t, visited)
+  if origin in [Union, types.UnionType]:
+    return any(_is_kd_type(t, visited=visited) for t in typing.get_args(t))
+  # Could recurse into dict, list,... too
+  return _is_kd_dataclass_inner(t, visited)
 
 
 def add_custom_checker_lookup_fn(lookup_fn):

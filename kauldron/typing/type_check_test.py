@@ -13,7 +13,10 @@
 # limitations under the License.
 
 import dataclasses
+
+import jaxtyping as jt
 from kauldron.typing import Float, TypeCheckError, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import type_check
 import numpy as np
 import pytest
 
@@ -72,7 +75,6 @@ def _dataclass_test_helper(cls):
 
 
 def test_dataclass():
-  pytest.skip("Currently disabled")
 
   @dataclasses.dataclass
   class A:
@@ -105,7 +107,6 @@ class TestB:
 
 
 def test_nested_dataclass():
-  pytest.skip("Currently disabled")
 
   @typechecked
   def _foo(b: TestB) -> TestA:
@@ -116,3 +117,29 @@ def test_nested_dataclass():
   with pytest.raises(TypeCheckError):
     # Wrong shape
     _foo(TestB(a=TestA(a=np.zeros((2, 2, 2)))))
+
+
+@dataclasses.dataclass
+class NestedA:
+  x: int
+  y: dict[str, bool]
+  z: "NestedA"  # Recursive dataclass has to be defined in the global scope.
+
+
+def test_union_type():
+
+  assert not type_check._is_kd_dataclass(NestedA)
+
+  @dataclasses.dataclass
+  class A:
+    x: int
+    y: jt.Float[jt.Array, "T B"]  # jaxtyping is not a Kauldron dataclass
+
+  assert not type_check._is_kd_dataclass(A)
+
+  @dataclasses.dataclass
+  class B:
+    x: int
+    y: Float["T B"]
+
+  assert type_check._is_kd_dataclass(B)
