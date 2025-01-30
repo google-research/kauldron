@@ -48,6 +48,7 @@ from kauldron.train import train_step
 from kauldron.utils import _jax
 from kauldron.utils import chrono_utils
 from kauldron.utils import config_util
+from kauldron.utils import immutabledict
 from kauldron.utils import kdash
 from kauldron.utils.sharding_utils import sharding as sharding_utils  # pylint: disable=g-importing-member
 import optax
@@ -73,6 +74,7 @@ else:
 # as Type['JaxException'] before class JaxException is declared.
 CheckifyErrorCategory = checkify.ErrorCategory if typing.TYPE_CHECKING else Any
 
+# TODO(epot): Should unify to use `immutabledict` everywhere.
 FrozenDict = dict if typing.TYPE_CHECKING else flax.core.FrozenDict
 
 
@@ -242,6 +244,17 @@ class Trainer(config_util.BaseConfig):
   )
 
   def __post_init__(self):
+
+    # Freeze the mutable fields as they are passed to `jit` functions.
+    immutabledict.freeze_dict_attrs(
+        self,
+        (
+            'train_losses',
+            'train_metrics',
+            'train_summaries',
+            'schedules',
+        ),
+    )
 
     # It's convenient to set `cfg.evals = None`,... to disable evaluation
     for name, default_factory in {

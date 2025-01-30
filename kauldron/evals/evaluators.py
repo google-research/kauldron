@@ -36,6 +36,7 @@ from kauldron.train import rngs_lib
 from kauldron.train import train_step
 from kauldron.train import trainer_lib
 from kauldron.utils import config_util
+from kauldron.utils import immutabledict
 from kauldron.utils import kdash
 from kauldron.utils import utils
 from kauldron.utils.sharding_utils import sharding as sharding_lib  # pylint: disable=g-importing-member
@@ -187,6 +188,8 @@ class Evaluator(EvaluatorBase):
 
   def __post_init__(self) -> None:
     super().__post_init__()
+
+    immutabledict.freeze_dict_attrs(self, ['losses', 'metrics', 'summaries'])
 
     if self.ds is None:
       raise ValueError(

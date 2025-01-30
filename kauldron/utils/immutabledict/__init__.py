@@ -12,13 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""DEPRECATED: Use `from kauldron.utils import immutabledict` instead."""
+"""Mini immutabledict library."""
 
-from kauldron.utils import immutabledict
+# pylint: disable=g-importing-member
 
-print(
-    'ImmutableDict was moved. Please uses `from kauldron.utils import'
-    ' immutabledict` instead.'
-)
-
-ImmutableDict = immutabledict.ImmutableDict
+from kauldron.utils.immutabledict.immutabledict_lib import ImmutableDict
+from kauldron.utils.immutabledict.utils import freeze_dict_attrs
