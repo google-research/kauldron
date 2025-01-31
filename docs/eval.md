@@ -7,15 +7,16 @@
 Eval can be defined on the `evals` attribute of `kd.train.Trainer`:
 
 ```python
-cfg = kd.train.Trainer()
-cfg.evals = {
-    'eval': kd.evals.Evaluator(
-        run=kd.evals.EveryNSteps(100),
-        num_batches=None,
-        ds=_make_ds(training=False),
-        metrics={},
-    )
-}
+trainer = kd.train.Trainer(
+    evals={
+        'eval': kd.evals.Evaluator(
+            run=kd.evals.EveryNSteps(100),
+            num_batches=None,
+            ds=_make_ds(training=False),
+            metrics={},
+        )
+    }
+)
 ```
 
 If `kd.evals.Evaluator` does not define losses, metrics, summaries, those are
@@ -61,14 +62,14 @@ experiment. This can be achieved through `kd.train.Trainer.eval_only()`:
 
 ```python
 def config():
-  cfg = kd.train.Trainer.eval_only()
-  cfg.evals = {
-      'my_eval': kd.evals.Evaluator(
-          run=kd.evals.StandaloneLastCheckpoint(),
-          ...,
-      ),
-  }
-  return cfg
+  return kd.train.Trainer.eval_only(
+      evals = {
+          'my_eval': kd.evals.Evaluator(
+              run=kd.evals.StandaloneLastCheckpoint(),
+              ...,
+          ),
+      }
+  )
 ```
 
 See

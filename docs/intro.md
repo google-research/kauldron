@@ -111,9 +111,10 @@ Each key starts by a registered prefix. Common prefixes includes:
 
 *   `batch`: The output of the dataset (after all transformations)
 *   `preds`: The output of the model.
-*   `params`: Model parameters
-*   `interms`: Flax intermediate variables (from `model.apply(...,
-    capture_intermediates=True)`)
+*   `params`: Model parameters (can be used to add a weight decay loss, or
+    monitor the params norm in metrics)
+*   `interms`: Outputs of the intermediate layers (as returned by Flax using
+    `model.apply(..., capture_intermediates=True)`)
 
 See https://github.com/google-research/kauldron/tree/main/kauldron/train/context.py for the full list of
 identifiers.
