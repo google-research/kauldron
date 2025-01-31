@@ -391,6 +391,9 @@ def _custom_dataclass_checker(
       "dataclass_as_typed_dict",
       {f.name: f.type for f in fields},
   )  # pytype: disable=wrong-arg-types
+  # Copy the module. This is important when `from __future__ import annotations`
+  # is used so that typeguard can correctly resolve the ForwardRef.
+  dataclass_as_typed_dict.__module__ = origin_type.__module__
   values = {k.name: getattr(value, k.name) for k in fields}
   try:
     return typeguard.check_type(

@@ -93,17 +93,17 @@ def test_dataclass():
   _dataclass_test_helper(C)
 
 
+@dataclasses.dataclass
+class TestB:
+  a: "TestA"
+
+
 # Note: These datac-classes need to be defined outside the test_dataclass()
 # otherwise one cannot annotate TestB.a with the type TestA, because the type
 # checker will get confused.
 @dataclasses.dataclass
 class TestA:
   a: Float["T B"]
-
-
-@dataclasses.dataclass
-class TestB:
-  a: TestA
 
 
 def test_nested_dataclass():
