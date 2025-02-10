@@ -8,8 +8,11 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 ## [Unreleased]
 
+## [1.1.0] - 2025-02-07
+
 *   Add `kd.nn.WrapperModule` to make a inner-module transparent with
-    respect of .
+    respect of Flax modules.
+*   Many other changes...
 
 ## [1.0.0] - 2024-11-21
 
@@ -100,6 +103,9 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 * Initial release
 
-[Unreleased]: https://github.com/google-research/kauldron/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/google-research/kauldron/releases/tag/v1.0.0
+<!-- mdlint off(LINK_UNUSED_ID) -->
+
+[Unreleased]: https://github.com/google-research/kauldron/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/google-research/kauldron/releases/tag/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/google-research/kauldron/releases/tag/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/google-research/kauldron/releases/tag/v0.1.0
