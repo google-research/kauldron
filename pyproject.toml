@@ -30,7 +30,7 @@ dependencies = [
     "lark",
     "mediapy",
     "ml_collections",
-    "numpy>2",
+    "numpy",
     "opencv-python",  # speeds up pygrain image loading
     "optax",
     "orbax-checkpoint",

@@ -8,6 +8,10 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 ## [Unreleased]
 
+## [1.1.1] - 2025-02-11
+
+*   Restore numpy 1.26 compatibility
+
 ## [1.1.0] - 2025-02-07
 
 *   Add `kd.nn.WrapperModule` to make a inner-module transparent with
@@ -105,7 +109,8 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 <!-- mdlint off(LINK_UNUSED_ID) -->
 
-[Unreleased]: https://github.com/google-research/kauldron/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/google-research/kauldron/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/google-research/kauldron/releases/tag/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/google-research/kauldron/releases/tag/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/google-research/kauldron/releases/tag/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/google-research/kauldron/releases/tag/v0.1.0
