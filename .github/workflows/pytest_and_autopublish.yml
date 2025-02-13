@@ -39,7 +39,6 @@ jobs:
     # * sweep_utils_test: Depends on kxm
     # * lpips_test: Missing VGG weights
     # * partial_loader_test: Orbax partial checkpoint loader not yet open-sourced  (TODO(epot): Restore)
-    # * typing tests: Not yet supported due to typeguard version issues.
     - name: Run core tests
       run: |
         pytest -vv -n auto \
@@ -48,9 +47,7 @@ jobs:
           --ignore=kauldron/xm/ \
           --ignore=kauldron/metrics/lpips_test.py \
           --ignore=kauldron/checkpoints/partial_loader_test.py \
-          --ignore=kauldron/utils/sweep_utils_test.py \
-          --ignore=kauldron/typing/shape_spec_test.py \
-          --ignore=kauldron/typing/type_check_test.py
+          --ignore=kauldron/utils/sweep_utils_test.py
 
   # Auto-publish when version is increased
   publish-job:
