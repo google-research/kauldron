@@ -217,7 +217,7 @@ class CollectingState(State[_MetricT]):
         object.__setattr__(self, k, (val,))
 
   @property
-  def _accumulated_fields(self) -> dict[str, Array]:
+  def _accumulated_fields(self) -> dict[str, tuple[Array, ...]]:
     return {
         f.name: getattr(self, f.name)
         for f in dataclasses.fields(self)
@@ -248,16 +248,30 @@ class CollectingState(State[_MetricT]):
     )
 
 
-def _merge_normalize_tuple(v0, v1):
+def _merge_normalize_tuple(
+    v0: tuple[jax.Array, ...], v1: tuple[jax.Array, ...]
+) -> tuple[jax.Array, ...]:
   assert isinstance(v0, tuple)
   assert isinstance(v1, tuple)
-  values = v0 + v1
-  if any(isinstance(v, jax.core.Tracer) for v in values):
+  return _maybe_copy_to_cpu(v0) + _maybe_copy_to_cpu(v1)
+
+
+def _maybe_copy_to_cpu(v: tuple[jax.Array, ...]) -> tuple[jax.Array, ...]:
+  """Convert all elements of the tuple to numpy arrays."""
+  # If the tuple is not of length 1, that means it came from a merge (or empty),
+  # and we can thus skip checks and conversions.
+  if len(v) != 1:
+    return v
+
+  element = v[0]
+  if isinstance(element, jax.core.Tracer):
     raise RuntimeError(
         "Tracer detected! CollectingState.merge should not be JIT compiled."
     )
-  # TODO(epot): Should be executed asynchronously (blocking)
-  return tuple(np.asarray(v) for v in values)
+  # start async copy to host
+  cpu_device = jax.devices("cpu")[0]
+  cpu_element = jax.device_put(element, device=cpu_device, donate=True)
+  return (cpu_element,)
 
 
 # Inherit for better tracability/debug messages (so user can search and find
