@@ -46,12 +46,12 @@ def check_type(
     expected_type: Any,
 ) -> None:
   """Ensure that value matches expected_type, alias for typeguard.check_type."""
-  if True:  # Typeguard not yet supported
-    return
   return typeguard.check_type(value, expected_type)
 
 
-exc_cls = Exception
+exc_cls = typeguard.TypeCheckError
+
+
 class TypeCheckError(exc_cls):
   """Indicates a runtime typechecking error from the @typechecked decorator."""
 
@@ -112,9 +112,6 @@ class TypeCheckError(exc_cls):
 
 def typechecked(fn):
   """Decorator to enable runtime type-checking and shape-checking."""
-  if True:  # Typeguard not yet supported
-    return fn
-
   if hasattr(fn, "__wrapped__"):
     raise AssertionError("@typechecked should be the innermost decorator")
 
@@ -126,17 +123,29 @@ def typechecked(fn):
       # typchecking disabled globally or locally -> just return fn(...)
       return fn(*args, **kwargs)
 
-    # Find either the first Python wrapper or the actual function
-    python_func = inspect.unwrap(fn, stop=lambda f: hasattr(f, "__code__"))
+    sig = inspect.signature(fn)
+    bound_args = sig.bind(*args, **kwargs)
     # manually reproduce the functionality of typeguard.typechecked, so that
     # we get access to the returnvalue of the function
     localns = sys._getframe(1).f_locals  # pylint: disable=protected-access
-    memo = typeguard.CallMemo(python_func, localns, args=args, kwargs=kwargs)
+    globalns = sys._getframe(1).f_globals  # pylint: disable=protected-access
+    memo = typeguard.TypeCheckMemo(globalns, localns)
     retval = _undef
+    annotated_arguments = {
+        k: (v, sig.parameters[k].annotation)
+        for k, v in bound_args.arguments.items()
+        if sig.parameters[k].annotation != inspect.Parameter.empty
+    }
+
     try:
-      typeguard.check_argument_types(memo)
+      typeguard._functions.check_argument_types(  # pylint: disable=protected-access
+          fn.__name__, annotated_arguments, memo=memo
+      )
       retval = fn(*args, **kwargs)
-      typeguard.check_return_type(retval, memo)
+      if sig.return_annotation is not inspect.Parameter.empty:
+        typeguard._functions.check_return_type(  # pylint: disable=protected-access
+            fn.__name__, retval, sig.return_annotation, memo
+        )
       return retval
     except typeguard.TypeCheckError as e:
       # Use function signature to construct a complete list of named arguments
@@ -396,7 +405,7 @@ def _custom_dataclass_checker(
   dataclass_as_typed_dict.__module__ = origin_type.__module__
   values = {k.name: getattr(value, k.name) for k in fields}
   try:
-    return typeguard.check_type(
+    return typeguard.check_type_internal(
         dataclass_as_typed_dict(**values),
         dataclass_as_typed_dict,
         memo=memo,
@@ -469,3 +478,7 @@ def add_custom_checker_lookup_fn(lookup_fn):
       break
   else:  # prepend
     checker_lookup_fns[:0] = [lookup_fn]
+
+
+add_custom_checker_lookup_fn(_array_spec_checker_lookup)
+add_custom_checker_lookup_fn(_dataclass_checker_lookup)
