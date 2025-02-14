@@ -16,7 +16,7 @@ import dataclasses
 
 import jaxtyping as jt
 from kauldron.typing import Float, TypeCheckError, typechecked  # pylint: disable=g-multiple-import,g-importing-member
-from kauldron.typing import type_check
+from kauldron.typing import type_check  # pylint: disable=g-bad-import-order
 import numpy as np
 import pytest
 
