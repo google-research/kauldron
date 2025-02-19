@@ -83,8 +83,8 @@ def _assert_caller_is_typechecked_func() -> None:
   if stack[i + 1].function != "_reraise_with_shape_info":
     caller_name = stack[i].function
     raise AssertionError(
-        "Dim and Shape not yet supported due to `typeguard` issue."
-        f" Raised in {caller_name!r}"
+        "Dim and Shape only work inside of @typechecked functions. But"
+        f" {caller_name!r} lacks @typechecked."
     )
 
 
