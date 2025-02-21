@@ -70,17 +70,21 @@ class Tfds(base.DataSourceBase):
 class HuggingFace(base.DataSourceBase):
   """HuggingFace loader."""
 
-  name: str
+  path: str
+  config: str | None = None
   _: dataclasses.KW_ONLY
   split: str
   data_dir: epath.PathLike | None = None
+  cache_dir: epath.PathLike | None = None
 
   @functools.cached_property
   def data_source(self) -> grain.RandomAccessDataSource:
     return datasets.load_dataset(
-        self.name,
+        self.path,
+        name=self.config,
         split=self.split,
         data_dir=self.data_dir,
+        cache_dir=self.cache_dir,
     )
 
 

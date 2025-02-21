@@ -143,6 +143,17 @@ class PyGrainPipeline(pipelines.Pipeline):
     else:
       return math.ceil(ds_len / self.batch_size)
 
+  def __getitem__(self, record_key: int):
+    """Get an item from the dataset."""
+    ds = self._root_map_ds
+    # Re-apply the batching, as in the standard pipeline, it is applied after
+    # conversion to `IterDataset`.
+    if self.batch_size:
+      ds = ds.batch(
+          self.host_batch_size, drop_remainder=self.batch_drop_remainder
+      )
+    return ds[record_key]
+
 
 @dataclasses.dataclass(frozen=True, kw_only=True, eq=True)
 class DataSourceBase(PyGrainPipeline):

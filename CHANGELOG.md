@@ -8,6 +8,10 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 ## [Unreleased]
 
+*   `kd.data`:
+    *   `kd.data.py.PyGrainPipeline` supports direct indexing (`ds[0]`).
+    *   `kd.data.py.HuggingFace` supports
+
 ## [1.1.1] - 2025-02-11
 
 *   Restore numpy 1.26 compatibility
