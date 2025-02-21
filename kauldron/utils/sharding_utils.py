@@ -133,7 +133,7 @@ class FSDPSharding:
 
     def _apply(x: jax.Array) -> jax.sharding.Sharding:
 
-      if x.nbytes <= min_size_to_shard_bytes:
+      if _nbytes(x) <= min_size_to_shard_bytes:
         return sharding.REPLICATED
 
       # Partition along largest axis that is divisible and not taken.
@@ -280,6 +280,11 @@ class _ShardingAPI:
 
 def _all_shape_dtype_struct(state, x):
   return state and isinstance(x, jax.ShapeDtypeStruct)
+
+
+def _nbytes(x: jax.Array | jax.ShapeDtypeStruct) -> int:
+  """Equivalent to `x.nbytes`, but support `jax.ShapeDtypeStruct`."""
+  return int(np.prod(x.shape) * np.dtype(x.dtype).itemsize)
 
 
 sharding = _ShardingAPI()

@@ -20,6 +20,7 @@ import jax
 from jax import numpy as jnp
 from kauldron import kd
 from examples import mnist_autoencoder
+from kauldron.utils import sharding_utils
 import tensorflow_datasets as tfds
 
 
@@ -91,3 +92,12 @@ def test_with_sharding_constraint_shape_dtype_struct():
       'b': {'inner': jax.ShapeDtypeStruct((2, 3), jnp.float32, sharding=None)},
       'c': {'inner': jax.ShapeDtypeStruct((2, 3), jnp.float32, sharding=REPL)},
   }
+
+
+def test_nbytes():
+  assert sharding_utils._nbytes(jnp.ones(())) == 4
+  assert sharding_utils._nbytes(jnp.ones((1,))) == 4
+  assert sharding_utils._nbytes(jnp.ones((1, 2))) == 8
+  assert sharding_utils._nbytes(jnp.ones((), dtype=jnp.bfloat16)) == 2
+  assert sharding_utils._nbytes(jax.ShapeDtypeStruct((), jnp.bfloat16)) == 2
+  assert sharding_utils._nbytes(jax.ShapeDtypeStruct((1, 2), jnp.bfloat16)) == 4
