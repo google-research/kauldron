@@ -117,6 +117,10 @@ class _PathTransformer(lark.Transformer):
     return ast.literal_eval(args)
 
   @staticmethod
+  def DEC_NUMBER(args: str) -> Any:
+    return int(args)
+
+  @staticmethod
   def tuple_key(args: list[Any]) -> tuple[Any, ...]:
     return tuple(args)
 

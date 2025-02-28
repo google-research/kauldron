@@ -27,6 +27,16 @@ def test_parse():
   ]
 
 
+def test_parse_integer_key():
+  parts = path_parser.parse_parts('a.123.b[10]')
+  assert parts == [
+      'a',
+      123,
+      'b',
+      10,
+  ]
+
+
 def test_parse_interms_example():
   parts = path_parser.parse_parts('interms.model.__call__[0]')
   assert parts == ['interms', 'model', '__call__', 0]
