@@ -37,14 +37,20 @@ with _epy.lazy_api_imports(globals()):
 
   from kauldron.data.utils import BatchSize
 
-# ****************************************************************************
-# DO NOT ADD preprocessing ops here. Instead, add them to `kd.contrib.data`
-# ****************************************************************************
+  from kauldron.data.py.data_sources import DataSource
+  from kauldron.data.py.data_sources import Json
+  from kauldron.data.py.data_sources import HuggingFace
+  from kauldron.data.py.data_sources import Tfds
+  from kauldron.data.py.mixtures import Mix
 
-# TODO(epot): Should migrate all users to use explicitly `kd.data.tf`
-from kauldron.data.transforms.base import Elements
-from kauldron.data.transforms.base import ElementWiseTransform
-from kauldron.data.transforms.base import TreeFlattenWithPath
-from kauldron.data.transforms.map_transforms import Gather
-from kauldron.data.transforms.map_transforms import Rearrange
-from kauldron.data.transforms.map_transforms import ValueRange
+  # ****************************************************************************
+  # DO NOT ADD preprocessing ops here. Instead, add them to `kd.contrib.data`
+  # ****************************************************************************
+
+  # TODO(epot): Should migrate all users to use explicitly `kd.data.tf`
+  from kauldron.data.transforms.base import Elements
+  from kauldron.data.transforms.base import ElementWiseTransform
+  from kauldron.data.transforms.base import TreeFlattenWithPath
+  from kauldron.data.transforms.map_transforms import Gather
+  from kauldron.data.transforms.map_transforms import Rearrange
+  from kauldron.data.transforms.map_transforms import ValueRange
