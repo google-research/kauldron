@@ -44,7 +44,7 @@ dependencies = [
     "tqdm",
     # TODO(klausg): Restore typeguard or switch to something else
     # closest match to the internal typeguard
-    # "typeguard@git+https://github.com/agronholm/typeguard@0dd7f7510b7c694e66a0d17d1d58d185125bad5d",
+    "typeguard",
     "typing_extensions",
     "xmanager",
     # lazy deps (should ideally remove those)

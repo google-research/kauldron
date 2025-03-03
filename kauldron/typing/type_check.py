@@ -46,13 +46,10 @@ def check_type(
     expected_type: Any,
 ) -> None:
   """Ensure that value matches expected_type, alias for typeguard.check_type."""
-  if True:  # Typeguard not yet supported
-    return
   return typeguard.check_type(value, expected_type)
 
 
-exc_cls = Exception
-class TypeCheckError(exc_cls):
+class TypeCheckError(typeguard.TypeCheckError):
   """Indicates a runtime typechecking error from the @typechecked decorator."""
 
   def __init__(
@@ -112,9 +109,6 @@ class TypeCheckError(exc_cls):
 
 def typechecked(fn):
   """Decorator to enable runtime type-checking and shape-checking."""
-  if True:  # Typeguard not yet supported
-    return fn
-
   if hasattr(fn, "__wrapped__"):
     raise AssertionError("@typechecked should be the innermost decorator")
 
@@ -469,3 +463,7 @@ def add_custom_checker_lookup_fn(lookup_fn):
       break
   else:  # prepend
     checker_lookup_fns[:0] = [lookup_fn]
+
+
+add_custom_checker_lookup_fn(_array_spec_checker_lookup)
+add_custom_checker_lookup_fn(_dataclass_checker_lookup)
