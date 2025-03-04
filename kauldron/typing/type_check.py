@@ -116,6 +116,9 @@ def typechecked(fn):
   @jaxtyping.jaxtyped(typechecker=None)
   @functools.wraps(fn)
   def _reraise_with_shape_info(*args, _typecheck: bool = True, **kwargs):
+    # Hide the function from the traceback. Supported by Pytest and IPython
+    __tracebackhide__ = True  # pylint: disable=unused-variable,invalid-name
+
     if not (TYPECHECKING_ENABLED and _typecheck):
       # typchecking disabled globally or locally -> just return fn(...)
       return fn(*args, **kwargs)

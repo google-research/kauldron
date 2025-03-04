@@ -130,6 +130,9 @@ def _add_is_training_kwargs(fn: _FnT) -> _FnT:
 
   @_internal.wraps_with_reload(fn)
   def decorated(*args, is_training_property: bool | None = None, **kwargs):  # pylint: disable=redefined-outer-name
+    # Hide the function from the traceback. Supported by Pytest and IPython
+    __tracebackhide__ = True  # pylint: disable=unused-variable,invalid-name
+
     if is_training_property is not None:
       cm = _set_train_property(is_training_property)
     else:
