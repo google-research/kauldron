@@ -206,3 +206,39 @@ def forward(step, params, batch):
   rngs = rng_streams.train_rngs(step)  # Create the rng for current `step`
   return model.apply(params, batch, rngs=rngs)
 ```
+
+## Use cases
+
+### GAN & Multi optimizers
+
+Training on multi optimizer can be done using `kd.contrib.train.multi_optimizer`
+and `trainstep=kd.contrib.train.MultiTrainStep()`.
+
+```python
+trainer = kd.train.Trainer(
+    ...,
+    model=MyGan(
+        generator=MyGenerator(),
+        discriminator=MyDiscriminator(),
+    ),
+    # Define the loss for the generator and the discriminator
+    losses={
+        'discriminator': kd.losses.L2(...),
+        'generator': kd.losses.L2(...),
+    },
+    optimizer=kd.contrib.train.multi_optimizer(
+        # Using `kd.optim.partial_update`, you can mask out which weights
+        # each of the optimizer will be applied too.
+        discriminator=kd.optim.partial_update(
+            optimizer=optax.adam(1e-4),
+            mask=kd.optim.select('discriminator'),
+        ),
+        generator=kd.optim.partial_update(
+            optimizer=optax.adam(1e-4),
+            mask=kd.optim.select('generator'),
+        ),
+    ),
+    # Using `kd.contrib.train.multi_optimizer` require to use `MultiTrainStep`
+    trainstep=kd.contrib.train.MultiTrainStep(),
+)
+```
