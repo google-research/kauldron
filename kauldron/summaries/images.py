@@ -24,7 +24,7 @@ from etils import epy
 from flax import struct
 from kauldron import kontext
 from kauldron import metrics
-from kauldron.typing import Array, Bool, Float, Integer, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Array, Bool, Float, Integer, UInt8, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import numpy as np
 
 with epy.lazy_imports():
@@ -59,7 +59,7 @@ class ShowImages(metrics.Metric):
   class State(metrics.AutoState["ShowImages"]):
     """Collects the first num_images images."""
 
-    images: Float["n h w #3"] = metrics.truncate_field(
+    images: Float["n h w #3"] | UInt8["n h w #3"] = metrics.truncate_field(
         num_field="parent.num_images"
     )
 
@@ -72,10 +72,12 @@ class ShowImages(metrics.Metric):
   @typechecked
   def get_state(
       self,
-      images: Float["..."],
+      images: Float["..."] | UInt8["..."],
   ) -> ShowImages.State:
     # maybe rearrange and then check shape
     images = _maybe_rearrange(images, self.rearrange, self.rearrange_kwargs)
+    if isinstance(images, UInt8["..."]):
+      images = images.astype(np.float32) / 255.0
     check_type(images, Float["n h w #3"])
 
     # Truncate just as an optimization to avoid unnecessary computations.
@@ -320,8 +322,10 @@ def _maybe_rearrange(
     rearrange: Optional[str] = None,
     rearrange_kwargs: Mapping[str, Any] | None = None,
 ) -> Array["..."] | None:
-  if array is None or rearrange is None:
+  if array is None:
     return array
+  if rearrange is None:  # Auto-flatten images.
+    rearrange = "... h w c -> (...) h w c"
   rearrange_kwargs = rearrange_kwargs if rearrange_kwargs is not None else {}
 
   return einops.rearrange(array, rearrange, **rearrange_kwargs)

@@ -109,6 +109,8 @@ class AuxiliariesState:
 
   def merge(self, other: Optional[AuxiliariesState]) -> AuxiliariesState:
     """Accumulate auxiliary."""
+    # TODO(epot): Remove merging with `None`. Instead, can merge with an empty
+    # `AuxiliariesState()`.
     if other is None:
       return self
     return self.replace(
@@ -205,6 +207,10 @@ def _reduce_states(
     *all_states: Mapping[str, kd_metrics.State]
 ) -> dict[str, kd_metrics.State]:
   """Merge all the states from the different metrics."""
+  # Filter empty states (e.g. created by empty `kd.train.Auxiliaries()`)
+  all_states = tuple(state for state in all_states if state)
+  if not all_states:
+    return {}
   return {
       k: _reduce_states_single(states)
       for k, states in epy.zip_dict(*all_states)
