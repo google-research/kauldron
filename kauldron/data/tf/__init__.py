@@ -31,6 +31,7 @@ from kauldron.data.tf.mixture import ZipDatasets
 # *****************************************************************************
 
 # ====== Structure transforms ======
+from kauldron.data.transforms.base import AddConstants
 from kauldron.data.transforms.base import Elements
 from kauldron.data.transforms.base import ElementWiseTransform
 from kauldron.data.transforms.base import TreeFlattenWithPath
@@ -42,12 +43,13 @@ from kauldron.data.tf.random_transforms import InceptionCrop
 from kauldron.data.tf.random_transforms import RandomCrop
 from kauldron.data.tf.random_transforms import RandomFlipLeftRight
 # ====== Map transforms ======
+from kauldron.data.transforms.map_transforms import Cast
 from kauldron.data.transforms.map_transforms import Gather
 from kauldron.data.transforms.map_transforms import Rearrange
 from kauldron.data.transforms.map_transforms import ValueRange
-from kauldron.data.tf.map_transforms import Cast
 from kauldron.data.tf.map_transforms import CenterCrop
 from kauldron.data.tf.map_transforms import OneHot
-# TODO(epot): Unify Resize & ResizeSmall and have better API.
+# TODO(epot): Unify Resize & ResizeSmall and have better API. Should replace
+# by the generic `kd.data.py.Resize`
 from kauldron.data.tf.map_transforms import Resize
 from kauldron.data.tf.map_transforms import ResizeSmall

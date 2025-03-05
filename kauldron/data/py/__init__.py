@@ -29,11 +29,15 @@ from kauldron.data.py.mixtures import Mix
 # *****************************************************************************
 
 # ====== Structure transforms ======
+from kauldron.data.transforms.base import AddConstants
 from kauldron.data.transforms.base import Elements
 from kauldron.data.transforms.base import ElementWiseTransform
 from kauldron.data.transforms.base import TreeFlattenWithPath
 from kauldron.data.py.transform_utils import SliceDataset
 # ====== Random transforms ======
 # ====== Map transforms ======
+from kauldron.data.transforms.map_transforms import Cast
+from kauldron.data.transforms.map_transforms import Gather
 from kauldron.data.transforms.map_transforms import Rearrange
+from kauldron.data.transforms.map_transforms import Resize
 from kauldron.data.transforms.map_transforms import ValueRange

@@ -81,3 +81,14 @@ def test_transforms(
 
 def _as_shape(shape: str) -> tuple[int, ...]:
   return tuple(int(d) for d in shape.split())
+
+
+@enp.testing.parametrize_xnp(skip=["torch"])
+def test_resize(xnp: enp.NpModule):
+  vr = kd.data.py.Resize(
+      key="img",
+      size=(12, 12),
+  )
+  before = {"img": xnp.zeros((5, 5, 3), dtype=xnp.uint8)}
+  after = vr.map(before)
+  assert after["img"].shape == (12, 12, 3)

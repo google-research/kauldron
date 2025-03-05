@@ -17,24 +17,13 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Optional
+from typing import Optional
 
 import einops
 from kauldron.data.tf import transform_utils
 from kauldron.data.transforms import base
 from kauldron.typing import TfArray, TfFloat, TfInt, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import tensorflow as tf
-
-
-@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
-class Cast(base.ElementWiseTransform):
-  """Cast an element to the specified dtype."""
-
-  dtype: Any
-
-  @typechecked
-  def map_element(self, element: TfArray["*any"]) -> TfArray["*any"]:
-    return tf.cast(element, self.dtype)
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)

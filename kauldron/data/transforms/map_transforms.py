@@ -20,12 +20,31 @@ from typing import Any
 
 import einops
 from etils import enp
+from etils import epy
 import flax.core
+import jax
 from kauldron.data.transforms import base
 from kauldron.typing import XArray, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import numpy as np
 
+with epy.lazy_imports():
+  import tensorflow as tf  # pylint: disable=g-import-not-at-top
+
 _FrozenDict = dict if typing.TYPE_CHECKING else flax.core.FrozenDict
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class Cast(base.ElementWiseTransform):
+  """Cast an element to the specified dtype."""
+
+  dtype: Any
+
+  @typechecked
+  def map_element(self, element: XArray["*any"]) -> XArray["*any"]:
+    if enp.lazy.is_tf(element):
+      return tf.cast(element, self.dtype)
+    else:
+      return element.astype(self.dtype)
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -102,3 +121,66 @@ class Gather(base.ElementWiseTransform):
   def map_element(self, element: XArray) -> XArray:
     xnp = enp.lazy.get_xnp(element)
     return xnp.take(element, self.indices, axis=self.axis)
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class Resize(base.ElementWiseTransform):
+  """Resizes an image.
+
+  Attributes:
+    size: The new size of the image.
+    method: The resizing method. If `None`, uses `area` for float inputs and
+      `nearest` for int inputs, and `area` for float inputs.
+    antialias: Whether to use an anti-aliasing filter.
+  """
+
+  size: tuple[int, int]
+  method: str | jax.image.ResizeMethod | tf.image.ResizeMethod | None = None
+  antialias: bool = True
+
+  @typechecked
+  def map_element(self, element: XArray["*b h w c"]) -> XArray["*b h2 w2 c"]:
+    if self.method is None:
+      method = "nearest" if _is_integer(element.dtype) else "area"
+    else:
+      method = self.method
+
+    if enp.lazy.is_tf(element):
+      # Flatten the batch dimensions
+      batch = tf.shape(element)[:-3]
+      imgs = einops.rearrange(element, "... h w c -> (...) h w c")
+
+      imgs = tf.image.resize(
+          imgs,
+          self.size,
+          method=method,
+          antialias=self.antialias,
+      )
+
+      # Unflatten the batch dimensions
+      return tf.reshape(imgs, tf.concat([batch, tf.shape(imgs)[-3:]], axis=0))
+    elif enp.lazy.is_np(element) or enp.lazy.is_jax(element):
+      if method == "area":
+        raise ValueError(
+            "Area resizing is not supported in JAX for float inputs"
+            " (Upvote: https://github.com/jax-ml/jax/issues/20098).\n"
+            "Please explicitly provide a resizing method."
+        )
+
+      *batch, _, _, c = element.shape
+      size = (*batch, *self.size, c)
+      # Explicitly set device to avoid `Disallowed host-to-device transfer`
+      # Uses default sharding.
+      element = jax.device_put(element, jax.devices()[0])
+      return jax.image.resize(
+          element,
+          size,
+          method=method,
+          antialias=self.antialias,
+      )
+    else:
+      raise ValueError(f"Unsupported type: {type(element)}")
+
+
+def _is_integer(dtype: Any) -> bool:
+  return np.issubdtype(enp.lazy.as_dtype(dtype), np.integer)

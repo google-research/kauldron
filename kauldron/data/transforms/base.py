@@ -270,3 +270,30 @@ class TreeFlattenWithPath(_ElementWise, tr_abc.MapTransform):
       else:
         output[key] = element
     return output
+
+
+@dataclasses.dataclass(frozen=True, eq=True)
+class AddConstants(tr_abc.MapTransform):
+  """Adds constant elements.
+
+  ```python
+  kd.data.AddConstants({
+      'my_field': 1.0,
+  })
+  ```
+
+  Can be used with mixtures when some datasets have missing fields.
+  """
+
+  values: Mapping[str, Any] = flax.core.FrozenDict()
+
+  def map(self, features):
+    overwrites = set(self.values.keys()) & set(features.keys())
+    if overwrites:
+      raise KeyError(
+          f"Tried adding key(s) {sorted(overwrites)!r} but"
+          " target names already exist. Implicit overwriting is not supported."
+          " Please explicitly drop target keys that should be overwritten."
+      )
+    features.update(self.values)
+    return features

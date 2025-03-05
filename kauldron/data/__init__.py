@@ -47,10 +47,20 @@ with _epy.lazy_api_imports(globals()):
   # DO NOT ADD preprocessing ops here. Instead, add them to `kd.contrib.data`
   # ****************************************************************************
 
-  # TODO(epot): Should migrate all users to use explicitly `kd.data.tf`
+  # Transforms here supports both PyGrain (`kd.data.py`) and `tf.data`
+  # (`kd.data.tf`) pipelines.
+  # For extra PyGrain-only or TF-only transforms, see `kd.data.py` or
+  # `kd.data.tf`
+
+  # ====== Structure transforms ======
+  from kauldron.data.transforms.base import AddConstants
   from kauldron.data.transforms.base import Elements
   from kauldron.data.transforms.base import ElementWiseTransform
   from kauldron.data.transforms.base import TreeFlattenWithPath
+  # ====== Random transforms ======
+  # ====== Map transforms ======
+  from kauldron.data.transforms.map_transforms import Cast
   from kauldron.data.transforms.map_transforms import Gather
   from kauldron.data.transforms.map_transforms import Rearrange
+  from kauldron.data.transforms.map_transforms import Resize
   from kauldron.data.transforms.map_transforms import ValueRange
