@@ -72,7 +72,7 @@ class TypeCheckError(typeguard.TypeCheckError):
     msg = super().__str__()
     arg_reprs = []
     for name, value in self.arguments.items():
-      ann = self.annotations[name]
+      ann = self.annotations.get(name, inspect.Parameter.empty)
       if ann is inspect.Parameter.empty:
         key_repr = name
       else:
@@ -154,7 +154,7 @@ def typechecked(fn):
       else:
         memo = typeguard.TypeCheckMemo(globalns, localns)
         typeguard._functions.check_argument_types(  # pylint: disable=protected-access
-            fn.__name__, annotated_arguments, memo=memo
+            py_func.__name__, annotated_arguments, memo=memo
         )
 
       retval = fn(*args, **kwargs)
@@ -163,7 +163,7 @@ def typechecked(fn):
           typeguard.check_return_type(retval, memo)
         else:
           typeguard._functions.check_return_type(  # pylint: disable=protected-access
-              fn.__name__, retval, annotations["return"], memo
+              py_func.__name__, retval, annotations["return"], memo
           )
       return retval
     except typeguard.TypeCheckError as e:
