@@ -16,11 +16,11 @@
 
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 import functools
 import inspect
 import re
-import sys
 import types
 import typing
 from typing import Any, Type, TypedDict, Union
@@ -46,7 +46,30 @@ def check_type(
     expected_type: Any,
 ) -> None:
   """Ensure that value matches expected_type, alias for typeguard.check_type."""
-  return typeguard.check_type(value, expected_type)
+  try:
+    return typeguard.check_type(value, expected_type)
+  except typeguard.TypeCheckError as e:
+    parent_frame = inspect.stack()[1]
+
+    raise TypeCheckError(
+        message=str(e),
+        arguments={"value": value},
+        return_value=_undef,
+        annotations={"value": expected_type},
+        return_annotation=None,
+        frame=parent_frame,
+    ).with_traceback(e.__traceback__) from e.__cause__
+  except Exception as e:
+    parent_frame = inspect.stack()[1]
+
+    raise TypeCheckError(
+        message=f"Unknown error '{str(e)}' occurred during check_type().",
+        arguments={"value": value},
+        return_value=_undef,
+        annotations={"value": expected_type},
+        return_annotation=None,
+        frame=parent_frame,
+    ) from e
 
 
 class TypeCheckError(typeguard.TypeCheckError):
@@ -59,14 +82,24 @@ class TypeCheckError(typeguard.TypeCheckError):
       return_value: Any,
       annotations: dict[str, Any],
       return_annotation: Any,
-      memo: shape_spec.Memo,
+      func: Any = None,
+      frame: Any = None,
   ):
     super().__init__(message)
     self.arguments = arguments
     self.return_value = return_value
     self.annotations = annotations
     self.return_annotation = return_annotation
-    self.memo = memo
+    self.memo = shape_spec.Memo.from_current_context()
+    if func is not None:
+      self.fn_name = func.__qualname__,
+      line = func.__code__.co_firstlineno
+      self.file = f"{inspect.getfile(func)}:{line}"
+    else:
+      if frame is not None:
+        frame = inspect.stack()[2]
+      self.fn_name = frame.function
+      self.file = f"{frame.filename}:{frame.lineno}"
 
   def __str__(self) -> str:
     msg = super().__str__()
@@ -82,21 +115,24 @@ class TypeCheckError(typeguard.TypeCheckError):
     args_string = "\n".join(arg_reprs)
     if self.return_value is _undef:
       return (
-          f"{msg}\n\nInputs:\n{args_string}\n\n"
-          f"Inferred Dims:\n {self.memo!r}\n\n"
+          f"{msg}\n\n"
+          f"Function: {self.fn_name} in {self.file}\n\n"
+          f"Inputs:\n{args_string}\n\n"
+          f"Inferred Dims:\n {self.memo!r}\n"
       )
     else:
       ret_string = _format_return_values(self.return_value)
       ret_ann = self._annotation_repr(self.return_annotation)
       return (
-          f"{msg}\n\nInputs:\n{args_string}\n\n"
+          f"{msg}\n\n"
+          f"Function: {self.fn_name} in {self.file}\n\n"
+          f"Inputs:\n{args_string}\n\n"
           f"Return -> {ret_ann}:\n{ret_string}\n\n"
-          f"Inferred Dims:\n {self.memo!r}\n\n"
+          f"Inferred Dims:\n {self.memo!r}\n"
       )
 
   @staticmethod
   def _annotation_repr(ann: Any) -> str:
-    # TODO(klausg): handle more complex annotations (e.g. TypedDict)
     # TODO(klausg): cleanup
     shape_ann = ann
     if typing.get_origin(ann) == types.UnionType:
@@ -104,7 +140,93 @@ class TypeCheckError(typeguard.TypeCheckError):
     if hasattr(shape_ann, "_kd_repr"):
       return shape_ann._kd_repr  # pylint: disable=protected-access
     else:
-      return repr(ann)
+      return typeguard._utils.get_type_name(ann)  # pylint: disable=protected-access
+
+
+@contextlib.contextmanager
+def _shape_context(bound_args, annotations, fn):
+  """Context manager to push and pop shape memo, and improve error messages."""
+  # Hide the function from the traceback. Supported by Pytest and IPython
+  __tracebackhide__ = True  # pylint: disable=unused-variable,invalid-name
+  return_annotation = annotations.get("return", _undef)
+  return_store = {"return_value": _undef}
+  try:
+    jaxtyping._storage.push_shape_memo(bound_args.arguments)  # pylint: disable=protected-access
+    yield return_store
+
+  except TypeCheckError:
+    raise
+  except typeguard.TypeCheckError as e:
+    # Use function signature to construct a complete list of named arguments
+    bound_args.apply_defaults()
+    raise TypeCheckError(
+        str(e),
+        arguments=bound_args.arguments,
+        return_value=return_store["return_value"],
+        annotations=annotations,
+        return_annotation=return_annotation,
+        func=fn,
+    ).with_traceback(e.__traceback__) from e.__cause__
+  finally:
+    jaxtyping._storage.pop_shape_memo()  # pylint: disable=protected-access
+
+
+def _check_argument_types(func, args, kwargs, bound_args, annotations):
+  """Check argument types of a function against their annotations."""
+  __tracebackhide__ = True  # pylint: disable=unused-variable,invalid-name
+
+  local_ns = {}  # TODO(klausg): do we need to pass this?
+  try:
+    if hasattr(typeguard, "CallMemo"):  # old version of typeguard
+      memo = typeguard.CallMemo(func, local_ns, args=args, kwargs=kwargs)
+      typeguard.check_argument_types(memo)
+    else:
+      annotated_arguments = {
+          k: (v, annotations[k])
+          for k, v in bound_args.arguments.items()
+          if k in annotations
+      }
+      memo = typeguard.TypeCheckMemo(func.__globals__, local_ns)
+      typeguard._functions.check_argument_types(  # pylint: disable=protected-access
+          func.__name__, annotated_arguments, memo=memo
+      )
+  except typeguard.TypeCheckError:
+    raise
+  except Exception as e:
+    raise TypeCheckError(
+        message=f"Unknown error '{str(e)}' occurred during type-checking of "
+                f"function {func.__qualname__}.",
+        arguments=bound_args.arguments,
+        return_value=_undef,
+        annotations=annotations,
+        return_annotation=annotations.get("return", _undef),
+        func=func,
+    ) from e
+  return memo
+
+
+def _check_return_type(func, retval, bound_args, annotations, memo):
+  """Check return type of a function against its annotation."""
+  try:
+    if "return" in annotations:
+      if hasattr(typeguard, "CallMemo"):  # old version of typeguard
+        typeguard.check_return_type(retval, memo)
+      else:
+        typeguard._functions.check_return_type(  # pylint: disable=protected-access
+            func.__name__, retval, annotations["return"], memo
+        )
+  except typeguard.TypeCheckError:
+    raise
+  except Exception as e:
+    raise TypeCheckError(
+        message=f"Unknown error '{str(e)}' occurred during type-checking of "
+                f"function {func.__qualname__}.",
+        arguments=bound_args.arguments,
+        return_value=retval,
+        annotations=annotations,
+        return_annotation=annotations.get("return", _undef),
+        func=func,
+    ) from e
 
 
 def typechecked(fn):
@@ -112,75 +234,31 @@ def typechecked(fn):
   if hasattr(fn, "__wrapped__"):
     raise AssertionError("@typechecked should be the innermost decorator")
 
-  @epy.maybe_reraise(lambda: f"Error in {fn.__qualname__}: ")
-  @jaxtyping.jaxtyped(typechecker=None)
+  sig = inspect.signature(fn)
+
   @functools.wraps(fn)
   def _reraise_with_shape_info(*args, _typecheck: bool = True, **kwargs):
     # Hide the function from the traceback. Supported by Pytest and IPython
     __tracebackhide__ = True  # pylint: disable=unused-variable,invalid-name
 
+    if not (annotations := getattr(fn, "_cached_annotations", None)):
+      annotations = typing.get_type_hints(fn, include_extras=True)
+      fn._cached_annotations = annotations  # pylint: disable=protected-access
+
     if not (TYPECHECKING_ENABLED and _typecheck):
       # typchecking disabled globally or locally -> just return fn(...)
       return fn(*args, **kwargs)
 
-    # Find either the first Python wrapper or the actual function
-    py_func = inspect.unwrap(fn, stop=lambda f: hasattr(f, "__code__"))
-
-    sig = inspect.signature(py_func)
     bound_args = sig.bind(*args, **kwargs)
-    # manually reproduce the functionality of typeguard.typechecked, so that
-    # we get access to the returnvalue of the function
-    localns = sys._getframe(1).f_locals  # pylint: disable=protected-access
-    globalns = py_func.__globals__  # pylint: disable=protected-access
-    retval = _undef
 
-    annotations = typing.get_type_hints(
-        py_func,
-        globalns=globalns,
-        localns=localns,
-        include_extras=True,
-    )
-    annotated_arguments = {
-        k: (v, annotations[k])
-        for k, v in bound_args.arguments.items()
-        if k in annotations
-    }
-
-    try:
-      # TODO(klausg): remove this once typeguard is updated to 4.1.0
-      if hasattr(typeguard, "CallMemo"):  # old version of typeguard
-        memo = typeguard.CallMemo(py_func, localns, args=args, kwargs=kwargs)
-        typeguard.check_argument_types(memo)
-      else:
-        memo = typeguard.TypeCheckMemo(globalns, localns)
-        typeguard._functions.check_argument_types(  # pylint: disable=protected-access
-            py_func.__name__, annotated_arguments, memo=memo
-        )
+    with _shape_context(bound_args, annotations, fn) as s:
+      memo = _check_argument_types(fn, args, kwargs, bound_args, annotations)
 
       retval = fn(*args, **kwargs)
-      if "return" in annotations:
-        if hasattr(typeguard, "CallMemo"):  # old version of typeguard
-          typeguard.check_return_type(retval, memo)
-        else:
-          typeguard._functions.check_return_type(  # pylint: disable=protected-access
-              py_func.__name__, retval, annotations["return"], memo
-          )
-      return retval
-    except typeguard.TypeCheckError as e:
-      # Use function signature to construct a complete list of named arguments
-      sig = inspect.signature(fn)
-      bound_args = sig.bind(*args, **kwargs)
-      bound_args.apply_defaults()
+      s["return_value"] = retval
 
-      # TODO(klausg): filter the stacktrace to exclude all the typechecking
-      raise TypeCheckError(
-          str(e),
-          arguments=bound_args.arguments,
-          return_value=retval,
-          annotations=annotations,
-          return_annotation=sig.return_annotation,
-          memo=shape_spec.Memo.from_current_context(),
-      ) from e
+      _check_return_type(fn, retval, bound_args, annotations, memo)
+      return retval
 
   return _reraise_with_shape_info
 
@@ -308,6 +386,8 @@ def _custom_array_type_union_checker(
     memo: typeguard.TypeCheckMemo,
 ) -> None:
   """Custom checker for typeguard to better support Array type annotations."""
+  # Hide the function from the traceback. Supported by Pytest and IPython
+  __tracebackhide__ = True  # pylint: disable=unused-variable,invalid-name
   del origin_type, memo
   individual_matches = [ArraySpecMatch(value, arg) for arg in args]
   correct_matches = [m.all_correct for m in individual_matches]
