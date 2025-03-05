@@ -71,8 +71,7 @@ class Norm(base.Metric):
       specifies the axis of x along which to compute the vector norms. If axis
       is a 2-tuple, it specifies the axes that hold 2-D matrices, and the matrix
       norms of these matrices are computed. If axis is None then either a vector
-      norm (when x is 1-D) or a matrix norm (when x is 2-D) is returned. The
-      default is None.
+      norm (when x is 1-D) or a matrix norm (when x is 2-D) is returned.
     ord: Order of the norm. Possible values: None, "fro", "nuc", np.inf,
       -np.inf, -2, -1, 0, or any integer or float. See `np.linalg.norm`.
     aggregation_type: How to aggregate the norms in TreeReduce. Average will
