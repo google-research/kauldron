@@ -30,7 +30,7 @@ import tensorflow_datasets as tfds
 
 with epy.lazy_imports(
     error_callback=(
-        'To use HuggingFace datasets, please use `pip install datasets`.'
+        'To use HuggingFace datasets, please install `pip install datasets`.'
     )
 ):
   import datasets  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error

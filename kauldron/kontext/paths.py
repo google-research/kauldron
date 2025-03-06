@@ -159,9 +159,12 @@ class Path(AbstractPath):
               struct = f"\nContext structure: {epy.pretty_repr(struct)}"
             else:
               struct = ""
+            # TODO(epot): Better error message for dict (use did you mean ?)
             raise KeyError(
-                f"Could not find path: {self} in {type(context)}."
-                f" {type(result)} has no attributes/key {part}.{struct}"
+                f"Could not find path '{self}' in the"
+                f" {type(context).__name__} object. The"
+                f" {type(result).__name__} has no attributes/key:"
+                f" {part!r}.{struct}"
             ) from None
           return default
     return result
