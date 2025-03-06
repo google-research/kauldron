@@ -158,7 +158,6 @@ def _shape_context(bound_args, annotations, fn):
     raise
   except typeguard.TypeCheckError as e:
     # Use function signature to construct a complete list of named arguments
-    bound_args.apply_defaults()
     raise TypeCheckError(
         str(e),
         arguments=bound_args.arguments,
@@ -250,6 +249,7 @@ def typechecked(fn):
       return fn(*args, **kwargs)
 
     bound_args = sig.bind(*args, **kwargs)
+    bound_args.apply_defaults()
 
     with _shape_context(bound_args, annotations, fn) as s:
       memo = _check_argument_types(fn, args, kwargs, bound_args, annotations)
