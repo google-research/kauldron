@@ -92,7 +92,7 @@ class TypeCheckError(typeguard.TypeCheckError):
     self.return_annotation = return_annotation
     self.memo = shape_spec.Memo.from_current_context()
     if func is not None:
-      self.fn_name = func.__qualname__,
+      self.fn_name = func.__qualname__
       line = func.__code__.co_firstlineno
       self.file = f"{inspect.getfile(func)}:{line}"
     else:
