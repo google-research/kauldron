@@ -47,8 +47,8 @@ def plot_schedules(schedules: PyTree[Schedule], num_steps: int) -> alt.Chart:
   schedules_df = pd.DataFrame(rows)
 
   # construct an Altair plot
-  highlight = alt.selection(
-      type="single", on="mouseover", fields=["Schedule"], nearest=True
+  highlight = alt.selection_point(
+      on="mouseover", fields=["Schedule"], nearest=True
   )
   base = alt.Chart(schedules_df).encode(
       x="Step:Q",
@@ -59,10 +59,11 @@ def plot_schedules(schedules: PyTree[Schedule], num_steps: int) -> alt.Chart:
   points = (
       base.mark_circle()
       .encode(opacity=alt.value(0))
-      .properties(selection=highlight, width=600)
+      .add_params(highlight)
+      .properties(width=600)
   )
   lines = base.mark_line().encode(
-      size=alt.condition(~highlight, alt.value(1), alt.value(3))
+      size=alt.when(~highlight).then(alt.value(1)).otherwise(alt.value(3))
   )
 
   return points + lines
