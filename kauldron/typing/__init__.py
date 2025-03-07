@@ -53,9 +53,9 @@ import numpy as np
 PRNGKey = UInt32["2"]
 PRNGKeyLike = Union[int, Sequence[int], np.ndarray, PRNGKey]
 
-Dtype = Any
+DType = jax.typing.DTypeLike
 
-Initializer = Callable[[PRNGKey, Shape, Dtype], Array]
+Initializer = Callable[[PRNGKey, Shape, DType], Array]
 Axes = int | tuple[int, ...]
 AxisName = Hashable
 Schedule = Callable[[int], float | Float[""]]

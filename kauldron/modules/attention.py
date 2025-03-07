@@ -22,11 +22,11 @@ import flax.linen as nn
 import jax
 import jax.numpy as jnp
 import kauldron.modules as knn
-from kauldron.typing import Axes, Bool, Float, Initializer, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Axes, Bool, DType, Float, Initializer, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 
 def softmax(
-    x: Float['*a'], axis: Axes = -1, dtype: jnp.dtype | None = jnp.float32
+    x: Float['*a'], axis: Axes = -1, dtype: DType | None = jnp.float32
 ) -> Float['*a']:
   if dtype is None:
     dtype = x.dtype
@@ -73,7 +73,7 @@ def dot_product_attention_weights(
     softmax_axis: Axes = -1,
     bias: Optional[Float['*b #h #q #k']] = None,
     mask: Optional[Bool['*b #h #q #k']] = None,
-    softmax_dtype: jnp.dtype | None = jnp.float32,
+    softmax_dtype: DType | None = jnp.float32,
 ) -> Float['*b h q k']:
   """Computes dot-product attention weights given query and key.
 

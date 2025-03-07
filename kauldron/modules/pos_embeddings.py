@@ -21,7 +21,7 @@ import warnings
 from flax import linen as nn
 import jax.numpy as jnp
 from kauldron.modules import knn_types
-from kauldron.typing import Axes, Dtype, Float, Initializer, Shape, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Axes, DType, Float, Initializer, Shape, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 
 class AddEmbedding(nn.Module):
@@ -78,10 +78,10 @@ class LearnedEmbedding(nn.Module):
 
   Attributes:
     emb_init: Initializer for the position embeddings.
-    dtype: Dtype of the position embedding. Default to float32.
+    dtype: DType of the position embedding. Default to float32.
   """
 
-  dtype: Dtype = jnp.float32
+  dtype: DType = jnp.float32
   emb_init: Initializer = nn.initializers.normal(stddev=0.02)  # From BERT.
 
   @typechecked
@@ -107,7 +107,7 @@ class ZeroEmbedding(nn.Module):
   Implements the knn_types.PositionEmbedding protocol.
   """
 
-  dtype: Dtype = jnp.float32
+  dtype: DType = jnp.float32
 
   @typechecked
   @nn.compact
