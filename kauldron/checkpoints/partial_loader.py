@@ -98,7 +98,7 @@ class PartialKauldronLoader(epy.ContextManager, AbstractPartialLoader):
       workdir='/path/to/original/work_unit/',
       new_to_old={  # Mapping params
           # '<new_path>':            '<source_path>'
-          'params.decoder.layers_0': 'params.endoder',
+          'params.decoder.layers_0': 'params.encoder',
       },
   )
 
