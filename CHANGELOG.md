@@ -8,9 +8,14 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 ## [Unreleased]
 
+## [1.1.2] - 2025-02-11
+
+*   Fix `kd.sharding.FSDPSharding()` to supports `jax.ShapeDtypeStruct`
 *   `kd.data`:
     *   `kd.data.py.PyGrainPipeline` supports direct indexing (`ds[0]`).
     *   `kd.data.py.HuggingFace` supports
+*   Typeguard / typechecking
+*   +various changes and improvements
 
 ## [1.1.1] - 2025-02-11
 
@@ -113,7 +118,8 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 <!-- mdlint off(LINK_UNUSED_ID) -->
 
-[Unreleased]: https://github.com/google-research/kauldron/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/google-research/kauldron/compare/v1.2.0...HEAD
+[1.1.1]: https://github.com/google-research/kauldron/releases/tag/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/google-research/kauldron/releases/tag/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/google-research/kauldron/releases/tag/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/google-research/kauldron/releases/tag/v0.1.0...v1.0.0
