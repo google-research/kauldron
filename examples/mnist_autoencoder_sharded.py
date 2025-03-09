@@ -15,10 +15,9 @@
 r"""Minimal example of model parallelism (API might change in the future).
 
 ```sh
-xmanager launch third_party/py/kauldron/xm/launch.py -- \
-  --cfg=third_party/py/kauldron/examples/mnist_autoencoder_sharded.py \
-  --xp.use_interpreter \
-  --xp.platform=df=2x2
+python -m kauldron.main \
+    --cfg=examples/mnist_autoencoder_sharded.py \
+    --cfg.workdir=/tmp/kauldron_oss/workdir
 ```
 
 """

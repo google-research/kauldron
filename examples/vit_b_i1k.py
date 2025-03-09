@@ -15,10 +15,9 @@
 r"""Runs a ViT-B/16 classifer on Imagenet 64x64.
 
 ```sh
-xmanager launch third_party/py/kauldron/xm/launch.py -- \
-  --cfg=third_party/py/kauldron/examples/vit_b_i1k.py \
-  --xp.use_interpreter \
-  --xp.platform=df=2x2
+python -m kauldron.main \
+    --cfg=examples/vit_b_i1k.py \
+    --cfg.workdir=/tmp/kauldron_oss/workdir
 ```
 
 """
