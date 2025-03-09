@@ -50,7 +50,7 @@ from kauldron.typing.type_check import typechecked
 from kauldron.typing.type_check import TypeCheckError
 import numpy as np
 
-PRNGKey = UInt32["2"]
+PRNGKey = UInt32["2"] | jax.Array
 PRNGKeyLike = Union[int, Sequence[int], np.ndarray, PRNGKey]
 
 DType = jax.typing.DTypeLike

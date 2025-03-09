@@ -33,6 +33,8 @@ from kauldron.typing import shape_spec
 with epy.lazy_imports():
   import typeguard  # pylint: disable=g-import-not-at-top
 
+# TODO(epot): Filter the typeguard from the stacktrace.
+
 
 # a global switch to disable typechecking
 # (e.g. for debugging or colab hacking)
@@ -206,6 +208,8 @@ def _check_argument_types(func, args, kwargs, bound_args, annotations):
 
 def _check_return_type(func, retval, bound_args, annotations, memo):
   """Check return type of a function against its annotation."""
+  __tracebackhide__ = True  # pylint: disable=unused-variable,invalid-name
+
   try:
     if "return" in annotations:
       if hasattr(typeguard, "CallMemo"):  # old version of typeguard
