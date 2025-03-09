@@ -18,12 +18,10 @@ This config showcases some advanced features. It is not meant to be forked
 as-is but serve as inspiration to pick & choose from.
 
 ```sh
-xmanager launch third_party/py/kauldron/xm/launch.py -- \
-  --cfg=third_party/py/kauldron/examples/tiny_vit_advanced.py \
-  --xp.use_interpreter \
-  --xp.platform=jf=2x2
+python -m kauldron.main \
+    --cfg=examples/tiny_vit_advanced.py \
+    --cfg.workdir=/tmp/kauldron_oss/workdir
 ```
-
 """
 
 from kauldron import konfig

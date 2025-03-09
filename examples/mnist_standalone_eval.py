@@ -21,12 +21,7 @@ will contain 3 jobs:
   - grouped_evals: Executing `eval_train` and `eval_test`.
   - isolated_eval: Another standalone eval job, running on a different platform.
 
-```sh
-xmanager launch third_party/py/kauldron/xm/launch.py -- \
-  --cfg=third_party/py/kauldron/examples/mnist_standalone_eval.py \
-  --xp.use_interpreter \
-  --xp.platform=jf=2x2
-```
+/!\ Remote evaluators are not yet supported in open-source!!!
 
 """
 

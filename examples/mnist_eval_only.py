@@ -18,12 +18,9 @@ This require to first run the `mnist_autoencoder.py` training. Then this
 config will perform a separate evaluation.
 
 ```sh
-xmanager launch third_party/py/kauldron/xm/launch.py -- \
-  --xp.use_interpreter \
-  --xp.platform=jf=2x2 \
-  --cfg=third_party/py/kauldron/examples/mnist_eval_only.py \
-  --cfg.aux.xid=116820528 \
-  --cfg.aux.wid=1
+python -m kauldron.main \
+    --cfg=examples/mnist_eval_only.py \
+    --cfg.workdir=/tmp/kauldron_oss/workdir
 ```
 
 """
