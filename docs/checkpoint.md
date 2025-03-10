@@ -7,7 +7,7 @@ can use the `init_transform` argument of `kd.train.Trainer`
 
 ```python
 cfg.init_transform = kd.ckpts.PartialKauldronLoader(
-    workdir=kd.ckpts.workdir_from_xid(12345, wid=1),
+    workdir=/path/to/old/workdir/,
     new_to_old={  # Mapping params
         # '<new_path>':            '<source_path>'
         'params.decoder.layers_0': 'params.endoder',
@@ -34,7 +34,7 @@ To relaunch an experiment, you can:
 
     ```python
     cfg.init_transform = kd.ckpts.PartialKauldronLoader(
-        workdir=kd.ckpts.workdir_from_xid(12345, wid=1),
+        workdir=/path/to/old/workdir/,
         new_to_old={  # Mapping params
             'step': 'step',
             'params': 'params',
@@ -42,13 +42,4 @@ To relaunch an experiment, you can:
             'opt_state': 'opt_state',
         },
     )
-    ```
-
-*   Restart a new job while re-using the previous workdir: If your work-unit was
-    launched in `/path/to/.../kd/<xid>/<wid>/`, you can relaunch it with:
-
-    ```sh
-    --xp.root_dir=/path/to/.../kd/ \
-    --xp.subdir_format.xp_dirname=<xid> \
-    --xp.subdir_format.wu_dirname=<wid>
     ```

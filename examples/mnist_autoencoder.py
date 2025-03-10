@@ -15,8 +15,10 @@
 r"""Minimal example training a simple Autoencoder on MNIST.
 
 Run:
+
 ```sh
-python main.py --cfg=examples/mnist_autoencoder.py \
+python -m kauldron.main \
+    --cfg=examples/mnist_autoencoder.py \
     --cfg.workdir=/tmp/kauldron_oss/workdir
 ```
 

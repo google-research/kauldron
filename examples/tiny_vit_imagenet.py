@@ -15,10 +15,9 @@
 r"""Runs a ViT-Tiny classifer on Imagenet 64x64.
 
 ```sh
-xmanager launch third_party/py/kauldron/xm/launch.py -- \
-  --cfg=third_party/py/kauldron/examples/tiny_vit_imagenet.py \
-  --xp.use_interpreter \
-  --xp.platform=jf=2x2
+python -m kauldron.main \
+    --cfg=examples/tiny_vit_imagenet.py \
+    --cfg.workdir=/tmp/kauldron_oss/workdir
 ```
 
 """

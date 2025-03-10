@@ -28,11 +28,6 @@ kwargs. Evaluators can run:
 *   Within the `train` job:
     *   `EveryNSteps`: Run evaluation every `X` steps
     *   `Once`: Run a single evaluation after `X` steps
-*   In a separate XManager job:
-    *   `StandaloneEveryCheckpoint`: Run evaluation every time a new checkpoint
-        is found.
-    *   `StandaloneLastCheckpoint`: Only run evaluation once, after train has
-        completed.
 
 Evaluators run in a standalone job can be grouped together through the
 `job_group='group_name'` attribute. This allow to save resources by sharing the
@@ -44,15 +39,6 @@ evaluator on a different platform,...
 See
 [mnist_standalone_eval.py](https://github.com/google-research/kauldron/tree/main/examples/mnist_standalone_eval.py)
 for an example.
-
-When run as a standalone job, you can use different XManager options between the
-train and eval jobs (defined both in the config or through flags):
-
-*   `--xp.platform`: Set the value globally (for both train and eval)
-*   `--cfg.xm_job.platform`: Set the value for train only
-*   `--cfg.evals.<my-eval>.run.platform`: Set the value for eval only
-
-Note: Using `--xp.platfom` and `--cfg.xxx.platform` are mutually exclusive!
 
 ### Start an eval-only job
 
