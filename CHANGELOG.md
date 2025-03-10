@@ -8,6 +8,10 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 ## [Unreleased]
 
+## [1.2.1] - 2025-03-10
+
+*   Minor bug fixes.
+
 ## [1.1.2] - 2025-02-11
 
 *   Fix `kd.sharding.FSDPSharding()` to supports `jax.ShapeDtypeStruct`
