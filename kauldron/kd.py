@@ -47,6 +47,19 @@ with _epy.lazy_api_imports(globals()):
   from kauldron.utils import xmanager as xm
   from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 
+# Filter logs of INFO and below from orbax and grain to reduce the noise.
+from kauldron.utils import _filter_logs
+_filter_logs.add_filter(
+    modules_to_filter={
+        "handler_type_registry",
+        "checkpoint_manager",
+        "abstract_checkpointer",
+        "composite_checkpoint_handler",
+        "async_checkpointer",
+        "grain_pool",
+    }
+)
+
 # Import contrib at the end as they can use all
 from kauldron import contrib  # pylint: disable=g-bad-import-order  # pytype: disable=import-error
 
