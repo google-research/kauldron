@@ -142,28 +142,27 @@ class RocAuc(base.Metric):
       # for which there are no GT examples and renormalize probabilities
       # This will give wrong results, but allows getting a value during training
       # where it cannot be guaranteed that each batch contains all classes.
+      curr_unique_label = np.unique(labels).tolist()
       if self.parent.unique_labels is None:
-        unique_labels = np.unique(labels).tolist()
-        curr_unique_label = unique_labels
+        unique_labels = curr_unique_label
       else:
         # If we are testing on a small subset of data and by chance it does not
         # contain all classes, we need to provide the groundtruth labels
         # separately.
         unique_labels = self.parent.unique_labels
-        curr_unique_label = np.unique(labels).tolist()
-
       probs = out.probs[..., unique_labels]
       probs /= probs.sum(axis=-1, keepdims=True)  # renormalize
       check_type(probs, Float["b n"])
       if len(unique_labels) == 2:
-        # Binary mode: make it binary, otherwise sklearn complains.
+        # Binary mode: make it binary and assume positive class is 1, otherwise
+        # sklearn complains.
         assert (
             probs.shape[-1] == 2
         ), f"Unique labels are binary but probs.shape is {probs.shape}"
         probs = probs[..., 1]
       mask = out.mask[..., 0].astype(np.float32)
       check_type(mask, Float["b"])
-      if len(curr_unique_label) > 1:
+      if len(curr_unique_label) == len(unique_labels):
         # See comment above about small data subsets.
         return sklearn_metrics.roc_auc_score(
             y_true=labels,
