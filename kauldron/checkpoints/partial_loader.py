@@ -189,7 +189,13 @@ class _PartialRestoreCheckpointItem(checkpoint_items.CheckpointItem):
     state = ocp.utils.serialize_tree(self.state, keep_empty_nodes=True)
 
     for new_path, _ in self.new_to_old.items():
-      kontext.set_by_path(state, new_path, partial_restore[new_path])
+      if new_path == 'opt_state':
+        opt_state_as_dict = ocp.utils.serialize_tree(
+            partial_restore[new_path], keep_empty_nodes=True
+        )
+        kontext.set_by_path(state, new_path, opt_state_as_dict)
+      else:
+        kontext.set_by_path(state, new_path, partial_restore[new_path])
 
     state = ocp.utils.deserialize_tree(
         state, target=self.state, keep_empty_nodes=True
