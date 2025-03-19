@@ -87,8 +87,6 @@ class Context:
   metric_states: Any = None
   summary_states: Any = None
 
-  replace = dataclasses.replace
-
   @classmethod
   def from_state_and_batch(
       cls,
@@ -120,3 +118,8 @@ class Context:
         metric_states=self.metric_states if return_metrics else None,
         summary_states=self.summary_states if return_summaries else None,
     )
+
+  def replace(self, **changes: Any) -> Self:
+    # spelled out rather than using `replace = dataclasses.replace` to allow
+    # Cider to correctly infer the return type.
+    return dataclasses.replace(self, **changes)

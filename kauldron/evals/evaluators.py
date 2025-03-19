@@ -233,14 +233,7 @@ class Evaluator(EvaluatorBase):
           batch=batch,
           sharding=self.base_cfg.sharding,
       )
-      # Merge/accumulate all states
-      # By default, cross-process communication is only allowed inside
-      # `jax.jit` but clu metric do not support `jax.jit`:
-      # https://github.com/google/CommonLoopUtils/tree/HEAD/clu/metrics.py;l=383;rcl=559340497
-      # So we locally allow cross-process communication for merging the
-      # metrics
-      with jax.spmd_mode('allow_all'), jax.transfer_guard('allow'):
-        merged_aux = merged_aux | aux
+      merged_aux = merged_aux | aux
     if merged_aux is None:  # At least one iteration
       raise ValueError(
           f'Dataset for eval {self.name!r} did not yield any elements:\n'

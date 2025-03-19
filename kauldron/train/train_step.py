@@ -19,7 +19,7 @@ from __future__ import annotations
 import dataclasses
 import functools
 import typing
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, Protocol
 
 import flax
 import flax.linen as nn
@@ -264,13 +264,12 @@ class TrainStep(config_util.UpdateFromRootCfg):
     """Training step to be wrapped by checkify and called by `step`."""
     # NOTE: ensure that evaluation metrics are computed from the OLD model state
     # *before* backprop gradients are applied.
-    grad_fn = jax.grad(
+    grad_fn: GradFn = jax.grad(
         forward_with_loss,
         argnums=0,
         has_aux=True,
         allow_int=True,
     )
-    # TODO(epot): Should `jax.named_call` be moved downstream directly in optax?
     grad_fn = jax.named_call(grad_fn, name="grad_fn")
 
     context = context_lib.Context.from_state_and_batch(state=state, batch=batch)
@@ -282,7 +281,6 @@ class TrainStep(config_util.UpdateFromRootCfg):
         is_training=True,
     )
     params_grads = context_grads.params
-    assert isinstance(context, context_lib.Context)
     updates, new_opt_state = jax.named_call(self.optimizer.update)(
         params_grads, state.opt_state, state.params
     )
@@ -301,7 +299,6 @@ class TrainStep(config_util.UpdateFromRootCfg):
         updates=updates,
         opt_state=state.opt_state,
     )
-
     context = self.aux.update_context(context)
 
     return next_state, context
@@ -313,6 +310,7 @@ def forward(
     model: nn.Module,
     rngs: rngs_lib.Rngs,
     is_training: bool,
+    method: Optional[str] = None,
 ) -> context_lib.Context:
   """Forward pass of the model.
 
@@ -322,11 +320,10 @@ def forward(
     model: Model to use for the forward pass.
     rngs: Random numbers to use for the forward pass.
     is_training: Whether to run the model in training or eval mode.
+    method: Name of the flax model method to call (defaults to `__call__`).
 
   Returns:
-    loss_total: Total loss.
-    context: Context with the updated `loss_total`, `loss_states`,
-      `interms`, and `collections`.
+    context: Context with the updated `preds`, `interms`, and `collections`.
   """
   args, kwargs = data_utils.get_model_inputs(model, context)
   preds, collections = model.apply(
@@ -334,8 +331,9 @@ def forward(
       *args,
       rngs=rngs,
       mutable=True,
-      capture_intermediates=True,  # TODO(klausg): check if need a filter here
+      capture_intermediates=True,
       is_training_property=is_training,
+      method=method,
       **kwargs,
   )
   # Note the params can be mutable if the model call the same sub-model
@@ -371,7 +369,7 @@ def forward_with_loss(
 
   Returns:
     loss_total: Total loss.
-    context: Context with the updated `loss_total`, `loss_states`,
+    context: Context with the updated `loss_total`, `loss_states`, `preds`,
       `interms`, and `collections`.
   """
   context = forward(
@@ -387,6 +385,23 @@ def forward_with_loss(
       loss_states=loss_states,
       loss_total=loss_total,
   )
+
+
+class GradFn(Protocol):
+  """Signature of the gradient function of forward_with_loss."""
+
+  # To allow type checking of return types etc.
+
+  def __call__(
+      self,
+      context: context_lib.Context,
+      *,
+      model: nn.Module,
+      losses: Mapping[str, kd_losses.Loss],
+      rngs: rngs_lib.Rngs,
+      is_training: bool,
+  ) -> tuple[context_lib.Context, context_lib.Context]:
+    ...
 
 
 @dataclasses.dataclass(kw_only=True, eq=True, frozen=True)
