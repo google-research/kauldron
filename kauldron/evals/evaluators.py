@@ -233,7 +233,12 @@ class Evaluator(EvaluatorBase):
           batch=batch,
           sharding=self.base_cfg.sharding,
       )
-      merged_aux = merged_aux | aux
+      # Merge/accumulate all states
+      # By default, cross-process communication is only allowed inside
+      # `jax.jit` so we locally allow cross-process communication for merging
+      # the metrics
+      with jax.spmd_mode('allow_all'), jax.transfer_guard('allow'):
+        merged_aux = merged_aux | aux
     if merged_aux is None:  # At least one iteration
       raise ValueError(
           f'Dataset for eval {self.name!r} did not yield any elements:\n'
