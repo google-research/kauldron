@@ -2,6 +2,8 @@
 
 ## Konfig best practices
 
+Note: Please instead read the which explains best practices.
+
 ### Keep config code separated
 
 Because `konfig` and standard Python code looks similar some conventions should
@@ -32,32 +34,3 @@ Note: If you have config files inside `configs/` that do not contain
 `get_config()` (e.g. helpers containing only part of the config), you
 need to exclude them from the config test through
 `kauldron_binary(config_srcs_exclude=["configs/my_helper.py"])`.
-
-### Colab and imports
-
-On Colab, it's very easy to mix regular imports with `konfig.imports()`. To
-avoid this issue:
-
-* On Colab: **Never** use `konfig.imports()`. Instead, locally mock the modules
-  with `konfig.mock_modules()`.
-
-  ```python
-  from flax import nn  # All imports are outside `konfig.imports()`
-  import optax
-
-  # Imports are mocked only locally
-  with konfig.mock_modules():
-    cfg.model = nn.Dense()
-  ```
-
-* Outside Colab: **Only** use `konfig.import()` to import configurables. This
-  ensure clear boundaries between configurable modules and the config
-  implementation.
-
-  ```python
-  with konfig.imports():
-    from flax import nn
-    import optax
-
-  cfg.model = nn.Dense()
-  ```

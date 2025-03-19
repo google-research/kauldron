@@ -11,6 +11,7 @@
     sharding
     checkpoint
     data
+    konfig_philosophy
 
 
 .. toctree::
