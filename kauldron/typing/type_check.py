@@ -567,7 +567,12 @@ def add_custom_checker_lookup_fn(lookup_fn):
   # Add custom array spec checker lookup function to typguard
   # check not for equality but for qualname, to avoid many copies when
   # reloading modules from colab
-  checker_lookup_fns = typeguard.checker_lookup_functions
+  if hasattr(typeguard, "checker_lookup_functions"):
+    # Recent `typeguard` has different API
+    checker_lookup_fns = typeguard.checker_lookup_functions
+  else:
+    # TODO(epot): Remove once typeguard is updated
+    checker_lookup_fns = typeguard.config.checker_lookup_functions
   for i, f in enumerate(checker_lookup_fns):
     if f.__qualname__ == lookup_fn.__qualname__:
       # replace
