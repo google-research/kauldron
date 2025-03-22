@@ -9,6 +9,12 @@ can use the `init_transform` argument of `kd.train.Trainer`
 cfg.init_transform = kd.ckpts.PartialKauldronLoader(
     workdir=/path/to/old/workdir/,
     new_to_old={  # Mapping params
+        # Only subtrees indicated in new_to_old are restored.
+        'params': 'params',
+        'collections': 'collections',
+        'step': 'step',
+        # The new_to_old dict can be used to rename subtrees, eg, when loading
+        # params from a different pretrained model.
         # '<new_path>':            '<source_path>'
         'params.decoder.layers_0': 'params.endoder',
     },
