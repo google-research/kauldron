@@ -124,6 +124,7 @@ class PartialKauldronLoader(epy.ContextManager, AbstractPartialLoader):
       default_factory=lambda: FrozenDict({
           'params': 'params',
           'collections': 'collections',
+          'step': 'step',
       })
   )
   step: int = -1
