@@ -21,10 +21,14 @@ import enum
 import functools
 from types import EllipsisType  # pylint: disable=g-importing-member
 from typing import Any, Optional, Union
+import warnings
 
 from etils import epath
 from etils import epy
-import lark
+
+# Silence deprecation warnings about sre_parse and sre_constants
+with warnings.catch_warnings(action="ignore", category=DeprecationWarning):
+  import lark  # pylint: disable=g-import-not-at-top
 
 
 class Wildcard(enum.StrEnum):

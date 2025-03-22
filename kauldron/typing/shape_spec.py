@@ -26,9 +26,12 @@ import operator
 import sys
 import typing
 from typing import Any, Callable, List, Optional
+import warnings
 
 import jaxtyping
-import lark
+# Silence deprecation warnings about sre_parse and sre_constants
+with warnings.catch_warnings(action="ignore", category=DeprecationWarning):
+  import lark  # pylint: disable=g-import-not-at-top
 
 
 if typing.TYPE_CHECKING:
