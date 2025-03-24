@@ -53,13 +53,15 @@ class Debug:
   """
 
   dump_hlo: bool = False
-  flax_profile: bool = True
+  flax_profile: bool = True  # Environment variable, so always safe to set.
   # Pytype is known to be slow (as of 2022Q1), so we disable it by default.
   # A particularly bad example: 290s vs 30s build-time on one-line change.
   pytype: bool = False
   catch_post_mortem: bool = False
-  xprof_port: bool = True
-  g3pdb_port: bool = True
+  # It would be nice if those values could be set with environment variables,
+  # so it could be available by default for all jobs which supports it.
+  xprof_port: bool = False
+  g3pdb_port: bool = False
 
 
 @merge_utils.add_merge_support

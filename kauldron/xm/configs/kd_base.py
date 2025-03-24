@@ -45,6 +45,8 @@ def get_config():
       sweep_info=kxm.KauldronSweep(),
       debug=kxm.Debug(
           catch_post_mortem=False,
+          xprof_port=True,
+          g3pdb_port=True,
       ),
       subdir_format=kxm.SubdirFormat(
           wu_dirname='{wid}{separator_if_sweep}{sweep_kwargs}',
