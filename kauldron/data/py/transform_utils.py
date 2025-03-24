@@ -125,6 +125,8 @@ def _apply_transform(
       ds = ds.batch(tr.batch_size, drop_remainder=tr.drop_remainder)
     case SliceDataset():
       ds = ds.slice(tr.slice)
+    case grain.experimental.FlatMapTransform():
+      ds = grain.experimental.FlatMapMapDataset(ds, tr)
     case _:
       raise ValueError(f"Unexpected transform type: {tr}")
   return ds
