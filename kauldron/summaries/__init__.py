@@ -25,4 +25,5 @@ from kauldron.summaries.images import ShowImages
 from kauldron.summaries.images import ShowSegmentations
 from kauldron.summaries.pointclouds import PointCloud
 from kauldron.summaries.pointclouds import ShowPointCloud
+from kauldron.summaries.texts import ShowTexts
 # pylint: enable=g-importing-member

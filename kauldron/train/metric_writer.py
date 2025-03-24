@@ -26,6 +26,7 @@ from typing import Any, Mapping, Optional
 from absl import logging
 from clu import metric_writers
 from clu import parameter_overview
+from etils import enp
 from etils import epath
 from etils import epy
 from etils.etree import jax as etree  # pylint: disable=g-importing-member
@@ -183,8 +184,7 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
 
     if timer:
       performance_stats = {
-          f"perf_stats/{k}": v
-          for k, v in timer.flush_metrics().items()
+          f"perf_stats/{k}": v for k, v in timer.flush_metrics().items()
       }
     else:
       performance_stats = {}
@@ -253,6 +253,17 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
                 for k, point_cloud in pc_summaries.items()
             },
         )
+
+      # Text summaries
+      text_summaries = {
+          name: value
+          for name, value in aux_result.summary_values.items()
+          if isinstance(value, str) or enp.is_array_str(value)
+      }
+      self.write_texts(
+          step=step,
+          texts={k: text for k, text in text_summaries.items()},
+      )
 
     # TODO(epot): This is blocking and slow. Is it really required ?
     # Should likely be only called once at the end of the training / eval.
