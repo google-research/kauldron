@@ -108,7 +108,24 @@ class PyGrainPipeline(pipelines.Pipeline):
     # TODO(b/362920968): We're forced to split `_root_ds` into both
     # `_root_map_ds` because `_root_map_ds` does not propagate `len`
     ds = self._root_map_ds
-    ds = ds.to_iter_dataset(read_options=self.read_options)
+
+    # Distribute the execution across multiple worker processes.
+    num_workers = _get_num_workers(self.num_workers)
+
+    if num_workers == 0:
+      # TODO(epot): Fix adhoc import thread-safety and restore this !!!
+      # Adhoc imports are not thread-safe, creating issues when lazy-imports
+      # get triggered inside the data pipeline.
+      # So disable pre-fetching added by `to_iter_dataset`.
+      read_options = grain.ReadOptions(
+          num_threads=0,
+          prefetch_buffer_size=0,
+      )
+    else:
+      read_options = self.read_options
+
+    # a prefetch at the end. When.
+    ds = ds.to_iter_dataset(read_options=read_options)
     # We do batching after conversion to `IterDataset` to avoid None during
     # batching.
     if self.batch_size:
@@ -117,10 +134,9 @@ class PyGrainPipeline(pipelines.Pipeline):
       )
 
     # Distribute the execution across multiple worker processes.
-    num_workers = _get_num_workers(self.num_workers)
     if num_workers > 0:
       multiprocessing_options = grain.MultiprocessingOptions(
-          num_workers,
+          num_workers=num_workers,
           enable_profiling=self.enable_profiling,
       )
       ds = ds.prefetch(multiprocessing_options)
