@@ -1,5 +1,17 @@
 # Checkpoint
 
+## Restoring a Checkpoint
+
+To load weights from a particular checkpoint, use the checkpointer attribute
+of the trainer:
+
+```python
+trainer = kd.from_xid.get_resolved(xid, wid=wid)
+
+init_state = trainer.init_state()
+state = trainer.checkpointer.restore(init_state, step=-1)
+```
+
 ## Partial loading
 
 To load weights from another checkpoint (e.g. restore pretrained encoder), you
@@ -9,6 +21,9 @@ can use the `init_transform` argument of `kd.train.Trainer`
 cfg.init_transform = kd.ckpts.PartialKauldronLoader(
     workdir=/path/to/old/workdir/,
     new_to_old={  # Mapping params
+        # The new_to_old dict determines which weights are loaded from the
+        # target checkpoint, and can also be used to rename subtrees when
+        # loading params from a different pretrained model.
         # '<new_path>':            '<source_path>'
         'params.decoder.layers_0': 'params.endoder',
     },
