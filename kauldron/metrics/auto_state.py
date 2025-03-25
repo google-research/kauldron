@@ -129,7 +129,9 @@ class AutoState(base_state.State[_MetricT]):
     """Computes final metrics from intermediate values."""
     # NOTE: this calls finalize on datafields which converts them to np.ndarrays
     return _AutoStateOutput(**{  # pytype: disable=bad-return-type
-        f.name: f.metadata["kd_field_merger"].finalize(getattr(self, f.name))
+        f.name: (
+            f.metadata["kd_field_merger"].finalize(getattr(self, f.name), self)
+        )
         for f in dataclasses.fields(self)
         if not _is_static_field(f)
     })
@@ -297,7 +299,10 @@ class _FieldMerger(abc.ABC):
   ) -> Array | Empty | None:
     ...
 
-  def finalize(self, v: Array | Empty | None) -> np.ndarray | None:
+  def finalize(
+      self, v: Array | Empty | None, state: base_state.State
+  ) -> np.ndarray | None:
+    del state
     # by default convert to numpy array
     if v is EMPTY or v is None:
       return None
@@ -351,8 +356,11 @@ class _Concatenate(_FieldMerger):
     return v1 + v2  # concatenated tuples
 
   def finalize(
-      self, v: Array | Empty | None | tuple[Array, ...]
+      self,
+      v: Array | Empty | None | tuple[Array, ...],
+      state: base_state.State,
   ) -> Array | None:
+    del state
     if v is EMPTY or v is None:
       return None
     v = _normalize_to_tuple(v)
@@ -415,6 +423,17 @@ class _Truncate(_FieldMerger):
     assert isinstance(v, Array)
     axis = np.lib.array_utils.normalize_axis_index(self.axis, v.ndim)
     return np.asarray(v[(slice(None),) * axis + (slice(None, num),)])
+
+  def finalize(
+      self,
+      v: Array | Empty | None,
+      state: base_state.State,
+  ) -> Array | None:
+    # TODO(klausg): truncation would be better done in AutoState.__post_init__
+    if v is EMPTY or v is None:
+      return None
+    num = kontext.get_by_path(state, self.num_field)
+    return self._maybe_truncate(v, num)
 
 
 def _assert_static_field_equal(

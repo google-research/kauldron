@@ -147,3 +147,17 @@ def test_merge_truncate():
 
   with pytest.raises(ValueError, match=r"Cannot .*truncate.* None"):
     s3.merge(s1)
+
+
+def test_merge_truncate_without_merge():
+
+  @flax.struct.dataclass(kw_only=True)
+  class TruncateState(auto_state.AutoState):
+    num: int = 4
+    arr: Float = auto_state.truncate_field(num_field="num")
+
+  s = TruncateState(arr=np.ones((8, 2)))
+
+  result = s.compute()
+  # make sure the field is truncated even if it is not merged
+  assert result.arr.shape == (4, 2)
