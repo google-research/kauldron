@@ -335,15 +335,7 @@ class _LazyImportState:
   except_modules: tuple[str, ...]
 
 
-@edc.dataclass
-@dataclasses.dataclass(frozen=True)
-class _LazyImportStack:
-  stack: edc.ContextVar[list[_LazyImportState]] = dataclasses.field(
-      default_factory=list
-  )
-
-
-_lazy_import_stack = _LazyImportStack()
+_lazy_import_stack = edc.Stack[_LazyImportState]()
 
 
 @contextlib.contextmanager
@@ -356,7 +348,7 @@ def set_lazy_imported_modules(
   assert isinstance(lazy_import, (list, tuple))
   assert isinstance(except_, (list, tuple))
 
-  _lazy_import_stack.stack.append(
+  _lazy_import_stack.append(
       _LazyImportState(
           lazy_imported_modules=tuple(lazy_import),
           except_modules=tuple(except_),
@@ -365,7 +357,7 @@ def set_lazy_imported_modules(
   try:
     yield
   finally:
-    _lazy_import_stack.stack.pop()
+    _lazy_import_stack.pop()
 
 
 def _maybe_import(origin_import, module_name: str) -> None:
@@ -373,11 +365,11 @@ def _maybe_import(origin_import, module_name: str) -> None:
   # Restore the original import
   with _fake_imports(new_import=origin_import):
     # Lazy import not set, so import everything
-    if not _lazy_import_stack.stack:
+    if not _lazy_import_stack:
       origin_import(module_name)
       return
 
-    info = _lazy_import_stack.stack[-1]
+    info = _lazy_import_stack[-1]
     # TODO(epot): Here, except could overwrite a lazy-import set before in the
     # stack. Instead, the stack should only contain the most restrictive set
     # of exclude.
