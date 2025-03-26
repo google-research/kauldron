@@ -17,6 +17,7 @@ import pathlib
 
 from etils import epy
 from kauldron import konfig
+from kauldron.utils import immutabledict
 
 
 def test_cycles():
@@ -114,3 +115,10 @@ def test_indices():
   assert new_cfg['0'] == 'aaa'
   assert 1 not in new_cfg[0]
   assert '1' in new_cfg[0]
+
+
+def test_immutabledict():
+  cfg = konfig.ConfigDict()
+  cfg.a = immutabledict.ImmutableDict({'a': 1})
+
+  assert cfg == konfig.ConfigDict({'a': {'a': 1}})
