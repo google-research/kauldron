@@ -42,14 +42,14 @@ cfg.train_ds = kd.data.tf.SampleFromDatasets(
             split='train',
             transforms=[
                 kd.data.Elements(keep=["image", "label"]),
-                kd.data.Resize(key='image', height=32, width=32),
+                kd.data.tf.Resize(key='image', height=32, width=32),
             ],
         ),
     ],
     seed=0,
     batch_size=256,
     transforms=[
-        kd.data.RandomCrop(shape=(15, 15, None)),
+        kd.data.tf.RandomCrop(shape=(15, 15, None)),
     ],
 )
 ```
@@ -95,10 +95,11 @@ class TFDataPipeline(kd.data.Pipeline):
 > Important: Sources should take care of:
 >
 > * **Sharding**: Each host should yield non-overlapping examples.
-> * **Deterministic shuffling** (usually with a `shuffle: bool` kwargs). Ideally using
->   random-access shuffling (provided by TFGrain, ArrayRecord,...).
+> * **Deterministic shuffling** (usually with a `shuffle: bool` kwargs).
+>   Ideally using random-access shuffling (provided by TFGrain,
+>   ArrayRecord,...).
 > * **`num_epoch`**: Repeating the dataset for a given number of epochs (while
-  making sure each epoch reshuffle the data).
+>   making sure each epoch reshuffle the data).
 
 `transforms`, `batch_size`,... are automatically taken cared of.
 
@@ -122,7 +123,7 @@ hardcoded in the implementation.
 <code class="lang-python"><pre>cfg.train_ds = MyDataset(
     transforms=[<ins>
         MyDatasetTransform(),
-        kd.data.Resize(key='image', height=32, width=32),</ins>
+        kd.data.tf.Resize(key='image', height=32, width=32),</ins>
     ],
 )
 </pre></code>
@@ -148,7 +149,7 @@ Like all `kd.data.Pipeline` objects, the dataset can be used directly as a
 standalone iterator.
 
 ```python
-ds = kd.data.Tfds(...)
+ds = kd.data.tf.Tfds(...)
 ds = ds.device_put(kd.sharding.FIRST_DIM)
 
 for ex in ds:

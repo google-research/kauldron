@@ -130,7 +130,7 @@ _eval_only_trainer = kd.train.Trainer.eval_only(
 )
 _eval_only_trainer.update(  # pytype: disable=attribute-error
     # No train dataset, but specs are needed to initialize the model.
-    train_ds=kd.data.ElementSpecDataset(
+    train_ds=kd.data.tf.ElementSpecDataset(
         spec=kd.from_xid.get_element_spec(
             xid=_eval_only_trainer.ref.aux['xid'],
             wid=_eval_only_trainer.ref.aux['wid'],

@@ -57,7 +57,7 @@ class Rearrange(base.ElementWiseTransform):
   Example:
 
   ```
-  cfg.train_ds = kd.data.Tfds(
+  cfg.train_ds = kd.data.tf.Tfds(
       ...
       transforms=[
           ...,

@@ -30,14 +30,14 @@ Example of dataset mixture with nested transforms:
 ```python
 cfg.train_ds = kd.data.py.Mix(
     datasets=[
-        kd.data.Tfds(
+        kd.data.py.Tfds(
             name='cifar100',
             split='train',
             transforms=[
                 kd.data.py.Elements(keep=["image", "label"]),
             ],
         ),
-        kd.data.Tfds(
+        kd.data.py.Tfds(
             name='imagenet2012',
             split='train',
             transforms=[

@@ -38,7 +38,7 @@ class ElementSpecDataset(base.TFDataPipeline):
   Usage:
 
   ```python
-  cfg.train_ds = kd.data.ElementSpecDataset(
+  cfg.train_ds = kd.data.tf.ElementSpecDataset(
       spec=kd.from_xid.get_element_spec(xid=cfg.ref.aux.xid)
   )
   ```
