@@ -63,3 +63,8 @@ def test_dict_pickle(pkl):
   serialized = pkl.dumps(a)
   b = pkl.loads(serialized)
   assert a == b
+
+
+def test_hasattr():
+  d = immutabledict.ImmutableDict({'x': 1})
+  assert not hasattr(d, 'y')

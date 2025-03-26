@@ -72,9 +72,17 @@ class ImmutableDict(immutabledict_lib.immutabledict):
       return super().__new__(cls)
 
   def __getattr__(self, name: str) -> str:
-    # The base-class has a `dict_cls` attribute, but collisions should be
-    # extremely rare.
-    return self[name]
+    try:
+      # The base-class has a `dict_cls` attribute, but collisions should be
+      # extremely rare.
+      return self[name]
+    except KeyError:
+      # Python often relies on `__getattr__` raising `AttributeError`
+      # for missing attributes (e.g. `hasattr(obj, 'foo)`) so convert the
+      # `KeyError` to `AttributeError`.
+      raise AttributeError(
+          f'{type(self).__name__!r} object has no attribute {name}'
+      ) from None
 
   def __repr__(self) -> str:
     return epy.Lines.make_block(
