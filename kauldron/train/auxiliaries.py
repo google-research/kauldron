@@ -194,9 +194,7 @@ def _compute_metric(state: Any):
     return state.compute()
 
 
-def _reduce_states_single(
-    states: tuple[kd_metrics.State, ...]
-) -> kd_metrics.State:
+def _reduce_states_single(*states: kd_metrics.State) -> kd_metrics.State:
   final_state, *rest_states = states
   for state in rest_states:
     final_state = final_state.merge(state)
@@ -211,10 +209,11 @@ def _reduce_states(
   all_states = tuple(state for state in all_states if state)
   if not all_states:
     return {}
-  return {
-      k: _reduce_states_single(states)
-      for k, states in epy.zip_dict(*all_states)
-  }
+  return jax.tree.map(
+      _reduce_states_single,
+      *all_states,
+      is_leaf=lambda x: isinstance(x, kd_metrics.State),
+  )
 
 
 def _gather_kwargs_with_reraise(k, summary, context):
