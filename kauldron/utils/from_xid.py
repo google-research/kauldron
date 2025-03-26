@@ -117,7 +117,7 @@ def get_element_spec(
   """Returns the element_spec of the train dataset of an xmanager experiment.
 
   This allow to initialize an existing model without having to load an actual
-  dataset, by using `kd.data.ElementSpecDataset`.
+  dataset, by using `kd.data.tf.ElementSpecDataset`.
 
   Args:
     xid: The XID of the experiment to load the config from.

@@ -41,7 +41,7 @@ class _FakeRefsUnset:
 
   ```python
   trainer = kd.train.Trainer(
-      train_ds=kd.data.Tfds(),
+      train_ds=kd.data.tf.Tfds(),
       seed=0,
   )
   assert trainer.train_ds.seed == 0
@@ -68,7 +68,7 @@ class _FakeRefsUnset:
 
   ```python
   trainer = kd.train.Trainer(
-      train_ds=kd.data.Tfds(),
+      train_ds=kd.data.tf.Tfds(),
       seed=0,
   )
 

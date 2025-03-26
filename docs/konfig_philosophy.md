@@ -289,7 +289,7 @@ One common pattern where this applies is in the data pipeline. As more complex
 transforms get added, the data pipeline starts to grow:
 
 ```python
-cfg = kd.data.Tfds(
+cfg = kd.data.tf.Tfds(
     name="ai2dcaption",
     split="train",
     shuffle=True,
@@ -313,7 +313,7 @@ At this point, it's a good idea to create some higher level transform in your
 Python code, which can be reused across configs.
 
 ```python
-cfg = kd.data.Tfds(
+cfg = kd.data.tf.Tfds(
     name="ai2dcaption",
     split="train",
     shuffle=True,
