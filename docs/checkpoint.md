@@ -6,11 +6,18 @@ To load weights from a particular checkpoint, use the checkpointer attribute
 of the trainer:
 
 ```python
-trainer = kd.from_xid.get_resolved(xid, wid=wid)
-
 init_state = trainer.init_state()
 state = trainer.checkpointer.restore(init_state, step=-1)
 ```
+
+To restore the trainer from a previous experiment:
+
+*   From a workdir directory:
+
+    ```python
+    config_path = pathlib.Path(workdir) / 'config.json'
+    trainer = kd.konfig.resolve(json.loads(config_path.read_text()))
+    ```
 
 ## Partial loading
 
