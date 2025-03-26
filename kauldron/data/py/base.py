@@ -112,10 +112,12 @@ class PyGrainPipeline(pipelines.Pipeline):
     # Distribute the execution across multiple worker processes.
     num_workers = _get_num_workers(self.num_workers)
 
-    if num_workers == 0:
+    if num_workers == 0 or self.read_options is None:
       # TODO(epot): Fix adhoc import thread-safety and restore this !!!
-      # Adhoc imports are not thread-safe, creating issues when lazy-imports
-      # get triggered inside the data pipeline.
+      # PyGrain multi-thread has various issues, so disable it:
+      # * einops backend registration is not thread-safe.
+      # * Adhoc imports are not thread-safe, creating issues when lazy-imports
+      #   get triggered inside the data pipeline.
       # So disable pre-fetching added by `to_iter_dataset`.
       read_options = grain.ReadOptions(
           num_threads=0,
