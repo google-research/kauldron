@@ -109,8 +109,8 @@ def _make_ds(training: bool):
   if training:
     transformations = [
         kd.data.Elements(keep=["image", "label"]),
-        kd.data.InceptionCrop(key="image", resize_size=(224, 224)),
-        kd.data.RandomFlipLeftRight(key="image"),
+        kd.data.tf.InceptionCrop(key="image", resize_size=(224, 224)),
+        kd.data.tf.RandomFlipLeftRight(key="image"),
         kd.contrib.data.RandAugment(
             image_key="image", num_layers=2, magnitude=15
         ),
@@ -121,12 +121,12 @@ def _make_ds(training: bool):
     transformations = [
         kd.data.Elements(keep=["image", "label"]),
         kd.data.ValueRange(key="image", in_vrange=(0, 255), vrange=(0, 1)),
-        kd.data.ResizeSmall(key="image", smaller_size=256),
-        kd.data.CenterCrop(key="image", shape=(224, 224, 3)),
+        kd.data.tf.ResizeSmall(key="image", smaller_size=256),
+        kd.data.tf.CenterCrop(key="image", shape=(224, 224, 3)),
         kd.data.Rearrange(key="label", pattern="... -> ... 1"),
     ]
 
-  return kd.data.Tfds(
+  return kd.data.tf.Tfds(
       name="imagenet2012",
       split="train[:99%]"
       if training

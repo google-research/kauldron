@@ -80,7 +80,7 @@ def get_config():
 
 def _make_ds(split: str):
   # return kd.data.py.Tfds(
-  return kd.data.Tfds(
+  return kd.data.tf.Tfds(
       name="mnist",
       split=split,
       shuffle=False,
