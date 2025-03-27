@@ -312,8 +312,12 @@ class MetadataWriter(WriterBase):
 
   def write_param_overview(self, step: int, params) -> None:
     self._assert_collection_is_set()
+
     texts = {"parameters": _get_markdown_param_table(params)}
     self.write_texts(step, texts)
+
+    num_parameters = parameter_overview.count_parameters(params)
+    self.write_summaries(step=step, values={"num_params": num_parameters})
 
   def write_element_spec(self, step: int, element_spec) -> None:
     self._assert_collection_is_set()
