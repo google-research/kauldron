@@ -110,19 +110,11 @@ class AutoState(base_state.State[_MetricT]):
       v1 = getattr(self, field.name)
       v2 = getattr(other, field.name)
       if not _is_static_field(field):
-        self._assert_no_tracer(v1, v2)
         assert "kd_field_merger" in field.metadata
         merger = field.metadata["kd_field_merger"]
         merged_fields[field.name] = merger.merge(v1, v2, updated_self)
 
     return dataclasses.replace(updated_self, **merged_fields)
-
-  def _assert_no_tracer(self, v1: Any, v2: Any):
-    if isinstance(v1, jax.core.Tracer) or isinstance(v2, jax.core.Tracer):
-      raise RuntimeError(
-          f"Tracer detected! {self.__class__.__name__}.merge should not be JIT"
-          " compiled."
-      )
 
   # Return `_SelfT` so auto-complete works
   def compute(self: _SelfT) -> _SelfT:
@@ -346,6 +338,7 @@ class _Concatenate(_FieldMerger):
       v2: Array | Empty | None | tuple[Array, ...],
       state: base_state.State,
   ) -> tuple[Array, ...] | None:
+    _assert_no_tracer(state, v1, v2)
     if v1 is None or v2 is None:
       if not (v1 is None and v2 is None):
         raise ValueError("Cannot concatenate None and non-None values.")
@@ -396,6 +389,8 @@ class _Truncate(_FieldMerger):
       v2: Array | Empty | None,
       state: base_state.State,
   ) -> Array | Empty | None:
+    # TODO(klausg): this restriction could be lifted by padding
+    _assert_no_tracer(state, v1, v2)
     num = kontext.get_by_path(state, self.num_field)
     v1 = self._maybe_truncate(v1, num)
     v2 = self._maybe_truncate(v2, num)
@@ -459,3 +454,11 @@ def _is_static_field(field: dataclasses.Field[Any]) -> bool:
 
 class _AutoStateOutput(types.SimpleNamespace):
   pass
+
+
+def _assert_no_tracer(state, v1: Any, v2: Any):
+  if isinstance(v1, jax.core.Tracer) or isinstance(v2, jax.core.Tracer):
+    raise RuntimeError(
+        f"Tracer detected! {state.__class__.__name__}.merge should not be JIT"
+        " compiled."
+    )
