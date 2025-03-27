@@ -46,24 +46,41 @@ def plot_schedules(schedules: PyTree[Schedule], num_steps: int) -> alt.Chart:
       rows.append({"Step": int(step), "Schedule": str(name), "Value": float(v)})
   schedules_df = pd.DataFrame(rows)
 
-  # construct an Altair plot
-  highlight = alt.selection_point(
-      on="mouseover", fields=["Schedule"], nearest=True
-  )
   base = alt.Chart(schedules_df).encode(
       x="Step:Q",
       y="Value:Q",
       color="Schedule:N",
       tooltip=["Schedule", "Step", "Value"],
   )
-  points = (
-      base.mark_circle()
-      .encode(opacity=alt.value(0))
-      .add_params(highlight)
-      .properties(width=600)
-  )
-  lines = base.mark_line().encode(
-      size=alt.when(~highlight).then(alt.value(1)).otherwise(alt.value(3))
-  )
+  # construct an Altair plot
+  # TODO(b/406787897): Remove support for the old version once the upgrade
+  # is complete.
+  if alt.__version__ == "4.2.0":
+    highlight = alt.selection(
+        type="single", on="mouseover", fields=["Schedule"], nearest=True
+    )
+    points = (
+        base.mark_circle()
+        .encode(opacity=alt.value(0))
+        .properties(selection=highlight, width=600)
+    )
+    lines = base.mark_line().encode(
+        size=alt.condition(~highlight, alt.value(1), alt.value(3))
+    )
+  elif alt.__version__ == "5.5.0":
+    highlight = alt.selection_point(
+        on="mouseover", fields=["Schedule"], nearest=True
+    )
+    points = (
+        base.mark_circle()
+        .encode(opacity=alt.value(0))
+        .add_params(highlight)
+        .properties(width=600)
+    )
+    lines = base.mark_line().encode(
+        size=alt.when(~highlight).then(alt.value(1)).otherwise(alt.value(3))
+    )
+  else:
+    raise ValueError(f"Unsupported Altair version: {alt.__version__}")
 
   return points + lines
