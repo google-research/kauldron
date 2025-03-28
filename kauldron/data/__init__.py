@@ -29,19 +29,14 @@ with _epy.lazy_api_imports(globals()):
   # PyGrain based data pipeline.
   from kauldron.data import py
 
+  from kauldron.data.utils import BatchSize
+
+  # Base classes for transformations
   # User should inherit from those base classes to have transformations
   # supported by both TfGrain (`kd.data.tf`) and PyGrain (`kd.data.py`)
   from kauldron.data.transforms.abc import MapTransform
   # from kauldron.data.transforms.abc import RandomMapTransform
   from kauldron.data.transforms.abc import FilterTransform
-
-  from kauldron.data.utils import BatchSize
-
-  from kauldron.data.py.data_sources import DataSource
-  from kauldron.data.py.data_sources import Json
-  from kauldron.data.py.data_sources import HuggingFace
-  from kauldron.data.py.data_sources import Tfds
-  from kauldron.data.py.mixtures import Mix
 
   # ****************************************************************************
   # DO NOT ADD preprocessing ops here. Instead, add them to `kd.contrib.data`
@@ -58,6 +53,8 @@ with _epy.lazy_api_imports(globals()):
   from kauldron.data.transforms.base import ElementWiseTransform
   from kauldron.data.transforms.base import TreeFlattenWithPath
   # ====== Random transforms ======
+  # TODO(epot): Currently there's no generic `ElementWiseRandomTransform` as
+  # there's no standardized random API between TF and numpy.
   # ====== Map transforms ======
   from kauldron.data.transforms.map_transforms import Cast
   from kauldron.data.transforms.map_transforms import Gather
