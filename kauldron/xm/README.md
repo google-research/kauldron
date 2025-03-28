@@ -22,6 +22,15 @@ xmanager launch kauldron/xm/launch.py -- \
   --xp.platform=jf=2x2
 ```
 
+If you're trying to launch an arbitrary custom Python script, you can use:
+
+```sh
+xmanager launch kauldron/xm/launch.py -- \
+  --xp=kauldron/xm/configs/single.py \
+  --xp.target=//path/to/my:binary \
+  --xp.platform=df=2x2
+```
+
 See for a list of flags.
 
 ## Usage
