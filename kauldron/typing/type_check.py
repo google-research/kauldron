@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 import contextlib
 import dataclasses
 import functools
@@ -28,7 +29,9 @@ from typing import Any, Type, TypedDict, Union
 from etils import enp
 from etils import epy
 import jaxtyping
+from kauldron.typing import array_types
 from kauldron.typing import shape_spec
+import numpy as np
 
 with epy.lazy_imports():
   import typeguard  # pylint: disable=g-import-not-at-top
@@ -72,6 +75,12 @@ def check_type(
         return_annotation=None,
         frame=parent_frame,
     ) from e
+
+
+def set_shape(pattern: str, shape: int | Sequence[int]) -> None:
+  """Validates the given shape and sets any previously unknown shapes."""
+  arr = np.empty(shape)
+  check_type(arr, array_types.Array[pattern])
 
 
 class TypeCheckError(typeguard.TypeCheckError):

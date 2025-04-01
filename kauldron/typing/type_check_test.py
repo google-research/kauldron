@@ -15,8 +15,10 @@
 import dataclasses
 
 import jaxtyping as jt
-from kauldron.typing import Float, TypeCheckError, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Float, Shape, TypeCheckError, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import shape_spec  # pylint: disable=g-bad-import-order
 from kauldron.typing import type_check  # pylint: disable=g-bad-import-order
+
 import numpy as np
 import pytest
 
@@ -143,3 +145,27 @@ def test_union_type():
     y: Float["T B"]
 
   assert type_check._is_kd_dataclass(B)
+
+
+@typechecked
+def test_shape_fails_without_set_shape():
+  with pytest.raises(shape_spec.ShapeError):
+    Shape("B")
+
+
+@typechecked
+def test_set_shape_with_int():
+  type_check.set_shape("B", 4)
+  assert Shape("B") == (4,)
+
+
+@typechecked
+def test_set_shape_with_sequence_single():
+  type_check.set_shape("B", [4])
+  assert Shape("B") == (4,)
+
+
+@typechecked
+def test_set_shape_with_sequence_multiple():
+  type_check.set_shape("H W", [224, 224])
+  assert Shape("H W") == (224, 224)
