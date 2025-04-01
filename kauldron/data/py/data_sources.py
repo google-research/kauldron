@@ -25,6 +25,7 @@ from typing import Any, Optional
 from etils import epath
 from etils import epy
 from grain import python as grain
+import jax
 from kauldron.data.py import base
 import tensorflow_datasets as tfds
 
@@ -107,7 +108,9 @@ class JsonDataSource(grain.RandomAccessDataSource):
     return len(self.data)
 
   def __getitem__(self, record_key):
-    return self.data[record_key]
+    ex = self.data[record_key]
+    ex = jax.tree.map(lambda x: x, ex)  # Deep-copy to allow mutation.
+    return ex
 
 
 @dataclasses.dataclass(frozen=True)
