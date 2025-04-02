@@ -24,7 +24,7 @@ from kauldron import random
 import tensorflow as tf
 
 
-def _unpexected_example_structure(ex: Any) -> Exception:
+def _unexpected_example_structure(ex: Any) -> Exception:
   """Drop grain meta features."""
   spec = epy.pretty_repr(etree.spec_like(ex))
   return ValueError(f"Unexpected example structure: {spec}")
@@ -35,14 +35,14 @@ def split_grain_meta_features(
 ) -> tuple[dict[str, Any], Any]:
   """Extract the non-grain features."""
   if not isinstance(features, dict) or grain.INDEX not in features:
-    raise _unpexected_example_structure(features)
+    raise _unexpected_example_structure(features)
 
   # b/326590491: Grain meta features are inconsitent. Either:
   # * `{**meta, **X}`
   # * `{**meta, '_record': X}`
   if grain.RECORD in features:
     if any(not k.startswith("_") for k in features):
-      raise _unpexected_example_structure(features)
+      raise _unexpected_example_structure(features)
     ex_features = features.pop(grain.RECORD)
     meta_features = features
   else:  # Dict and keys merged
