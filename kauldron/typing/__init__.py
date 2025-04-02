@@ -46,6 +46,7 @@ from kauldron.typing.array_types import (
 )
 from kauldron.typing.shape_spec import Dim, Memo, Shape
 from kauldron.typing.type_check import check_type
+from kauldron.typing.type_check import set_shape
 from kauldron.typing.type_check import typechecked
 from kauldron.typing.type_check import TypeCheckError
 import numpy as np
