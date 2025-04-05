@@ -26,6 +26,9 @@ with _epy.lazy_api_imports(globals()):
   from kauldron.data.pipelines import Pipeline
   from kauldron.data.in_memory import InMemoryPipeline
 
+  # Iterators
+  from kauldron.data import iterators as iters
+
   # PyGrain based data pipeline.
   from kauldron.data import py
 
