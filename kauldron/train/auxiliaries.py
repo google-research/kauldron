@@ -140,7 +140,7 @@ class AuxiliariesState:
         _compute_metric, self.loss_states, is_leaf=kd_metrics.State.isinstance
     )
     # Multi-process communication
-    with jax.spmd_mode("allow_all"), jax.transfer_guard("allow"):
+    with jax.transfer_guard("allow"):
       total_loss = jnp.sum(jnp.asarray(list(loss_values.values())))
 
     if not isinstance(loss_values, dict):
@@ -190,7 +190,7 @@ class AuxiliariesOutput:
 def _compute_metric(state: Any):
   """Compute the value of a metric for a given state and return the result."""
   # Accept cross-process computation (some metrics cannot be jitted)
-  with jax.spmd_mode("allow_all"), jax.transfer_guard("allow"):
+  with jax.transfer_guard("allow"):
     return state.compute()
 
 

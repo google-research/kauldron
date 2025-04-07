@@ -215,7 +215,7 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
           )
       self.write_images(step=step, images=image_summaries)
 
-      with jax.spmd_mode("allow_all"), jax.transfer_guard("allow"):
+      with jax.transfer_guard("allow"):
         # histograms
         hist_summaries = {
             name: value
@@ -231,7 +231,7 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
             },
         )
 
-      with jax.spmd_mode("allow_all"), jax.transfer_guard("allow"):
+      with jax.transfer_guard("allow"):
         # point clouds
         pc_summaries = {
             name: value

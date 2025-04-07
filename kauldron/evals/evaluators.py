@@ -234,10 +234,7 @@ class Evaluator(EvaluatorBase):
           sharding=self.base_cfg.sharding,
       )
       # Merge/accumulate all states
-      # By default, cross-process communication is only allowed inside
-      # `jax.jit` so we locally allow cross-process communication for merging
-      # the metrics
-      with jax.spmd_mode('allow_all'), jax.transfer_guard('allow'):
+      with jax.transfer_guard('allow'):
         merged_aux = merged_aux | aux
     if merged_aux is None:  # At least one iteration
       raise ValueError(

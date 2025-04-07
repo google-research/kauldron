@@ -181,7 +181,7 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
       # https://github.com/google/CommonLoopUtils/tree/HEAD/clu/metrics.py;l=383;rcl=559340497
       # So we locally allow cross-process communication for merging the
       # metrics
-      with jax.spmd_mode('allow_all'), jax.transfer_guard('allow'):
+      with jax.transfer_guard('allow'):
         merged_aux = merged_aux | aux
     assert merged_aux is not None  # At least one iteration
     merged_summaries = merged_aux.compute()
