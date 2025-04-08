@@ -70,6 +70,9 @@ def train_impl(
   )
 
   if initial_step == 0:
+    # In case the initial step was overwritten by the init_transforms, use
+    # the one from the init_transforms.
+    initial_step = int(state.step)
     # Writer do both logging metrics and writing metadata (config,
     # element_spec). While the first one is optional (could be skipped with
     # `NoopWriter`, the second one is mandatory in order to re-load the model
