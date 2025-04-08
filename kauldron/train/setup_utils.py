@@ -46,6 +46,7 @@ class Setup:
       object is created once globally and shared between all the metrics
       `Writer`, to ensure all dashboards are written to the same collection.
     eval_only: Whether the job is a eval-only job.
+    preemptable_eval: If `True`, makes eval preemptible.
   """
 
   # Could provide more options here to customize artifacts,...
@@ -53,6 +54,8 @@ class Setup:
   tags: str | list[str] = dataclasses.field(default_factory=list)
   tqdm_info: TqdmInfo = dataclasses.field(default_factory=TqdmInfo)
   eval_only: bool = False
+  # TODO(epot): Not the best place for this.
+  preemptable_eval: bool = False
 
   def __post_init__(self):
     # Normalize tags to a list.

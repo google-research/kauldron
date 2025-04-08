@@ -169,11 +169,6 @@ def _preemptable_iter_new_checkpoints(
 ) -> Iterator[train_step.TrainState]:
   """Yields the new checkpoints."""
   # Skip the `iter_new_checkpoints` for eval-only jobs.
-  if 'save_tmp_ckpt' in trainer.aux:
-    save_tmp_ckpt = trainer.aux['save_tmp_ckpt']
-  else:
-    save_tmp_ckpt = True
-
   if trainer.setup.eval_only:
     return
 
@@ -211,12 +206,12 @@ def _preemptable_iter_new_checkpoints(
       assert int(state.step) == step
       # Temporarily copy the state to the eval checkpoint, to ensure that
       # it won't be deleted by the train job until the current eval is done.
-      if save_tmp_ckpt:
+      if trainer.setup.preemptable_eval:
         eval_ckpt.save(state, step=step)
       yield state
       # state might have been donated, we should not access it after this point.
       # Eval is done, remove the duplicated checkpoint
-      if save_tmp_ckpt:
+      if trainer.setup.preemptable_eval:
         eval_ckpt.delete(step)
 
 
