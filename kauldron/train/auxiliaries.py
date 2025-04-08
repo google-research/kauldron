@@ -42,7 +42,7 @@ class Auxiliaries(config_util.UpdateFromRootCfg):
   metrics: Mapping[str, kd_metrics.Metric] = (
       config_util.ROOT_CFG_REF.train_metrics
   )
-  summaries: Mapping[str, kd_metrics.Metric] = (
+  summaries: Mapping[str, kd_summaries.Summary] = (
       config_util.ROOT_CFG_REF.train_summaries
   )
 

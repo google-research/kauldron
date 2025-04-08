@@ -27,6 +27,7 @@ import jax
 from kauldron import data
 from kauldron import losses as losses_lib
 from kauldron import metrics as metrics_lib
+from kauldron import summaries as summaries_lib
 from kauldron.evals import run_strategies
 from kauldron.train import auxiliaries
 from kauldron.train import context as context_lib
@@ -178,7 +179,7 @@ class Evaluator(EvaluatorBase):
   metrics: dict[str, metrics_lib.Metric] = (
       config_util.ROOT_CFG_REF.train_metrics
   )
-  summaries: dict[str, metrics_lib.Metric] = (
+  summaries: dict[str, summaries_lib.Summary] = (
       config_util.ROOT_CFG_REF.train_summaries
   )
   model: nn.Module = config_util.ROOT_CFG_REF.model
