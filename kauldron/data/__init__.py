@@ -45,10 +45,10 @@ with _epy.lazy_api_imports(globals()):
   # DO NOT ADD preprocessing ops here. Instead, add them to `kd.contrib.data`
   # ****************************************************************************
 
-  # Transforms here supports both PyGrain (`kd.data.py`) and `tf.data`
-  # (`kd.data.tf`) pipelines.
-  # For extra PyGrain-only or TF-only transforms, see `kd.data.py` or
-  # `kd.data.tf`
+  # Transforms here supports both PyGrain and `tf.data` pipelines.
+  # For additional PyGrain-only or TF-only transforms, see:
+  # * `kd.data.py`
+  # * `kd.data.tf`
 
   # ====== Structure transforms ======
   from kauldron.data.transforms.base import AddConstants
