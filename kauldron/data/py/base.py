@@ -22,7 +22,9 @@ import math
 import typing
 from typing import Optional
 
+from etils import enp
 from etils import epy
+from etils.etree import jax as etree  # pylint: disable=g-importing-member
 import grain.python as grain
 import jax
 from kauldron import random
@@ -30,7 +32,7 @@ from kauldron.data import iterators
 from kauldron.data import pipelines
 from kauldron.data.py import transform_utils
 from kauldron.data.transforms import normalize as tr_normalize
-from kauldron.typing import PRNGKeyLike  # pylint: disable=g-importing-member,g-multiple-import
+from kauldron.typing import PRNGKeyLike, PyTree  # pylint: disable=g-importing-member,g-multiple-import
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True, eq=True)
@@ -103,14 +105,10 @@ class PyGrainPipeline(pipelines.Pipeline):
     ds = ds.repeat(self.num_epochs)
     return ds
 
-  @functools.cached_property
-  def _root_ds(self) -> grain.IterDataset:
+  def _make_root_ds(self, *, num_workers: int) -> grain.IterDataset:
     # TODO(b/362920968): We're forced to split `_root_ds` into both
     # `_root_map_ds` because `_root_map_ds` does not propagate `len`
     ds = self._root_map_ds
-
-    # Distribute the execution across multiple worker processes.
-    num_workers = _get_num_workers(self.num_workers)
 
     if num_workers == 0 or self.read_options is None:
       # TODO(epot): Fix adhoc import thread-safety and restore this !!!
@@ -143,6 +141,23 @@ class PyGrainPipeline(pipelines.Pipeline):
       )
       ds = ds.prefetch(multiprocessing_options)
     return ds
+
+  @functools.cached_property
+  def _root_ds(self) -> grain.IterDataset:
+    # Distribute the execution across multiple worker processes.
+    num_workers = _get_num_workers(self.num_workers)
+
+    return self._make_root_ds(num_workers=num_workers)
+
+  @functools.cached_property
+  def element_spec(self) -> PyTree[enp.ArraySpec]:
+    """Returns the element specs of a single batch."""
+    # To avoid the memory overhead of multiprocessing when `num_workers` is
+    # large, explicitly turn off multiprocessing here since we only require
+    # the first element.
+    ds = self._make_root_ds(num_workers=0)
+    first_elem = next(iter(ds))
+    return etree.spec_like(first_elem)
 
   def __iter__(self) -> iterators.Iterator:
     """Iterate over the dataset elements."""

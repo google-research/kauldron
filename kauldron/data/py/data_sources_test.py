@@ -14,7 +14,9 @@
 
 """Tests."""
 
+from etils import enp
 from kauldron import kd
+import numpy as np
 import tensorflow_datasets as tfds
 
 
@@ -45,3 +47,8 @@ def test_tfds():
     assert ex['image'].shape == (2, 28, 28, 1)
     # Here `num_examples % batch_size == 0`
     assert len(ds) == num_examples * num_epochs / batch_size
+    # Check element_spec
+    assert ds.element_spec == {
+        'image': enp.ArraySpec(shape=(2, 28, 28, 1), dtype=np.float32),
+        'label': enp.ArraySpec(shape=(2,), dtype=np.int64),
+    }
