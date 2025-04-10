@@ -331,9 +331,11 @@ class AverageState(State[_MetricT]):
     )
 
   def compute(self) -> Float[""]:
-    if self.count == 0: return 0.0
-
-    return self.total / self.count
+    return jax.lax.cond(
+        self.count == 0,
+        lambda: self.total * 0.0,
+        lambda: self.total / self.count,
+    )
 
 
 @flax.struct.dataclass
