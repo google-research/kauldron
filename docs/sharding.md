@@ -25,21 +25,22 @@ Each leaf of the sharding pytree can be:
 *   `Callable`: Lazily compute the sharding from the array sub-tree:
 
     ```python
-    def my_sharding_strategy(x: PyTree[jax.Array]) -> kd.sharding.ShardingTree:
+    def my_sharding_strategy(params: PyTree[jax.Array]) -> kd.sharding.ShardingTree:
       devices = np.asarray(jax.devices())
       devices = devices.reshape((-1, jax.device_count() // 4))
       mesh = jax.sharding.Mesh(devices, axis_names=('data', 'params'))
-      return tree.map_structure_with_path(_shard_param, params)
 
-    def _shard_param(path, x):
-      if 'kernel' in path:
-        return jax.sharding.NamedSharding(
-            mesh, jax.sharding.PartitionSpec('params')
-        )
-      elif 'bias' in path:
-        return kd.sharding.REPLICATED
-      else:
-        raise ValueError(f'Unexpected param: {path}: {x.shape}')
+      def _shard_param(path, x):
+        if 'kernel' in path:
+          return jax.sharding.NamedSharding(
+              mesh, jax.sharding.PartitionSpec('params')
+          )
+        elif 'bias' in path:
+          return kd.sharding.REPLICATED
+        else:
+          raise ValueError(f'Unexpected param: {path}: {x.shape}')
+
+      return tree.map_structure_with_path(_shard_param, params)
     ```
 
 ## Available sharding
