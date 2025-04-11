@@ -46,13 +46,13 @@ class Pipeline(data_utils.IterableDataset, config_util.UpdateFromRootCfg):
   Subclasses are responsible for:
 
   * batching
-  * shuflling
-  * sharding: Each host yield different examples
+  * shuffling
+  * sharding: Each host yields different examples
 
   Attributes:
     batch_size: Global batch size. Has to be divisible by number of global
       devices. Pipeline should take care of sharding the data between hosts.
-      Setting to `0` disable batching.
+      Setting to `0` disables batching.
     seed: Random seed to be used for things like shuffling and randomness in
       preprocessing. Defaults to the seed from the root config.
   """
