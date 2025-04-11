@@ -15,8 +15,7 @@
 """Summaries."""
 
 # pylint: disable=g-importing-member
-from kauldron.summaries.base import ImageSummary
-from kauldron.summaries.base import Summary
+from kauldron.summaries import deprecated
 from kauldron.summaries.histograms import Histogram
 from kauldron.summaries.histograms import HistogramSummary
 from kauldron.summaries.images import ShowBoxes

@@ -19,7 +19,6 @@ from __future__ import annotations
 import dataclasses
 from typing import Any, Mapping, Optional
 
-from etils import epy
 import flax
 import jax
 from jax.experimental import checkify
@@ -27,7 +26,6 @@ import jax.numpy as jnp
 from kauldron import kontext
 from kauldron import losses as kd_losses
 from kauldron import metrics as kd_metrics
-from kauldron import summaries as kd_summaries
 from kauldron.train import context as context_lib
 from kauldron.utils import config_util
 from kauldron.utils import immutabledict
@@ -42,7 +40,7 @@ class Auxiliaries(config_util.UpdateFromRootCfg):
   metrics: Mapping[str, kd_metrics.Metric] = (
       config_util.ROOT_CFG_REF.train_metrics
   )
-  summaries: Mapping[str, kd_summaries.Summary] = (
+  summaries: Mapping[str, kd_metrics.Metric] = (
       config_util.ROOT_CFG_REF.train_summaries
   )
 
@@ -94,10 +92,6 @@ class AuxiliariesState:
       default_factory=flax.core.FrozenDict
   )
   summary_states: Mapping[str, kd_metrics.State] = dataclasses.field(
-      default_factory=flax.core.FrozenDict
-  )
-  # TODO(klausg): Remove `summary_kwargs` once all summaries are migrated
-  summary_kwargs: Mapping[str, Any] = dataclasses.field(
       default_factory=flax.core.FrozenDict
   )
   error: checkify.Error = checkify.Error(
@@ -214,11 +208,3 @@ def _reduce_states(
       *all_states,
       is_leaf=lambda x: isinstance(x, kd_metrics.State),
   )
-
-
-def _gather_kwargs_with_reraise(k, summary, context):
-  """Gathers summary kwargs with an error stating the offending key."""
-  if not isinstance(summary, kd_summaries.Summary):
-    return {}  # This is not a legacy summary, so no need to gather kwargs
-  with epy.maybe_reraise(lambda: f"Error with key `{k}`: "):
-    return summary.gather_kwargs(context)

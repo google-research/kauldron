@@ -33,7 +33,6 @@ from kauldron import data
 from kauldron import konfig
 from kauldron import losses
 from kauldron import metrics
-from kauldron import summaries
 from kauldron.data import utils as data_utils
 from kauldron.evals import eval_impl
 from kauldron.evals import evaluators
@@ -144,7 +143,7 @@ class Trainer(config_util.BaseConfig):
       TensorBoard,...)
     train_losses: A dict of losses
     train_metrics: A dict of metrics
-    train_summaries: A dict of summaries
+    train_summaries: A dict of summaries (summaries are subclasses of `Metric`)
     writer: Metric writer used for writing to TB, datatable, etc.
     profiler: Profiler can be customized (see `kd.inspect.Profile`)
     checkify_error_categories: List of errors to enable checkify for.
@@ -192,7 +191,7 @@ class Trainer(config_util.BaseConfig):
   train_metrics: MutableMapping[str, metrics.Metric] = dataclasses.field(
       default_factory=FrozenDict
   )
-  train_summaries: MutableMapping[str, summaries.Summary] = dataclasses.field(
+  train_summaries: MutableMapping[str, metrics.Metric] = dataclasses.field(
       default_factory=FrozenDict
   )
 
