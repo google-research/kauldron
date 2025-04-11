@@ -183,6 +183,7 @@ class Experiment(job_params.JobParams):
         tensorboard.add_tensorboard_borg(
             xp,
             workdir=dir_builder.xp_dir,
+            args=self.args,
         )
       if self.add_tensorboard_corp:
         tensorboard.add_tensorboard_corp(
@@ -191,6 +192,7 @@ class Experiment(job_params.JobParams):
             # Sometimes, the default exporter exit before finishing exporting
             # all events, so increase default to 5h.
             termination_delay_secs=60 * 60 * 5,
+            args=self.args,
         )
       # TODO(epot): Support Custom auxiliaries
 
