@@ -183,6 +183,7 @@ class Experiment(job_params.JobParams):
         tensorboard.add_tensorboard_borg(
             xp,
             workdir=dir_builder.xp_dir,
+            args=self.tensorboard_args,
         )
       if self.add_tensorboard_corp:
         tensorboard.add_tensorboard_corp(
@@ -191,6 +192,7 @@ class Experiment(job_params.JobParams):
             # Sometimes, the default exporter exit before finishing exporting
             # all events, so increase default to 5h.
             termination_delay_secs=60 * 60 * 5,
+            args=self.tensorboard_args,
         )
       # TODO(epot): Support Custom auxiliaries
 
@@ -322,6 +324,14 @@ class Experiment(job_params.JobParams):
     )
     tags.extend(self.sweep_info.tags)
     return tags
+
+  @functools.cached_property
+  def tensorboard_args(self) -> dict[str, Any]:
+    """TensorBoard args."""
+    args = {}
+    if "gfs_user" in self.args:
+      args["gfs_user"] = self.args["gfs_user"]
+    return args
 
   def _repr_html_(self) -> str:
     from etils import ecolab  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
