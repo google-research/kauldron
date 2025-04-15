@@ -83,6 +83,7 @@ class LearnedEmbedding(nn.Module):
 
   dtype: DType = jnp.float32
   emb_init: Initializer = nn.initializers.normal(stddev=0.02)  # From BERT.
+  emb_name: str = 'embeddings'
 
   @typechecked
   @nn.compact
@@ -97,7 +98,7 @@ class LearnedEmbedding(nn.Module):
       Learned position embeddings broadcast to given shape.
     """
     emb_shape = _get_embedding_shape_from_axes(shape, axis)
-    pe = self.param('embeddings', self.emb_init, emb_shape, self.dtype)
+    pe = self.param(self.emb_name, self.emb_init, emb_shape, self.dtype)
     return jnp.broadcast_to(pe, shape)
 
 
