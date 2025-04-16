@@ -42,7 +42,7 @@ from kauldron.train import context as context_lib
 from kauldron.train import metric_writer
 from kauldron.train import rngs_lib
 from kauldron.train import setup_utils
-from kauldron.train import train_lib
+from kauldron.train import train_loop
 from kauldron.train import train_step
 from kauldron.utils import _jax
 from kauldron.utils import chrono_utils
@@ -374,7 +374,7 @@ class Trainer(config_util.BaseConfig):
       Final model state
       Auxiliaries
     """
-    return train_lib.train_impl(self)
+    return train_loop.train_impl(self)
 
   def continuous_eval(
       self,
