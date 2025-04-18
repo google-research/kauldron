@@ -52,7 +52,8 @@ _Transforms = Sequence[grain.Transformation] | dict[str, grain.Transformation]
 class TFDataPipeline(pipelines.Pipeline, abc.ABC):
   """Base classes for all `tf.data` pipeline.
 
-  Do NOT use this class directly. Instead, use one of the subclasses.
+  Do NOT instantiate this class directly. Instead, use one of the subclasses
+  below or create your own.
 
   Subclasses should only implement the `ds_for_current_process` method which
   returns the `tf.data.Dataset` for the current process.
