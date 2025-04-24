@@ -18,7 +18,6 @@ r"""Training binary.
 
 from __future__ import annotations
 
-import contextlib
 import typing
 
 from absl import app
@@ -37,13 +36,17 @@ import tensorflow as tf
 # activate adhoc-import.
 if _IS_IPYTHON_SUBPROCESS := _multiprocess.is_ipython_subprocess():
   _multiprocess.register_adhoc_init()
+  _catch_post_mortem = lambda fn: fn
+
 if typing.TYPE_CHECKING or not _IS_IPYTHON_SUBPROCESS:
   # Imports adhoc-imported when running with `ml_python`
   with epy.binary_adhoc():
     # pylint: disable=g-import-not-at-top
     from kauldron import kd
-    from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
+    from kauldron.utils import error_utils
     # pylint: enable=g-import-not-at-top
+
+    _catch_post_mortem = error_utils.catch_post_mortem
 
   _CONFIG = kd.konfig.DEFINE_config_file(
       "cfg",
@@ -58,32 +61,19 @@ _EVAL_NAMES = flags.DEFINE_list(
     "Evaluation(s) to run. When set, run `.continuous_eval()` rather than"
     " `.train()`.",
 )
-_POST_MORTEM = flags.DEFINE_boolean(
-    "catch_post_mortem",
-    False,
-    "No effect for now.",
-)
 
 
+@_catch_post_mortem
 def main(_):
   tf.config.set_visible_devices([], "GPU")
 
-  with _wu_error_handling(_POST_MORTEM.value):
-    eval_names = _EVAL_NAMES.value
-    cfg = _CONFIG.value
-    trainer: kd.train.Trainer = kd.konfig.resolve(cfg)
-    if eval_names is None:
-      trainer.train()
-    else:
-      trainer.continuous_eval(eval_names)
-
-
-@contextlib.contextmanager
-def _wu_error_handling(post_mortem: bool = False):
-  """Catch and log error."""
-  if not status.on_xmanager:
-    yield
-    return
+  eval_names = _EVAL_NAMES.value
+  cfg = _CONFIG.value
+  trainer: kd.train.Trainer = kd.konfig.resolve(cfg)
+  if eval_names is None:
+    trainer.train()
+  else:
+    trainer.continuous_eval(eval_names)
 
 
 def _flags_parser(args: list[str]) -> None:
