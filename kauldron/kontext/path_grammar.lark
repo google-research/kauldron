@@ -35,7 +35,7 @@ ELLIPSIS: "..."
 
 STAR: "*"
 DOUBLE_STAR: "**"
-IDENTIFIER: /[^\W\d]\w*/
+IDENTIFIER: /\w+/
 STRING: /(u?|r?b?|br)("(?!"").*?(?<!\\)(\\\\)*?"|'(?!'').*?(?<!\\)(\\\\)*?')/i
 DEC_NUMBER: /[+-]?\d+/
 HEX_NUMBER.2: /[+-]?0x[\da-f]*/i
