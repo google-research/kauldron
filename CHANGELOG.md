@@ -8,6 +8,19 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 ## [Unreleased]
 
+## [1.3.0] - 2025-04-28
+
+* `--xp.debug.catch_post_mortem` flag now works externally as well
+* Fixed a problem with `init_transforms` that affected `optim.decay_to_init`
+* Further removed deprecated summaries protocol
+* Fixes regarding `grain` workers and non-thread-safe imports such as `einops`
+* Lifted jit restriction for merging `auto_state.sum_field`
+* Added support for `ImmutableDict` inside `konfig`
+* Added `ShowTexts` summary
+* Make grain an optional dependency on Windows
+* Reduced logging noise
+* Several other minor bugfixes
+
 ## [1.2.1] - 2025-03-10
 
 *   Minor bug fixes.
@@ -123,6 +136,7 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 <!-- mdlint off(LINK_UNUSED_ID) -->
 
 [Unreleased]: https://github.com/google-research/kauldron/compare/v1.2.0...HEAD
+[1.3.0]: https://github.com/google-research/kauldron/compare/v1.2.0...HEAD
 [1.1.1]: https://github.com/google-research/kauldron/releases/tag/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/google-research/kauldron/releases/tag/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/google-research/kauldron/releases/tag/v1.0.0...v1.1.0
