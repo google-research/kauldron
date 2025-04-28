@@ -113,7 +113,7 @@ class Context:
       return_summaries: bool = False,
   ) -> auxiliaries.AuxiliariesState:
     """Returns the auxiliaries for the step."""
-    return auxiliaries.AuxiliariesState(
+    return auxiliaries.AuxiliariesState(  # pytype: disable=wrong-arg-types
         loss_states=self.loss_states if return_losses else None,
         metric_states=self.metric_states if return_metrics else None,
         summary_states=self.summary_states if return_summaries else None,

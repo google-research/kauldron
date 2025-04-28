@@ -228,7 +228,7 @@ class Module(nn.Module):  # pytype: disable=invalid-function-definition
           k: flax.core.scope.LazyRng.create(rng, *self._kd_parent_names)
           for k, rng in rngs.items()
       }
-      return rngs
+      return rngs  # pytype: disable=bad-return-type
     else:
       return self._kd_state.rngs  # pytype: disable=bad-return-type
 
