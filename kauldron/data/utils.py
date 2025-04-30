@@ -45,14 +45,6 @@ class BatchSize:
 
   total: int
 
-  def __post_init__(self):
-    num_devices = jax.device_count()
-    if self.total % num_devices != 0:
-      raise ValueError(
-          "batch_size must be divisible by num_devices."
-          f" batch_size={self.total} {num_devices=}"
-      )
-
   @functools.cached_property
   def per_process(self) -> int:
     return self.total // jax.process_count()
