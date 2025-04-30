@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import dataclasses
+import logging as std_logging
 import typing
 
 from absl import logging
@@ -67,6 +68,7 @@ class Setup:
     tf.config.set_visible_devices([], "GPU")
 
     _create_workdir(trainer.workdir)
+    _maybe_remove_jax_logging_handlers()
 
   def log_status(self, msg: str) -> None:
     logging.info(msg)
@@ -80,3 +82,8 @@ def _create_workdir(workdir: epath.PathLike):
 
   logging.info("Creating workdir: %s", workdir)
   workdir.mkdir(parents=True, exist_ok=True)
+
+
+def _maybe_remove_jax_logging_handlers():
+  """Remove JAX logging handlers."""
+  pass  # do nothing externally
