@@ -36,10 +36,16 @@ _T = TypeVar('_T')
 _SelfT = TypeVar('_SelfT')
 
 _ALIASES = {
+    'flax.linen': 'nn',
+    'gemma.gm': 'gm',
+    'kauldron.kd': 'kd',
+    'kauldron.kxm': 'kxm',
     'numpy': 'np',
     'tensorflow_datasets': 'tfds',
     'tensorflow': 'tf',
-    'flax.linen': 'nn',
+    # TODO(epot): Support pattern like:
+    # Could use `new.format(**epy.reverse_fstring(old))` for this.
+    # 'kauldron.projects.{name}': '{name}',
 }
 
 # This map the qualname to the default values to inject, when the `ConfigDict`

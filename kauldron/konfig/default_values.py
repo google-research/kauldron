@@ -158,11 +158,3 @@ _eval_only_trainer.update(  # pytype: disable=attribute-error
 )
 
 konfig.register_default_values(_eval_only_trainer)
-
-# Register aliases for cleaner config display
-konfig.register_aliases({
-    'kauldron.kd': 'kd',
-    'kauldron.kxm': 'kxm',
-    # TODO(epot): Support pattern `'kauldron.projects.$0': '$0'`
-    # 'kauldron.projects.$0': '$0',
-})
