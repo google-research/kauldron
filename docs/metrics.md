@@ -13,7 +13,7 @@ See the available metrics:
 ### Kauldron usage
 
 In Kauldron, the metrics are automatically applied and accumulated by the
-training loop. User specify what are the metrics inputs through the
+training loop. Users specify what the metrics inputs are through the
 [keys](https://github.com/google-research/kauldron/blob/main/docs/intro.md?cl=head#keys-and-context).
 
 ```python
@@ -25,7 +25,7 @@ cfg.metrics = {
 
 ### Standalone usage
 
-Metrics can be used outside Kauldron, as standalone module (using
+Metrics can be used outside Kauldron, as standalone modules (using
 `//third_party/py/kauldron/metrics`,...):
 
 ```python
@@ -57,7 +57,7 @@ accuracy = metric.get_state(logits=logits, labels=labels).compute()
 Usage (accumulated):
 
 Some metrics require accumulating values over multiple steps. In this case,
-every metrics can emit a states which are merged together:
+every metric can emit states which are merged together:
 
 ```python
 state0 = metric.get_state(logits=logits, labels=labels)
@@ -85,7 +85,7 @@ class Accuracy(kd.metrics.Metric):
   logits: kontext.Key = kd.kontext.REQUIRED  # e.g. "preds.logits"
   labels: kontext.Key = kd.kontext.REQUIRED  # e.g. "batch.label"
 
-  # Could be `State = kd.metrics.AverageState` but inheritance give a better
+  # Could be `State = kd.metrics.AverageState` but inheritance gives a better
   # name `Accuracy.State`
   class State(kd.metrics.AverageState):
     pass
@@ -96,8 +96,8 @@ class Accuracy(kd.metrics.Metric):
     return self.State.from_values(values=correct)
 ```
 
-The state perform the agregation of the metric values. Some states are provided
-by default:
+The state performs the aggregation of the metric values. Some states are
+provided by default:
 
 *   `kd.metrics.AverageState`: for simple averaging of a value (e.g.
     `kd.metrics.Norm`).
@@ -111,16 +111,16 @@ go in `State` or `Metric`:
 
 *   `Metric.get_state`: Is executed inside `jax.jit`
 *   `State.compute`: Is executed outside `jax.jit`, so can contain arbitrary
-    Python code (e.g. some `sklearn.metrics` contains logic which would be hard
+    Python code (e.g. some `sklearn.metrics` contain logic which would be hard
     to implement in pure Jax)
 
 ### Loss
 
-All losses inherit from `kd.metrics.Metric`, so uses the same API as above.
+All losses inherit from `kd.metrics.Metric`, so use the same API as above.
 However for convenience, a `kd.losses.Loss` base class is provided which also
 supports handling masks, averaging, and loss-weight.
 
-The difference is that `Loss` implement the `get_values` method instead of
+The difference is that `Loss` implements the `get_values` method instead of
 `get_state` (and the `get_state` method is implemented by the base class).
 
 ```python
@@ -138,7 +138,7 @@ class L2(kd.losses.Loss):
 
 Note: The `get_values` method returns the per-example loss (i.e. the returned
 value has the batch dimension), and the averaging is done in the base class.
-This ensure accumulating losses over multiple batches (e.g. in eval) works
+This ensures accumulating losses over multiple batches (e.g. in eval) works
 correctly.
 
 Losses also adds:
@@ -149,7 +149,7 @@ Losses also adds:
 ### Summary
 
 Summaries are like metrics. The only difference is the `State.compute()` method
-do not returns a scalar but instead returns one of:
+does not return a scalar but instead returns one of:
 
 *   `Array['b h w c']`: for image summaries.
 *   `str` for text summaries.
@@ -169,7 +169,7 @@ class ShowImages(kd.metrics.Metric):
   class State(kd.metrics.AutoState):
     """Collects the first num_images images and boxes."""
 
-    # When the states are agregated (e.g. across multiple batches, only keep
+    # When the states are aggregated (e.g. across multiple batches, only keep
     # the first `num_images` images).
     images: Float["n h w c"] = kd.metrics.truncate_field(num_field="parent.num_images")
     boxes: Float["n k 4"] = kd.metrics.truncate_field(num_field="parent.num_images")
