@@ -23,6 +23,7 @@ import typing
 from typing import Any, Optional, Self
 
 from etils import edc
+from etils import enp
 from etils import epath
 import flax
 from flax import linen as nn
@@ -44,6 +45,7 @@ from kauldron.train import rngs_lib
 from kauldron.train import setup_utils
 from kauldron.train import train_loop
 from kauldron.train import train_step
+from kauldron.typing import PyTree  # pylint: disable=g-importing-member
 from kauldron.utils import _jax
 from kauldron.utils import chrono_utils
 from kauldron.utils import config_util
@@ -349,11 +351,17 @@ class Trainer(config_util.BaseConfig):
 
   # Do not use property to make it explicit this is recomputed each time
   def init_state(
-      self, *, skip_transforms: bool = False, skip_optimizer: bool = False
+      self,
+      *,
+      skip_transforms: bool = False,
+      skip_optimizer: bool = False,
+      element_spec: PyTree[enp.ArraySpec] | None = None,
   ) -> train_step.TrainState:
-    """Create the state: `cfg.trainstep.init(cfg.train_ds.element_spec)`."""
+    """Create the state: `cfg.trainstep.init(element_spec)`."""
+    if element_spec is None:
+      element_spec = self.train_ds.element_spec
     return self.trainstep.init(
-        self.train_ds.element_spec,
+        element_spec,
         skip_transforms=skip_transforms,
         skip_optimizer=skip_optimizer,
     )
