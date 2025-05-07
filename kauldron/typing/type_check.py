@@ -456,10 +456,16 @@ def _get_dtype_str(value) -> str:
   return str(enp.lazy.dtype_from_array(value))
 
 
-def _is_array_type(origin_type) -> bool:
+def _is_kd_array_type(origin_type) -> bool:
+  """Check if the type is a Kauldron array type."""
   try:
-    return inspect.isclass(origin_type) and issubclass(
-        origin_type, jaxtyping.AbstractArray
+    # Check if the type is a jaxtyping array type and if it has a kd_repr.
+    # (which is set by the ArrayAliasMeta metaclass, and indicates that it is
+    # a Kauldron array type).
+    return (
+        inspect.isclass(origin_type)
+        and issubclass(origin_type, jaxtyping.AbstractArray)
+        and inspect.getattr_static(origin_type, "_kd_repr", False)
     )
   except TypeError:
     # If a type doesn't support isclass or issubclass it is not an array type.
@@ -476,19 +482,28 @@ def _match_any(
   return None  # Any always matches, never raise an exception
 
 
-def _array_spec_checker_lookup(
+def _kd_custom_checker_lookup(
     origin_type: Any, args: tuple[Any, ...], extras: tuple[Any, ...]
 ) -> typeguard.TypeCheckerCallable | None:
   """Lookup function to register custom array type checkers in typeguard."""
   del extras
+  # Due to conflict with mixing Kauldron with other non-Kauldron jaxtyping
+  # objects, we only activate custom typecheckers for kauldron types.
+  # For Union types, we check if all args are Kauldron types.
   if origin_type in [Union, types.UnionType]:
     # TODO(klausg): handle Union of ArrayType with other types
-    if all(_is_array_type(arg) for arg in args):
+    if all(_is_kd_array_type(arg) for arg in args):
       return _custom_array_type_union_checker
+
   if origin_type is Any:
     # By default typeguard doesn't support Any annotations
     # this is a workaround.
     return _match_any
+
+  # For dataclasses, we check recursively if any dataclass attribute is
+  # annotated as a Kauldron type.
+  if _is_kd_dataclass(origin_type):
+    return _custom_dataclass_checker
   return None
 
 
@@ -526,21 +541,6 @@ def _custom_dataclass_checker(
   # annotation that cannot be resolved.
   except NameError:
     pass
-
-
-def _dataclass_checker_lookup(
-    origin_type: Any, args: tuple[Any, ...], extras: tuple[Any, ...]
-) -> typeguard.TypeCheckerCallable | None:
-  """Lookup function to register custom dataclass checkers in typeguard."""
-  del args, extras
-  # Due to conflict with mixing Kauldron with other non-Kauldron jaxtyping
-  # objects, we only activate dataclass support for dataclasses annotated with
-  # Kauldron types.
-  # We do this by recursively checking if any dataclass attribute is annotated
-  # as a Kauldron type.
-  if _is_kd_dataclass(origin_type):
-    return _custom_dataclass_checker
-  return None
 
 
 @functools.cache
@@ -591,5 +591,4 @@ def add_custom_checker_lookup_fn(lookup_fn):
     checker_lookup_fns[:0] = [lookup_fn]
 
 
-add_custom_checker_lookup_fn(_array_spec_checker_lookup)
-add_custom_checker_lookup_fn(_dataclass_checker_lookup)
+add_custom_checker_lookup_fn(_kd_custom_checker_lookup)
