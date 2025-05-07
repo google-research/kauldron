@@ -191,6 +191,11 @@ class JobParams:
           ' `job.replace()` method should be used.'
       )
     object.__setattr__(self, '_replace_sentinel', True)
+    # Ensure the env vars to be strings, to avoid issues from the automatic
+    # type conversion from the commandline parser.
+    object.__setattr__(
+        self, 'env_vars', {k: str(v) for k, v in self.env_vars.items()}
+    )
 
   def replace(self, **kwargs) -> Self:
     final_kwargs = self._kxm_init_kwargs  # pytype: disable=attribute-error
