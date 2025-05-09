@@ -174,6 +174,9 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
     """Logs scalar and image summaries."""
     aux_result = aux.compute(flatten=True)
 
+    if not status.is_lead_host:
+      return
+
     # schedules
     schedule_values = jax.tree.map(
         lambda s: _compute_schedule(s, step), schedules
@@ -188,24 +191,22 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
       }
     else:
       performance_stats = {}
-    with jax.transfer_guard("allow"):
-      self.write_scalars(
-          step=step,
-          scalars=(
-              aux_result.loss_values
-              | aux_result.metric_values
-              | schedule_values
-              | performance_stats
-          ),
-      )
+    self.write_scalars(
+        step=step,
+        scalars=(
+            aux_result.loss_values
+            | aux_result.metric_values
+            | schedule_values
+            | performance_stats
+        ),
+    )
 
     if log_summaries:
-      with jax.transfer_guard("allow"):
-        image_summaries = {
-            name: value
-            for name, value in aux_result.summary_values.items()
-            if isinstance(value, Float["n h w #3"])
-        }
+      image_summaries = {
+          name: value
+          for name, value in aux_result.summary_values.items()
+          if isinstance(value, Float["n h w #3"])
+      }
       # Throw an error if empty arrays are given. TB throws very odd errors
       # and kills Colab runtimes if we don't catch these ourselves.
       for name, image in image_summaries.items():
@@ -215,44 +216,40 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
           )
       self.write_images(step=step, images=image_summaries)
 
-      with jax.transfer_guard("allow"):
-        # histograms
-        hist_summaries = {
-            name: value
-            for name, value in aux_result.summary_values.items()
-            if isinstance(value, summaries.Histogram)
-        }
+      # histograms
+      hist_summaries = {
+          name: value
+          for name, value in aux_result.summary_values.items()
+          if isinstance(value, summaries.Histogram)
+      }
+      self.write_histograms(
+          step=step,
+          arrays={k: hist.tensor for k, hist in hist_summaries.items()},
+          num_buckets={
+              k: hist.num_buckets for k, hist in hist_summaries.items()
+          },
+      )
 
-        self.write_histograms(
-            step=step,
-            arrays={k: hist.tensor for k, hist in hist_summaries.items()},
-            num_buckets={
-                k: hist.num_buckets for k, hist in hist_summaries.items()
-            },
-        )
-
-      with jax.transfer_guard("allow"):
-        # point clouds
-        pc_summaries = {
-            name: value
-            for name, value in aux_result.summary_values.items()
-            if isinstance(value, summaries.PointCloud)
-        }
-        self.write_pointcloud(
-            step=step,
-            point_clouds={
-                k: point_cloud.point_clouds
-                for k, point_cloud in pc_summaries.items()
-            },
-            point_colors={
-                k: point_cloud.point_colors
-                for k, point_cloud in pc_summaries.items()
-            },
-            configs={
-                k: point_cloud.configs
-                for k, point_cloud in pc_summaries.items()
-            },
-        )
+      # point clouds
+      pc_summaries = {
+          name: value
+          for name, value in aux_result.summary_values.items()
+          if isinstance(value, summaries.PointCloud)
+      }
+      self.write_pointcloud(
+          step=step,
+          point_clouds={
+              k: point_cloud.point_clouds
+              for k, point_cloud in pc_summaries.items()
+          },
+          point_colors={
+              k: point_cloud.point_colors
+              for k, point_cloud in pc_summaries.items()
+          },
+          configs={
+              k: point_cloud.configs for k, point_cloud in pc_summaries.items()
+          },
+      )
 
       # Text summaries
       text_summaries = {

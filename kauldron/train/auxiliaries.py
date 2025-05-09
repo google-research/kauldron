@@ -22,7 +22,6 @@ from typing import Any, Mapping, Optional
 import flax
 import jax
 from jax.experimental import checkify
-import jax.numpy as jnp
 from kauldron import kontext
 from kauldron import losses as kd_losses
 from kauldron import metrics as kd_metrics
@@ -30,6 +29,7 @@ from kauldron.train import context as context_lib
 from kauldron.utils import config_util
 from kauldron.utils import immutabledict
 from kauldron.utils.kdash import dashboard_utils
+import numpy as np
 
 
 @dataclasses.dataclass(kw_only=True, eq=True, frozen=True)
@@ -133,13 +133,12 @@ class AuxiliariesState:
     loss_values = jax.tree.map(
         _compute_metric, self.loss_states, is_leaf=kd_metrics.State.isinstance
     )
-    # Multi-process communication
-    with jax.transfer_guard("allow"):
-      total_loss = jnp.sum(jnp.asarray(list(loss_values.values())))
 
     if not isinstance(loss_values, dict):
-      loss_values = dict(loss_values)  # Convert FrozenDict, ImmutableDict
+      # Convert FrozenDict, ImmutableDict
+      loss_values = _nested_mappings_to_dict(loss_values)
     if loss_values.values():  # if there are any losses also add a total
+      total_loss = jax.tree.reduce(lambda x, y: x + y, loss_values)
       loss_values[dashboard_utils.TOTAL_LOSS_KEY] = total_loss
 
     # metrics
@@ -181,11 +180,31 @@ class AuxiliariesOutput:
   summary_values: dict[str, Any] = dataclasses.field(default_factory=dict)
 
 
+def _convert_leaf(leaf):
+  if isinstance(leaf, jax.Array):
+    return np.asarray(leaf)
+  return leaf
+
+
+def _nested_mappings_to_dict(obj):
+  """Recursively converts nested mappings to standard Python dictionaries."""
+  if isinstance(obj, Mapping):
+    return {k: _nested_mappings_to_dict(v) for k, v in obj.items()}
+  else:
+    return obj
+
+
 def _compute_metric(state: Any):
   """Compute the value of a metric for a given state and return the result."""
   # Accept cross-process computation (some metrics cannot be jitted)
   with jax.transfer_guard("allow"):
-    return state.compute()
+    result = state.compute()
+    # Convert all results from jax.Array to np.array.
+    # We do this to ensure that the metric writers do not accidentally invoke
+    # any jax operations. This is important because metric writers are often
+    # multi-threaded, and in a multi-host setup this can lead to problems.
+    # See cl/751110291 for more context.  # copybara: strip
+    return jax.tree.map(_convert_leaf, result)
 
 
 def _reduce_states_single(*states: kd_metrics.State) -> kd_metrics.State:

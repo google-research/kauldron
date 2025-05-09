@@ -133,7 +133,7 @@ def train_impl(
       # Finish the steps before writing the metrics.
       chrono.finish_step()
 
-      if log_any and status.is_lead_host:
+      if log_any:
         # TODO(epot): Could report metrics writing separately
         # with chrono.pause(chrono_utils.Pause.METRICS_WRITING):
         writer.write_step_metrics(
