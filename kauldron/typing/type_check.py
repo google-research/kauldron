@@ -591,4 +591,6 @@ def add_custom_checker_lookup_fn(lookup_fn):
     checker_lookup_fns[:0] = [lookup_fn]
 
 
-add_custom_checker_lookup_fn(_kd_custom_checker_lookup)
+def enable_kd_type_checking() -> None:
+  """Enable custom type checking for Kauldron types."""
+  add_custom_checker_lookup_fn(_kd_custom_checker_lookup)
