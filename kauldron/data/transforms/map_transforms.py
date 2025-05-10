@@ -107,6 +107,8 @@ class ValueRange(base.ElementWiseTransform):
     element = element * (out_max - out_min) + out_min
     if self.clip_values:
       element = xnp.clip(element, out_min, out_max)
+    # Intervening operations may have changed the dtype, so cast back.
+    element = xnp.asarray(element, dtype=dtype)
     return element
 
 
