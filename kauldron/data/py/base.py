@@ -71,6 +71,7 @@ class PyGrainPipeline(pipelines.Pipeline):
   num_workers: int = 16
   read_options: grain.ReadOptions | None = None
   enable_profiling: bool = False
+  per_worker_buffer_size: int = 1
 
   # The pipeline is constructed in 4 functions:
   # * `ds_for_current_process`
@@ -138,6 +139,7 @@ class PyGrainPipeline(pipelines.Pipeline):
       multiprocessing_options = grain.MultiprocessingOptions(
           num_workers=num_workers,
           enable_profiling=self.enable_profiling,
+          per_worker_buffer_size=self.per_worker_buffer_size,
       )
       ds = ds.mp_prefetch(multiprocessing_options)
     return ds
