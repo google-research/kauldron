@@ -22,6 +22,7 @@ import typing
 
 from absl import logging
 from etils import epath
+from kauldron import typing as kd_typing
 import tensorflow as tf
 
 # Do not import `trainer_lib` at runtime to avoid circular imports
@@ -69,6 +70,7 @@ class Setup:
 
     _create_workdir(trainer.workdir)
     _maybe_remove_jax_logging_handlers()
+    kd_typing.enable_kd_type_checking()  # Enable custom checks
 
   def log_status(self, msg: str) -> None:
     logging.info(msg)

@@ -17,9 +17,8 @@
 from __future__ import annotations
 
 # pylint: disable=g-multiple-import,g-importing-member
-
-from typing import Any, Callable, Hashable, Sequence, Union
-
+from collections.abc import Hashable, Sequence
+from typing import Any, Callable, Union
 from clu.data.dataset_iterator import ArraySpec, ElementSpec, PyTree
 import jax
 from kauldron.typing.array_types import (
@@ -46,6 +45,7 @@ from kauldron.typing.array_types import (
 )
 from kauldron.typing.shape_spec import Dim, Memo, Shape
 from kauldron.typing.type_check import check_type
+from kauldron.typing.type_check import enable_kd_type_checking
 from kauldron.typing.type_check import set_shape
 from kauldron.typing.type_check import typechecked
 from kauldron.typing.type_check import TypeCheckError
