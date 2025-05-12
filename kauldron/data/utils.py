@@ -66,10 +66,22 @@ def array_spec_to_jnp_empty(spec: ArraySpec, batch_dim: int = 17) -> jax.Array:
   # silently convert int64 -> int32 to avoid jax warning
   dtype = jnp.int32 if spec.dtype in [jnp.int64, np.int64] else spec.dtype
 
+  # Ensure spec.shape is fully concrete by replacing None with 1. This is a
+  # workaround for datasets that yield variable shapes, as JAX requires concrete
+  # shapes for jnp.empty and JIT compilation. The mock batch created with these
+  # placeholder dimensions might not accuratelyrepresent all variable data.
   if spec.shape[0] is None:
-    return jnp.empty((batch_dim,) + spec.shape[1:], dtype)
+    # First dimension is dynamic (e.g. batch size), use batch_dim. Make sure the
+    # rest of the dimensions are also concrete by replacing None with 1.
+    remaining_dims = _make_concrete_shape(spec.shape[1:])
+    final_shape = (batch_dim,) + remaining_dims
+    return jnp.empty(final_shape, dtype)
   else:
-    return jnp.empty(spec.shape, dtype)
+    # All dimensions defined in spec.shape, make them all concrete. This branch
+    # is hit if spec.shape is e.g. (B, None, H, W) or in your case (1, None,
+    # None). Replace any None with 1.
+    final_shape = _make_concrete_shape(spec.shape)
+    return jnp.empty(final_shape, dtype)
 
 
 def mock_batch_from_elem_spec(
@@ -164,3 +176,8 @@ def _json_to_spec(data: epy.typing.Json) -> enp.ArraySpec:
       dtype=np.dtype(data["dtype"]),
       shape=data["shape"],
   )
+
+
+def _make_concrete_shape(shape: tuple[int | None, ...]) -> tuple[int, ...]:
+  """Replaces any None in a shape with 1."""
+  return tuple(d if d is not None else 1 for d in shape)
