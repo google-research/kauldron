@@ -57,7 +57,7 @@ class SweepOrchestrator(Orchestrator):
   """Launch all jobs in a single work-unit, eventually with parameter sweep.
 
   * Launch all jobs in a single work-unit
-  * For sweep, all jobs in a work-unit are updated with the same sweep kwargs
+  * For sweep, all jobs in a work-unit are updated with the same sweep kwargs.
   """
 
   def launch_jobs(
@@ -102,11 +102,29 @@ class SweepOrchestrator(Orchestrator):
         wu=wu,
         sweep_item=sweep_item,
     )
+    job_group = self._create_job_group(
+        wu=wu,
+        resolved_jobs=resolved_jobs,
+        sweep_item=sweep_item,
+        dir_builder=dir_builder,
+    )
+    wu.add(job_group)
 
+  def _create_job_group(
+      self,
+      wu: xm_abc.XManagerWorkUnit,
+      *,
+      resolved_jobs: dict[str, job_lib.Job],
+      sweep_item: sweep_utils.SweepItem,
+      dir_builder: dir_utils.DirectoryBuilder,
+  ) -> xm.JobGroup:
+    """Creates the XManager jobs."""
+
+    del wu
     xm_jobs = {
         k: job.make_xm_job(
             sweep_args=sweep_item.job_kwargs, dir_builder=dir_builder
         )
         for k, job in resolved_jobs.items()
     }
-    wu.add(xm.JobGroup(**xm_jobs))
+    return xm.JobGroup(**xm_jobs)
