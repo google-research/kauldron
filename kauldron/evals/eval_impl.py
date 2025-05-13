@@ -20,18 +20,23 @@ from collections.abc import Iterator
 import contextlib
 import dataclasses
 import hashlib
+import json
+import time
 
 from absl import logging
 from etils import enp
 from etils import epath
+from kauldron import data
 from kauldron.checkpoints import checkpointer
 from kauldron.checkpoints import partial_loader
+from kauldron.data import utils as data_utils
 from kauldron.evals import evaluators as evaluators_lib
 from kauldron.evals import run_strategies
 from kauldron.train import auxiliaries
 from kauldron.train import train_step
 from kauldron.train import trainer_lib
 from kauldron.typing import PyTree  # pylint: disable=g-importing-member
+from kauldron.utils import constants
 from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
 import orbax.checkpoint as ocp
 
@@ -77,7 +82,7 @@ def continuous_eval(
       skip_optimizer=all(
           trainer.evals[name].discard_opt for name in eval_names
       ),
-      element_spec=_get_element_spec(trainer, eval_names),
+      element_spec=_get_element_spec(trainer),
   )
   aux = {eval_name: auxiliaries.AuxiliariesState() for eval_name in eval_names}
 
@@ -266,14 +271,16 @@ def _get_eval_ckpt(
     raise ValueError(f'Unsupported checkpointer type: {type(trainer_ckpt)}')
 
 
-def _get_element_spec(
-    trainer: trainer_lib.Trainer, eval_names: list[str]
-) -> PyTree[enp.ArraySpec]:
-  """Returns the element spec from eval_ds if available, else from train_ds."""
-  if trainer.eval_ds is not None:
-    return trainer.eval_ds.element_spec
-  for name in eval_names:
-    ev = trainer.evals[name]
-    if isinstance(ev, evaluators_lib.Evaluator):
-      return ev.ds.element_spec
-  return trainer.train_ds.element_spec
+def _get_element_spec(trainer: trainer_lib.Trainer) -> PyTree[enp.ArraySpec]:
+  """Loads the element spec from disk, or from train_ds for eval-only jobs."""
+
+  # Load from training
+  path = trainer.workdir / constants.ELEMENT_SPEC_FILENAME
+  sleep_time = 10
+  while not path.exists():
+    logging.info(
+        'Waiting for element_spec in %s. Sleeping for %ds.', path, sleep_time
+    )
+    time.sleep(sleep_time)
+  spec = json.loads(path.read_text())
+  return data_utils.json_to_spec(spec)

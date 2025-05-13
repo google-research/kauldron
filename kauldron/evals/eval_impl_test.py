@@ -55,6 +55,10 @@ def test_eval_impl(tmp_path: epath.Path):
           _mocked_iterator,
       ),
   ):
+
+    # Write element_spec to disk so eval can use it in initialization
+    trainer.writer.write_element_spec(0, trainer.train_ds.element_spec)
+
     aux = trainer.continuous_eval('eval')
     # Ensure at least one checkpoint was computed
     assert 'recon' in aux['eval'].loss_states
