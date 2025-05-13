@@ -96,6 +96,9 @@ def get_config():
       ),
   }
 
+  cfg.train_summaries = {
+  }
+
   # Optimizer
   cfg.schedules = {
       "learning_rate": optax.warmup_cosine_decay_schedule(
