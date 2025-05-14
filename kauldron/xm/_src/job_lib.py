@@ -28,6 +28,7 @@ from etils import etree
 from etils import g3_utils
 from kauldron.xm._src import dir_utils
 from kauldron.xm._src import job_params
+from kauldron.xm._src import json_utils
 from xmanager import resource_selector as rs
 from xmanager import xm
 from xmanager import xm_abc  # Open-source would use xm_local
@@ -279,10 +280,10 @@ def _resolve_and_normalize_arg(
 
   arg = etree.map(sanitize_leaf, arg)
 
-  # Wrap tuples in string so that they are treated as tuples and not
-  # repeated values for the same flag.
-  if isinstance(arg, tuple):
-    arg = str(arg)
+  # Encode tuples, dict,... in string so that they are correctly passed as
+  # commandline arguments.
+  if not isinstance(arg, xm.ShellSafeArg):
+    arg = json_utils.arg_to_json(arg)
 
   return arg
 

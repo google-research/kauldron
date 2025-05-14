@@ -42,6 +42,7 @@ from kauldron.xm._src import experiment
 from kauldron.xm._src import job_lib
 from kauldron.xm._src import job_params
 from kauldron.xm._src import jobs_info
+from kauldron.xm._src import json_utils
 from kauldron.xm._src import merge_utils
 from kauldron.xm._src import sweep_cfg_utils
 from kauldron.xm._src import sweep_utils
@@ -273,27 +274,16 @@ def _encode_sweep_item(
 
 
 def _serialize_job_kwargs(job_kwargs: dict[str, _Json]) -> dict[str, _Json]:
-  return {
-      f"cfg.{k}": v if isinstance(v, str) else _JsonEncoder().encode(v)
-      for k, v in job_kwargs.items()
-  }
+  # Note: `arg_to_json` is applied later globally for all args in `kxm.Job`,
+  # so likely unecessary here.
+  return {f"cfg.{k}": json_utils.arg_to_json(v) for k, v in job_kwargs.items()}
 
 
 def deserialize_job_kwargs(job_kwargs: dict[str, _Json]) -> dict[str, _Json]:
   return {
-      k.removeprefix("cfg."): _decode_json_or_str(v)
+      k.removeprefix("cfg."): json_utils.arg_from_json(v)
       for k, v in job_kwargs.items()
   }
-
-
-def _decode_json_or_str(v: _Json) -> _Json:
-  """Decodes the JSON string or returns the string itself."""
-  # The decoded values should always have been encoded JSON strings from
-  # `_serialize_job_kwargs`, so there shouldn't be risk of badly formatted JSON.
-  try:
-    return json.loads(v)
-  except json.JSONDecodeError:
-    return v
 
 
 def _ui_repr(v):
@@ -312,15 +302,6 @@ def _ui_repr(v):
 class _ProjectInfo:
   target: str
   project_name: str
-
-
-class _JsonEncoder(json.JSONEncoder):
-
-  def default(self, o):
-    if isinstance(o, konfig.ConfigDict):
-      return json.loads(o.to_json())
-    else:
-      return super().default(o)
 
 
 def _iter_parents(path: epath.Path) -> Iterable[epath.Path]:
