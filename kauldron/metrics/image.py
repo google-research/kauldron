@@ -27,7 +27,7 @@ import jax.scipy as jsp
 from kauldron import kontext
 from kauldron.metrics import base
 from kauldron.metrics import base_state
-from kauldron.typing import Bool, Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Bool, Dim, Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 
 def rescale_image(
@@ -42,9 +42,19 @@ def rescale_image(
 def psnr(
     a: Float["*b h w c"],
     b: Float["*b h w c"],
+    mask: Optional[Bool["*b h w c"] | Float["*b h w c"]] = None,
     dynamic_range: float = 1.0,
 ) -> Float["*b 1"]:
-  mse = jnp.square(a - b).mean(axis=(-3, -2, -1))
+  """Computes PSNR for an image pair."""
+  if mask is not None:
+    a = a * mask
+    b = b * mask
+    # If mask is all-zero, we want to avoid division.
+    divisor = jnp.maximum(1, jnp.sum(mask, axis=(-3, -2, -1)))
+  else:
+    divisor = Dim("h*w*c")
+  error = jnp.square(a - b).sum(axis=(-3, -2, -1))
+  mse = error / divisor
   return 20.0 * jnp.log10(dynamic_range) - 10.0 * jnp.log10(mse[..., None])
 
 
