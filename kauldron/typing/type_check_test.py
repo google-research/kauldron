@@ -15,12 +15,15 @@
 import dataclasses
 
 import jaxtyping as jt
+from kauldron.typing import enable_kd_type_checking  # pylint: disable=g-importing-member
 from kauldron.typing import Float, Shape, TypeCheckError, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.typing import shape_spec  # pylint: disable=g-bad-import-order
 from kauldron.typing import type_check  # pylint: disable=g-bad-import-order
 
 import numpy as np
 import pytest
+
+enable_kd_type_checking()
 
 
 def test_decorator():
