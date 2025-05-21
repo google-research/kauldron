@@ -174,9 +174,9 @@ class PyGrainPipeline(pipelines.Pipeline):
       return ds_len
 
     if self.batch_drop_remainder:
-      return ds_len // self.batch_size
+      return ds_len // self.host_batch_size
     else:
-      return math.ceil(ds_len / self.batch_size)
+      return math.ceil(ds_len / self.host_batch_size)
 
   def __getitem__(self, record_key: int):
     """Get an item from the dataset."""
