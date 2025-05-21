@@ -20,6 +20,7 @@ import dataclasses
 import functools
 import typing
 from typing import Any, Mapping, Optional, Protocol
+import warnings
 
 import flax
 import flax.linen as nn
@@ -413,9 +414,6 @@ class ModelWithAux(auxiliaries.Auxiliaries):
 
   DEPRECATED: Do not use.
   """
-
-  # TODO(epot): Deprecate this class in eval.
-
   model: nn.Module
 
   if typing.TYPE_CHECKING:
@@ -424,6 +422,11 @@ class ModelWithAux(auxiliaries.Auxiliaries):
       pass
 
   def forward(self, context, **kwargs):
+    warnings.warn(
+        "ModelWithAux is deprecated. Use a forward function directly instead. "
+        "See e.g. `kd.train.train_step.forward_with_loss`.",
+        category=DeprecationWarning,
+    )
     return forward_with_loss(
         context=context,
         model=self.model,
