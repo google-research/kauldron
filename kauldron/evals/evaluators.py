@@ -24,6 +24,7 @@ from typing import Any, Optional, TypeVar
 from etils import epy
 from flax import linen as nn
 import jax
+from kauldron import checkpoints
 from kauldron import data
 from kauldron import losses as losses_lib
 from kauldron import metrics as metrics_lib
@@ -40,7 +41,6 @@ from kauldron.utils import kdash
 from kauldron.utils import utils
 from kauldron.utils.sharding_utils import sharding as sharding_lib  # pylint: disable=g-importing-member
 from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
-
 
 _SelfT = TypeVar('_SelfT')
 
@@ -169,6 +169,10 @@ class Evaluator(EvaluatorBase):
     metrics: Metrics
     summaries: Summaries
     model: Model to use for evaluation (if different from train).
+    model_method: Name of the flax model method to use (defaults to `__call__`)
+    init_transform: Transform to apply to the state before evaluation. This is
+      useful for example for replacing the weights of the network with EMA
+      weights.
   """
 
   num_batches: Optional[int] = None
@@ -182,8 +186,10 @@ class Evaluator(EvaluatorBase):
       config_util.ROOT_CFG_REF.train_summaries
   )
   model: nn.Module = config_util.ROOT_CFG_REF.model
-
-  # TODO(klausg): filter out metrics / summaries that access grads/updates
+  model_method: Optional[str] = None
+  init_transform: checkpoints.AbstractPartialLoader = dataclasses.field(
+      default_factory=lambda: checkpoints.NoopTransform(),  # pylint: disable=unnecessary-lambda
+  )
 
   def __post_init__(self) -> None:
     super().__post_init__()
@@ -209,6 +215,12 @@ class Evaluator(EvaluatorBase):
       ds_iter = ds_iter.cache()
     return ds_iter.device_put(self.base_cfg.sharding.ds)
 
+  @functools.cached_property
+  def aux(self) -> auxiliaries.Auxiliaries:
+    return auxiliaries.Auxiliaries(
+        losses=self.losses, metrics=self.metrics, summaries=self.summaries
+    )
+
   def evaluate(
       self, state: train_step.TrainState, step: int
   ) -> auxiliaries.AuxiliariesState:
@@ -216,6 +228,7 @@ class Evaluator(EvaluatorBase):
     self._assert_root_cfg_resolved()
     if self.discard_opt:
       state = state.replace(opt_state=None)
+    state = self.init_transform.transform(state)
 
     # TODO(epot): Add chrono to evals. Note: One issue is that the
     # write metric time will be excluded from the chrono (including the final).
@@ -224,17 +237,19 @@ class Evaluator(EvaluatorBase):
     merged_aux = None
     for eval_step, batch in utils.enum_iter(self.ds_iter, desc=self.name):
       eval_step = sharding_lib.device_put(eval_step, sharding_lib.REPLICATED)
-      aux = basic_eval_step(
-          model_with_aux=self.model_with_aux,
+      aux_state = basic_eval_step(
+          model=self.model,
           rng_streams=self.base_cfg.rng_streams,
+          aux=self.aux,
           eval_step=eval_step,
           state=state,
           batch=batch,
           sharding=self.base_cfg.sharding,
+          model_method=self.model_method,
       )
       # Merge/accumulate all states
       with jax.transfer_guard('allow'):
-        merged_aux = merged_aux | aux
+        merged_aux = merged_aux | aux_state
     if merged_aux is None:  # At least one iteration
       raise ValueError(
           f'Dataset for eval {self.name!r} did not yield any elements:\n'
@@ -251,7 +266,10 @@ class Evaluator(EvaluatorBase):
 
   @functools.cached_property
   def model_with_aux(self) -> train_step.ModelWithAux:
-    """Model which also compute the auxiliaries (losses, metrics,...)."""
+    """Deprecated. Use a forward function directly instead.
+
+    See e.g. `kd.train.train_step.forward_with_loss`.
+    """
     return train_step.ModelWithAux(
         model=self.model,
         losses=self.losses,
@@ -270,35 +288,44 @@ class Evaluator(EvaluatorBase):
 
 @functools.partial(
     jax.jit,
-    static_argnames=('model_with_aux', 'rng_streams', 'sharding'),
+    static_argnames=(
+        'model',
+        'rng_streams',
+        'aux',
+        'sharding',
+        'model_method',
+    ),
 )
 def basic_eval_step(
     *,
-    model_with_aux: train_step.ModelWithAux,
+    model: nn.Module,
     rng_streams: rngs_lib.RngStreams,
+    aux: auxiliaries.Auxiliaries,
     eval_step: int,
     state: train_step.TrainState,
     batch,
     sharding: sharding_lib.ShardingStrategy,
+    model_method: str | None = None,
 ) -> auxiliaries.AuxiliariesState:
   """Call the model (pmap version)."""
-  # Note that step is train step (from train state), NOT `eval_step`
+  # Note that ctx.step is train step (from train state), NOT `eval_step`
   ctx = context_lib.Context.from_state_and_batch(state=state, batch=batch)
 
   with sharding.set_global_mesh():
-    _, ctx = model_with_aux.forward(
+    ctx = train_step.forward(
+        model=model,
         context=ctx,
         rngs=rng_streams.eval_rngs(eval_step),
         is_training=False,
+        method=model_method,
     )
 
-  aux = model_with_aux.get_aux(
-      ctx,
-      return_losses=True,
-      return_metrics=True,
-      return_summaries=True,
+  ctx = aux.update_context(ctx)
+  aux_state = ctx.get_aux_state(
+      return_losses=True, return_metrics=True, return_summaries=True
   )
-  return sharding_lib.with_sharding_constraint(aux, sharding.aux)
+
+  return sharding_lib.with_sharding_constraint(aux_state, sharding.aux)
 
 
 def normalize_evaluators(

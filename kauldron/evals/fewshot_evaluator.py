@@ -29,6 +29,7 @@ from kauldron import kontext
 from kauldron.evals import evaluators
 from kauldron.metrics import base
 from kauldron.metrics import base_state
+from kauldron.train import auxiliaries
 from kauldron.train import train_step
 from kauldron.typing import Array, Float, Int, Scalar, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import config_util
@@ -168,9 +169,10 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
         desc=f'{self.name}_{split}',
     ):
       eval_step = sharding.device_put(eval_step, sharding.REPLICATED)
-      aux = evaluators.basic_eval_step(  # pylint: disable=protected-access
-          model_with_aux=self.model_with_aux,
+      aux_state = evaluators.basic_eval_step(  # pylint: disable=protected-access
+          model_with_aux=self.model,
           rng_streams=self.base_cfg.rng_streams,
+          aux=self.aux,
           eval_step=eval_step,
           state=state,
           batch=batch,
@@ -182,7 +184,7 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
       # So we locally allow cross-process communication for merging the
       # metrics
       with jax.transfer_guard('allow'):
-        merged_aux = merged_aux | aux
+        merged_aux = merged_aux | aux_state
     assert merged_aux is not None  # At least one iteration
     merged_summaries = merged_aux.compute()
     features = {
@@ -193,10 +195,9 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
     return features, labels
 
   @functools.cached_property
-  def model_with_aux(self) -> train_step.ModelWithAux:
-    """Model which also compute the auxiliaries (losses, metrics,...)."""
-    return train_step.ModelWithAux(
-        model=self.base_cfg.model,
+  def aux(self) -> auxiliaries.Auxiliaries:
+    return auxiliaries.Auxiliaries(
+        losses=flax.core.FrozenDict({}),
         metrics=flax.core.FrozenDict(
             {
                 key: ComputeFeaturesMetric(features=feature)
@@ -204,7 +205,6 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
             }
             | {'labels': ComputeFeaturesMetric(features=self.label_name)}
         ),
-        losses=flax.core.FrozenDict({}),
         summaries=flax.core.FrozenDict({}),
     )
 
