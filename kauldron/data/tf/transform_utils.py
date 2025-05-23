@@ -15,6 +15,7 @@
 """Utils for using Kauldron transforms with tfgrain."""
 
 import functools
+import sys
 from typing import Any, Callable, Mapping
 
 from grain._src.tensorflow import transforms as grain_transforms
@@ -88,8 +89,13 @@ _KD_TO_TFGRAIN_ADAPTERS = {
 def _adapt_for_tfgrain(
     transform: tr_normalize.Transformation,
 ) -> grain.Transformation:
+  py_grain = sys.modules.get('grain.python')
+
   if isinstance(transform, grain.Transformation):
     return transform
+  elif py_grain and isinstance(transform, py_grain.Transformation):
+    raise ValueError('Mixing PyGrain inside TFGrain pipeline.')
+
   return tr_normalize.adapt_transform(transform, _KD_TO_TFGRAIN_ADAPTERS)
 
 
