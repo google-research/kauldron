@@ -31,7 +31,7 @@ class MLFlowMetricWriter(KDMetricWriter):
     def get_config():
         return kd.train.Trainer(
             ...
-            writer=mlflow_tracker.MLFlowWriter(pass_to_default_writer=False),
+            writer=mlflow_metric_writer.MLFlowMetricWriter(pass_to_default_writer=False),
             log_metrics_every = 5,
             log_summaries_every = 1000,
             ...
