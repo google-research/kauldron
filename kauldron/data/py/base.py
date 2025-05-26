@@ -19,6 +19,7 @@ from __future__ import annotations
 import dataclasses
 import functools
 import math
+import os
 import typing
 from typing import Optional
 
@@ -33,6 +34,7 @@ from kauldron.data import pipelines
 from kauldron.data.py import transform_utils
 from kauldron.data.transforms import normalize as tr_normalize
 from kauldron.typing import PRNGKeyLike, PyTree  # pylint: disable=g-importing-member,g-multiple-import
+import tensorflow as tf
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True, eq=True)
@@ -141,7 +143,9 @@ class PyGrainPipeline(pipelines.Pipeline):
           enable_profiling=self.enable_profiling,
           per_worker_buffer_size=self.per_worker_buffer_size,
       )
-      ds = ds.mp_prefetch(multiprocessing_options)
+      ds = ds.mp_prefetch(
+          multiprocessing_options, worker_init_fn=_worker_init_fn
+      )
     return ds
 
   @functools.cached_property
@@ -236,3 +240,22 @@ def _get_num_workers(num_workers: int) -> int:
     return 0
   else:
     return num_workers
+
+
+def _worker_init_fn(worker_idx: int, worker_count: int):
+  """Prevent excessive GPU memory allocation in the dataloader workers.
+
+  Prevents TensorFlow from using the GPU and jax preallocation of GPU memory in
+  the data reader workers.
+
+  Args:
+    worker_idx: Unused index of the worker.
+    worker_count: Unused number of workers.
+  """
+  del worker_idx, worker_count
+  # Prevent TensorFlow from using the GPU.
+  tf.config.set_visible_devices([], "GPU")
+
+  # Prevent jax from preallocating GPU memory in the data reader workers.
+  # See https://docs.jax.dev/en/latest/gpu_memory_allocation.html
+  os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
