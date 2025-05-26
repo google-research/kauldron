@@ -14,6 +14,7 @@
 
 """Utils for using Kauldron transforms with PyGrain."""
 
+import sys
 from typing import Any, Callable, Mapping
 
 import grain.python as grain
@@ -93,8 +94,16 @@ _KD_TO_PYGRAIN_ADAPTERS = {
 def _adapt_for_pygrain(
     transform: tr_normalize.Transformation,
 ) -> grain.Transformation:
+  """Adapt the transform for pygrain."""
+  tf_grain = sys.modules.get("grain.tensorflow")
+
   if isinstance(transform, (grain.Transformation, SliceDataset)):
     return transform
+  elif tf_grain and isinstance(transform, tf_grain.Transformation):
+    raise ValueError(
+        f"Mixing TFGrain transform inside PyGrain pipeline: {transform}"
+    )
+
   return tr_normalize.adapt_transform(transform, _KD_TO_PYGRAIN_ADAPTERS)
 
 
