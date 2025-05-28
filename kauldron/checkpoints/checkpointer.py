@@ -28,6 +28,7 @@ from absl import logging
 from etils import epath
 from etils import epy
 import jax
+from kauldron import kontext
 from kauldron.checkpoints import checkpoint_items
 from kauldron.checkpoints import lazy_checkpoint_manager
 from kauldron.utils import config_util
@@ -75,6 +76,7 @@ class BaseCheckpointer(
       *,
       step: int,
       force: bool = False,
+      metrics: Optional[Any] = None,
   ) -> bool:
     raise NotImplementedError()
 
@@ -181,6 +183,10 @@ class Checkpointer(BaseCheckpointer):
     keep_time_interval: See `ocp.CheckpointManagerOptions`
     keep_period: See `ocp.CheckpointManagerOptions`
     save_on_steps: See `ocp.CheckpointManagerOptions`
+    best_metric_path: Path to evaluator's metric for best checkpoint selection.
+      Warning: If using a best_metric_path, the evaluator must be run inside the
+      train loop and cannot be run as a separate job.
+    best_mode: See `ocp.CheckpointManagerOptions`
     multiprocessing_options: See `ocp.MultiprocessingOptions`
     fast: (internal) Activate some optimizations
     create: (internal) Whether to create the checkpoint directory, this is set
@@ -195,6 +201,8 @@ class Checkpointer(BaseCheckpointer):
   keep_time_interval: Optional[datetime.timedelta] = None
   keep_period: Optional[int] = None
   save_on_steps: Optional[Sequence[int]] = None
+  best_metric_path: Optional[str] = None
+  best_mode: str = "max"
   multiprocessing_options: ocp.options.MultiprocessingOptions = (
       dataclasses.field(default_factory=ocp.options.MultiprocessingOptions)
   )
@@ -205,12 +213,18 @@ class Checkpointer(BaseCheckpointer):
   @functools.cached_property
   def _ckpt_mgr(self) -> lazy_checkpoint_manager.LazyCheckpointManager:
     """Returns checkpoint manager instance (initialized and cached)."""
+
+    def _best_fn(metrics):
+      return kontext.get_by_path(metrics, self.best_metric_path)
+
     mgr_options = ocp.CheckpointManagerOptions(
         save_interval_steps=self.save_interval_steps,
         max_to_keep=self.max_to_keep,
         keep_time_interval=self.keep_time_interval,
         keep_period=self.keep_period,
         save_on_steps=self.save_on_steps,
+        best_fn=_best_fn if self.best_metric_path is not None else None,
+        best_mode=self.best_mode,
         step_prefix="ckpt",
         # TODO(msajjadi): Re-enable this once we've figured it out.
         # step_format_fixed_length=9,
@@ -292,13 +306,17 @@ class Checkpointer(BaseCheckpointer):
       *,
       step: int,
       force: bool = False,
+      metrics: Optional[Any] = None,
   ) -> bool:
     """Save state."""
     with jax.transfer_guard("allow"):
+      # Convert metrics to be JSON serializable.
+      metrics = jax.tree.map(float, metrics)
       return self._ckpt_mgr.save(
           state,
           step=step,
           force=force,
+          metrics=metrics,
       )
 
   def maybe_save(
@@ -400,7 +418,14 @@ class NoopCheckpointer(BaseCheckpointer):
   def should_save(self, step: int) -> bool:
     return False
 
-  def save(self, state, *, step: int, force: bool = False) -> bool:
+  def save(
+      self,
+      state,
+      *,
+      step: int,
+      force: bool = False,
+      metrics: Optional[Any] = None,
+  ) -> bool:
     return False
 
   def maybe_save(self, state, *, step: int, force: bool = False) -> bool:

@@ -102,6 +102,7 @@ class LazyCheckpointManager:
       *,
       step: int,
       force: bool = False,
+      metrics: Optional[Any] = None,
   ) -> bool:
     """Wrapper around `ocp.CheckpointManager.save`."""
     mgr = self._get_manager(state)
@@ -109,6 +110,7 @@ class LazyCheckpointManager:
         step,
         args=state.__kd_ocp_save_args__(),
         force=force,
+        metrics=metrics,
     )  # pytype: disable=bad-return-type
 
   def restore(self, state: _StateT, *, step: int) -> _StateT:

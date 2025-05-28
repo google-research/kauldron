@@ -83,11 +83,13 @@ def train_impl(
     writer.write_context_structure(initial_step, trainer)
 
   aux = None
+  log_metrics = None
 
   status.log_status(f"Starting training loop at step {initial_step}")
   with _transfer_guard():
     # NOTE: DO *NOT* CHANGE THE ORDER OF OPERATIONS IN THE TRAINING LOOP!
     chrono.start_loop()
+
     for i in _enum_steps_with_hooks(
         initial_step=initial_step,
         num_train_steps=trainer.num_train_steps,
@@ -95,7 +97,24 @@ def train_impl(
         profiler=trainer.profiler,
         tqdm_info=trainer.setup.tqdm_info,
     ):
+      # Evaluation metrics are computed from the OLD model state *before*
+      # backprop gradients are applied.
+      eval_metrics = {}
+      with chrono.pause(chrono_utils.Pause.EVALS_ALONG_TRAIN):
+        for evaluator in trainer.evals.values():
+          # If the checkpointer is saving the best checkpoint according to eval
+          # metrics, evaluation frequency must be sync with checkpointing.
+          eval_aux = evaluator.maybe_eval(step=i, state=state)
+          if eval_aux is not None:
+            # TODO(klausg): remove once compute() is moved out of the writer.
+            eval_metrics[evaluator.name] = eval_aux.compute(
+                flatten=False
+            ).metric_values
+
       if ckpt.should_save(i):
+        # Add the train metrics to the metrics used for checkpointing.
+        if log_metrics:
+          eval_metrics["train"] = aux.compute(flatten=False).metric_values
         # Take the time after executing the last training step so
         # that the times logged and stored with the checkpoint match.
         # TODO(epot): Should check `i` and `state.step` match
@@ -103,13 +122,8 @@ def train_impl(
           ckpt.save(
               checkpoint_state.CheckpointState(state, chrono, ds_iter),
               step=i,
+              metrics=eval_metrics,
           )
-
-      # Evaluation metrics are computed from the OLD model state *before*
-      # backprop gradients are applied.
-      with chrono.pause(chrono_utils.Pause.EVALS_ALONG_TRAIN):
-        for evaluator in trainer.evals.values():
-          evaluator.maybe_eval(step=i, state=state)
 
       log_summaries = i % trainer.log_summaries_every == 0
       log_metrics = i % trainer.log_metrics_every == 0
