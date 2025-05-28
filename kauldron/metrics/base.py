@@ -345,6 +345,31 @@ class SkipIfMissing(Metric):
 
   metric: Metric
 
+  @flax.struct.dataclass
+  class State(base_state.State):
+    """State for SkipIfMissing."""
+
+    state: base_state.State | None = None
+
+    @classmethod
+    def empty(cls) -> SkipIfMissing.State:
+      return cls(state=None)
+
+    def merge(self, other: SkipIfMissing.State) -> SkipIfMissing.State:
+      if not isinstance(other, type(self)):
+        raise TypeError(f"Cannot merge {type(self)} with {type(other)}.")
+
+      # One of the states is skipped, return the other.
+      if self.state is None:
+        return other
+      if other.state is None:
+        return self
+
+      return type(self)(state=self.state.merge(other.state))
+
+    def compute(self) -> PyTree[Any]:
+      return self.state.compute() if self.state is not None else {}
+
   def _resolve_kwargs(self, context: Any) -> dict[kontext.Key, Any]:
     # Use the key and get_state signature of self.metric instead of self
     return kontext.resolve_from_keyed_obj(
@@ -361,10 +386,7 @@ class SkipIfMissing(Metric):
       # (after finding another way to make it compatible with TreeReduce)
       return self.metric.get_state(**kwargs)
     except KeyError:
-      return self.metric.empty()
-
-  def empty(self) -> Metric.State:
-    return self.metric.empty()
+      return self.empty()
 
   # Forwards `__kontext_keys__` so the keys can be extracted from the top-level
   def __kontext_keys__(self) -> dict[kontext.Key, kontext.Key]:

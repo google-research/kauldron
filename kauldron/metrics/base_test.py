@@ -154,7 +154,7 @@ def test_skip_if_missing():
   # should not error and instead return empty state if keys are missing
   context = {"batch": {}}
   y = m.get_state_from_context(context).compute()
-  assert y == 0
+  assert y == {}  # pylint: disable=g-explicit-bool-comparison
 
 
 def test_error_if_state_is_not_flax_dataclass():
