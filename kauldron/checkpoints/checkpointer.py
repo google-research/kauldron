@@ -1,4 +1,4 @@
-# Copyright 2024 The kauldron Authors.
+# Copyright 2025 The kauldron Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import abc
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping
 import dataclasses
 import datetime
 import functools
@@ -32,6 +32,7 @@ from kauldron import kontext
 from kauldron.checkpoints import checkpoint_items
 from kauldron.checkpoints import lazy_checkpoint_manager
 from kauldron.utils import config_util
+import numpy as np
 import orbax.checkpoint as ocp
 
 _State = checkpoint_items.CheckpointItem
@@ -309,9 +310,10 @@ class Checkpointer(BaseCheckpointer):
       metrics: Optional[Any] = None,
   ) -> bool:
     """Save state."""
-    with jax.transfer_guard("allow"):
+    if metrics is not None:
       # Convert metrics to be JSON serializable.
-      metrics = jax.tree.map(float, metrics)
+      metrics = _normalize_to_json(metrics)
+    with jax.transfer_guard("allow"):
       return self._ckpt_mgr.save(
           state,
           step=step,
@@ -439,3 +441,20 @@ def _release_memory(x):
   if isinstance(x, jax.Array):
     x.delete()
   return x
+
+
+def _normalize_to_json(obj):
+  """Convert pytree of numpy arrays to json serializable objects."""
+  if isinstance(obj, np.ndarray):
+    if obj.shape:
+      return obj.tolist()
+    else:  # scalar
+      return obj.item()
+  elif isinstance(obj, Mapping):
+    return {k: _normalize_to_json(v) for k, v in obj.items()}
+  elif isinstance(obj, (list, tuple)):
+    return [_normalize_to_json(v) for v in obj]
+  elif isinstance(obj, (str, int, bool, float, type(None))):
+    return obj
+  else:
+    raise ValueError(f"Unknown type: {type(obj)}")
