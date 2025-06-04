@@ -22,6 +22,7 @@ import typing
 
 from absl import app
 from absl import flags
+from absl import logging
 from etils import epy
 from etils.epy import _multiprocess
 import jax
