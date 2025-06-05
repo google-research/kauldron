@@ -30,6 +30,7 @@ from etils import enp
 from etils import epath
 from etils import epy
 from etils.etree import jax as etree  # pylint: disable=g-importing-member
+import flax.linen as nn
 import jax
 from kauldron import konfig
 from kauldron import kontext
