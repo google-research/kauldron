@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Self, Sequence, TypeAlias
+from typing import Self, Sequence, TypeAlias, cast
 
 import flax
 from kauldron import kd
@@ -146,8 +146,7 @@ def _normalize_color(color: ColorLike) -> tuple[int, int, int]:
   match color:
     case str():
       rgb = PIL.ImageColor.getcolor(color, mode="RGB")
-      assert isinstance(rgb, tuple[int, int, int])
-      return rgb
+      return cast(tuple[int, int, int], rgb)
     case float():
       if 0 <= color <= 1:
         raise ValueError(
