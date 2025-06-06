@@ -148,13 +148,18 @@ def test_skip_if_missing():
       "batch": {"d": np.arange(5)},
   }
   # should compute correct value if keys are present
-  y = m.get_state_from_context(context).compute()
+  state0 = m.get_state_from_context(context)
+  y = state0.compute()
   assert y == 2
 
   # should not error and instead return empty state if keys are missing
   context = {"batch": {}}
-  y = m.get_state_from_context(context).compute()
+  state1 = m.get_state_from_context(context)
+  y = state1.compute()
   assert y == {}  # pylint: disable=g-explicit-bool-comparison
+
+  state_merged = state0.merge(state1)
+  assert state_merged.compute() == 2
 
 
 def test_error_if_state_is_not_flax_dataclass():

@@ -377,14 +377,14 @@ class SkipIfMissing(Metric):
     )
 
   def get_state(self, **kwargs) -> Metric.State:
-    return self.metric.get_state(**kwargs)
+    return self.State(state=self.metric.get_state(**kwargs))
 
   def get_state_from_context(self, context: Any) -> Metric.State:
     try:
       kwargs = self._resolve_kwargs(context)
       # TODO(klausg): move the get_state out of the try block
       # (after finding another way to make it compatible with TreeReduce)
-      return self.metric.get_state(**kwargs)
+      return self.State(state=self.metric.get_state(**kwargs))
     except KeyError:
       return self.empty()
 
