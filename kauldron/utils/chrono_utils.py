@@ -88,6 +88,7 @@ class Chrono(checkpoints.items.CheckpointItem):
     name: Name of the chrono / dahsboard collection.
     batch_size: Global batch size. If set, will report the number of examples
       per sec.
+    custom_metrics: Additional metrics to report.
     pause_names: Name of additional metrics to plot on the dashboard. Should
       match the `chrono.pause(report_as='name')` call.
     chrono_since_last_flush: Individual timers.
@@ -96,6 +97,7 @@ class Chrono(checkpoints.items.CheckpointItem):
   name: str
   batch_size: int | None = None
   pause_names: list[str] = dataclasses.field(default_factory=list)
+  custom_metrics: dict[str, float] = dataclasses.field(default_factory=dict)
 
   chrono_since_last_flush: dict[str, _TimerElement] = dataclasses.field(
       default_factory=lambda: collections.defaultdict(_TimerElement)
@@ -173,14 +175,20 @@ class Chrono(checkpoints.items.CheckpointItem):
       data_points_per_sec_global = (
           chrono.num_steps * self.batch_size
       ) / chrono.total_time
+      data_points_per_sec_per_device = (
+          data_points_per_sec_global / jax.device_count()
+      )
       metrics.update({
           'data_points_per_sec_global': data_points_per_sec_global,
           # The ex per sec per device allow to get a normalized performance
           # metric, independent of the batch size or platform.
-          'data_points_per_sec_per_device': (
-              data_points_per_sec_global / jax.device_count()
-          ),
+          'data_points_per_sec_per_device': data_points_per_sec_per_device,
       })
+      for name, val in self.custom_metrics.items():
+        metrics[f'{name}_per_sec_global'] = data_points_per_sec_global * val
+        metrics[f'{name}_per_sec_per_device'] = (
+            data_points_per_sec_per_device * val
+        )
 
     # Report the extra metrics (checkpoint) and reset the chrono
     for name, chrono in self.chrono_since_last_flush.items():
@@ -208,6 +216,9 @@ class Chrono(checkpoints.items.CheckpointItem):
           'data_points_per_sec_global',
           'data_points_per_sec_per_device',
       ])
+      for name in self.custom_metrics:
+        keys.append(f'{name}_per_sec_global')
+        keys.append(f'{name}_per_sec_per_device')
     plots = [
         kdash.Plot(
             y_key=f'perf_stats/{key}',
@@ -258,6 +269,8 @@ class Chrono(checkpoints.items.CheckpointItem):
         k: dataclasses.asdict(v)
         for k, v in self.chrono_since_last_flush.items()
     }
+    data['custom_metrics'] = dict(self.custom_metrics)
+
     return ocp.args.JsonSave(data)
 
   def __kd_ocp_restore_args__(self) -> ocp.args.CheckpointArgs:
