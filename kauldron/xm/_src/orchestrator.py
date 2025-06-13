@@ -57,7 +57,7 @@ class SweepOrchestrator(Orchestrator):
   """Launch all jobs in a single work-unit, eventually with parameter sweep.
 
   * Launch all jobs in a single work-unit
-  * For sweep, all jobs in a work-unit are updated with the same sweep kwargs
+  * For sweep, all jobs in a work-unit are updated with the same sweep kwargs.
   """
 
   def launch_jobs(
@@ -103,10 +103,15 @@ class SweepOrchestrator(Orchestrator):
         sweep_item=sweep_item,
     )
 
-    xm_jobs = {
+    xm_jobs = xm.JobGroup(**{
         k: job.make_xm_job(
             sweep_args=sweep_item.job_kwargs, dir_builder=dir_builder
         )
         for k, job in resolved_jobs.items()
-    }
-    wu.add(xm.JobGroup(**xm_jobs))
+    })
+    xm_jobs = self._update_jobs(xm_jobs)
+    wu.add(xm_jobs)
+
+  def _update_jobs(self, xm_jobs: xm.JobGroup) -> xm.JobGroup:
+    """Subclasses can override this to add custom jobs."""
+    return xm_jobs

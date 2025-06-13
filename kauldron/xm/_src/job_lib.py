@@ -220,6 +220,7 @@ class Job(job_params.JobParams):
         executor=executor,
         args=args,
         env_vars=env_vars,
+        name=self.name,
     )
 
   @functools.cached_property

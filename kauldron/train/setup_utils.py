@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Dataclasses."""
+"""Setup utils."""
 
 from __future__ import annotations
 
@@ -22,6 +22,7 @@ import typing
 
 from absl import logging
 from etils import epath
+import jax
 from kauldron import typing as kd_typing
 import tensorflow as tf
 
@@ -38,6 +39,7 @@ class TqdmInfo:
 
 @dataclasses.dataclass(kw_only=True, frozen=True)
 class Setup:
+  # pyformat: disable
   """Setup/environment options.
 
   Attributes:
@@ -50,6 +52,7 @@ class Setup:
     eval_only: Whether the job is a eval-only job.
     preemptable_eval: If `True`, makes eval preemptible.
   """
+  # pyformat: enable
 
   # Could provide more options here to customize artifacts,...
 
