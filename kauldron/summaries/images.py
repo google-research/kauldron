@@ -167,7 +167,7 @@ class ShowBoxes(metrics.Metric):
       images: Float["..."],
       boxes: Float["*b k 4"],
       boxes_mask: Bool["*b k 1"] | None = None,
-  ) -> ShowImages.State:
+  ) -> ShowBoxes.State:
     if boxes_mask is not None:
       boxes = boxes * np.array(boxes_mask, dtype=np.float32)
 
@@ -222,7 +222,7 @@ class ShowSegmentations(metrics.Metric):
   def get_state(
       self,
       segmentations: Float["..."],
-  ) -> ShowImages.State:
+  ) -> ShowSegmentations.State:
     # maybe rearrange and then check shape
     segmentations = _maybe_rearrange(
         segmentations, self.rearrange, self.rearrange_kwargs
@@ -293,7 +293,7 @@ class ShowDifferenceImages(metrics.Metric):
       self,
       images1: Float["..."],
       images2: Float["..."],
-  ) -> ShowImages.State:
+  ) -> ShowDifferenceImages.State:
     # maybe rearrange and then check shape
     images1 = _maybe_rearrange(images1, self.rearrange, self.rearrange_kwargs)
     images2 = _maybe_rearrange(images2, self.rearrange, self.rearrange_kwargs)
