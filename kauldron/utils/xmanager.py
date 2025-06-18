@@ -119,10 +119,7 @@ class Experiment:
   @functools.cached_property
   def config(self) -> konfig.ConfigDictLike[trainer_lib.Trainer]:
     """Unresolved `ConfigDict`."""
-    config_path = self.wu.workdir / constants.CONFIG_FILENAME
-    config = json.loads(config_path.read_text())
-    # Wrap the dict to ConfigDict
-    return _json_to_config(config, lazy=self.lazy)  # pytype: disable=bad-return-type
+    return load_config_from_path(self.wu.workdir, lazy=self.lazy)  # pytype: disable=bad-return-type
 
   @functools.cached_property
   def trainer(self) -> trainer_lib.Trainer:
@@ -150,6 +147,16 @@ class WorkUnit:
 def _normalize_workdir(path: str) -> epath.Path:
   """Normalize workdir path."""
   return epath.Path(path)
+
+
+def load_config_from_path(
+    workdir: epath.PathLike, lazy: bool = False
+) -> konfig.ConfigDictLike[trainer_lib.Trainer]:
+  """Loads a config from a path."""
+  config_path = epath.Path(workdir) / constants.CONFIG_FILENAME
+  config = json.loads(config_path.read_text())
+  # Wrap the dict to ConfigDict
+  return _json_to_config(config, lazy=lazy)  # pytype: disable=bad-return-type
 
 
 def _json_to_config(json_value, *, lazy: bool):
