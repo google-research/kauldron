@@ -128,6 +128,8 @@ def _apply_transform(
       ds = ds.map(tr)
     case grain.RandomMapTransform():
       ds = ds.random_map(tr)
+    case grain.MapWithIndexTransform():
+      ds = ds.map_with_index(tr)
     case grain.FilterTransform():
       ds = ds.filter(tr)
     case grain.Batch():
