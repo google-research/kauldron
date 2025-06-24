@@ -16,9 +16,11 @@
 
 from __future__ import annotations
 
+from typing import Optional
 import warnings
 
 from flax import linen as nn
+import jax
 import jax.numpy as jnp
 from kauldron.modules import knn_types
 from kauldron.typing import Axes, DType, Float, Initializer, Shape, typechecked  # pylint: disable=g-multiple-import,g-importing-member
@@ -233,7 +235,9 @@ def _create_gradient_grid(
 
 @typechecked
 def convert_to_fourier_features(
-    inputs: Float['... D'], basis_degree: int
+    inputs: Float['... D'],
+    basis_degree: int,
+    precision: Optional[jax.lax.PrecisionLike] = None,
 ) -> Float['... d']:
   """Convert inputs to Fourier features, e.g. for positional encoding."""
 
@@ -246,8 +250,9 @@ def convert_to_fourier_features(
       [2**i * jnp.eye(n_dims) for i in range(basis_degree)], 1
   )
 
+  # Project inputs onto frequency basis.
   # x.shape = (..., n_dims * basis_degree)
-  x = inputs @ freq_basis  # Project inputs onto frequency basis.
+  x = jnp.matmul(inputs, freq_basis, precision=precision)
 
   # Obtain Fourier features as [sin(x), cos(x)] = [sin(x), sin(x + 0.5 * pi)].
   return jnp.sin(jnp.concatenate([x, x + 0.5 * jnp.pi], axis=-1))
