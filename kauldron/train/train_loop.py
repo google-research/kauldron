@@ -139,6 +139,7 @@ def train_impl(
           return_summaries=log_summaries,
           checkify_error_categories=trainer.checkify_error_categories,
       )
+      jax.block_until_ready(state)
 
       # TODO(epot): Should be a `@checkify` decorator in `trainstep.step`.
       if trainer.checkify_error_categories:
