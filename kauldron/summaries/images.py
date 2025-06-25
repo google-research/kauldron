@@ -91,6 +91,7 @@ class ShowImages(metrics.Metric):
     return self.State(images=images)
 
 
+# TODO(klausg): The use of rearrange is weird here. maybe move to contrib?
 @dataclasses.dataclass(kw_only=True, frozen=True)
 class ShowBoxes(metrics.Metric):
   """Show a set of boxes with optional image reshaping.
@@ -107,6 +108,9 @@ class ShowBoxes(metrics.Metric):
     num_colors: Number of different colors to use for the boxes. Default 16.
     in_vrange: Optional value range of the input images. Used to clip and then
       rescale the images to [0, 1].
+    rearrange: Optional einops string to reshape the images AFTER the boxes have
+      been drawn.
+    rearrange_kwargs: Optional keyword arguments for the einops reshape.
   """
 
   images: kontext.Key = kontext.REQUIRED
@@ -117,19 +121,22 @@ class ShowBoxes(metrics.Metric):
   num_colors: int = 16
   in_vrange: Optional[tuple[float, float]] = None
 
+  rearrange: Optional[str] = None
+  rearrange_kwargs: Mapping[str, Any] | None = None
+
   @struct.dataclass
   class State(metrics.AutoState["ShowBoxes"]):
     """Collects the first num_images images and boxes."""
 
-    images: Float["*b h w #3"] = metrics.truncate_field(
+    images: Float["n h w #3"] = metrics.truncate_field(
         num_field="parent.num_images"
     )
-    boxes: Float["*b k 4"] = metrics.truncate_field(
+    boxes: Float["n k 4"] = metrics.truncate_field(
         num_field="parent.num_images"
     )
 
     @typechecked
-    def compute(self) -> Float["*b h w #3"]:
+    def compute(self) -> Float["n h w #3"]:
       data = super().compute()
       images, boxes = data.images, data.boxes
 
@@ -145,7 +152,11 @@ class ShowBoxes(metrics.Metric):
       colors = _get_uniform_colors(self.parent.num_colors)
       images = tf.image.draw_bounding_boxes(images, boxes, colors)
 
+      # Note: rearrange is applied AFTER the boxes are drawn.
       images = np.reshape(images, images_shape)
+      images = _maybe_rearrange(
+          images, self.parent.rearrange, self.parent.rearrange_kwargs
+      )
 
       # always clip to avoid display problems in TB and Datatables
       return np.clip(images, 0.0, 1.0)
