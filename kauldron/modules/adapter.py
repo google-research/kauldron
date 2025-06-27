@@ -17,6 +17,7 @@
 from typing import Any, Optional
 
 from flax import linen as nn
+from kauldron import kontext
 from kauldron.utils import train_property
 
 
@@ -26,6 +27,31 @@ class WrapperModule(nn.Module):
   The wrapper module transparent with respect to the inner parameters (
   `{'params': inner_params}` instead of nesting
   `{'params': {'model': inner_params}}`).
+
+  The keys from the wrapped model are auto-propagated to the wrapper, so the
+  module can be initialized as:
+
+  ```python
+  cfg.model = kd.nn.WrapperModule(
+      model=MyModel(
+          input='batch.input',  # keys propagated to the `WrapperModule`
+      ),
+  )
+  ```
+
+  Example to create a wrapper which adds gradient checkpointing to any model:
+
+  ```python
+  class CheckpointWrapper(kd.nn.WrapperModule):
+
+    @nn.checkpoint
+    @nn.compact
+    def __call__(self, *args, **kwargs):
+      return super().__call__(*args, **kwargs)
+
+
+  model = CheckpointWrapper(model=MyModel(x='batch.input'))
+  ```
   """
 
   model: nn.Module
@@ -33,9 +59,25 @@ class WrapperModule(nn.Module):
   def __post_init__(self):
     super().__post_init__()
     # Share scope, to make the wrapper module transparent with respect to the
-    # parameters (instead of nesting `{'params': {'model': params}}`).
+    # parameters (`{'params': model_params}}` rather than
+    # `{'params': {'model': model_params}}`).
     if self.scope is not None:
       nn.share_scope(self, self.model)
+
+  @nn.compact
+  def __call__(self, *args: Any, **kwargs: Any) -> Any:
+    return self.model(*args, **kwargs)
+
+  def __kontext_keys__(self) -> dict[str, str]:
+    """Kauldron keys when calling `kontext.get_from_keys_obj`."""
+    # Forward the keys from the wrapped model.
+    # This allow to define the config as:
+    # kd.nn.WrapperModule(
+    #   model=MyModel(
+    #     input='batch.input',  # keys propagated to the `WrapperModule`
+    #   ),
+    # )
+    return kontext.get_keypaths(self.model)
 
 
 class ExternalModule(WrapperModule):
