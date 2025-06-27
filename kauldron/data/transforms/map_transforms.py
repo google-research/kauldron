@@ -173,7 +173,7 @@ class Resize(base.ElementWiseTransform):
       size = (*batch, *self.size, c)
       # Explicitly set device to avoid `Disallowed host-to-device transfer`
       # Uses default sharding.
-      element = jax.device_put(element, jax.devices()[0])
+      element = jax.device_put(element, jax.local_devices()[0])
       return jax.image.resize(
           element,
           size,
