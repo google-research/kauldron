@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from collections.abc import Hashable
 import sys
-from typing import Any, ClassVar, cast
+from typing import Any, ClassVar
 
 from etils import epy
 import immutabledict as immutabledict_lib
@@ -65,15 +65,11 @@ class ImmutableDict(immutabledict_lib.immutabledict):
       cls._flax_registered = True
 
     if _IMMUTABLE_DICT_V4:
-      # This is needed because pytype doesn't know that `__new__` returns a
-      # `ImmutableDict`.
       # immutabledict 4.0.0 switched from using __init__ to __new__ and thus
       # requires passing the args and kwargs along here.
-      return cast(ImmutableDict, super().__new__(cls, *args, **kwargs))
+      return super().__new__(cls, *args, **kwargs)  # pylint: disable=no-value-for-parameter
     else:
-      # This is needed because pytype doesn't know that `__new__` returns a
-      # `ImmutableDict`.
-      return cast(ImmutableDict, super().__new__(cls, *args, **kwargs))
+      return super().__new__(cls)
 
   def __getattr__(self, name: str) -> str:
     try:
