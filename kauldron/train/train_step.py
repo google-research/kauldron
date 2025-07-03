@@ -121,15 +121,21 @@ class TrainStep(config_util.UpdateFromRootCfg):
     if isinstance(elem_spec, dict):
       elem_spec = flax.core.freeze(elem_spec)
     state = self._init_model(elem_spec, model_method=model_method)
-    # apply init transforms BEFORE initializing the optimizer to allow
-    # transforms like `decay_to_init` which remember the init params to work
-    # correctly.
+
     if not skip_transforms:
-      # If restoring a checkpoint we can skip the (potentially slow) transforms
+      # First apply the init transforms BEFORE initializing the optimizer.
+      # This allow the optimizer to depend on the pre-trained restored weights.
+      # For example when using `optax.decay_to_init` or
+      # `optax.ema_weight_wrapper`
       state = self._init_transform(state)
     if self.optimizer is not None and not skip_optimizer:
       # Eval-only jobs do not have optimizer.
       state = self._init_optimizer(state)
+    if not skip_transforms:
+      # After the optimizer has been initialized, re-apply the transforms.
+      # This allow to overwrite the optimizer state with the one from the
+      # pre-trained checkpoint.
+      state = self._init_transform_after_optimizer(state)
     return state
 
   @functools.partial(
@@ -169,6 +175,13 @@ class TrainStep(config_util.UpdateFromRootCfg):
   def _init_transform(self, state: TrainState) -> TrainState:
     """Run any additional init transformations and return the updated state."""
     state = self.init_transform.transform(state)
+    # Transforms should ideally propagate the sharding from the state, but in
+    # case they forget, we explicitly re-apply the sharding.
+    return sharding_lib.with_sharding_constraint(state, self.sharding.state)
+
+  def _init_transform_after_optimizer(self, state: TrainState) -> TrainState:
+    """Run any additional init transformations and return the updated state."""
+    state = self.init_transform.transform_after_optimizer(state)
     # Transforms should ideally propagate the sharding from the state, but in
     # case they forget, we explicitly re-apply the sharding.
     return sharding_lib.with_sharding_constraint(state, self.sharding.state)

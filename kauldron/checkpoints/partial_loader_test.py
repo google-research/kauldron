@@ -132,6 +132,27 @@ def test_loader(new_trainer: kd.train.Trainer, old_trainer: kd.train.Trainer):  
   )
 
 
+def test_():
+  other, opt_state = kd.ckpts.partial_loader._split_new_to_old({
+      'step': 'step',
+      'params': 'params',
+      'collections': 'collections',
+      'opt_state.inner_opt_state': 'opt_state.inner_opt_state',
+      'opt_state.mini_step': 'opt_state.mini_step',
+      'opt_state.gradient_step': 'opt_state.gradient_step',
+  })
+  assert other == {
+      'step': 'step',
+      'params': 'params',
+      'collections': 'collections',
+  }
+  assert opt_state == {
+      'opt_state.inner_opt_state': 'opt_state.inner_opt_state',
+      'opt_state.mini_step': 'opt_state.mini_step',
+      'opt_state.gradient_step': 'opt_state.gradient_step',
+  }
+
+
 def _assert_not_all_close(*args):
   with pytest.raises(AssertionError):
     chex.assert_trees_all_close(*args)

@@ -35,13 +35,28 @@ import orbax.checkpoint as ocp
 with epy.lazy_imports():
   from orbax.checkpoint.experimental.model_surgery import standard_checkpoint_handler  # pylint: disable=g-import-not-at-top
 
+_StrDict = MutableMapping[str, str]
 FrozenDict = dict if typing.TYPE_CHECKING else flax.core.FrozenDict
 _T = TypeVar('_T')
 
 
 # TODO(epot): rename to `InitTransform`
 class AbstractPartialLoader(abc.ABC):
-  """Abstract class for partial checkpoint loaders."""
+  """Abstract class for partial checkpoint loaders.
+
+  During state initialization, order is as follow:
+
+  1. Initialize the model params (`model.init()`)
+  2. Apply the `init_transform.transform()` to the state
+  3. Initialize the optimizer
+  4. Apply the `init_transform.transform_after_optimizer()` to the state
+
+  This order allows:
+
+  * To have the optimizer depend on the pre-trained values (e.g. when using
+    optax `decay_to_init` and `ema_weight_wrapper` transforms).
+  * To restore the optimizer state from a pre-trained checkpoint.
+  """
 
   @abc.abstractmethod
   def transform(self, state: _T) -> _T:
@@ -62,6 +77,25 @@ class AbstractPartialLoader(abc.ABC):
     """
     raise NotImplementedError
 
+  def transform_after_optimizer(self, state: _T) -> _T:
+    """Transformation applied after the optimizer has been restored.
+
+    The `transform` method is called before the optimizer has been restored.
+    This allows the optimizer to depend on the pre-trained values (e.g. when
+    using optax `decay_to_init` and `ema_weight_wrapper` transforms).
+
+    However sometimes, optimizer state also need to be restored from a
+    pre-trained checkpoint. This can be done by this method.
+
+    Args:
+      state: The `state` object to transform
+
+    Returns:
+      The updated `state`
+    """
+    # No-op by default.
+    return state
+
 
 class NoopTransform(AbstractPartialLoader):
   """`init_transform` that does nothing."""
@@ -80,6 +114,14 @@ class MultiTransform(AbstractPartialLoader):
     for k, tr in self._transforms.items():
       try:
         state = tr.transform(state)
+      except Exception as e:  # pylint: disable=broad-exception-caught
+        epy.reraise(e, prefix=f'init_transform {k!r} failed: ')
+    return state
+
+  def transform_after_optimizer(self, state: _T) -> _T:
+    for k, tr in self._transforms.items():
+      try:
+        state = tr.transform_after_optimizer(state)
       except Exception as e:  # pylint: disable=broad-exception-caught
         epy.reraise(e, prefix=f'init_transform {k!r} failed: ')
     return state
@@ -120,7 +162,7 @@ class PartialKauldronLoader(epy.ContextManager, AbstractPartialLoader):
   """
 
   workdir: epath.PathLike
-  new_to_old: MutableMapping[str, str] = dataclasses.field(
+  new_to_old: _StrDict = dataclasses.field(
       default_factory=lambda: FrozenDict({
           'params': 'params',
           'collections': 'collections',
@@ -129,10 +171,28 @@ class PartialKauldronLoader(epy.ContextManager, AbstractPartialLoader):
   step: int = -1
 
   def transform(self, state: _T) -> _T:
+    # Before the optimizer, restore everything except the `opt_state` (i.e.,
+    # params, collections,...)
+    new_to_old, _ = _split_new_to_old(self.new_to_old)
+    return self._partial_restore(state, new_to_old)
+
+  def transform_after_optimizer(self, state: _T) -> _T:
+    _, new_to_old = _split_new_to_old(self.new_to_old)
+    if not new_to_old:  # No need to restore anything.
+      return state
+
+    # After the optimizer is initialized, only restore the `opt_state`
+    return self._partial_restore(state, new_to_old)
+
+  def _partial_restore(
+      self,
+      state: _T,
+      new_to_old: _StrDict,
+  ) -> _T:
     # This could potentially be extended to non-Kauldron checkpoints (like
     # `kd.ckpts.PartialOrbaxLoader`)
     return self._ckpt_mgr.restore(
-        _PartialRestoreCheckpointItem(state, new_to_old=self.new_to_old),
+        _PartialRestoreCheckpointItem(state, new_to_old=new_to_old),
         step=self.step,
     )
 
@@ -161,7 +221,7 @@ class _PartialRestoreCheckpointItem(checkpoint_items.CheckpointItem):
 
   state: Any
   _: dataclasses.KW_ONLY
-  new_to_old: MutableMapping[str, str]
+  new_to_old: _StrDict
 
   def __kd_ocp_handlers__(self) -> ocp.CheckpointHandler:
     return standard_checkpoint_handler.StandardCheckpointHandler()
@@ -206,6 +266,18 @@ class _PartialRestoreCheckpointItem(checkpoint_items.CheckpointItem):
         for new_path, old_path in self.new_to_old.items()
     }
     return sub_state
+
+
+def _split_new_to_old(new_to_old: _StrDict) -> tuple[_StrDict, _StrDict]:
+  """Split the `new_to_old` mapping between non-`opt_state` and `opt_state`."""
+  new_to_old_other = {}
+  new_to_old_opt_state = {}
+  for new_path, old_path in new_to_old.items():
+    if new_path == 'opt_state' or new_path.startswith('opt_state.'):
+      new_to_old_opt_state[new_path] = old_path
+    else:
+      new_to_old_other[new_path] = old_path
+  return new_to_old_other, new_to_old_opt_state
 
 
 # TODO(epot): Deprecate the alias and migrate everyone to
