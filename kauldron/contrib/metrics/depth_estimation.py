@@ -120,3 +120,50 @@ class RGBMeanAbsoluteRelativeError(kd.metrics.Metric):
     abs_rel = jnp.abs(preds - targets) / (targets + self.epsilon)
 
     return self.State.from_values(values=abs_rel, mask=mask)
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class Delta1(kd.metrics.Metric):
+  """Delta 1 metric for depth estimation.
+
+  This metric calculates the percentage of pixels where the ratio of
+  predicted to ground truth depth is within a threshold.
+  """
+
+  preds: kontext.Key = kontext.REQUIRED
+  targets: kontext.Key = kontext.REQUIRED
+  mask: Optional[kontext.Key] = None
+  threshold: float = 1.25
+  epsilon: float = 1e-6
+
+  @flax.struct.dataclass
+  class State(base_state.AverageState):
+    pass
+
+  @typechecked
+  def get_state(
+      self,
+      preds: Float["*a"],
+      targets: Float["*a"],
+      mask: Optional[Bool["*a"] | Float["*a"]] = None,
+  ) -> Delta1.State:
+    """Calculates the delta_1 metric.
+
+    Args:
+        preds: Predicted depth values.
+        targets: Ground truth depth values.
+        mask: Optional mask to apply to the values.
+
+    Returns:
+        The state of the metric.
+    """
+    # Clip the predictions to avoid negative values.
+    preds = jnp.clip(preds, min=0.0)
+    # Compute the ratio of predicted to ground truth depth.
+    ratio = jnp.maximum(preds, targets) / (
+        jnp.minimum(preds, targets) + self.epsilon
+    )
+    # Check if the ratio is within the threshold.
+    values = ratio < self.threshold
+    # Averages across all dims.
+    return self.State.from_values(values=values.astype(jnp.float32), mask=mask)

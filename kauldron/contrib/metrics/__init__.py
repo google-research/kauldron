@@ -22,6 +22,7 @@ with _lazy_imports.lazy_api_imports(globals()):
   from kauldron.contrib.metrics.classification import JointAccuracy
   from kauldron.contrib.metrics.depth_estimation import MeanAbsoluteRelativeError
   from kauldron.contrib.metrics.depth_estimation import RGBMeanAbsoluteRelativeError
+  from kauldron.contrib.metrics.depth_estimation import Delta1
   from kauldron.contrib.metrics.point_tracking import TapAverageJaccard
   from kauldron.contrib.metrics.point_tracking import TapOcclusionAccuracy
   from kauldron.contrib.metrics.point_tracking import TapPositionAccuracy
