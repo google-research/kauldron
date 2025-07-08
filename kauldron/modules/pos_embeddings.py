@@ -237,7 +237,7 @@ def _create_gradient_grid(
 def convert_to_fourier_features(
     inputs: Float['... D'],
     basis_degree: int,
-    precision: Optional[jax.lax.PrecisionLike] = None,
+    precision: Optional[jax.lax.PrecisionLike] = jax.lax.Precision.HIGHEST,
 ) -> Float['... d']:
   """Convert inputs to Fourier features, e.g. for positional encoding."""
 
