@@ -21,6 +21,7 @@ import functools
 import math
 import os
 import typing
+from typing import Callable
 from typing import Optional
 
 from etils import enp
@@ -55,6 +56,8 @@ class PyGrainPipeline(pipelines.Pipeline):
       multiprocessing)
     read_options: Options for reading data from the DataSource.
     enable_profiling: If True data worker process 0 will be profiled.
+    worker_init_fn: If set, will initialize subprocesses with this function
+      instead of the kauldron default.
   """
 
   # TODO(epot): Need to duplicate `batch_size` because pytype fail to detect
@@ -74,6 +77,8 @@ class PyGrainPipeline(pipelines.Pipeline):
   read_options: grain.ReadOptions | None = None
   enable_profiling: bool = False
   per_worker_buffer_size: int = 1
+
+  worker_init_fn: Callable[[int, int], None] | None = None
 
   # The pipeline is constructed in 4 functions:
   # * `ds_for_current_process`
@@ -144,7 +149,10 @@ class PyGrainPipeline(pipelines.Pipeline):
           per_worker_buffer_size=self.per_worker_buffer_size,
       )
       ds = ds.mp_prefetch(
-          multiprocessing_options, worker_init_fn=_worker_init_fn
+          multiprocessing_options,
+          worker_init_fn=functools.partial(
+              _worker_init_fn, custom_worker_init_fn=self.worker_init_fn
+          ),
       )
     return ds
 
@@ -242,7 +250,12 @@ def _get_num_workers(num_workers: int) -> int:
     return num_workers
 
 
-def _worker_init_fn(worker_idx: int, worker_count: int):
+def _worker_init_fn(
+    worker_idx: int,
+    worker_count: int,
+    *,
+    custom_worker_init_fn: Callable[[int, int], None] | None = None,
+):
   """Prevent excessive GPU memory allocation in the dataloader workers.
 
   Prevents TensorFlow from using the GPU and jax preallocation of GPU memory in
@@ -251,11 +264,14 @@ def _worker_init_fn(worker_idx: int, worker_count: int):
   Args:
     worker_idx: Unused index of the worker.
     worker_count: Unused number of workers.
+    custom_worker_init_fn: optional function to initialize worker.
   """
-  del worker_idx, worker_count
   # Prevent TensorFlow from using the GPU.
   tf.config.set_visible_devices([], "GPU")
 
   # Prevent jax from preallocating GPU memory in the data reader workers.
   # See https://docs.jax.dev/en/latest/gpu_memory_allocation.html
   os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
+
+  if custom_worker_init_fn is not None:
+    custom_worker_init_fn(worker_idx, worker_count)
