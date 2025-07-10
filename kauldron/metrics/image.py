@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Optional
+from typing import Callable, Optional
 
 import flax
 import flax.struct
@@ -30,20 +30,12 @@ from kauldron.metrics import base_state
 from kauldron.typing import Bool, Dim, Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 
-def rescale_image(
-    x: Float["*b h w c"], in_vrange: tuple[float, float]
-) -> Float["*b h w c"]:
-  """Rescale an image from in_vrange to (0, 1)."""
-  vmin, vmax = in_vrange
-  return (x - vmin) / (vmax - vmin)
-
-
 @typechecked
 def psnr(
     a: Float["*b h w c"],
     b: Float["*b h w c"],
-    mask: Optional[Bool["*b h w c"] | Float["*b h w c"]] = None,
     dynamic_range: float = 1.0,
+    mask: Optional[Bool["*b h w c"] | Float["*b h w c"]] = None,
 ) -> Float["*b 1"]:
   """Computes PSNR for an image pair."""
   if mask is not None:
@@ -65,6 +57,9 @@ class Psnr(base.Metric):
   pred: kontext.Key = kontext.REQUIRED
   target: kontext.Key = kontext.REQUIRED
   mask: Optional[kontext.Key] = None
+  psnr_fn: Callable[
+      [Float["*b h w c"], Float["*b h w c"], float], Float["*b 1"]
+  ] = psnr
 
   in_vrange: tuple[float, float] = (0.0, 1.0)
   clip: float | None = None
@@ -81,7 +76,7 @@ class Psnr(base.Metric):
       mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> Psnr.State:
     dynamic_range = self.in_vrange[1] - self.in_vrange[0]
-    values = psnr(a=pred, b=target, dynamic_range=dynamic_range)
+    values = self.psnr_fn(pred, target, dynamic_range)
     if self.clip is not None:
       values = jnp.minimum(values, self.clip)
     return self.State.from_values(values=values, mask=mask)
@@ -185,7 +180,8 @@ class Ssim(base.Metric):
       target: Float["*b h w c"],
       mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> Ssim.State:
-    rescale = lambda x: rescale_image(x, self.in_vrange)
+    vmin, vmax = self.in_vrange
+    rescale = lambda x: (x - vmin) / (vmax - vmin)
     values = _compute_ssim(
         rescale(pred),
         rescale(target),
