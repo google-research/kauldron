@@ -89,7 +89,7 @@ class Psnr(base.Metric):
 
 # https://github.com/google-research/google-research/blob/abe03104c849ca228af386d785027809d7976a8c/jaxnerf/nerf/utils.py#L278
 @typechecked
-def _compute_ssim(
+def ssim(
     img0: Float["*b h w c"],
     img1: Float["*b h w c"],
     max_val: float,
@@ -156,8 +156,8 @@ def _compute_ssim(
   numer = (2 * mu01 + c1) * (2 * sigma01 + c2)
   denom = (mu00 + mu11 + c1) * (sigma00 + sigma11 + c2)
   ssim_map = numer / denom
-  ssim = jnp.mean(ssim_map, list(range(num_dims - 3, num_dims)))
-  return ssim[..., None]
+  result = jnp.mean(ssim_map, list(range(num_dims - 3, num_dims)))
+  return result[..., None]
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -186,7 +186,7 @@ class Ssim(base.Metric):
       mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> Ssim.State:
     rescale = lambda x: rescale_image(x, self.in_vrange)
-    values = _compute_ssim(
+    values = ssim(
         rescale(pred),
         rescale(target),
         max_val=1.0,
