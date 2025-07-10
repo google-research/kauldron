@@ -30,14 +30,6 @@ from kauldron.metrics import base_state
 from kauldron.typing import Bool, Dim, Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 
-def rescale_image(
-    x: Float["*b h w c"], in_vrange: tuple[float, float]
-) -> Float["*b h w c"]:
-  """Rescale an image from in_vrange to (0, 1)."""
-  vmin, vmax = in_vrange
-  return (x - vmin) / (vmax - vmin)
-
-
 @typechecked
 def psnr(
     a: Float["*b h w c"],
@@ -185,7 +177,8 @@ class Ssim(base.Metric):
       target: Float["*b h w c"],
       mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> Ssim.State:
-    rescale = lambda x: rescale_image(x, self.in_vrange)
+    vmin, vmax = self.in_vrange
+    rescale = lambda x: (x - vmin) / (vmax - vmin)
     values = _compute_ssim(
         rescale(pred),
         rescale(target),
