@@ -89,7 +89,7 @@ class Psnr(base.Metric):
 
 # https://github.com/google-research/google-research/blob/abe03104c849ca228af386d785027809d7976a8c/jaxnerf/nerf/utils.py#L278
 @typechecked
-def _compute_ssim(
+def ssim(
     img0: Float["*b h w c"],
     img1: Float["*b h w c"],
     max_val: float,
@@ -186,7 +186,7 @@ class Ssim(base.Metric):
       mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> Ssim.State:
     rescale = lambda x: rescale_image(x, self.in_vrange)
-    values = _compute_ssim(
+    values = ssim(
         rescale(pred),
         rescale(target),
         max_val=1.0,
