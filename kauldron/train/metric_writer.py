@@ -322,10 +322,12 @@ class MetadataWriter(WriterBase):
 
     if status.is_lead_host:
       # Save the raw config (for easy re-loading)
-      spec_path = self.workdir / constants.ELEMENT_SPEC_FILENAME
+      spec_path = self.workdir / f"{constants.ELEMENT_SPEC_FILENAME}.tmp"
       element_spec = data_utils.spec_to_json(element_spec)
       element_spec = json.dumps(element_spec, indent=2)
       spec_path.write_text(element_spec)
+      # Move the file to the final location atomically to avoid race conditions.
+      spec_path.replace(self.workdir / constants.ELEMENT_SPEC_FILENAME)
 
     texts = {"element_spec": f"```python\n{element_spec!s}\n```"}
     self.write_texts(step, texts)
