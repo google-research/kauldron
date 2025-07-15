@@ -59,11 +59,13 @@ class Tfds(base.DataSourceBase):
 
   @functools.cached_property
   def data_source(self) -> grain.RandomAccessDataSource:
+    # TFDS does not support ImmutableDict, so we convert to a dict.
+    decoders = dict(self.decoders) if self.decoders else None
     return tfds.data_source(
         self.name,
         split=self.split,
         data_dir=self.data_dir,
-        decoders=self.decoders,
+        decoders=decoders,
     )
 
 
