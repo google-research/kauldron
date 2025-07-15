@@ -8,7 +8,11 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 ## [Unreleased]
 
-## [1.3.0] - 2025-04-28
+## [1.3.0] - 2025-07-15
+
+* Various bug fixes and improvements
+
+## [1.2.2] - 2025-04-28
 
 * `--xp.debug.catch_post_mortem` flag now works externally as well
 * Fixed a problem with `init_transforms` that affected `optim.decay_to_init`
@@ -136,8 +140,10 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 <!-- mdlint off(LINK_UNUSED_ID) -->
 
 [Unreleased]: https://github.com/google-research/kauldron/compare/v1.2.0...HEAD
-[1.3.0]: https://github.com/google-research/kauldron/compare/v1.2.0...HEAD
-[1.1.1]: https://github.com/google-research/kauldron/releases/tag/v1.1.1...v1.2.0
+[1.3.0]: https://github.com/google-research/kauldron/releases/tag/v1.2.2...v1.3.0
+[1.2.2]: https://github.com/google-research/kauldron/releases/tag/v1.2.1...v1.2.2
+[1.2.1]: https://github.com/google-research/kauldron/releases/tag/v1.2.0...v1.2.1
+[1.2.0]: https://github.com/google-research/kauldron/releases/tag/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/google-research/kauldron/releases/tag/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/google-research/kauldron/releases/tag/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/google-research/kauldron/releases/tag/v0.1.0...v1.0.0
