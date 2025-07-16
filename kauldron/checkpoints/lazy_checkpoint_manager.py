@@ -16,6 +16,7 @@
 
 from collections.abc import Callable, Iterator
 import dataclasses
+import time
 from typing import Any, Optional, TypeVar
 
 from etils import epath
@@ -181,6 +182,7 @@ class LazyCheckpointManager:
         min_interval_secs=min_interval_secs,
         timeout=timeout,
         timeout_fn=timeout_fn,
+        snapshot_dir=epath.Path(mgr.directory) / f"_SNAPSHOTS-{time.time_ns()}",
     ):
       yield step
 
