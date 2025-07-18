@@ -178,3 +178,33 @@ def test_merge_sum_tree():
   assert result.my_tree["b"].shape == (5,)
   np.testing.assert_allclose(result.my_tree["a"], 4.0)
   np.testing.assert_allclose(result.my_tree["b"], 6.0)
+
+
+def test_merge_min():
+
+  @flax.struct.dataclass(kw_only=True)
+  class MinState(auto_state.AutoState):
+    b: Float = auto_state.min_field()
+
+  s1 = MinState(b=np.ones((3, 2)))
+  s2 = MinState(b=np.ones((3, 2)) * 5)
+
+  s = s1.merge(s2)
+  result = s.compute()
+  assert result.b.shape == (3, 2)
+  np.testing.assert_allclose(result.b, 1.0)
+
+
+def test_merge_max():
+
+  @flax.struct.dataclass(kw_only=True)
+  class MaxState(auto_state.AutoState):
+    b: Float = auto_state.max_field()
+
+  s1 = MaxState(b=np.ones((3, 2)))
+  s2 = MaxState(b=np.ones((3, 2)) * 5)
+
+  s = s1.merge(s2)
+  result = s.compute()
+  assert result.b.shape == (3, 2)
+  np.testing.assert_allclose(result.b, 5.0)

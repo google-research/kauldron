@@ -18,10 +18,12 @@ from __future__ import annotations
 
 import abc
 import dataclasses
+import functools
 import types
-from typing import Any, Literal, Self, TypeAlias, TypeVar
+from typing import Any, Callable, Literal, Self, TypeAlias, TypeVar
 
 import jax
+import jax.numpy as jnp
 from kauldron import kontext
 from kauldron.metrics import base_state
 from kauldron.metrics.base_state import EMPTY  # pylint: disable=g-importing-member
@@ -39,10 +41,11 @@ class AutoState(base_state.State[_MetricT]):
   Subclasses of AutoState have to use the @flax.struct.dataclass decorator and
   can define two kinds of fields:
 
-  1) Data fields are defined by the `sum_field`, `concat_field` or
-     `truncate_field` functions. E.g. `d : Float['n'] = sum_field()`.
-     Data fields are pytrees of Jax arrays.
-     They are merged by summing, concatenating or truncating, respectively.
+  1) Data fields are defined by the `sum_field`, `min_field`, `max_field,
+     `concat_field` or `truncate_field` functions.
+     E.g. `d : Float['n'] = sum_field()`. Data fields are PyTrees of Jax arrays.
+     They are merged by summing, minimum, maximum, concatenating or truncating,
+     respectively.
 
   2) All other fields are static fields which are not merged, and instead
      checked for equality during `merge`. They are also not pytree nodes, so
@@ -69,6 +72,8 @@ class AutoState(base_state.State[_MetricT]):
     error: Float['n h w 1'] = kd.metrics.truncate_field(num_field="num_to_keep")
     summed_error: Float[''] = kd.metrics.sum_field()
     total_error: Float[''] = kd.metrics.sum_field()
+    min_error: Float[''] = kd.metrics.min_field()
+    max_error: Float[''] = kd.metrics.max_field()
     error_hist: Float['n'] = kd.metrics.concat_field()
 
     def compute(self):
@@ -79,6 +84,8 @@ class AutoState(base_state.State[_MetricT]):
       error_img = mediapy.to_rgb(data.error, cmap=self.cmap)
       return {
           "avg_error": data.summed_error / data.total_error,
+          "min_error": data.min_error,
+          "max_error": data.max_error,
           "error_images": error_img,
           "error_hist": kd.summaries.Histogram(
               tensor=data.error_hist, num_buckets=self.num_buckets
@@ -198,6 +205,76 @@ def sum_field(
   return dataclasses.field(default=default, metadata=metadata, **kwargs)
 
 
+def min_field(
+    *,
+    default: Any = dataclasses.MISSING,
+    **kwargs,
+):
+  """Define an AutoState data-field that is merged by an element-wise minimum.
+
+  Preserves shape and assumes that the other (merged) field has the same shape.
+
+  Usage:
+
+  ```python
+  @flax.struct.dataclass
+  class ShapePreservingMin(AutoState):
+    min_values: Float['*any'] = min_field()
+  ```
+
+  Note: `min_field` can handle arbitrary pytrees of arrays.
+
+  Args:
+    default: The default value of the field.
+    **kwargs: Additional arguments to pass to the dataclasses.field.
+
+  Returns:
+    A dataclasses.Field instance with additional metadata that marks this field
+    as a pytree_node for jax and sets the field merger to _ReduceMin().
+  """
+  metadata = kwargs.pop("metadata", {})
+  metadata = metadata | {
+      "pytree_node": True,
+      "kd_field_merger": _ReduceMin(),
+  }
+  return dataclasses.field(default=default, metadata=metadata, **kwargs)
+
+
+def max_field(
+    *,
+    default: Any = dataclasses.MISSING,
+    **kwargs,
+):
+  """Define an AutoState data-field that is merged by an element-wise maximum.
+
+  Preserves shape and assumes that the other (merged) field has the same shape.
+
+  Usage:
+
+  ```python
+  @flax.struct.dataclass
+  class ShapePreservingMax(AutoState):
+    min_values: Float['*any'] = max_field()
+  ```
+
+  Note: `max_field` can handle arbitrary pytrees of arrays.
+
+  Args:
+    default: The default value of the field.
+    **kwargs: Additional arguments to pass to the dataclasses.field.
+
+  Returns:
+    A dataclasses.Field instance with additional metadata that marks this field
+    as a pytree_node for jax and sets the field merger to _ReduceMax().
+  """
+  metadata = kwargs.pop("metadata", {})
+  metadata = metadata | {
+      "pytree_node": True,
+      "kd_field_merger": _ReduceMax(),
+  }
+  return dataclasses.field(default=default, metadata=metadata, **kwargs)
+
+
 def concat_field(
     *,
     axis: int = 0,
@@ -304,13 +381,19 @@ class _FieldMerger(abc.ABC):
     return jax.tree.map(np.asarray, v)
 
 
-class _ReduceSum(_FieldMerger):
-  """Merges two data-fields by summing them (assumes identical shape).
+@dataclasses.dataclass(kw_only=True, frozen=True)
+class _ReduceOp(_FieldMerger):
+  """Merges two data-fields by tree-mapping an element-wise reduce_op to them.
+
+  Examples uses include sum_field, min_field, and max_field.
+  This assumes compatible shapes for all leaves in the pytree.
 
   NOTE: This merger does not convert to numpy arrays. The rationale is that the
   memory consumption for fields of this type is constant, so the data can remain
   on device until the final compute() is called.
   """
+
+  reduce_op: Callable[[Array, Array], Array]
 
   def merge(
       self,
@@ -326,7 +409,12 @@ class _ReduceSum(_FieldMerger):
       if not (v1 is None and v2 is None):
         raise ValueError("Cannot sum None and non-None values.")
       return None
-    return jax.tree.map(lambda x, y: x + y, v1, v2)
+    return jax.tree.map(self.reduce_op, v1, v2)
+
+
+_ReduceSum = functools.partial(_ReduceOp, reduce_op=jnp.add)
+_ReduceMin = functools.partial(_ReduceOp, reduce_op=jnp.minimum)
+_ReduceMax = functools.partial(_ReduceOp, reduce_op=jnp.maximum)
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True)
