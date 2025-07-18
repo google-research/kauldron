@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests."""
+"""Tests for data sources."""
 
 from etils import enp
+from grain import python as grain
 from kauldron import kd
 import numpy as np
+import pytest
 import tensorflow_datasets as tfds
 
 
@@ -52,3 +54,13 @@ def test_tfds():
         'image': enp.ArraySpec(shape=(2, 28, 28, 1), dtype=np.float32),
         'label': enp.ArraySpec(shape=(2,), dtype=np.int64),
     }
+
+
+@pytest.mark.parametrize('num_workers', [0, 2])
+def test_range(num_workers: int):
+  ds = kd.data.py.DataSource(
+      grain.RangeDataSource(0, 10, 1),
+      shuffle=False,
+      num_workers=num_workers,
+  )
+  assert list(ds.take(10)) == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]

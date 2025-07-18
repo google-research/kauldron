@@ -56,6 +56,9 @@ class PyGrainPipeline(pipelines.Pipeline):
       multiprocessing)
     read_options: Options for reading data from the DataSource.
     enable_profiling: If True data worker process 0 will be profiled.
+    shard_by_process: Whether to shard the dataset by process count and index.
+      Should use the default for most cases. Use non-default values for
+      experimental use only.
     worker_init_fn: If set, will initialize subprocesses with this function
       instead of the kauldron default.
   """
@@ -77,6 +80,7 @@ class PyGrainPipeline(pipelines.Pipeline):
   read_options: grain.ReadOptions | None = None
   enable_profiling: bool = False
   per_worker_buffer_size: int = 1
+  shard_by_process: bool = True
 
   worker_init_fn: Callable[[int, int], None] | None = None
 
@@ -92,9 +96,7 @@ class PyGrainPipeline(pipelines.Pipeline):
   def ds_with_transforms(self, rng: random.PRNGKey) -> grain.MapDataset:
     """Create the `tf.data.Dataset` and apply all the transforms."""
     ds = self.ds_for_current_process(rng)
-
     ds = transform_utils.apply_transforms(ds, self.transforms)
-
     return ds
 
   @functools.cached_property
@@ -224,7 +226,8 @@ class DataSourceBase(PyGrainPipeline):
     ds = ds.seed(rng.as_seed())
 
     # Shard the dataset
-    ds = ds[jax.process_index() :: jax.process_count()]
+    if self.shard_by_process:
+      ds = ds[jax.process_index() :: jax.process_count()]
 
     # Global shuffle
     if self.shuffle:
