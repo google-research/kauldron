@@ -15,7 +15,7 @@
 import flax.struct
 from kauldron.metrics import auto_state
 from kauldron.metrics import base_state
-from kauldron.typing import Float  # pylint: disable=g-multiple-import,member-import
+from kauldron.typing import Float  # pylint: disable=g-importing-member
 import numpy as np
 import pytest
 
@@ -161,3 +161,20 @@ def test_merge_truncate_without_merge():
   result = s.compute()
   # make sure the field is truncated even if it is not merged
   assert result.arr.shape == (4, 2)
+
+
+def test_merge_sum_tree():
+
+  @flax.struct.dataclass(kw_only=True)
+  class SumState(auto_state.AutoState):
+    my_tree: dict[str, Float] = auto_state.sum_field()
+
+  s1 = SumState(my_tree={"a": np.ones((3, 2)), "b": np.ones((5,)) * 5})
+  s2 = SumState(my_tree={"a": np.ones((3, 2)) * 3, "b": np.ones((5,))})
+
+  s = s1.merge(s2)
+  result = s.compute()
+  assert result.my_tree["a"].shape == (3, 2)
+  assert result.my_tree["b"].shape == (5,)
+  np.testing.assert_allclose(result.my_tree["a"], 4.0)
+  np.testing.assert_allclose(result.my_tree["b"], 6.0)

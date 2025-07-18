@@ -25,7 +25,7 @@ import jax
 from kauldron import kontext
 from kauldron.metrics import base_state
 from kauldron.metrics.base_state import EMPTY  # pylint: disable=g-importing-member
-from kauldron.typing import Array  # pylint: disable=g-multiple-import
+from kauldron.typing import Array, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 import numpy as np
 
 _MetricT = TypeVar("_MetricT")
@@ -176,8 +176,11 @@ def sum_field(
     total_values: Float['*any'] = sum_field()
 
     def compute(self):
-      return self.summed_values / self.total_values
+      result = super().compute()
+      return result.summed_values / result.total_values
   ```
+
+  Note: `sum_field` can handle arbitrary pytrees of arrays.
 
   Args:
     default: The default value of the field.
@@ -285,20 +288,20 @@ class _FieldMerger(abc.ABC):
   @abc.abstractmethod
   def merge(
       self,
-      v1: Array | Empty | None,
-      v2: Array | Empty | None,
+      v1: Array | PyTree[Array] | Empty | None,
+      v2: Array | PyTree[Array] | Empty | None,
       state: base_state.State,
-  ) -> Array | Empty | None:
+  ) -> Array | PyTree[Array] | Empty | None:
     ...
 
   def finalize(
-      self, v: Array | Empty | None, state: base_state.State
-  ) -> np.ndarray | None:
+      self, v: Array | PyTree[Array] | Empty | None, state: base_state.State
+  ) -> np.ndarray | PyTree[np.ndarray] | None:
     del state
     # by default convert to numpy array
     if v is EMPTY or v is None:
       return None
-    return np.asarray(v)
+    return jax.tree.map(np.asarray, v)
 
 
 class _ReduceSum(_FieldMerger):
@@ -311,10 +314,10 @@ class _ReduceSum(_FieldMerger):
 
   def merge(
       self,
-      v1: Array | Empty | None,
-      v2: Array | Empty | None,
+      v1: Array | PyTree[Array] | Empty | None,
+      v2: Array | PyTree[Array] | Empty | None,
       state: base_state.State,
-  ) -> Array | Empty:
+  ) -> Array | PyTree[Array] | Empty:
     if v1 is EMPTY:
       return v2
     if v2 is EMPTY:
@@ -323,7 +326,7 @@ class _ReduceSum(_FieldMerger):
       if not (v1 is None and v2 is None):
         raise ValueError("Cannot sum None and non-None values.")
       return None
-    return v1 + v2
+    return jax.tree.map(lambda x, y: x + y, v1, v2)
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True)
