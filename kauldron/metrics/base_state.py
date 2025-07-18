@@ -248,16 +248,27 @@ class CollectingState(State[_MetricT]):
     )
 
 
-def _merge_normalize_tuple(v0, v1):
+def _merge_normalize_tuple(
+    v0: tuple[Any, ...], v1: tuple[Any, ...]
+) -> tuple[np.ndarray, ...]:
   assert isinstance(v0, tuple)
   assert isinstance(v1, tuple)
-  values = v0 + v1
-  if any(isinstance(v, jax.core.Tracer) for v in values):
+  return _maybe_convert_to_numpy(v0) + _maybe_convert_to_numpy(v1)
+
+
+def _maybe_convert_to_numpy(v: tuple[Any, ...]) -> tuple[np.ndarray, ...]:
+  """Convert all elements of the tuple to numpy arrays."""
+  # If the tuple is not of length 1, that means it came from a merge (or empty),
+  # and we can thus skip checks and conversions.
+  if len(v) != 1:
+    return v
+
+  element = v[0]
+  if isinstance(element, jax.core.Tracer):
     raise RuntimeError(
         "Tracer detected! CollectingState.merge should not be JIT compiled."
     )
-  # TODO(epot): Should be executed asynchronously (blocking)
-  return tuple(np.asarray(v) for v in values)
+  return (np.asarray(element),)
 
 
 # Inherit for better tracability/debug messages (so user can search and find
