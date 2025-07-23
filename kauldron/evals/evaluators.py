@@ -229,6 +229,7 @@ class Evaluator(EvaluatorBase):
     if self.discard_opt:
       state = state.replace(opt_state=None)
     state = self.init_transform.transform(state)
+    state = self.init_transform.transform_after_optimizer(state)
 
     # TODO(epot): Add chrono to evals. Note: One issue is that the
     # write metric time will be excluded from the chrono (including the final).
