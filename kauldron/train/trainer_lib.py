@@ -146,6 +146,7 @@ class Trainer(config_util.BaseConfig):
     train_losses: A dict of losses
     train_metrics: A dict of metrics
     train_summaries: A dict of summaries (summaries are subclasses of `Metric`)
+    chrono_custom_metrics: A dict of chrono metrics
     writer: Metric writer used for writing to TB, datatable, etc.
     profiler: Profiler can be customized (see `kd.inspect.Profile`)
     checkify_error_categories: List of errors to enable checkify for.
@@ -168,6 +169,9 @@ class Trainer(config_util.BaseConfig):
   seed: int = 0
   # usually set by the launcher
   workdir: edc.AutoCast[epath.Path] = epath.Path()
+  chrono_custom_metrics: dict[str, float] = dataclasses.field(
+      default_factory=dict
+  )
 
   # Data pipeline
   train_ds: data.Pipeline
@@ -439,6 +443,7 @@ class Trainer(config_util.BaseConfig):
     return chrono_utils.Chrono(
         name='train',
         batch_size=self.train_ds.batch_size,
+        custom_metrics=self.chrono_custom_metrics,
         # Currently hardcode the additional `pause('name')` for them to be
         # reported in the dashboard. Ideally the dahsboard should be
         # automatically updated.
