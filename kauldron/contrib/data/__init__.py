@@ -30,6 +30,7 @@ with _lazy_imports.lazy_api_imports(globals()):
   # Transforms
   # start
   from kauldron.contrib.data.extra_image_ops import RandAugment
+  from kauldron.contrib.data.preprocessing import AddBias
   from kauldron.contrib.data.preprocessing import AddConstants
   from kauldron.contrib.data.preprocessing import AddStringField
   from kauldron.contrib.data.preprocessing import ApplyW

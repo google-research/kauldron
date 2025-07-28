@@ -728,6 +728,17 @@ class RandomSubsetAlongAxis(kd.data.tf.ElementWiseRandomTransform):
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class AddBias(kd.data.ElementWiseTransform):
+  """Adds a constant scalar value to the chosen arrays."""
+
+  bias: float
+
+  @typechecked
+  def map_element(self, element: XArray["*any"]) -> XArray["*any"]:
+    return element + self.bias
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class Scale(kd.data.ElementWiseTransform):
   """Scale an element by multiplying by a factor."""
 
