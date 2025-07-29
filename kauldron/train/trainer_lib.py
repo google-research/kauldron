@@ -327,6 +327,9 @@ class Trainer(config_util.BaseConfig):
     cfg.aux.xid = 12345
     cfg.aux.wid = 1
 
+    # WARNING: Do not overwrite the `cfg.aux` field directly. Only set its
+    # values like above. E.g. `cfg.aux = {"xid": 12345, 'wid': 1}` won't work.
+
     cfg.evals {
         ...,
     }

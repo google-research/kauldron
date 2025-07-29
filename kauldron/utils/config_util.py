@@ -209,7 +209,7 @@ class UpdateFromRootCfg:
 
   ```python
   @dataclasses.dataclass
-  class MyObject:
+  class MyObject(UpdateFromRootCfg):
     workdir: epath.Path = ROOT_CFG_REF.workdir
 
 
