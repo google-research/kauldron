@@ -32,9 +32,7 @@ _FnT = TypeVar('_FnT')
 class _Context:
   """`is_training` state."""
 
-  is_training_stack: edc.ContextVar[list[bool]] = dataclasses.field(
-      default_factory=list
-  )
+  is_training_stack: edc.ContextStack[bool] = edc.ContextStack[bool]()
 
   @property
   def is_training(self) -> bool:
