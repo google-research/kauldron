@@ -221,6 +221,7 @@ class Evaluator(EvaluatorBase):
         losses=self.losses, metrics=self.metrics, summaries=self.summaries
     )
 
+  @utils.checkify_wrapper
   def evaluate(
       self, state: train_step.TrainState, step: int
   ) -> auxiliaries.AuxiliariesState:
