@@ -22,11 +22,6 @@ from typing import Any, ClassVar, cast
 
 from etils import epy
 import immutabledict as immutabledict_lib
-from packaging import version
-
-_IMMUTABLE_DICT_V4 = version.parse(
-    immutabledict_lib.__version__
-) >= version.Version('4.0.0')
 
 
 class ImmutableDict(immutabledict_lib.immutabledict):
@@ -64,16 +59,8 @@ class ImmutableDict(immutabledict_lib.immutabledict):
       )
       cls._flax_registered = True
 
-    if _IMMUTABLE_DICT_V4:
-      # This is needed because pytype doesn't know that `__new__` returns a
-      # `ImmutableDict`.
-      # immutabledict 4.0.0 switched from using __init__ to __new__ and thus
-      # requires passing the args and kwargs along here.
-      return cast(ImmutableDict, super().__new__(cls, *args, **kwargs))
-    else:
-      # This is needed because pytype doesn't know that `__new__` returns a
-      # `ImmutableDict`.
-      return cast(ImmutableDict, super().__new__(cls))
+    self = super().__new__(cls, *args, **kwargs)
+    return cast(ImmutableDict, self)
 
   def __getattr__(self, name: str) -> str:
     try:
