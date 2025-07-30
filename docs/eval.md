@@ -44,7 +44,7 @@ for an example.
 
 Sometimes, you only want to run evaluation on a trainer from a previous
 Kauldron experiment.
-experiment. This can be achieved through `kd.train.Trainer.eval_only()`:
+This can be achieved through `kd.train.Trainer.eval_only()`:
 
 ```python
 def config():
