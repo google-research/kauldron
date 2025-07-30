@@ -15,9 +15,10 @@
 """Various utils."""
 
 from collections.abc import Iterable, Iterator
+import functools
 import itertools
 from typing import Optional, TypeVar
-
+from jax.experimental import checkify
 from tqdm import auto as tqdm
 
 _T = TypeVar('_T')
@@ -79,3 +80,34 @@ def enum_iter(
       **tqdm_kwargs,
   ):
     yield i, ex
+
+
+def checkify_wrapper(fn):
+  """Decorator to ignore checkify errors by default, but raise them if needed.
+
+  The wrapped function will be checkified, but the errors will be ignored by
+  default. This is useful to avoid crashing code that contains user-checks.
+
+  The decorator adds an additional `raise_checkify_errors` argument to the
+  function, which can be used to specify checkify error categories to raise.
+
+  Args:
+    fn: The function wrap (and checkify).
+
+  Returns:
+    The wrapped function.
+  """
+
+  @functools.wraps(fn)
+  def _checkify_wrapper(
+      *args,
+      raise_checkify_errors: frozenset[checkify.ErrorCategory] = frozenset(),
+      **kwargs,
+  ):
+    checked_fn = checkify.checkify(fn, errors=raise_checkify_errors)
+    error, result = checked_fn(*args, **kwargs)
+    if raise_checkify_errors:  # else ignore the errors
+      checkify.check_error(error)
+    return result
+
+  return _checkify_wrapper
