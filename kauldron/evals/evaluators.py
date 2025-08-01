@@ -286,6 +286,7 @@ class Evaluator(EvaluatorBase):
     )
 
 
+@utils.checkify_ignore
 @functools.partial(
     jax.jit,
     static_argnames=(

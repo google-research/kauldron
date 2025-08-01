@@ -37,6 +37,7 @@ from kauldron.train import rngs_lib
 from kauldron.typing import ElementSpec, Float, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import config_util
 from kauldron.utils import train_property  # pylint: disable=unused-import
+from kauldron.utils import utils
 from kauldron.utils.sharding_utils import sharding as sharding_lib  # pylint: disable=g-importing-member
 import optax
 
@@ -138,6 +139,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
       state = self._init_transform_after_optimizer(state)
     return state
 
+  @utils.checkify_ignore
   @functools.partial(
       jax.jit,
       static_argnames=("self", "elem_spec", "model_method"),
@@ -186,6 +188,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
     # case they forget, we explicitly re-apply the sharding.
     return sharding_lib.with_sharding_constraint(state, self.sharding.state)
 
+  @utils.checkify_ignore
   @functools.partial(
       jax.jit,
       static_argnames="self",
