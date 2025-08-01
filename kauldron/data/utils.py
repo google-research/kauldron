@@ -30,6 +30,7 @@ from kauldron import kontext
 from kauldron.train import context as context_lib
 from kauldron.typing import ArraySpec, ElementSpec, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import _jax
+from kauldron.utils import immutabledict as immutabledict_lib
 from kauldron.utils import sharding_utils
 import numpy as np
 
@@ -152,6 +153,7 @@ def spec_to_json(spec: PyTree[enp.ArraySpec]) -> epy.typing.Json:
   # `__json__` protocol). Likely cannot use jax `xx_with_path` function to
   # automatically convert any tree to a json as the objects couldn't be
   # restored.
+  immutabledict_lib.unfreeze(spec)
   return jax.tree.map(_spec_to_json, spec)
 
 

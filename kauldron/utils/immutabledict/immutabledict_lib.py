@@ -114,3 +114,25 @@ class ImmutableDict(immutabledict_lib.immutabledict):
 
   def __setstate__(self, state):
     self.__init__(state)
+
+
+def freeze(obj: Any):
+  """Recursively convert all dicts to ImmutableDict and lists to tuples."""
+  if isinstance(obj, dict):
+    return ImmutableDict({k: freeze(v) for k, v in obj.items()})
+  elif isinstance(obj, (list, tuple)):
+    return tuple(freeze(v) for v in obj)
+  else:
+    return obj
+
+
+def unfreeze(obj: Any):
+  """Recursively convert all ImmutableDicts to dicts."""
+  if isinstance(obj, ImmutableDict):
+    return {k: unfreeze(v) for k, v in obj.items()}
+  elif isinstance(obj, list):
+    return [unfreeze(v) for v in obj]
+  elif isinstance(obj, tuple):
+    return tuple(unfreeze(v) for v in obj)
+  else:
+    return obj
