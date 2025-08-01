@@ -37,7 +37,6 @@ from kauldron.train import rngs_lib
 from kauldron.typing import ElementSpec, Float, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import config_util
 from kauldron.utils import train_property  # pylint: disable=unused-import
-from kauldron.utils import utils
 from kauldron.utils.sharding_utils import sharding as sharding_lib  # pylint: disable=g-importing-member
 import optax
 
@@ -98,7 +97,6 @@ class TrainStep(config_util.UpdateFromRootCfg):
 
   __root_cfg_fields_to_recurse__ = ("aux",)
 
-  @utils.checkify_wrapper
   def init(
       self,
       elem_spec: ElementSpec,

@@ -286,7 +286,6 @@ class Evaluator(EvaluatorBase):
     )
 
 
-@utils.checkify_wrapper
 @functools.partial(
     jax.jit,
     static_argnames=(

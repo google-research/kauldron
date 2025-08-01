@@ -59,7 +59,6 @@ def train_impl(
   state = trainstep.init(
       elem_spec=trainer.train_ds.element_spec,
       skip_transforms=latest_step is not None,
-      raise_checkify_errors=trainer.checkify_error_categories,
   )
   chrono = trainer._chrono  # pylint: disable=protected-access
   ds_iter = iter(trainer.train_ds)
