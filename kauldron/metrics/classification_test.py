@@ -47,3 +47,37 @@ def test_roc():
     s3.merge(s0)
   with pytest.raises(ValueError, match='from different metrics'):
     s0.merge(s3)
+
+
+def test_roc_with_binary_labels():
+  metric = metrics.RocAuc()
+
+  logits = jnp.asarray([
+      [1.0, 0.0],
+      [0.3, 0.4],
+      [0.0, 2.0],
+  ])
+  labels = jnp.asarray([[1], [0], [1]], dtype=jnp.int32)
+
+  s0 = metric.get_state(logits=logits, labels=labels)
+
+  x = s0.compute()
+  np.testing.assert_allclose(x, 0.5)
+
+
+
+def test_roc_with_unique_labels():
+  metric = metrics.RocAuc(unique_labels=[0, 1, 2])
+
+  logits = jnp.asarray([
+      [1.0, 0.0, 0.0],
+      [0.3, 0.4, 0.3],
+      [0.0, 2.0, 8.0],
+  ])
+  labels = jnp.asarray([[2], [0], [2]], dtype=jnp.int32)
+
+  s0 = metric.get_state(logits=logits, labels=labels)
+  x = s0.compute()
+  np.testing.assert_allclose(x, 0.0)
+
+
