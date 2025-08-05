@@ -32,7 +32,7 @@ if typing.TYPE_CHECKING:
   class MapTransform(tfgrain.MapTransform, pygrain.MapTransform):
     pass
 
-  class FilterTransform(tfgrain.MapTransform, pygrain.MapTransform):
+  class FilterTransform(tfgrain.FilterTransform, pygrain.FilterTransform):
     pass
 
   Transformation = Any
