@@ -31,6 +31,7 @@ from kauldron.train import checkpoint_state
 from kauldron.train import setup_utils
 from kauldron.train import train_step
 from kauldron.train import trainer_lib
+from kauldron.utils import _jax
 from kauldron.utils import chrono_utils
 from kauldron.utils import utils
 from kauldron.utils.sharding_utils import sharding as sharding_lib  # pylint: disable=g-importing-member
@@ -79,7 +80,10 @@ def train_impl(
     # for evals/inference.
     writer.write_config(trainer.raw_cfg)
     writer.write_param_overview(initial_step, state.params)
-    writer.write_element_spec(initial_step, ds_iter.element_spec)
+    global_elem_spec = _jax.local_to_global_shape(
+        ds_iter.element_spec, sharding=trainer.sharding.ds
+    )
+    writer.write_element_spec(initial_step, global_elem_spec)
     writer.write_context_structure(initial_step, trainer)
 
   aux = None
