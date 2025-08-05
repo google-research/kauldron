@@ -30,5 +30,6 @@ with _epy.lazy_api_imports(globals()):
   from kauldron.evals.run_strategies import EveryNSteps
   from kauldron.evals.run_strategies import Once
   from kauldron.evals.run_strategies import RunStrategy
+  from kauldron.evals.run_strategies import AlongTrain
   from kauldron.evals.run_strategies import StandaloneEveryCheckpoint
   from kauldron.evals.run_strategies import StandaloneLastCheckpoint
