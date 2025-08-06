@@ -323,6 +323,10 @@ class TrainStep(config_util.UpdateFromRootCfg):
 
     return next_state, context
 
+  def __hash__(self):
+    # Make TrainStep hashable even if model and optimizer are not.
+    return id(self)
+
 
 def forward(
     context: context_lib.Context,

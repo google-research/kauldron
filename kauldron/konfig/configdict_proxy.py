@@ -116,7 +116,7 @@ def resolve(cfg: _T, *, freeze: bool = ...) -> _T:
   ...
 
 
-def resolve(cfg, *, freeze=True):
+def resolve(cfg, *, freeze=False):
   """Recursively parses a nested ConfigDict and resolves module constructors.
 
   Args:
