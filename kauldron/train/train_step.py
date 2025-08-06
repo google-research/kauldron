@@ -77,7 +77,7 @@ class TrainState(checkpoint_items.StandardCheckpointItem):
     return dataclasses.replace(self, **changes)
 
 
-@dataclasses.dataclass(kw_only=True, eq=True, frozen=True)
+@dataclasses.dataclass(kw_only=True, eq=False, frozen=True)
 class TrainStep(config_util.UpdateFromRootCfg):
   """Base Training Step.
 
@@ -322,6 +322,10 @@ class TrainStep(config_util.UpdateFromRootCfg):
     context = self.aux.update_context(context)
 
     return next_state, context
+
+  def __hash__(self):
+    # Make TrainStep hashable even if model, optimizer, etc. are not.
+    return id(self)
 
 
 def forward(

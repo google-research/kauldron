@@ -48,16 +48,15 @@ def test_ref_resolved():
 
   # Resolve should resolve the FieldReference
   out = konfig.resolve(cfg)
-  assert isinstance(out.b[-1], int)
-  assert hash(out)
+  assert isinstance(out['b'][-1], int)
 
 
 def test_deserialize():
   cfg = konfig.ConfigDict({
-      'paths': [
+      'paths': (
           {'__const__': 'pathlib:Path'},
           {'__const__': 'pathlib:Path'},
-      ],
+      ),
   })
   cfg = konfig.resolve(cfg)
   assert cfg['paths'] == (pathlib.Path, pathlib.Path)
