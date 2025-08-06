@@ -223,11 +223,16 @@ class KauldronJobs(jobs_info.JobsProvider):
             **self.trainer_xm_job._kxm_init_kwargs,  # pylint: disable=protected-access
         )
       elif isinstance(run, run_strategies.Standalone):
-
-        run = run_strategies.StandaloneLastCheckpoint(
-            job_group=run.job_group,
-            **run._kxm_init_kwargs,  # pylint: disable=protected-access
-        )
+        if "job_group" in run._kxm_init_kwargs:  # pylint: disable=protected-access
+          # the job_group was already added to the run._kxm_init_kwargs.
+          run = run_strategies.StandaloneLastCheckpoint(
+              **run._kxm_init_kwargs,  # pylint: disable=protected-access
+          )
+        else:
+          run = run_strategies.StandaloneLastCheckpoint(
+              job_group=run.job_group,
+              **run._kxm_init_kwargs,  # pylint: disable=protected-access
+          )
       else:
         raise TypeError(
             f"Unexpected run strategy for {eval_name}. Got: {type(run)}."
