@@ -22,7 +22,6 @@ from typing import Any
 
 from etils import enp
 from etils import epy
-from etils.etree import jax as etree  # pylint: disable=g-importing-member
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
@@ -88,15 +87,7 @@ def mock_batch_from_elem_spec(
     elem_spec: ElementSpec, elem_sharding: sharding_utils.ShardingTree
 ) -> PyTree[jax.Array]:
   """Create a mock batch from the element_spec of a data iterator."""
-  elem_spec = etree.spec_like(elem_spec)
-
-  def _get_global_shape(spec):
-    return ArraySpec(
-        shape=_jax.local_to_global_shape(spec.shape, sharding=elem_sharding),
-        dtype=spec.dtype,
-    )
-
-  elem_spec = jax.tree.map(_get_global_shape, elem_spec)
+  elem_spec = get_global_elem_spec(elem_spec, elem_sharding)
 
   @jax.jit
   def jitted_create_mock_batch():
@@ -109,6 +100,20 @@ def mock_batch_from_elem_spec(
   mock_batch = jitted_create_mock_batch()
 
   return mock_batch
+
+
+def get_global_elem_spec(
+    per_host_elem_spec: ElementSpec, elem_sharding: sharding_utils.ShardingTree
+) -> ElementSpec:
+  """Converts the per-host element spec to a global element spec."""
+
+  def _get_global_shape(spec):
+    return ArraySpec(
+        shape=_jax.local_to_global_shape(spec.shape, sharding=elem_sharding),
+        dtype=spec.dtype,
+    )
+
+  return jax.tree.map(_get_global_shape, per_host_elem_spec)
 
 
 Args = tuple[PyTree[jax.Array], ...]

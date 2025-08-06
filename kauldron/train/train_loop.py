@@ -24,6 +24,7 @@ from typing import Optional
 from etils import epath
 import jax
 import jax.numpy as jnp
+from kauldron.data import utils as data_utils
 from kauldron.evals import eval_impl
 from kauldron.inspect import profile_utils
 from kauldron.train import auxiliaries
@@ -79,7 +80,10 @@ def train_impl(
     # for evals/inference.
     writer.write_config(trainer.raw_cfg)
     writer.write_param_overview(initial_step, state.params)
-    writer.write_element_spec(initial_step, ds_iter.element_spec)
+    global_elem_spec = data_utils.get_global_elem_spec(
+        ds_iter.element_spec, trainer.sharding.ds
+    )
+    writer.write_element_spec(initial_step, global_elem_spec)
     writer.write_context_structure(initial_step, trainer)
 
   aux = None
