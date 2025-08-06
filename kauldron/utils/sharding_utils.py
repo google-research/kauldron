@@ -123,7 +123,7 @@ class FSDPSharding:
     min_size_to_shard_mb: minimal tensor size to bother with sharding.
   """
 
-  min_size_to_shard_mb = 4
+  min_size_to_shard_mb: int = 4
 
   def __call__(self, tree: PyTree[jax.Array]) -> ShardingTree:
     """Apply the sharding rule to the given tree."""

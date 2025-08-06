@@ -94,6 +94,13 @@ def test_with_sharding_constraint_shape_dtype_struct():
   }
 
 
+def test_fsdp_sharding():
+  default_strategy = kd.sharding.FSDPSharding()
+  assert default_strategy.min_size_to_shard_mb == 4
+  custom_strategy = kd.sharding.FSDPSharding(min_size_to_shard_mb=1)
+  assert custom_strategy.min_size_to_shard_mb == 1
+
+
 def test_nbytes():
   assert sharding_utils._nbytes(jnp.ones(())) == 4
   assert sharding_utils._nbytes(jnp.ones((1,))) == 4
