@@ -223,10 +223,12 @@ class KauldronJobs(jobs_info.JobsProvider):
             **self.trainer_xm_job._kxm_init_kwargs,  # pylint: disable=protected-access
         )
       elif isinstance(run, run_strategies.Standalone):
+        init_kwargs = dict(run._kxm_init_kwargs)  # pylint: disable=protected-access
+        init_kwargs.pop("job_group", None)  # Avoid duplicated kwarg.
 
         run = run_strategies.StandaloneLastCheckpoint(
             job_group=run.job_group,
-            **run._kxm_init_kwargs,  # pylint: disable=protected-access
+            **init_kwargs,
         )
       else:
         raise TypeError(
