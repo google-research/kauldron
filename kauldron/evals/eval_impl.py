@@ -45,6 +45,7 @@ import orbax.checkpoint as ocp
 # XManager API do not have API for jobs within a work-unit to communicate,
 # so use files for communication.
 TRAIN_COMPLETE_FILENAME = 'train_complete.txt'
+TRAIN_FAILED_FILENAME = 'train_failed.txt'
 
 
 def continuous_eval(
@@ -196,15 +197,19 @@ def _preemptable_iter_new_checkpoints(
       # state might have been donated, we should not access it after this point.
       # Eval is done, remove the duplicated checkpoint
       eval_ckpt.delete(step)
+
+    def _trainer_completed_or_failed() -> bool:
+      """Returns True if the train job has completed or failed."""
+      workdir = epath.Path(trainer.workdir)
+      return (workdir / TRAIN_COMPLETE_FILENAME).exists() or (
+          workdir / TRAIN_FAILED_FILENAME
+      ).exists()
+
     for step in trainer_ckpt.iter_new_checkpoints(
         min_interval_secs=10,
         timeout=10,
-        timeout_fn=lambda: (
-            # Exit when train job has completed
-            epath.Path(trainer.workdir)
-            .joinpath(TRAIN_COMPLETE_FILENAME)
-            .exists()
-        ),
+        # Exit when train job has completed or failed.
+        timeout_fn=_trainer_completed_or_failed,
     ):
       state = _restore_checkpoint(
           trainer_ckpt=trainer_ckpt,
