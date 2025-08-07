@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 import contextlib
+import functools
 import itertools
 from typing import Optional
 
@@ -42,6 +43,33 @@ from kauldron.utils.status_utils import status  # pylint: disable=g-importing-me
 jax.config.update("jax_threefry_partitionable", True)
 
 
+def trainer_status_to_workdir(fn):
+  """Decorator that creates a file in the workdir when training is done/failed."""
+
+  @functools.wraps(fn)
+  def wrapped_train_impl(trainer: trainer_lib.Trainer):
+    workdir = epath.Path(trainer.workdir)
+    # Remove the training failed file if it exists.
+    # This is to allow restarting jobs in the same workdir.
+    (workdir / eval_impl.TRAIN_FAILED_FILENAME).unlink(missing_ok=True)
+
+    try:
+      result = fn(trainer)
+      # Notify the eval job training is complete
+      if workdir.exists():  # `TrainEvaluator` do not have a workdir
+        (workdir / eval_impl.TRAIN_COMPLETE_FILENAME).touch()
+
+      return result
+    except Exception as e:
+      # Notify the eval job that training has failed
+      if workdir.exists():  # `TrainEvaluator` do not have a workdir
+        (workdir / eval_impl.TRAIN_FAILED_FILENAME).touch()
+      raise e
+
+  return wrapped_train_impl
+
+
+@trainer_status_to_workdir
 def train_impl(
     trainer: trainer_lib.Trainer,
 ) -> tuple[train_step.TrainState, Optional[auxiliaries.AuxiliariesState]]:
@@ -168,12 +196,6 @@ def train_impl(
   # is complete. Otherwise, eval jobs may stop before the last checkpoint
   # becomes available.
   ckpt.wait_until_finished()
-
-  # Notify the eval job training is complete
-  if trainer.workdir.exists():  # `TrainEvaluator` do not have a workdir
-    epath.Path(trainer.workdir).joinpath(
-        eval_impl.TRAIN_COMPLETE_FILENAME
-    ).touch()
 
   # Returning the final state is convenient for interactive training in colab
   return state, aux
