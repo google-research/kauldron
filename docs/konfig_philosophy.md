@@ -61,8 +61,8 @@ Simply write:
 cfg = optax.adam(learning_rate=1e-5, b2=0.99)
 ```
 
-Need to switch adam for a another optimizer ? Just write an arbitrarily complex
-one in your config:
+Need to switch Adam for another optimizer? Just write an arbitrarily complex one
+in your config:
 
 ```python
 cfg = optax.chain(
