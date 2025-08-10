@@ -40,7 +40,7 @@ def DEFINE_config_file(  # pylint: disable=g-bad-name
     flag_values: FlagValues instance used for parsing. (default:
       absl.flags.FLAGS)
     lock_config: If set to True, loaded config will be locked through calling
-      .lock() method on its instance (if it exists). (default: True)
+      .lock() method on its instance (if it exists). (default: False)
 
   Returns:
     a handle to defined flag.
