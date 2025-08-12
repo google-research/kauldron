@@ -21,6 +21,7 @@ import types
 
 from etils import epy
 from kauldron import konfig
+import numpy as np
 import pytest
 
 
@@ -226,3 +227,14 @@ def test_configdict_partial():
   assert isinstance(cfg.path, functools.partial)
   assert cfg.ns() == types.SimpleNamespace(num_layers=4)
   assert cfg.path() == pathlib.Path("a", "b")
+
+
+def test_configdict_not_freeze():
+  with konfig.imports():
+    import builtins as fake_builtins  # pylint: disable=reimported,g-import-not-at-top  # pytype: disable=import-error
+    import numpy as fake_np  # pylint: disable=reimported,g-import-not-at-top  # pytype: disable=import-error
+  c = fake_builtins.dict(schedules={"learning_rate": fake_np.array([1, 2, 3])})
+
+  c = konfig.resolve(c, freeze=False)
+  assert isinstance(c, dict)
+  assert isinstance(c["schedules"]["learning_rate"], np.ndarray)

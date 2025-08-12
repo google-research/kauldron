@@ -174,13 +174,14 @@ class _ConfigDictVisitor:
     ])
 
   def _resolve_dict(self, value):
-    cls = type(value)
-    if self._freeze:
-      cls = immutabledict.ImmutableDict
-    return cls({
+    value = {
         k: _reraise_with_info(self._resolve_value, k)(v)
         for k, v in _as_dict(value).items()
-    })
+    }
+    if self._freeze:
+      return immutabledict.ImmutableDict(value)
+    else:
+      return value
 
   def _resolve_reference(self, value: ml_collections.FieldReference):
     return self._resolve_value(value.get())

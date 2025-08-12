@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-import builtins
 from collections.abc import Callable, Iterable, Mapping, MutableMapping
 import copy
 import dataclasses
@@ -24,6 +23,7 @@ import functools
 import itertools
 import json
 import os
+import types
 from typing import Any, ClassVar, Generic, Self, TypeVar
 
 from etils import epy
@@ -531,7 +531,7 @@ def _normalize_config_only_value(value, name, *, id_to_dict) -> Any:
         | str()
         | bytes()
         | None
-        | builtins.Ellipsis
+        | types.EllipsisType()
         | slice()
         | os.PathLike()  # Exceptionally allow pathlib object
     ):
