@@ -19,11 +19,13 @@ from __future__ import annotations
 import collections.abc
 import dataclasses
 import functools
+import typing
 from typing import Any, Optional, TypeVar
 
 from etils import epy
 from flax import linen as nn
 import jax
+from jax.experimental import checkify
 from kauldron import checkpoints
 from kauldron import data
 from kauldron import losses as losses_lib
@@ -36,7 +38,6 @@ from kauldron.train import rngs_lib
 from kauldron.train import train_step
 from kauldron.train import trainer_lib
 from kauldron.utils import config_util
-from kauldron.utils import immutabledict
 from kauldron.utils import kdash
 from kauldron.utils import utils
 from kauldron.utils.sharding_utils import sharding as sharding_lib  # pylint: disable=g-importing-member
@@ -45,6 +46,8 @@ from kauldron.utils.status_utils import status  # pylint: disable=g-importing-me
 _SelfT = TypeVar('_SelfT')
 
 _DEFAULT_EVAL_NAME = 'eval'
+
+CheckifyErrorCategory = checkify.ErrorCategory if typing.TYPE_CHECKING else Any
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True)
@@ -190,11 +193,12 @@ class Evaluator(EvaluatorBase):
   init_transform: checkpoints.AbstractPartialLoader = dataclasses.field(
       default_factory=lambda: checkpoints.NoopTransform(),  # pylint: disable=unnecessary-lambda
   )
+  checkify_error_categories: frozenset[CheckifyErrorCategory] = (
+      config_util.ROOT_CFG_REF.checkify_error_categories
+  )
 
   def __post_init__(self) -> None:
     super().__post_init__()
-
-    immutabledict.freeze_dict_attrs(self, ['losses', 'metrics', 'summaries'])
 
     if self.ds is None:
       raise ValueError(
@@ -237,16 +241,14 @@ class Evaluator(EvaluatorBase):
     merged_aux = None
     for eval_step, batch in utils.enum_iter(self.ds_iter, desc=self.name):
       eval_step = sharding_lib.device_put(eval_step, sharding_lib.REPLICATED)
-      aux_state = basic_eval_step(
-          model=self.model,
-          rng_streams=self.base_cfg.rng_streams,
-          aux=self.aux,
+      aux_state = self.step(
           eval_step=eval_step,
           state=state,
           batch=batch,
-          sharding=self.base_cfg.sharding,
-          model_method=self.model_method,
       )
+      # Raise any checkify errors that were encountered during step.
+      if aux_state.error is not None:
+        checkify.check_error(aux_state.error)
       # Merge/accumulate all states
       with jax.transfer_guard('allow'):
         merged_aux = merged_aux | aux_state
@@ -263,6 +265,63 @@ class Evaluator(EvaluatorBase):
         log_summaries=True,
     )
     return merged_aux
+
+  @functools.partial(
+      jax.jit,
+      static_argnames=('self',),
+  )
+  def step(
+      self,
+      *,
+      eval_step: int,
+      state: train_step.TrainState,
+      batch: Any,
+  ) -> auxiliaries.AuxiliariesState:
+    with self.base_cfg.sharding.set_global_mesh():
+      if self.checkify_error_categories:
+        step_fn = checkify.checkify(
+            self._step, errors=self.checkify_error_categories
+        )
+        error, aux_state = step_fn(eval_step, state, batch)
+      else:
+        error = None
+        aux_state = self._step(eval_step, state, batch)
+
+    aux_state = aux_state.replace(error=error)
+
+    return sharding_lib.with_sharding_constraint(
+        aux_state, self.base_cfg.sharding.aux
+    )
+
+  def _step(
+      self, eval_step: int, state: train_step.TrainState, batch: Any
+  ) -> auxiliaries.AuxiliariesState:
+    """Eval step to be wrapped by checkify and called by `step`.
+
+    Subclasses can overwrite this method to implement custom evaluation
+    steps.
+
+    Args:
+      eval_step: The evaluation step number.
+      state: The current training state.
+      batch: The batch to use for the evaluation step.
+
+    Returns:
+      The auxiliary state with the evaluation results for this batch.
+    """
+    # Note that ctx.step is train step (from train state), NOT `eval_step`
+    ctx = context_lib.Context.from_state_and_batch(state=state, batch=batch)
+    ctx = train_step.forward(
+        model=self.model,
+        context=ctx,
+        rngs=self.base_cfg.rng_streams.eval_rngs(eval_step),
+        is_training=False,
+        method=self.model_method,
+    )
+    ctx = self.aux.update_context(ctx)
+    return ctx.get_aux_state(
+        return_losses=True, return_metrics=True, return_summaries=True
+    )
 
   @functools.cached_property
   def model_with_aux(self) -> train_step.ModelWithAux:
@@ -284,6 +343,10 @@ class Evaluator(EvaluatorBase):
         losses=self.losses,
         metrics=self.metrics,
     )
+
+  def __hash__(self) -> int:
+    # Make Evaluator hashable, so its methods can be jitted.
+    return id(self)
 
 
 @utils.checkify_ignore
@@ -308,7 +371,7 @@ def basic_eval_step(
     sharding: sharding_lib.ShardingStrategy,
     model_method: str | None = None,
 ) -> auxiliaries.AuxiliariesState:
-  """Call the model (pmap version)."""
+  """DEPRECATED. Use / override `Evaluator._step` instead."""
   # Note that ctx.step is train step (from train state), NOT `eval_step`
   ctx = context_lib.Context.from_state_and_batch(state=state, batch=batch)
 
