@@ -113,4 +113,15 @@ class ImmutableDict(immutabledict_lib.immutabledict):
     return self._dict
 
   def __setstate__(self, state):
-    self.__init__(state)
+    self.__init__(state)  # pylint: disable=too-many-function-args
+
+
+def unfreeze(obj: Any):
+  """Recursively convert all ImmutableDicts to dicts."""
+  import jax  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+
+  return jax.tree.map(
+      lambda x: {k: unfreeze(v) for k, v in x.items()},
+      obj,
+      is_leaf=lambda x: isinstance(x, ImmutableDict),
+  )
