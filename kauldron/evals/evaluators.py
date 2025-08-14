@@ -249,11 +249,12 @@ class Evaluator(EvaluatorBase):
           state=state,
           batch=batch,
       )
-      # Raise any checkify errors that were encountered during step.
-      if aux_state.error is not None:
-        checkify.check_error(aux_state.error)
-      # Merge/accumulate all states
+
       with jax.transfer_guard('allow'):
+        # Raise any checkify errors that were encountered during step.
+        if aux_state.error is not None:
+          checkify.check_error(aux_state.error)
+        # Merge/accumulate all states
         merged_aux = merged_aux | aux_state
     if merged_aux is None:  # At least one iteration
       raise ValueError(
