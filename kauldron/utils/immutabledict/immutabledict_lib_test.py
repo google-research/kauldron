@@ -68,3 +68,12 @@ def test_dict_pickle(pkl):
 def test_hasattr():
   d = immutabledict.ImmutableDict({'x': 1})
   assert not hasattr(d, 'y')
+
+
+def test_unfreeze():
+  i = immutabledict.ImmutableDict({'x': immutabledict.ImmutableDict({'y': 2})})
+
+  d = immutabledict.unfreeze(i)
+  assert isinstance(d, dict)
+  assert isinstance(d['x'], dict)
+  assert d == {'x': {'y': 2}}

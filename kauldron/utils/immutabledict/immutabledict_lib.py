@@ -120,8 +120,14 @@ def unfreeze(obj: Any):
   """Recursively convert all ImmutableDicts to dicts."""
   import jax  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
 
+  def _to_dict(x):
+    if isinstance(x, ImmutableDict):
+      return {k: unfreeze(v) for k, v in x.items()}
+    else:
+      return x
+
   return jax.tree.map(
-      lambda x: {k: unfreeze(v) for k, v in x.items()},
+      _to_dict,
       obj,
       is_leaf=lambda x: isinstance(x, ImmutableDict),
   )

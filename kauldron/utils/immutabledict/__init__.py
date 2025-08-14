@@ -17,4 +17,5 @@
 # pylint: disable=g-importing-member
 
 from kauldron.utils.immutabledict.immutabledict_lib import ImmutableDict
+from kauldron.utils.immutabledict.immutabledict_lib import unfreeze
 from kauldron.utils.immutabledict.utils import freeze_dict_attrs
