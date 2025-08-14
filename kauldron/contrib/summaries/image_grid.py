@@ -20,6 +20,7 @@ import dataclasses
 from typing import Self, Sequence, TypeAlias, cast
 
 import flax
+import jax
 from kauldron import kd
 from kauldron.typing import Float, Float32, Shape, UInt8, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import numpy as np
@@ -40,10 +41,19 @@ class ImageGrid(kd.metrics.Metric):
 
   Example Usage:
   ```python
-  cfg.train_metrics["image_grid"] = ImageGrid(
+  cfg.train_summaries["image_grid"] = ImageGrid(
       columns={
           "gt": kd.summaries.ShowImages(images="batch.image"),
           "pred": kd.summaries.ShowImages(images="preds.image"),
+      }
+  )
+  ```
+  Or equivalently:
+  ```python
+  cfg.train_summaries["image_grid"] = ImageGrid.simple(
+      columns={
+          "gt": "batch.image",
+          "pred": "preds.image",
       }
   )
   ```
@@ -131,6 +141,36 @@ class ImageGrid(kd.metrics.Metric):
       }
       substates.append(col_summary.get_state(**relevant_kwargs))
     return self.State(show_image_states=tuple(substates))
+
+  @classmethod
+  def simple(
+      cls,
+      columns: dict[str, str],
+      num_images: int = 5,
+      in_vrange: tuple[float, float] | None = None,
+      **kwargs,
+  ):
+    """Returns a simple ImageGrid of ShowImages summaries.
+
+    Args:
+      columns: A dictionary of column names to key paths for ShowImages.
+      num_images: The number of images to show in each column.
+      in_vrange: The range to normalize the images to.
+      **kwargs: Additional arguments to pass to ImageGrid.
+
+    Returns:
+      An ImageGrid summary.
+    """
+
+    def _make_show_images(keypath: str):
+      return kd.summaries.ShowImages(
+          images=keypath, num_images=num_images, in_vrange=in_vrange
+      )
+
+    return cls(
+        columns=jax.tree.map(_make_show_images, columns),
+        **kwargs,
+    )
 
   def __kontext_keys__(self) -> dict[str, kd.kontext.Key]:
     keypaths = {}
