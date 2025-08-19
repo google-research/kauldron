@@ -41,8 +41,9 @@ class ShowImages(metrics.Metric):
   Attributes:
     images: Key to the images to display.
     num_images: Number of images to collect and display. Default 5.
-    vrange: Optional value range of the input images. Used to clip aand then
+    in_vrange: Optional value range of the input images. Used to clip and then
       rescale the images to [0, 1].
+    cmap: An optional  `pyplot` color map name, to map from grayscale to RGB.
     rearrange: Optional einops string to reshape the images.
     rearrange_kwargs: Optional keyword arguments for the einops reshape.
   """
@@ -51,6 +52,8 @@ class ShowImages(metrics.Metric):
 
   num_images: int = 5
   in_vrange: Optional[tuple[float, float]] = None
+
+  cmap: Optional[str] = None
 
   rearrange: Optional[str] = None
   rearrange_kwargs: Mapping[str, Any] | None = None
@@ -66,6 +69,17 @@ class ShowImages(metrics.Metric):
     @typechecked
     def compute(self) -> Float["n h w #3"]:
       images = super().compute().images
+
+      # If cmap is set, apply the colormap.
+      if self.parent.cmap is not None:
+        if self.parent.in_vrange is None:
+          vmin, vmax = None, None
+        else:
+          vmin, vmax = 0.0, 1.0  # Explicitly set the range if in_vrange is set.
+        images = media.to_rgb(
+            images[..., 0], cmap=self.parent.cmap, vmin=vmin, vmax=vmax
+        )
+
       # always clip to avoid display problems in TB and Datatables
       return np.clip(images, 0.0, 1.0)
 
@@ -79,6 +93,9 @@ class ShowImages(metrics.Metric):
     if isinstance(images, UInt8["..."]):
       images = images.astype(np.float32) / 255.0
     check_type(images, Float["n h w #3"])
+    if self.cmap is not None and images.shape[-1] != 1:
+      check_type(images, Float["n h w 1"])
+      raise ValueError("Colormap is only supported for single-channel images.")
 
     # Truncate just as an optimization to avoid unnecessary computations.
     images = images[: self.num_images]
