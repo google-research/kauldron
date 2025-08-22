@@ -107,16 +107,18 @@ class ConfigDictProxyObject(fake_import_utils.ProxyObject, dict):
 
 
 @typing.overload
-def resolve(cfg: ml_collections.ConfigDict, *, freeze: bool = ...) -> Any:
+def resolve(
+    cfg: ml_collections.ConfigDict, *, freeze: bool | None = ...
+) -> Any:
   ...
 
 
 @typing.overload
-def resolve(cfg: _T, *, freeze: bool = ...) -> _T:
+def resolve(cfg: _T, *, freeze: bool | None = ...) -> _T:
   ...
 
 
-def resolve(cfg, *, freeze=True):
+def resolve(cfg, *, freeze=None):
   """Recursively parses a nested ConfigDict and resolves module constructors.
 
   Args:
@@ -127,6 +129,13 @@ def resolve(cfg, *, freeze=True):
   Returns:
     The resolved config.
   """
+
+  # Check if the config has a `konfig_freeze` key or attribute.
+  if freeze is None and 'konfig_freeze' in cfg:
+    freeze = cfg['konfig_freeze']
+  if freeze is None:
+    freeze = getattr(cfg, 'konfig_freeze', True)
+
   try:
     return _ConstructorResolver(freeze=freeze)._resolve_value(cfg)  # pylint: disable=protected-access
   except Exception as e:  # pylint: disable=broad-exception-caught

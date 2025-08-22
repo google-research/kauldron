@@ -163,6 +163,9 @@ class Trainer(config_util.BaseConfig):
     xm_job: XManager runtime parameters (e.g. which target is the config using)
     raw_cfg: Original config from which this `Config` was created. Automatically
       set during `konfig.resolve()`
+    konfig_freeze: If `True` (default), then during `konfig.resolve()`, `list`
+      are converted to `tuple`, and `dict`/`ConfigDict` are converted to
+      `immutabledict`.
   """
 
   seed: int = 0
@@ -243,6 +246,8 @@ class Trainer(config_util.BaseConfig):
   raw_cfg: Optional[konfig.ConfigDict] = dataclasses.field(
       default=None, repr=False
   )
+
+  konfig_freeze: bool = True
 
   def __post_init__(self):
 

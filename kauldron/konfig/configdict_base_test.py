@@ -47,7 +47,7 @@ def test_ref_resolved():
   cfg.b = (1, cfg.ref.a)
 
   # Resolve should resolve the FieldReference
-  out = konfig.resolve(cfg)
+  out = konfig.resolve(cfg, freeze=True)
   assert isinstance(out.b[-1], int)
   assert hash(out)
 
@@ -59,7 +59,7 @@ def test_deserialize():
           {'__const__': 'pathlib:Path'},
       ],
   })
-  cfg = konfig.resolve(cfg)
+  cfg = konfig.resolve(cfg, freeze=True)
   assert cfg['paths'] == (pathlib.Path, pathlib.Path)
 
 
