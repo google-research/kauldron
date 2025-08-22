@@ -82,16 +82,20 @@ def ema_params(
 
   def update_fn(updates, state, params=None):
     count_inc = optax.safe_increment(state.count)
+
+    # Debias logic taken from SD:
+    # https://github.com/CompVis/stable-diffusion/blob/main/ldm/modules/ema.py#L30
+    if debias:
+      debiased_decay = jnp.minimum(decay, (1 + count_inc) / (10 + count_inc))
+    else:
+      debiased_decay = decay
+
     # The model weights after optimizer step.
     new_params = optax.apply_updates(params, updates)
     # `new_ema_params = (1 - decay) * new_params + decay * old_ema_params`.
     new_ema_params = optax.update_moment(
-        new_params, state.ema_params, decay, order=1
+        new_params, state.ema_params, debiased_decay, order=1
     )
-    if debias:
-      new_ema_params = optax.tree.bias_correction(
-          new_ema_params, decay, count_inc
-      )
     new_ema_params = optax.tree.cast(new_ema_params, accumulator_dtype)
     return updates, EmaParamsState(count=count_inc, ema_params=new_ema_params)
 
@@ -111,7 +115,7 @@ class UseEmaParams(partial_loader.AbstractPartialLoader):
   ema_params_transform: int | str | None = None
 
   def transform(self, state):
-    """Replace the parameters with the weights from `opt_state[ema_name]`."""
+    """Replace the parameters with the params from `opt_state[ema_name]`."""
     if self.ema_params_transform is None:
       # If ema_params_transform is not set, the we try to use the last transform
       # in the chain.
