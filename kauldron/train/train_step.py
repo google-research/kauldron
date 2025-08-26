@@ -53,6 +53,7 @@ _Collections = Mapping[str, PyTree[Float["..."]]]
 AuxiliariesState = auxiliaries.AuxiliariesState
 
 
+# MARK: TrainState
 @flax.struct.dataclass
 class TrainState(checkpoint_items.StandardCheckpointItem):
   """Data structure for checkpointing the model.
@@ -77,6 +78,7 @@ class TrainState(checkpoint_items.StandardCheckpointItem):
     return dataclasses.replace(self, **changes)
 
 
+# MARK: TrainStep
 @dataclasses.dataclass(kw_only=True, eq=True, frozen=True)
 class TrainStep(config_util.UpdateFromRootCfg):
   """Base Training Step.
@@ -98,6 +100,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
 
   __root_cfg_fields_to_recurse__ = ("aux",)
 
+  # MARK: .init()
   def init(
       self,
       elem_spec: ElementSpec,
@@ -203,6 +206,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
     state = state.replace(opt_state=opt_state)
     return sharding_lib.with_sharding_constraint(state, self.sharding.state)
 
+  # MARK: .step()
   @functools.partial(
       jax.jit,
       static_argnames=(
@@ -324,6 +328,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
     return next_state, context
 
 
+# MARK: Forward pass
 def forward(
     context: context_lib.Context,
     *,
