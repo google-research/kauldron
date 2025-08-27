@@ -111,11 +111,7 @@ class CreateRangeMask(CreateMask):
   max_value: float
 
   def condition(self, tensor):
-    return tf.where(
-        tf.math.logical_or(tensor < self.min_value, tensor > self.max_value),
-        False,
-        True,
-    )
+    return (tensor >= self.min_value) & (tensor <= self.max_value)
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -125,11 +121,7 @@ class CreateNonEqualMask(CreateMask):
   mask_value: float
 
   def condition(self, tensor):
-    return tf.where(
-        tensor != self.mask_value,
-        False,
-        True,
-    )
+    return tensor == self.mask_value
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
