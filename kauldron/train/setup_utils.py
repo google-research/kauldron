@@ -69,6 +69,8 @@ class Setup:
 
   def run(self, trainer: trainer_lib.Trainer) -> None:
     """Perform the initial setup."""
+    # TF pre-allocates GPU memory on startup (so jax cannot use it) unless we
+    # add this line.
     tf.config.set_visible_devices([], "GPU")
 
     _create_workdir(trainer.workdir)
