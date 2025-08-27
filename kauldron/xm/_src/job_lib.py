@@ -96,7 +96,7 @@ class Job(job_params.JobParams):
     # Not sure where the original =TRUE comes from, but it needs overwriting.
     if not self.debug.pytype:
       bazel_args = tuple(
-          "--define=PYTYPE=FALSE" if a == "--define=PYTYPE=TRUE" else a
+          "--norun_validations" if a == "--define=PYTYPE=TRUE" else a
           for a in bazel_args
       )
     return xm.bazel_binary(
