@@ -84,7 +84,7 @@ class _FakeRefsUnset:
 # TODO(epot): Remove `BaseConfig` ?
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True, eq=False)
 class BaseConfig(konfig.WithRef):
   """Base config class.
 
@@ -111,7 +111,7 @@ class BaseConfig(konfig.WithRef):
       super().__init_subclass__(**kwargs)
       cls = dataclasses.dataclass(  # pylint: disable=self-cls-assignment
           frozen=True,
-          eq=True,
+          eq=False,
           kw_only=True,
       )(cls)
       cls = edc.dataclass(cls)  # pylint: disable=self-cls-assignment
@@ -186,7 +186,7 @@ class _FakeRootCfg:
 ROOT_CFG_REF: trainer_lib.Trainer = _FakeRootCfg.make_fake_cfg()
 
 
-@dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
+@dataclasses.dataclass(frozen=True, eq=False, kw_only=True)
 class UpdateFromRootCfg:
   """Allow child object to be updated with values from the base config.
 
