@@ -131,8 +131,8 @@ class Resize(base.ElementWiseTransform):
 
   Attributes:
     size: The new size of the image.
-    method: The resizing method. If `None`, uses `area` for float inputs and
-      `nearest` for int inputs, and `area` for float inputs.
+    method: The resizing method. If `None`, uses `area` for float TF inputs,
+      `bilinear` for float JAX inputs, and `nearest` for int inputs.
     antialias: Whether to use an anti-aliasing filter.
   """
 
@@ -143,7 +143,12 @@ class Resize(base.ElementWiseTransform):
   @typechecked
   def map_element(self, element: XArray["*b h w c"]) -> XArray["*b h2 w2 c"]:
     if self.method is None:
-      method = "nearest" if _is_integer(element.dtype) else "area"
+      if _is_integer(element.dtype):
+        method = "nearest"
+      elif enp.lazy.is_tf(element):
+        method = "area"
+      else:  # Jax or Np
+        method = "bilinear"
     else:
       method = self.method
 
