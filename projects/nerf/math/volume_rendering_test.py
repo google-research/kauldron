@@ -191,7 +191,7 @@ def test_volume_rendering(
 
   def sample_values_from_ray(ray_value, background_value=None):
     if use_background:
-      fg_value = ray_value - background_value * (1 - ray_alpha[..., None])
+      fg_value = ray_value - background_value * (1 - ray_alpha[..., None])  # pytype: disable=wrong-arg-types  # jax-operator-types
     else:
       fg_value = ray_value
     sample_values = jax.random.normal(
