@@ -53,7 +53,8 @@ def test_add_constants_overwrite_raises():
 def test_batch_random_drop_tokens(
     drop_ratio: float = 1 / 4,
     shape: tuple[int, int, int] = (3, 32, 21),
-    target_shape: tuple[int, int, int] = (3, (32 - 32 // 4), 21)):
+    target_shape: tuple[int, int, int] = (3, (32 - 32 // 4), 21),
+):
   cc = kd.contrib.data.RandomDropTokens(key="values", drop_ratio=drop_ratio)
   before = {
       "values": tf.reshape(tf.range(np.prod(shape)), shape),
@@ -89,6 +90,7 @@ def get_mocked_shuffle(
   def mocked_shuffle(*args, **kwargs) -> tf.Tensor:
     del args, kwargs
     return fake_shuffled
+
   return mocked_shuffle
 
 
@@ -204,3 +206,30 @@ def test_random_resize():
   new_height, new_width = outputs["image"].shape[1:3]
   assert new_height == height
   assert new_width == width
+
+
+@pytest.mark.parametrize(
+    "size, divisible_by, expected_size, expected_out, use_tf",
+    [
+        (3, 2, 4, [0.0, 1.0, 1.0, 2.0], True),
+        (3, 2, 4, [0.0, 1.0, 1.0, 2.0], False),
+        (11, 5, 15, [0.0, 1.0, 1.0, 2.0, 3.0, 4.0, 4.0,
+                     5.0, 6.0, 6.0, 7.0, 8.0, 9.0, 9.0, 10.0], True),
+        (11, 5, 15, [0.0, 1.0, 1.0, 2.0, 3.0, 4.0, 4.0,
+                     5.0, 6.0, 6.0, 7.0, 8.0, 9.0, 9.0, 10.0], False),
+    ],
+)
+def test_repeat_frames(size, divisible_by, expected_size, expected_out, use_tf):
+  op = kd.contrib.data.RepeatFrames(key="video", divisible_by=divisible_by)
+  if use_tf:
+    video = tf.cast(tf.reshape(tf.range(size), [size, 1, 1, 1]), tf.float32)
+  else:
+    video = np.arange(size, dtype=np.float32).reshape((size, 1, 1, 1))
+  ex = {"video": video}
+  out = op.map(ex)
+  if use_tf:
+    with tf.compat.v1.Session() as sess:
+      out = sess.run(out)
+  out = out["video"]
+  assert out.shape == (expected_size, 1, 1, 1)
+  np.testing.assert_array_equal(out[:, 0, 0, 0], expected_out)

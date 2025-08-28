@@ -296,15 +296,16 @@ class GaussianBlur(kd.data.tf.ElementWiseRandomTransform):
 
     # Randomly sample a sigma value.
     # Sigma corresponds to the standard deviation of the Gaussian kernel.
-    sigma = tf.random.stateless_uniform([], seed, minval=self.sigma_min,
-                                        maxval=self.sigma_max, dtype=tf.float32)
+    sigma = tf.random.stateless_uniform(
+        [], seed, minval=self.sigma_min, maxval=self.sigma_max, dtype=tf.float32
+    )
 
     # Converts kernel size into odd integer to ensure center pixel.
     kernel_size = 2 * int(self.kernel_size / 2) + 1
 
     # Creates a 1D kernel of that size and sets it to be a Gaussian.
-    x = tf.cast(tf.range(-(kernel_size//2), kernel_size//2 + 1), tf.float32)
-    blur_filter = tf.exp(-x**2 / (2. * sigma**2))
+    x = tf.cast(tf.range(-(kernel_size // 2), kernel_size // 2 + 1), tf.float32)
+    blur_filter = tf.exp(-(x**2) / (2.0 * sigma**2))
     # Normalizes the kernel to sum to 1.
     blur_filter = blur_filter / tf.reduce_sum(blur_filter)
 
@@ -316,9 +317,11 @@ class GaussianBlur(kd.data.tf.ElementWiseRandomTransform):
 
     # Does the actual blurring using depthwise_conv2d.
     blurred = tf.nn.depthwise_conv2d(
-        element, blur_h, strides=[1, 1, 1, 1], padding="SAME")
+        element, blur_h, strides=[1, 1, 1, 1], padding="SAME"
+    )
     blurred = tf.nn.depthwise_conv2d(
-        blurred, blur_v, strides=[1, 1, 1, 1], padding="SAME")
+        blurred, blur_v, strides=[1, 1, 1, 1], padding="SAME"
+    )
 
     # Randomly apply the blur based on apply_prob.
     coin_toss = tf.random.stateless_uniform(
@@ -1034,20 +1037,29 @@ class RepeatFrames(kd.data.ElementWiseTransform):
   divisible_by: int
 
   @typechecked
-  def map_element(
-      self, element: TfArray["*b T H W C"]
-  ) -> TfArray["*b T2 H W C"]:
-    # Tensorflow image resize only supports height and width dimensions so for
-    # the time dimension we use gather.
-    t = tf.shape(element)[-4]
-    t2 = (
-        tf.cast(tf.math.ceil(t / self.divisible_by), tf.int32)
-        * self.divisible_by
-    )
-    indices = tf.image.resize(
-        tf.reshape(tf.range(t), [1, -1, 1]), [1, t2], method="nearest"
-    )[0, :, 0]
-    return tf.gather(element, indices, axis=-4)
+  def map_element(self, element: XArray["*b T H W C"]) -> XArray["*b T2 H W C"]:
+    if enp.lazy.is_tf(element):
+      # Tensorflow image resize only supports height and width dimensions so for
+      # the time dimension we use gather.
+      t = tf.shape(element)[-4]
+      t2 = (
+          tf.cast(tf.math.ceil(t / self.divisible_by), tf.int32)
+          * self.divisible_by
+      )
+      indices = tf.image.resize(
+          tf.reshape(tf.range(t), [1, -1, 1]), [1, t2], method="nearest"
+      )[0, :, 0]
+      return tf.gather(element, indices, axis=-4)
+    elif enp.lazy.is_np(element) or enp.lazy.is_jax(element):
+      xnp = enp.get_np_module(element)
+      t = element.shape[-4]
+      new_t = (xnp.ceil(t / self.divisible_by) * self.divisible_by).astype(
+          xnp.int32
+      )
+      indices = jax.image.resize(xnp.arange(t), (new_t,), method="nearest")
+      return xnp.take(element, indices, axis=-4)
+    else:
+      raise ValueError(f"Unsupported type: {type(element)}")
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -1165,9 +1177,7 @@ def _expand_multi_index(
           tf.tile(dim_to_indices[dim], tf.shape(multi_index)[1:])
       )
     else:
-      expanded_indices.append(
-          tf.repeat(multi_index[mi], duplicate_shape)
-      )
+      expanded_indices.append(tf.repeat(multi_index[mi], duplicate_shape))
       mi += 1
   # Stack the expanded indices along a new dimension
   expanded_indices = tf.stack(expanded_indices, axis=0)
