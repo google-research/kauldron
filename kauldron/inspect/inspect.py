@@ -486,4 +486,9 @@ def lower_trainstep(trainer: train.Trainer) -> str:
   )
   batch = sharding.with_sharding_constraint(batch, trainer.sharding.ds)
 
-  return trainer.trainstep.step.lower(trainer.trainstep, state, batch)
+  return trainer.trainstep.step.lower(
+      trainer.trainstep,
+      state,
+      batch,
+      checkify_error_categories=trainer.checkify_error_categories,
+  )
