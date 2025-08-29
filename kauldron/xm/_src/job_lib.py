@@ -197,7 +197,7 @@ class Job(job_params.JobParams):
     # Add optional jax and debug flags.
     if self.add_jax_flags:
       args.update(xm_jax.JaxFlags().flags())
-      args["jax_log_compiles"] = True
+      args["jax_log_compiles"] = self.debug.jax_log_compiles
 
     if self.debug.xprof_port:
       args["xprof_port"] = "%port_xprof%"

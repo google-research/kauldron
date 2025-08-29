@@ -40,6 +40,7 @@ class Debug:
 
   Attributes:
     dump_hlo: Dump all compilation HLO into workdir for debugging.
+    jax_log_compiles: Log all JAX compilation times.
     flax_profile: Enable annotating every Flax module with a useful string in
       XProf. There are no runtime performance costs but JAX tracing will be ~10%
       slower, and Flax is more strict about function purity.
@@ -53,6 +54,7 @@ class Debug:
   """
 
   dump_hlo: bool = False
+  jax_log_compiles: bool = True
   flax_profile: bool = True  # Environment variable, so always safe to set.
   # Pytype is known to be slow (as of 2022Q1), so we disable it by default.
   # A particularly bad example: 290s vs 30s build-time on one-line change.
