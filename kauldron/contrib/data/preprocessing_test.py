@@ -50,6 +50,61 @@ def test_add_constants_overwrite_raises():
     el.map(before)
 
 
+@pytest.mark.parametrize("use_tf", [True, False])
+def test_create_range_mask(use_tf):
+  op = kd.contrib.data.CreateRangeMask(
+      key="depth", min_value=0.1, max_value=10.0)
+  if use_tf:
+    depth = tf.constant([0.0, 0.5, 1.0, 11.0, 5.0])
+  else:
+    depth = np.array([0.0, 0.5, 1.0, 11.0, 5.0])
+  ex = {"depth": depth}
+  out = op.map(ex)
+  if use_tf:
+    with tf.compat.v1.Session() as sess:
+      out = sess.run(out)
+  assert "depth_mask" in out
+  expected_mask = np.array([0.0, 1.0, 1.0, 0.0, 1.0])
+  np.testing.assert_array_equal(out["depth_mask"], expected_mask)
+
+
+@pytest.mark.parametrize("use_tf", [True, False])
+def test_create_non_equal_mask(use_tf):
+  op = kd.contrib.data.CreateNonEqualMask(key="depth", mask_value=5.0)
+  if use_tf:
+    depth = tf.constant([0.0, 0.5, 1.0, 11.0, 5.0])
+  else:
+    depth = np.array([0.0, 0.5, 1.0, 11.0, 5.0])
+  ex = {"depth": depth}
+  out = op.map(ex)
+  if use_tf:
+    with tf.compat.v1.Session() as sess:
+      out = sess.run(out)
+  assert "depth_mask" in out
+  expected_mask = np.array([0.0, 0.0, 0.0, 0.0, 1.0])
+  np.testing.assert_array_equal(out["depth_mask"], expected_mask)
+
+
+@pytest.mark.parametrize("use_tf", [True, False])
+def test_create_mesh_grid_mask(use_tf):
+  op = kd.contrib.data.CreateMeshGridMask(key="image")
+  h, w, c = 2, 4, 3
+  if use_tf:
+    image = tf.zeros((h, w, c))
+  else:
+    image = np.zeros((h, w, c))
+  ex = {"image": image}
+  out = op.map(ex)
+  if use_tf:
+    with tf.compat.v1.Session() as sess:
+      out = sess.run(out)
+  assert "image_mask" in out
+  expected_mask_content = [[[[0, 0], [1, 0], [2, 0], [3, 0]],
+                            [[0, 1], [1, 1], [2, 1], [3, 1]]]]
+  expected_mask = np.array(expected_mask_content)
+  np.testing.assert_array_equal(out["image_mask"], expected_mask)
+
+
 def test_batch_random_drop_tokens(
     drop_ratio: float = 1 / 4,
     shape: tuple[int, int, int] = (3, 32, 21),

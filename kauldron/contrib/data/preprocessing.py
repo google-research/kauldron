@@ -54,7 +54,7 @@ class Binarize(kd.data.ElementWiseTransform):
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
-class CreateMask(grain.MapTransform):
+class CreateMask(kd.data.MapTransform):
   """Creates mask tensor by checking a special mask value in original tensor.
 
   Variants:
@@ -76,15 +76,26 @@ class CreateMask(grain.MapTransform):
     else:
       mask_key = self.mask_key
 
-    mask_value = tf.cast(batch[mask_key], dtype=tf.float32)
-    mask_tensor = self.condition(mask_value)
-
+    mask_value = batch[mask_key]
+    if enp.lazy.is_tf(mask_value):
+      mask_value = tf.cast(mask_value, dtype=tf.float32)
+      mask_tensor = self.condition(mask_value)
+      mask_tensor = tf.cast(mask_tensor, dtype=tf.float32)
+    elif enp.lazy.is_np(mask_value) or enp.lazy.is_jax(mask_value):
+      xnp = enp.lazy.get_xnp(mask_value, strict=False)
+      mask_value = mask_value.astype(xnp.float32)
+      mask_tensor = self.condition(mask_value)
+      mask_tensor = mask_tensor.astype(xnp.float32)
+    else:
+      raise ValueError(
+          f"Unsupported type for mask_key: {type(batch[mask_key])}"
+      )
     # return the mask itself
     target_key = self.key
     if self.target_key is not None:
       target_key = self.target_key
 
-    batch[target_key + "_mask"] = tf.cast(mask_tensor, dtype=tf.float32)
+    batch[target_key + "_mask"] = mask_tensor
     return batch
 
   @abc.abstractmethod
@@ -97,10 +108,18 @@ class CreateMeshGridMask(CreateMask):
   """Creates mesh grid mask to be used with cropping."""
 
   def condition(self, tensor):
-    shape = tf.shape(tensor)
-    height, width = shape[-3], shape[-2]
-    x, y = tf.meshgrid(tf.range(width), tf.range(height))
-    return tf.stack((x, y), axis=-1)[None]
+    if enp.lazy.is_tf(tensor):
+      shape = tf.shape(tensor)
+      height, width = shape[-3], shape[-2]
+      x, y = tf.meshgrid(tf.range(width), tf.range(height))
+      return tf.stack((x, y), axis=-1)[None]
+    elif enp.lazy.is_np(tensor) or enp.lazy.is_jax(tensor):
+      xnp = enp.lazy.get_xnp(tensor, strict=False)
+      height, width = tensor.shape[-3], tensor.shape[-2]
+      x, y = xnp.meshgrid(xnp.arange(width), xnp.arange(height))
+      return xnp.stack((x, y), axis=-1)[None]
+    else:
+      raise ValueError(f"Unsupported type for mask_key: {type(tensor)}")
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -121,7 +140,8 @@ class CreateNonEqualMask(CreateMask):
   mask_value: float
 
   def condition(self, tensor):
-    return tensor == self.mask_value
+    xnp = enp.lazy.get_xnp(tensor, strict=False)
+    return xnp.equal(tensor, self.mask_value)
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
