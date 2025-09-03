@@ -328,7 +328,7 @@ class Experiment(job_params.JobParams):
   @functools.cached_property
   def tensorboard_args(self) -> dict[str, Any]:
     """TensorBoard args."""
-    args = {}
+    args = {"hparams": repr(self)}
     if "gfs_user" in self.args:
       args["gfs_user"] = self.args["gfs_user"]
     return args
