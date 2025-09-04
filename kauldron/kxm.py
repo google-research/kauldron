@@ -29,6 +29,9 @@ from kauldron.xm._src.job_params import Debug
 from kauldron.xm._src.job_params import InterpreterInfo
 from kauldron.xm._src.job_params import MLPython
 
+# Orchestrator
+from kauldron.xm._src.orchestrator import Orchestrator
+
 # Sweep info
 from kauldron.xm._src.sweep_utils import SweepInfo
 from kauldron.xm._src.sweep_utils import NoSweep
@@ -42,6 +45,7 @@ from kauldron.xm._src.cfg_provider_utils import ConfigProvider
 from kauldron.xm._src.cfg_provider_utils import CFG_FLAG_VALUES
 
 # Others
+from kauldron.xm._src.dir_utils import DirectoryBuilder
 from kauldron.xm._src.dir_utils import SubdirFormat
 from kauldron.xm._src.dir_utils import WU_DIR_PROXY
 from kauldron.xm._src.dir_utils import XP_DIR_PROXY
