@@ -21,7 +21,7 @@ import dataclasses
 import functools
 import json
 import sys
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping, Optional, TYPE_CHECKING
 
 from absl import logging
 from clu import metric_writers
@@ -37,7 +37,6 @@ from kauldron import kontext
 from kauldron import summaries
 from kauldron.data import utils as data_utils
 from kauldron.train import auxiliaries
-from kauldron.train import trainer_lib
 from kauldron.typing import Array, Float, Scalar  # pylint: disable=g-multiple-import
 from kauldron.utils import chrono_utils
 from kauldron.utils import config_util
@@ -49,6 +48,9 @@ import optax
 import pandas as pd
 
 from unittest import mock as _mock ; xmanager_api = _mock.Mock()
+
+if TYPE_CHECKING:
+  from kauldron.train import trainer_lib  # pylint: disable=g-import-not-at-top,g-bad-import-order
 
 # pylint: disable=logging-fstring-interpolation
 

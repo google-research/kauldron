@@ -19,6 +19,7 @@ from kauldron.train.auxiliaries import Auxiliaries
 from kauldron.train.auxiliaries import AuxiliariesOutput
 from kauldron.train.auxiliaries import AuxiliariesState
 from kauldron.train.context import Context
+from kauldron.train.metric_writer import KDMetricWriter
 from kauldron.train.rngs_lib import RngStream
 from kauldron.train.rngs_lib import RngStreams
 from kauldron.train.setup_utils import Setup
