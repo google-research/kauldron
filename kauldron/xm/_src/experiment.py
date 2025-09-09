@@ -192,7 +192,7 @@ class Experiment(job_params.JobParams):
             # Sometimes, the default exporter exit before finishing exporting
             # all events, so increase default to 5h.
             termination_delay_secs=60 * 60 * 5,
-            args=self.tensorboard_args,
+            args=self.tensorboard_args | _hparams_kwarg(self),
         )
       # TODO(epot): Support Custom auxiliaries
 
@@ -328,10 +328,7 @@ class Experiment(job_params.JobParams):
   @functools.cached_property
   def tensorboard_args(self) -> dict[str, Any]:
     """TensorBoard args."""
-    hparams_str = repr(self)
-    if len(hparams_str) > 100000:
-      hparams_str = hparams_str[:100000] + "...(truncated)"
-    args = {"hparams": hparams_str}
+    args = {}
     if "gfs_user" in self.args:
       args["gfs_user"] = self.args["gfs_user"]
     return args
@@ -382,6 +379,14 @@ def _make_emoji_tags(
   if cell is not None:
     tags.append(f"🌎{cell}")
   return tags
+
+
+def _hparams_kwarg(exp: Experiment) -> dict[str, str]:
+  """Returns the hparams for tensorboard, eventually truncated."""
+  hparams_str = repr(exp)
+  if len(hparams_str) > 100000:
+    hparams_str = hparams_str[:100000] + "...(truncated)"
+  return {"hparams": hparams_str}
 
 
 merge_utils.add_merge_support(xm.JobRequirements)
