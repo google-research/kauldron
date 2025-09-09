@@ -1073,9 +1073,7 @@ class RepeatFrames(kd.data.ElementWiseTransform):
     elif enp.lazy.is_np(element) or enp.lazy.is_jax(element):
       xnp = enp.get_np_module(element)
       t = element.shape[-4]
-      new_t = (xnp.ceil(t / self.divisible_by) * self.divisible_by).astype(
-          xnp.int32
-      )
+      new_t = int(np.ceil(t / self.divisible_by) * self.divisible_by)
       indices = jax.image.resize(xnp.arange(t), (new_t,), method="nearest")
       return xnp.take(element, indices, axis=-4)
     else:
