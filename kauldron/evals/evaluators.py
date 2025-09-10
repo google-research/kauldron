@@ -85,7 +85,7 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
       default=config_util.ROOT_CFG_REF.writer
   )
   base_cfg: trainer_lib.Trainer = dataclasses.field(
-      default=config_util.ROOT_CFG_REF, repr=False
+      default=config_util.ROOT_CFG_REF, repr=False,
   )
 
   discard_opt: bool = False
