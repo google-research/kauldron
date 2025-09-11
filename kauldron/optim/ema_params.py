@@ -18,6 +18,7 @@ import dataclasses
 from typing import Any, NamedTuple, Optional
 
 import chex
+import jax
 import jax.numpy as jnp
 from kauldron.checkpoints import partial_loader
 import optax
@@ -114,21 +115,18 @@ class UseEmaParams(partial_loader.AbstractPartialLoader):
 
   ema_params_transform: int | str | None = None
 
-  def transform(self, state):
-    """Replace the parameters with the params from `opt_state[ema_name]`."""
+  def select_ema_params(self, opt_state):
     if self.ema_params_transform is None:
-      # If ema_params_transform is not set, the we try to use the last transform
-      # in the chain.
-      if isinstance(state.opt_state, tuple):
+      if isinstance(opt_state, tuple):
         # This is the case for `optax.chain`.
-        ema_params_state = state[-1]
-      elif isinstance(state.opt_state, dict):
+        ema_params_state = opt_state[-1]
+      elif isinstance(opt_state, dict):
         # This is the case for `optax.named_chain`.
-        last_key = list(state.opt_state.keys())[-1]
-        ema_params_state = state.opt_state[last_key]
+        last_key = list(opt_state.keys())[-1]
+        ema_params_state = opt_state[last_key]
       else:
         raise ValueError(
-            f"Unknown optimizer state type: {type(state.opt_state)}. "
+            f"Unknown optimizer state type: {type(opt_state)}. "
             "If ema_params_transform is not set, the optimizer state needs to "
             "be a tuple or a dict (from optax.chain or optax.named_chain)."
         )
@@ -140,11 +138,49 @@ class UseEmaParams(partial_loader.AbstractPartialLoader):
             " to the index / name of the transform."
         )
     else:
-      ema_params_state = state.opt_state[self.ema_params_transform]
+      ema_params_state = opt_state[self.ema_params_transform]
       if not hasattr(ema_params_state, "ema_params"):
         raise ValueError(
             "opt_state[{self.ema_params_transform}] is not an instance of"
             " `EmaParamsState`."
         )
+    return ema_params_state.ema_params
 
-    return state.replace(params=ema_params_state.ema_params)
+  def transform(self, state):
+    """Replace the parameters with the params from `opt_state[ema_name]`."""
+    if isinstance(state.opt_state, optax.PartitionState):
+      # TODO(spapa): This assumes that this is caused by part of the model
+      # being frozen, but this might not be the case.
+      assert "train" in state.opt_state[0] and "freeze" in state.opt_state[0], (
+          "PartitionState is expected to have a 'train' and a 'freeze' key."
+          f" Got {state.opt_state[0].keys()}"
+      )
+      train_opt_state = state.opt_state[0]["train"]
+      ema_params_tree = self.select_ema_params(train_opt_state.inner_state)
+      original_params_tree = state.params
+
+      def _merge_ema_and_original(ema_val, original_val):
+        if isinstance(ema_val, optax.MaskedNode):
+          # If the EMA tree has a MaskedNode, it means this param was frozen.
+          return original_val
+        else:
+          # Otherwise, use the EMA parameter.
+          return ema_val
+
+      # Use jax.tree.map with is_leaf to treat optax.MaskedNode as a leaf.
+      merged_params = jax.tree.map(
+          _merge_ema_and_original,
+          ema_params_tree,
+          original_params_tree,
+          is_leaf=lambda x: isinstance(x, optax.MaskedNode),
+      )
+      return state.replace(params=merged_params)
+
+    elif isinstance(state.opt_state, optax.OptState):
+      opt_state = state.opt_state
+      return state.replace(params=self.select_ema_params(opt_state))
+
+    else:
+      raise ValueError(
+          f"Unknown optimizer state type: {type(state.opt_state)}."
+      )
