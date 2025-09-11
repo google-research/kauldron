@@ -23,6 +23,7 @@ from kauldron.data.py.data_sources import Tfds
 from kauldron.data.py.data_sources import Json
 from kauldron.data.py.data_sources import HuggingFace
 from kauldron.data.py.mixtures import Mix
+from kauldron.data.py.mixtures import SelectFromDatasets
 
 # *****************************************************************************
 # DO NOT ADD new preprocessing ops here. Instead, add them to `kd.contrib.data`

@@ -25,7 +25,7 @@ from kauldron.data.py import base
 
 @dataclasses.dataclass(frozen=True)
 class Mix(base.PyGrainPipeline):
-  """Create a dataset mixture."""
+  """Create a dataset mixture from given weights."""
 
   datasets: list[base.PyGrainPipeline]
 
@@ -34,13 +34,39 @@ class Mix(base.PyGrainPipeline):
   shuffle: bool = True
 
   def ds_for_current_process(self, rng: random.PRNGKey) -> grain.MapDataset:
-    # We make sure each nested dataset get a different seed
+    # Ensure each nested dataset gets a different seed.
     datasets = [
         ds.ds_with_transforms(rng.fold_in(i))
         for i, ds in enumerate(self.datasets)
     ]
 
     ds = grain.MapDataset.mix(datasets, weights=self.weights)
+
+    if self.shuffle:
+      ds = ds.shuffle(rng.fold_in("shuffle").as_seed())
+    return ds
+
+
+@dataclasses.dataclass(frozen=True)
+class SelectFromDatasets(base.PyGrainPipeline):
+  """Create a dataset mixture using a selection map."""
+
+  datasets: list[base.PyGrainPipeline]
+
+  _: dataclasses.KW_ONLY
+  selection_map: grain.DatasetSelectionMap
+  shuffle: bool = True
+
+  def ds_for_current_process(self, rng: random.PRNGKey) -> grain.MapDataset:
+    # Ensure each nested dataset gets a different seed.
+    datasets = [
+        ds.ds_with_transforms(rng.fold_in(i))
+        for i, ds in enumerate(self.datasets)
+    ]
+
+    ds = grain.MapDataset.select_from_datasets(
+        datasets, selection_map=self.selection_map
+    )
 
     if self.shuffle:
       ds = ds.shuffle(rng.fold_in("shuffle").as_seed())
