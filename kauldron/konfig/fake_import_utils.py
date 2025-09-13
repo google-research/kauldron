@@ -162,7 +162,11 @@ def _force_locals_update(frame, property_name):
 def _get_module_name(module: types.ModuleType) -> str | None:
   """Returns the name of the module."""
   getattr_ = inspect.getattr_static
-  if module_name := getattr_(module, '__name__', None):
+  # Use `getattr_static` to not trigger lazy-imports
+  module_name = getattr_(module, '__name__', None)
+  if isinstance(module_name, property):
+    module_name = getattr(module, '__name__', None)
+  if module_name:
     return module_name
   # Otherwise the module don't have a `__name__`
   if getattr_(module, '__module__', '') == 'etils.ecolab.lazy_utils':
