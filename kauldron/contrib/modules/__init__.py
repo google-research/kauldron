@@ -21,3 +21,4 @@ from kauldron.contrib import _lazy_imports
 with _lazy_imports.lazy_api_imports(globals()):
   from kauldron.contrib.modules.readout import ReadoutWrapper
   from kauldron.contrib.modules.from_xid import get_model_from_xid
+  from kauldron.contrib.modules.nnx_wrapper import linen_from_nnx
