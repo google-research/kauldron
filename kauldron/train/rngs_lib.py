@@ -123,6 +123,10 @@ class RngStreams(config_util.UpdateFromRootCfg):
   _: dataclasses.KW_ONLY
   seed: int = config_util.ROOT_CFG_REF.seed
 
+  def __post_init__(self):
+    # Make sure the stream_overwrites are immutable / hashable.
+    object.__setattr__(self, 'stream_overwrites', tuple(self.stream_overwrites))
+
   @functools.cached_property
   def streams(self) -> dict[str, RngStream]:
     """Streams (after default are merged)."""

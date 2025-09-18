@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+import copy
 import dataclasses
 import functools
 import importlib
@@ -127,6 +128,14 @@ def resolve(cfg, *, freeze=True):
   Returns:
     The resolved config.
   """
+
+  # Check if the config has a `_konfig_experimental_nofreeze` key.
+  # TODO(klausg): make freeze=False the default and remove this.
+  if '_konfig_experimental_nofreeze' in cfg:
+    freeze = not cfg['_konfig_experimental_nofreeze']
+    cfg = copy.copy(cfg)
+    del cfg['_konfig_experimental_nofreeze']
+
   try:
     return _ConstructorResolver(freeze=freeze)._resolve_value(cfg)  # pylint: disable=protected-access
   except Exception as e:  # pylint: disable=broad-exception-caught
