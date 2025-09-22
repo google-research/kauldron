@@ -74,15 +74,15 @@ class PreNormBlock(nn.Module):
       tokens: Float['*b n d'],
       attention_mask: Bool['*b 1 n n'] | None = None,
   ) -> Float['*b n d']:
-    norm_tokens = self.attention_norm(tokens)  # pylint: disable=not-callable
+    norm_tokens = self.attention_norm(tokens).astype(tokens.dtype)  # pylint: disable=not-callable
     tokens += self.attention(
         inputs_q=norm_tokens,
         inputs_k=norm_tokens,
         inputs_v=norm_tokens,
         mask=attention_mask,
     )
-    norm_tokens = self.mlp_norm(tokens)  # pylint: disable=not-callable
-    return tokens + self.mlp(norm_tokens)  # pylint: disable=not-callable
+    norm_tokens = self.mlp_norm(tokens).astype(tokens.dtype)  # pylint: disable=not-callable
+    return tokens + self.mlp(norm_tokens).astype(tokens.dtype)  # pylint: disable=not-callable
 
   @classmethod
   def from_spec(
