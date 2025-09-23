@@ -20,3 +20,13 @@ from kauldron.contrib import _lazy_imports
 
 with _lazy_imports.lazy_api_imports(globals()):
   from kauldron.contrib.checkpoints.partial_loader import PartialCLULoader
+  from kauldron.contrib.checkpoints.preservation_policies import keep_exp_step_and_best_n
+  from kauldron.contrib.checkpoints.preservation_policies import keep_best_n
+  from kauldron.contrib.checkpoints.preservation_policies import ExpStep
+  # forward orbax policies for convenience
+  from orbax.checkpoint.checkpoint_managers import LatestN
+  from orbax.checkpoint.checkpoint_managers import EveryNSeconds
+  from orbax.checkpoint.checkpoint_managers import EveryNSteps
+  from orbax.checkpoint.checkpoint_managers import CustomSteps
+  from orbax.checkpoint.checkpoint_managers import AnyPreservationPolicy
+  from orbax.checkpoint.checkpoint_managers import BestN

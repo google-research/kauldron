@@ -186,8 +186,14 @@ class Checkpointer(BaseCheckpointer):
     save_on_steps: See `ocp.CheckpointManagerOptions`
     best_metric_path: Path to evaluator's metric for best checkpoint selection.
       Warning: If using a best_metric_path, the evaluator must be run inside the
-      train loop and cannot be run as a separate job.
+        train loop and cannot be run as a separate job.
     best_mode: See `ocp.CheckpointManagerOptions`
+    preservation_policy: An object used to determine which checkpoints to
+      preserve. If provided, overrides any other options dealing with this
+      subject, including `max_to_keep`, `keep_time_interval`, `keep_period`, and
+      `should_keep_fn`, `best_fn`, and is the sole means of determining which
+      checkpoints to preserve. If not provided, these other options are used
+      instead. Prefer to use this option over others.
     multiprocessing_options: See `ocp.MultiprocessingOptions`
     fast: (internal) Activate some optimizations
     create: (internal) Whether to create the checkpoint directory, this is set
@@ -203,6 +209,9 @@ class Checkpointer(BaseCheckpointer):
   keep_period: Optional[int] = None
   save_on_steps: Optional[Sequence[int]] = None
   best_metric_path: Optional[str] = None
+  preservation_policy: Optional[ocp.checkpoint_managers.PreservationPolicy] = (
+      None
+  )
   best_mode: str = "max"
   multiprocessing_options: ocp.options.MultiprocessingOptions = (
       dataclasses.field(default_factory=ocp.options.MultiprocessingOptions)
@@ -220,7 +229,9 @@ class Checkpointer(BaseCheckpointer):
 
     mgr_options = ocp.CheckpointManagerOptions(
         save_interval_steps=self.save_interval_steps,
-        max_to_keep=self.max_to_keep,
+        max_to_keep=(
+            self.max_to_keep if self.preservation_policy is None else None
+        ),
         keep_time_interval=self.keep_time_interval,
         keep_period=self.keep_period,
         save_on_steps=self.save_on_steps,
@@ -230,11 +241,11 @@ class Checkpointer(BaseCheckpointer):
         # TODO(msajjadi): Re-enable this once we've figured it out.
         # step_format_fixed_length=9,
         create=self.create,
-        # TODO(epot): Add `best_fn` to allow `ckpt_mngr.best_step()`
         async_options=ocp.AsyncOptions(
             timeout_secs=60 * 30,  # 30 minutes
         ),
         multiprocessing_options=self.multiprocessing_options,
+        preservation_policy=self.preservation_policy,
         # Ensure that checkpoints are not world-readable.
         # This file mode removes permission bits for OTHER in the POSIX format.
         # See
