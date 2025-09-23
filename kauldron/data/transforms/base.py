@@ -148,7 +148,7 @@ class Elements(tr_abc.MapTransform):
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
-class _ElementWise:
+class ElementWise:
   """Mixin class that enables defining a key and iterating relevant elements.
 
   Mostly used to remove code duplication between ElementWiseTransform and
@@ -215,7 +215,7 @@ class _ElementWise:
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
-class ElementWiseTransform(_ElementWise, tr_abc.MapTransform):
+class ElementWiseTransform(ElementWise, tr_abc.MapTransform):
   """Base class for elementwise transforms."""
 
   def map(self, features):
@@ -230,7 +230,7 @@ class ElementWiseTransform(_ElementWise, tr_abc.MapTransform):
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
-class ElementWiseRandomTransformBase(_ElementWise, abc.ABC):
+class ElementWiseRandomTransformBase(ElementWise, abc.ABC):
   """Base class for random elementwise transforms."""
 
   def random_map(self, features, seed):
@@ -248,7 +248,7 @@ class ElementWiseRandomTransformBase(_ElementWise, abc.ABC):
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
-class TreeFlattenWithPath(_ElementWise, tr_abc.MapTransform):
+class TreeFlattenWithPath(ElementWise, tr_abc.MapTransform):
   """Flatten any tree-structured elements.
 
   For example, using 'a' as key, with:
