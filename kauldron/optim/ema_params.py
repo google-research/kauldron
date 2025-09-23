@@ -18,7 +18,9 @@ import dataclasses
 from typing import Any, NamedTuple, Optional
 
 import chex
+import jax
 import jax.numpy as jnp
+from kauldron import kontext
 from kauldron.checkpoints import partial_loader
 import optax
 from optax._src import utils as optax_utils
@@ -107,44 +109,78 @@ class UseEmaParams(partial_loader.AbstractPartialLoader):
   """Use the EMA parameters stored by the `ema_params` transform.
 
   Attributes:
-    ema_params_transform: The index or name of the `ema_params` transform in the
-      optax.chain or optax.named_chain. If not set, the last transform in the
-      chain is used.
+    ema_params_transform: The path to the `ema_params` transform in the
+      optax.chain or optax.named_chain. If not set, the state is searched for an
+      `EmaParamsState` (which has to be unique).
+    partial_ok: If `True`, missing EMA params are ignored and the original
+      params are kept. This is useful in combination with frozen parameters,
+      e.g. when using with `kd.optim.partial_updates`.
   """
 
-  ema_params_transform: int | str | None = None
+  ema_params_transform: str | None = None
+
+  partial_ok: bool = False
 
   def transform(self, state):
-    """Replace the parameters with the params from `opt_state[ema_name]`."""
-    if self.ema_params_transform is None:
-      # If ema_params_transform is not set, the we try to use the last transform
-      # in the chain.
-      if isinstance(state.opt_state, tuple):
-        # This is the case for `optax.chain`.
-        ema_params_state = state[-1]
-      elif isinstance(state.opt_state, dict):
-        # This is the case for `optax.named_chain`.
-        last_key = list(state.opt_state.keys())[-1]
-        ema_params_state = state.opt_state[last_key]
-      else:
-        raise ValueError(
-            f"Unknown optimizer state type: {type(state.opt_state)}. "
-            "If ema_params_transform is not set, the optimizer state needs to "
-            "be a tuple or a dict (from optax.chain or optax.named_chain)."
-        )
-      if not hasattr(ema_params_state, "ema_params"):
-        raise ValueError(
-            "The last transform in the chain is not an instance of"
-            " `kd.optim.ema_params`. Either make sure that `ema_params` is"
-            " the last transform in the chain, or set `ema_params_transform`"
-            " to the index / name of the transform."
-        )
-    else:
-      ema_params_state = state.opt_state[self.ema_params_transform]
-      if not hasattr(ema_params_state, "ema_params"):
-        raise ValueError(
-            "opt_state[{self.ema_params_transform}] is not an instance of"
-            " `EmaParamsState`."
-        )
+    """Replace the parameters with the params from the EMA state."""
+    eparams = self._get_ema_params(state.opt_state)
 
-    return state.replace(params=ema_params_state.ema_params)
+    def _merge_params(path, params, other):
+      if other is None or isinstance(other, optax.MaskedNode):
+        if not self.partial_ok:
+          path = kontext.Path.from_jax_path(path)
+          raise KeyError(
+              f"No EMA params found for path {path}. Set `partial_ok=True` to"
+              " allow missing EMA params."
+          )
+        return params
+      else:
+        return other
+
+    updated_params = jax.tree.map_with_path(
+        _merge_params, state.params, eparams
+    )
+
+    return state.replace(params=updated_params)
+
+  def _get_ema_params(self, state):
+    ema_params_path = self.ema_params_transform
+    if ema_params_path is None:
+      # To find the path of the EmaParamsState we first replace all instances
+      # of EmaParamsState with its path and all other leaves with None.
+      state_to_path = jax.tree.map_with_path(
+          _replace_ema_params_state_with_path,
+          state,
+          is_leaf=lambda x: isinstance(x, EmaParamsState),
+      )
+      # Then we aggregate all paths into a single set via jax.tree.reduce.
+      possible_paths = jax.tree.reduce(
+          lambda x, y: x | {y}, state_to_path, set()
+      )
+      if len(possible_paths) > 1:
+        raise ValueError(
+            f"Found multiple EmaParamsStates ({possible_paths}). Please"
+            " set `ema_params_transform` to the path of the desired"
+            " EmaParamsState manually."
+        )
+      if not possible_paths:
+        raise ValueError(
+            "No EmaParamsState found. Please set `ema_params_transform`"
+            " to the path of the EmaParamsState manually."
+        )
+      ema_params_path = possible_paths.pop()
+
+    ema_params_state = kontext.get_by_path(state, ema_params_path)
+    if not hasattr(ema_params_state, "ema_params"):
+      raise ValueError(
+          f"The object at state.'{ema_params_path}' is not an instance of"
+          " `EmaParamsState` (it is missing an 'ema_params' attribute)."
+      )
+    return ema_params_state.ema_params
+
+
+def _replace_ema_params_state_with_path(p, x):
+  if isinstance(x, EmaParamsState):
+    return kontext.Path.from_jax_path(p)
+  else:
+    return None
