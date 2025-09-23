@@ -116,9 +116,6 @@ class TopLevelCheckpointItem(CheckpointItem):
     })
 
   def __kd_ocp_restore_post__(self, value: ocp.args.Composite) -> Self:
-    # TODO(b/327882553): Orbax `ocp.args.Composite` look like a dict but behave
-    # inconsistently (`__iter__`), so have to convert to dict first.
-    value = dict(value.items())
     init_kwargs = {
         k: obj.__kd_ocp_restore_post__(val)
         for k, (obj, val) in epy.zip_dict(self._items_fields, value)
