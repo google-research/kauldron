@@ -28,12 +28,16 @@ if typing.TYPE_CHECKING:
   # error.
   from grain import python as pygrain
   from grain import tensorflow as tfgrain
+  import tensorflow as tf
 
   class MapTransform(tfgrain.MapTransform, pygrain.MapTransform):
     pass
 
-  class FilterTransform(tfgrain.MapTransform, pygrain.MapTransform):
-    pass
+  class FilterTransform(tfgrain.FilterTransform, pygrain.FilterTransform):
+
+    @abc.abstractmethod
+    def filter(self, element: Any) -> bool | tf.Tensor:  # pytype: disable=signature-mismatch
+      """Filters a single element; returns True if the element should be kept."""
 
   Transformation = Any
 
@@ -64,7 +68,7 @@ else:
     """
 
     @abc.abstractmethod
-    def filter(self, element) -> bool:
+    def filter(self, element: Any) -> bool:
       """Filters a single element; returns True if the element should be kept."""
 
   Transformation = MapTransform | FilterTransform
