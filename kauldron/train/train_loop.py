@@ -109,11 +109,11 @@ def train_impl(
           # If the checkpointer is saving the best checkpoint according to eval
           # metrics, evaluation frequency must be sync with checkpointing.
           eval_aux = evaluator.maybe_eval(step=i, state=state)
-          if eval_aux is not None:
-            # TODO(klausg): remove once compute() is moved out of the writer.
-            eval_metrics[evaluator.name] = eval_aux.compute(
-                flatten=False
-            ).metric_values
+          # if eval_aux is not None:
+          #   # TODO(klausg): remove once compute() is moved out of the writer.
+          #   eval_metrics[evaluator.name] = eval_aux.compute(
+          #       flatten=False
+          #   ).metric_values
 
       if ckpt.should_save(i):
         # Add the train metrics to the metrics used for checkpointing.
