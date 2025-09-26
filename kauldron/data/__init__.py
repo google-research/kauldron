@@ -29,6 +29,8 @@ with _epy.lazy_api_imports(globals()):
   # Iterators
   from kauldron.data import iterators as iters
 
+  from kauldron.data.tf.mixture import SampleFromDatasets
+
   # PyGrain based data pipeline.
   from kauldron.data import py
 
