@@ -135,6 +135,9 @@ class Delta1(kd.metrics.Metric):
   mask: Optional[kontext.Key] = None
   threshold: float = 1.25
   epsilon: float = 1e-6
+  denormalize: bool = False
+  depth_mean: float = 0.0
+  depth_std: float = 1.0
 
   @flax.struct.dataclass
   class State(base_state.AverageState):
@@ -157,6 +160,10 @@ class Delta1(kd.metrics.Metric):
     Returns:
         The state of the metric.
     """
+    if self.denormalize:
+      preds = preds * self.depth_std + self.depth_mean
+      targets = targets * self.depth_std + self.depth_mean
+
     # Clip the predictions to avoid negative values.
     preds = jnp.clip(preds, min=0.0)
     # Compute the ratio of predicted to ground truth depth.
