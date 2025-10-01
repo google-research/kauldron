@@ -35,7 +35,7 @@ class ElementWiseRandomTransform(base.ElementWise, pygrain.RandomMapTransform): 
     # ONCE from the main rng (to correctly advance the main rng).
     # This is useful e.g. when applying the same random cropping to multiple
     # modalities like rgb and depth.
-    sub_rng = rng.spawn(1)
+    (sub_rng,) = rng.spawn(1)
     for key, element, should_transform in self._per_element(features):
       if should_transform:
         elem_rng = copy.deepcopy(sub_rng)  # copy the SAME rng for each element.
