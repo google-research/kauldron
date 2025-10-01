@@ -115,6 +115,15 @@ class AuxiliariesState:
         ),
     )
 
+  def finalize(self) -> AuxiliariesState:
+    """Finalizes the auxiliary state."""
+    with jax.transfer_guard("allow"):
+      return self.replace(
+          loss_states=_finalize_states(self.loss_states),
+          metric_states=_finalize_states(self.metric_states),
+          summary_states=_finalize_states(self.summary_states),
+      )
+
   def __or__(self, other: AuxiliariesState | None) -> AuxiliariesState:
     """Alias for `.merge()`: `aux = aux1 | aux2`."""
     if other is None:
@@ -129,9 +138,10 @@ class AuxiliariesState:
 
   def compute(self, *, flatten: bool = True) -> AuxiliariesOutput:
     """Compute losses and metrics."""
+    final = self.finalize()
     # losses
     loss_values = jax.tree.map(
-        _compute_metric, self.loss_states, is_leaf=kd_metrics.State.isinstance
+        _compute_metric, final.loss_states, is_leaf=kd_metrics.State.isinstance
     )
 
     if not isinstance(loss_values, dict):
@@ -143,13 +153,15 @@ class AuxiliariesState:
 
     # metrics
     metric_values = jax.tree.map(
-        _compute_metric, self.metric_states, is_leaf=kd_metrics.State.isinstance
+        _compute_metric,
+        final.metric_states,
+        is_leaf=kd_metrics.State.isinstance,
     )
 
     # summaries
     summary_values = jax.tree.map(
         _compute_metric,
-        self.summary_states,
+        final.summary_states,
         is_leaf=kd_metrics.State.isinstance,
     )
 
@@ -225,5 +237,16 @@ def _reduce_states(
   return jax.tree.map(
       _reduce_states_single,
       *all_states,
+      is_leaf=lambda x: isinstance(x, kd_metrics.State),
+  )
+
+
+def _finalize_states(
+    states: Mapping[str, kd_metrics.State],
+) -> dict[str, kd_metrics.State]:
+  """finalize all the states from the different metrics."""
+  return jax.tree.map(
+      lambda x: x.finalize() if isinstance(x, kd_metrics.State) else x,
+      states,
       is_leaf=lambda x: isinstance(x, kd_metrics.State),
   )

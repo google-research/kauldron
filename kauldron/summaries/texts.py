@@ -51,8 +51,7 @@ class ShowTexts(metrics.Metric):
 
     @typechecked
     def compute(self) -> XArray["num_texts"]:
-      texts = super().compute().texts
-      return texts
+      return self.texts
 
   @typechecked
   def get_state(

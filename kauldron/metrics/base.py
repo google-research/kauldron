@@ -194,6 +194,10 @@ class TreeState(base_state.State):
     )
     return type(self)(tree=merged_tree)
 
+  def finalize(self) -> TreeState:
+    """Finalizes the metric state (e.g. convert data fields to np.ndarrays)."""
+    return type(self)(tree=jax.tree.map(lambda x: x.finalize(), self.tree))
+
   def compute(self) -> PyTree[Any]:  # pytype: disable=signature-mismatch  # jnp-array
     """Calls compute for all metric states in tree."""
     return jax.tree.map(
@@ -366,6 +370,11 @@ class SkipIfMissing(Metric):
         return self
 
       return type(self)(state=self.state.merge(other.state))
+
+    def finalize(self) -> SkipIfMissing.State:
+      if self.state is None:
+        return self
+      return type(self)(state=self.state.finalize())
 
     def compute(self) -> PyTree[Any]:
       return self.state.compute() if self.state is not None else {}

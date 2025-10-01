@@ -112,6 +112,10 @@ class State(abc.ABC, Generic[_MetricT]):
     """
     raise NotImplementedError("Abstract method.")
 
+  def finalize(self: _SelfT) -> _SelfT:
+    """Finalizes the metric state (e.g. convert data fields to np.ndarrays)."""
+    return self
+
   @abc.abstractmethod
   def compute(self) -> Any:
     """Computes final metrics from intermediate values."""
@@ -240,9 +244,11 @@ class CollectingState(State[_MetricT]):
     }
     return dataclasses.replace(self, **merged_fields)
 
-  # Return `_SeltT` so auto-complete work
+  # Return `_SelfT` so auto-complete works
   def compute(self: _SelfT) -> _SelfT:
     """Returns the concatenated values."""
+    # TODO(klausg): move this to finalize() like in the AutoState
+    #   Note: That would require changing the __post_init__ logic as well.
     return _CollectingStateOutput(  # pytype: disable=bad-return-type
         **{k: np.concatenate(v) for k, v in self._accumulated_fields.items()}  # pylint: disable=protected-access
     )

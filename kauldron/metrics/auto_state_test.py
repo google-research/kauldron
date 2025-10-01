@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import flax.struct
+import jax.numpy as jnp
 from kauldron.metrics import auto_state
 from kauldron.metrics import base_state
 from kauldron.typing import Float  # pylint: disable=g-importing-member
@@ -208,3 +209,35 @@ def test_merge_max():
   result = s.compute()
   assert result.b.shape == (3, 2)
   np.testing.assert_allclose(result.b, 5.0)
+
+
+def test_finalize():
+  @flax.struct.dataclass(kw_only=True)
+  class MixedState(auto_state.AutoState):
+    n: int = 3
+    c: Float = auto_state.concat_field()
+    t: Float = auto_state.truncate_field(num_field="n")
+    s: Float = auto_state.sum_field()
+
+  s1 = MixedState(c=jnp.ones((2, 3)), t=jnp.ones((2, 5)), s=jnp.ones((2, 7)))
+  s2 = MixedState(c=jnp.ones((2, 3)), t=jnp.ones((2, 5)), s=jnp.ones((2, 7)))
+
+  # finalize does not change the static values and the shapes of the arrays
+  # for a single (non-merged) state
+  s1_final = s1.finalize()
+  assert s1_final.n == 3
+  assert s1_final.c.shape == (2, 3)
+  assert s1_final.t.shape == (2, 5)
+  assert s1_final.s.shape == (2, 7)
+  # finalize converts jax.Arrays to np.ndarrays
+  assert isinstance(s1_final.c, np.ndarray)
+  assert isinstance(s1_final.t, np.ndarray)
+  assert isinstance(s1_final.s, np.ndarray)
+
+  # finalize should turn tuples/lists into np.ndarrays again
+  s = s1.merge(s2)
+  s_final = s.finalize()
+  assert s_final.n == 3
+  assert s_final.c.shape == (4, 3)
+  assert s_final.t.shape == (3, 5)
+  assert s_final.s.shape == (2, 7)

@@ -68,7 +68,7 @@ class ShowImages(metrics.Metric):
 
     @typechecked
     def compute(self) -> Float["n h w #3"]:
-      images = super().compute().images
+      images = self.images
 
       # If cmap is set, apply the colormap.
       if self.parent.cmap is not None:
@@ -154,8 +154,7 @@ class ShowBoxes(metrics.Metric):
 
     @typechecked
     def compute(self) -> Float["n h w #3"]:
-      data = super().compute()
-      images, boxes = data.images, data.boxes
+      images, boxes = self.images, self.boxes
 
       # flatten batch dimensions
       images_shape = images.shape
@@ -228,9 +227,8 @@ class ShowSegmentations(metrics.Metric):
 
     @typechecked
     def compute(self) -> Float["n h w #3"]:
-      segmentations = super().compute().segmentations
       segmentation_images = segplot.plot_segmentation(
-          segmentations, entropy=self.parent.entropy
+          self.segmentations, entropy=self.parent.entropy
       )
       # always clip to avoid display problems in TB and Datatables
       return np.clip(segmentation_images, 0.0, 1.0)
@@ -284,7 +282,6 @@ class ShowDifferenceImages(metrics.Metric):
 
     @typechecked
     def compute(self) -> Float["n h w #3"]:
-      diff_images = super().compute().diff_images
 
       # Use the vrange bounds for the colormapping if available.
       if self.parent.vrange is not None:
@@ -296,7 +293,7 @@ class ShowDifferenceImages(metrics.Metric):
 
       # Apply the colormap.
       images = media.to_rgb(
-          diff_images[..., 0],
+          self.diff_images[..., 0],
           cmap=self.parent.cmap,
           vmin=diff_vmin,
           vmax=diff_vmax,

@@ -56,8 +56,7 @@ class AutoState(base_state.State[_MetricT]):
      corresponding metric and access them through the `parent` field.
 
   The `compute` method by default returns a namespace with the final data field
-  values (as np.ndarrays). It can be overridden to return any other object, but
-  should still call `super().compute()` to finalize the data fields.
+  values (as np.ndarrays). It can be overridden to return any other object.
 
   Example:
   ```python
@@ -77,18 +76,14 @@ class AutoState(base_state.State[_MetricT]):
     error_hist: Float['n'] = kd.metrics.concat_field()
 
     def compute(self):
-      # NOTE: You should access the data-fields through super().compute()
-      # rather than through self, to ensure that they are properly finalized.
-      # (e.g. converted to np.ndarrays)
-      data = super().compute()
-      error_img = mediapy.to_rgb(data.error, cmap=self.cmap)
+      error_img = mediapy.to_rgb(self.error, cmap=self.cmap)
       return {
-          "avg_error": data.summed_error / data.total_error,
-          "min_error": data.min_error,
-          "max_error": data.max_error,
+          "avg_error": self.summed_error / self.total_error,
+          "min_error": self.min_error,
+          "max_error": self.max_error,
           "error_images": error_img,
           "error_hist": kd.summaries.Histogram(
-              tensor=data.error_hist, num_buckets=self.num_buckets
+              tensor=self.error_hist, num_buckets=self.num_buckets
           ),
       }
   ```
@@ -123,15 +118,26 @@ class AutoState(base_state.State[_MetricT]):
 
     return dataclasses.replace(updated_self, **merged_fields)
 
+  def finalize(self: _SelfT) -> _SelfT:
+    """Finalizes the state (e.g. concatenate and converting to np.ndarrays)."""
+    finalized_fields = {}
+    for field in dataclasses.fields(self):
+      if not _is_static_field(field):
+        merger = field.metadata["kd_field_merger"]
+        value = getattr(self, field.name)
+        finalized_fields[field.name] = merger.finalize(value, self)
+    return dataclasses.replace(self, **finalized_fields)
+
   # Return `_SelfT` so auto-complete works
   def compute(self: _SelfT) -> _SelfT:
     """Computes final metrics from intermediate values."""
-    # NOTE: this calls finalize on datafields which converts them to np.ndarrays
+    # TODO(klausg): This call to finalize() should not be needed
+    # (since it is called by AuxiliariesState.compute() anyways. But we leave it
+    #  here for now to avoid breaking existing code.)
+    final = self.finalize()
     return _AutoStateOutput(**{  # pytype: disable=bad-return-type
-        f.name: (
-            f.metadata["kd_field_merger"].finalize(getattr(self, f.name), self)
-        )
-        for f in dataclasses.fields(self)
+        f.name: getattr(final, f.name)
+        for f in dataclasses.fields(final)
         if not _is_static_field(f)
     })
 
