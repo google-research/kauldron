@@ -24,7 +24,7 @@ from etils import epy
 import flax.core
 import jax
 from kauldron.data.transforms import base
-from kauldron.typing import XArray, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Shape, XArray, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import numpy as np
 
 with epy.lazy_imports():
@@ -129,16 +129,29 @@ class Gather(base.ElementWiseTransform):
 class Resize(base.ElementWiseTransform):
   """Resizes an image.
 
+  At most one of `size`, `min_size`, and `max_size` must be set.
+
   Attributes:
-    size: The new size of the image.
+    size: The new size of the image. If set, the image is rescaled so that the
+      new size matches `size`.
+    min_size: The minimum size of the image. If set, the image is rescaled so
+      that the smaller edge matches `min_size`.
+    max_size: The maximum size of the image. If set, the image is rescaled so
+      that the larger edge matches `max_size`.
     method: The resizing method. If `None`, uses `area` for float TF inputs,
       `bilinear` for float JAX inputs, and `nearest` for int inputs.
     antialias: Whether to use an anti-aliasing filter.
   """
 
-  size: tuple[int, int]
+  size: tuple[int, int] | None = None
+  min_size: int | None = None
+  max_size: int | None = None
   method: str | jax.image.ResizeMethod | tf.image.ResizeMethod | None = None
   antialias: bool = True
+
+  def __post_init__(self):
+    super().__post_init__()
+    self._validate_params()
 
   @typechecked
   def map_element(self, element: XArray["*b h w c"]) -> XArray["*b h2 w2 c"]:
@@ -152,6 +165,7 @@ class Resize(base.ElementWiseTransform):
     else:
       method = self.method
 
+    new_size = self._get_resize_shape(*Shape("h w"))
     if enp.lazy.is_tf(element):
       # Flatten the batch dimensions
       batch = tf.shape(element)[:-3]
@@ -159,7 +173,7 @@ class Resize(base.ElementWiseTransform):
 
       imgs = tf.image.resize(
           imgs,
-          self.size,
+          new_size,
           method=method,
           antialias=self.antialias,
       )
@@ -175,7 +189,7 @@ class Resize(base.ElementWiseTransform):
         )
 
       *batch, _, _, c = element.shape
-      size = (*batch, *self.size, c)
+      size = (*batch, *new_size, c)
       # Explicitly set device to avoid `Disallowed host-to-device transfer`
       # Uses default sharding.
       element = jax.device_put(element, jax.local_devices(backend="cpu")[0])
@@ -187,6 +201,30 @@ class Resize(base.ElementWiseTransform):
       )
     else:
       raise ValueError(f"Unsupported type: {type(element)}")
+
+  def _validate_params(self) -> None:
+    number_sizes_set = sum([
+        self.size is not None,
+        self.min_size is not None,
+        self.max_size is not None,
+    ])
+    if number_sizes_set != 1:
+      raise ValueError(
+          "Exactly one of `size`, `min_size`, and `max_size` must be set. "
+          f"Got {number_sizes_set} sizes set."
+      )
+
+  def _get_resize_shape(self, h: int, w: int) -> tuple[int, int]:
+    if self.size is not None:
+      return self.size
+    elif self.min_size is not None:
+      ratio = self.min_size / min(h, w)
+      return int(round(h * ratio)), int(round(w * ratio))
+    elif self.max_size is not None:
+      ratio = self.max_size / max(h, w)
+      return int(round(h * ratio)), int(round(w * ratio))
+    else:
+      raise ValueError("One of `size`, `min_size`, and `max_size` must be set.")
 
 
 def _is_integer(dtype: Any) -> bool:

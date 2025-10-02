@@ -84,7 +84,7 @@ def _as_shape(shape: str) -> tuple[int, ...]:
 
 
 @enp.testing.parametrize_xnp(skip=["torch"])
-def test_resize(xnp: enp.NpModule):
+def test_resize_with_size(xnp: enp.NpModule):
   vr = kd.data.py.Resize(
       key="img",
       size=(12, 12),
@@ -92,3 +92,25 @@ def test_resize(xnp: enp.NpModule):
   before = {"img": xnp.zeros((5, 5, 3), dtype=xnp.uint8)}
   after = vr.map(before)
   assert after["img"].shape == (12, 12, 3)
+
+
+@enp.testing.parametrize_xnp(skip=["torch"])
+def test_resize_with_min_size(xnp: enp.NpModule):
+  vr = kd.data.py.Resize(
+      key="img",
+      min_size=10,
+  )
+  before = {"img": xnp.zeros((5, 6, 3), dtype=xnp.uint8)}
+  after = vr.map(before)
+  assert after["img"].shape == (10, 12, 3)
+
+
+@enp.testing.parametrize_xnp(skip=["torch"])
+def test_resize_with_max_size(xnp: enp.NpModule):
+  vr = kd.data.py.Resize(
+      key="img",
+      max_size=5,
+  )
+  before = {"img": xnp.zeros((8, 10, 3), dtype=xnp.uint8)}
+  after = vr.map(before)
+  assert after["img"].shape == (4, 5, 3)
