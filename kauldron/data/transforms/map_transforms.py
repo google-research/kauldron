@@ -14,6 +14,7 @@
 
 """Map transforms."""
 
+from collections.abc import Iterable
 import dataclasses
 import typing
 from typing import Any
@@ -225,6 +226,48 @@ class Resize(base.ElementWiseTransform):
       return int(round(h * ratio)), int(round(w * ratio))
     else:
       raise ValueError("One of `size`, `min_size`, and `max_size` must be set.")
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class CenterCrop(base.ElementWiseTransform):
+  """Crop the input data to the specified shape from the center.
+
+  Can be used on data of any shape or type including images and videos. This
+  transform does NOT support dynamic shapes, i.e., shapes with -1 in any of
+  the dimensions.
+
+  Attributes:
+    shape: A tuple of integers describing the target shape of the crop. Entries
+      can be also be None to keep the original shape of the data in that dim.
+  """
+
+  shape: tuple[int | None, ...]
+
+  @typechecked
+  def map_element(self, element: XArray["..."]) -> XArray["..."]:
+    if len(element.shape) != len(self.shape):
+      raise ValueError(
+          "Rank of self.shape has to match element.shape. But got"
+          f" {self.shape=} and {element.shape=}"
+      )
+    target_shape = self._resolve_target_shape(element.shape, self.shape)
+    start = np.subtract(element.shape, target_shape) // 2
+    if enp.lazy.is_tf(element):
+      crop = tf.slice(element, start, target_shape)
+      return tf.ensure_shape(crop, target_shape)
+    elif enp.lazy.is_np(element) or enp.lazy.is_jax(element):
+      end = np.add(start, target_shape)
+      return jax.lax.slice(element, start, end)
+    else:
+      raise ValueError(f"Unsupported type: {type(element)}")
+
+  def _resolve_target_shape(
+      self, element_shape: Iterable[int], crop_shape: tuple[int | None, ...]
+  ) -> tuple[int, ...]:
+    final_shape = []
+    for e, c in zip(element_shape, crop_shape):
+      final_shape.append(c or e)
+    return tuple(final_shape)
 
 
 def _is_integer(dtype: Any) -> bool:

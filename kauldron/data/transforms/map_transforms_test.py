@@ -114,3 +114,33 @@ def test_resize_with_max_size(xnp: enp.NpModule):
   before = {"img": xnp.zeros((8, 10, 3), dtype=xnp.uint8)}
   after = vr.map(before)
   assert after["img"].shape == (4, 5, 3)
+
+
+@enp.testing.parametrize_xnp(skip=["torch"])
+def test_center_crop(xnp: enp.NpModule):
+  vr = kd.data.py.CenterCrop(
+      key="img",
+      shape=(12, 12),
+  )
+  data = xnp.arange(16 * 16, dtype=xnp.uint8)
+  data = xnp.reshape(data, (16, 16))
+  expected_crop = data[2:14, 2:14]
+  before = {"img": data}
+  after = vr.map(before)
+  assert after["img"].shape == (12, 12)
+  xnp.allclose(after["img"], expected_crop)
+
+
+@enp.testing.parametrize_xnp(skip=["torch"])
+def test_center_crop_partial(xnp: enp.NpModule):
+  vr = kd.data.py.CenterCrop(
+      key="img",
+      shape=(12, None),
+  )
+  data = xnp.arange(16 * 16, dtype=xnp.uint8)
+  data = xnp.reshape(data, (16, 16))
+  expected_crop = data[2:14, :]
+  before = {"img": data}
+  after = vr.map(before)
+  assert after["img"].shape == (12, 16)
+  xnp.allclose(after["img"], expected_crop)

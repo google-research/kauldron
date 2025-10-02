@@ -60,6 +60,7 @@ with _epy.lazy_api_imports(globals()):
   # there's no standardized random API between TF and numpy.
   # ====== Map transforms ======
   from kauldron.data.transforms.map_transforms import Cast
+  from kauldron.data.transforms.map_transforms import CenterCrop
   from kauldron.data.transforms.map_transforms import Gather
   from kauldron.data.transforms.map_transforms import Rearrange
   from kauldron.data.transforms.map_transforms import Resize
