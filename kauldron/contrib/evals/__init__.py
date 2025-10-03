@@ -22,3 +22,4 @@ with _lazy_imports.lazy_api_imports(globals()):
   from kauldron.contrib.evals.train_eval import TrainEvaluator
   from kauldron.contrib.evals.train_eval import default_stop_after_steps_schedule_fn
   from kauldron.contrib.evals.train_eval import linear_stop_after_steps_schedule_fn
+  from kauldron.contrib.evals.checkpointed_evaluator import CheckpointedEvaluator
