@@ -20,6 +20,7 @@ from unittest import mock
 from kauldron.xm._src import dir_utils
 from kauldron.xm._src import job_lib
 import pytest
+from xmanager import xm
 
 
 @pytest.fixture(autouse=True)
@@ -42,4 +43,23 @@ def test_job():
           subdir_format=dir_utils.SubdirFormat(),
       ),
   )
+  assert isinstance(xm_job, xm.Job)
   assert xm_job.name == "train"
+
+
+def test_job_group():
+  job = job_lib.Job(
+      name="train",
+      num_slices=2,
+  )
+  xm_job_group = job.make_xm_job(
+      sweep_args={},
+      dir_builder=dir_utils.DirectoryBuilder(
+          unresolved_root_dir=None,
+          subdir_format=dir_utils.SubdirFormat(),
+      ),
+  )
+  assert isinstance(xm_job_group, xm.JobGroup)
+  assert list(xm_job_group.jobs) == ["train_00", "train_01"]
+  assert xm_job_group.jobs["train_00"].name == "train_00"
+  assert xm_job_group.jobs["train_01"].name == "train_01"

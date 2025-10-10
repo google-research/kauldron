@@ -25,6 +25,7 @@ from typing import TypeVar
 
 import jax
 from jax._src import source_info_util
+from jax.experimental import mesh_utils
 from kauldron.typing import PyTree  # pylint: disable=g-importing-member
 from kauldron.utils import _jax
 import numpy as np
@@ -132,7 +133,7 @@ class FSDPSharding:
     min_size_to_shard_bytes = self.min_size_to_shard_mb * (2**20)
 
     def _apply(x: jax.Array) -> jax.sharding.Sharding:
-
+      mesh = sharding.DEVICES_MESH  # pylint: disable=protected-access
       if _nbytes(x) <= min_size_to_shard_bytes:
         return sharding.REPLICATED
 
@@ -142,9 +143,12 @@ class FSDPSharding:
       spec = [None] * x.ndim
       for i in idx:
         if x.shape[i] % jax.device_count() == 0:
-          spec[i] = 'devices'
+          if mesh.axis_names == ('slice', 'data'):
+            spec[i] = ('slice', 'data')
+          else:
+            spec[i] = 'devices'
           return jax.sharding.NamedSharding(
-              sharding.DEVICES_MESH,  # pylint: disable=protected-access
+              mesh,
               jax.sharding.PartitionSpec(*spec),
           )
       # TODO(epot): Should log params for weights non-divisible ?
@@ -174,8 +178,32 @@ class _ShardingAPI:
   @functools.cached_property
   def DEVICES_MESH(self) -> jax.sharding.Mesh:  # pylint: disable=invalid-name
     """Default mesh, with a single axis containing all devices."""
-    devices = np.asarray(jax.devices())
-    return jax.sharding.Mesh(devices, axis_names=('devices',))
+    devices = jax.devices()
+    slice_indices = sorted(
+        list(
+            set(
+                d.slice_index
+                for d in devices
+                if hasattr(d, 'slice_index') and d.slice_index is not None
+            )
+        )
+    )
+    if not slice_indices or len(slice_indices) <= 1:
+      return jax.sharding.Mesh(np.asarray(devices), axis_names=('devices',))
+    else:
+      num_slices = len(slice_indices)
+      if num_slices != slice_indices[-1] + 1:
+        raise ValueError(f'Slice indices must be contiguous: {slice_indices}')
+      devices_per_slice = len(devices) // num_slices
+      device_mesh = np.stack([
+          mesh_utils.create_device_mesh(
+              (devices_per_slice,),
+              devices=[d for d in devices if d.slice_index == slice_index],
+              allow_split_physical_axes=False,
+          )
+          for slice_index in slice_indices
+      ])
+      return jax.sharding.Mesh(device_mesh, ('slice', 'data'))
 
   @functools.cached_property
   def REPLICATED(self) -> jax.sharding.NamedSharding:  # pylint: disable=invalid-name
@@ -185,8 +213,12 @@ class _ShardingAPI:
 
   @functools.cached_property
   def FIRST_DIM(self) -> jax.sharding.NamedSharding:  # pylint: disable=invalid-name
+    if self.DEVICES_MESH.axis_names == ('slice', 'data'):
+      pspec = jax.sharding.PartitionSpec(('slice', 'data'))
+    else:
+      pspec = jax.sharding.PartitionSpec('devices')
     return jax.sharding.NamedSharding(
-        self.DEVICES_MESH, jax.sharding.PartitionSpec('devices')
+        self.DEVICES_MESH, pspec
     )
 
   @functools.cached_property
