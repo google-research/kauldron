@@ -23,12 +23,16 @@ from typing import Any, Callable, ContextManager, Optional
 
 from etils import enp
 from etils import epath
+from etils import epy
 from kauldron import konfig
 from kauldron import kontext
-from kauldron.data import utils as data_utils
 from kauldron.typing import PyTree  # pylint: disable=g-importing-member
 from kauldron.utils import constants
 from kauldron.utils import xmanager as xm_lib
+
+with epy.lazy_imports():
+  from kauldron.data import utils as data_utils  # pylint: disable=g-import-not-at-top
+
 
 if typing.TYPE_CHECKING:
   from kauldron import kd  # pylint: disable=g-bad-import-order
