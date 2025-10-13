@@ -86,9 +86,8 @@ class Job(job_params.JobParams):
     requirements = typing.cast(xm.JobRequirements, self.requirements)
     bazel_args = xm_abc.bazel_args.for_resource(requirements.accelerator)
     # This is necessary for linking to succeed when using GPUs.
-    # In some informal testing, it did not seem to slow down compilation of
-    # non-GPU workloads, so we're always enabling it for simplicity.
-    bazel_args = bazel_args + ("--define=cuda_compress=1",)
+    if requirements.accelerator in xm.GpuType:
+      bazel_args = bazel_args + ("--define=cuda_compress=1",)
 
     # Add any additional bazel args specified in JobParams.
     bazel_args = bazel_args + tuple(self.bazel_args)
