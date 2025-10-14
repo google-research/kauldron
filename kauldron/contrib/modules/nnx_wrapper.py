@@ -20,12 +20,14 @@
 
 from functools import partial
 import inspect
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any, Callable, Mapping, Sequence, TypeVar
 import flax
 from flax import linen as nn
 from flax import nnx
 import jax
 from kauldron import kd
+
+T = TypeVar('T')
 
 
 class LinenFromNnxDef(nn.Module):
@@ -118,10 +120,18 @@ class LinenFromNnxDef(nn.Module):
     if self.is_initializing():
       return self.instantiate_nnx_module()
 
+    # get rng_vars and reseed them
+    rng_vars = self.get_variable('nnx', 'rng_vars')
+    new_rngs = _nnx_rngs_from_scope(self.scope)
+    if not new_rngs:
+      jax.debug.print('No rngs found in scope.')
+    else:
+      rng_vars = _reseed_rng_vars(rng_vars, new_rngs)
+
     module = nnx.merge(
         self.get_variable('nnx', 'graphdef'),
         self.variables['params'],
-        self.get_variable('nnx', 'rng_vars'),
+        rng_vars,
         self.get_variable('nnx', 'attributes'),
     )
 
@@ -132,20 +142,10 @@ class LinenFromNnxDef(nn.Module):
 
     return module
 
-  def __getattr__(self, attr: str) -> Any:
-    """Allows to call methods of the nnx module from the linen wrapper."""
-    if hasattr(self.nnx_class, attr):
-      return partial(self.__call__, method=attr)
-    else:
-      try:
-        return getattr(self._nnx_module, attr)
-      except AttributeError as exc:
-        raise AttributeError(
-            f'Wrapped NNX module has not attribute {attr}'
-        ) from exc
-
   @nn.compact
-  def __call__(self, *args, method: str = '__call__', **kwargs) -> Any:
+  def __call__(
+      self, *args, nnx_method: str = '__call__', rngs=None, **kwargs
+  ) -> Any:
     """Makes a forward with the NNX module.
 
     The NNX graphdef, rng keys and static attributes are saved in scope.
@@ -153,12 +153,15 @@ class LinenFromNnxDef(nn.Module):
 
     Args:
       *args: Positional arguments to pass to the NNX module.
-      method: The method to call on the NNX module.
+      nnx_method: The method to call on the NNX module.
+      rngs: Optional rng keys. If not set, the model will try to get them from
+        the scope.
       **kwargs: Keyword arguments to pass to the NNX module.
     """
 
     module = self._nnx_module
-    outputs = getattr(module, method)(*args, **kwargs)
+
+    outputs = getattr(self.nnx_class, nnx_method)(module, *args, **kwargs)
 
     # update variables in scope
     gdef, params, rng_vars, attributes = nnx.split(
@@ -182,9 +185,34 @@ def linen_from_nnx(
     *args,
     **kwargs,
 ):
-  """Main entry point for converting a nnx class to a linen module."""
+  """Main entry point for converting a nnx class to a linen module.
 
-  return LinenFromNnxDef(
+  Dynamically creates a copy of the LinenFromNnxDef class
+  based on the given nnx class,
+  by copying all methods of the nnx class.
+
+  Args:
+    cls: The nnx class to wrap.
+    *args: Positional arguments to pass to the nnx class `__init__`.
+    **kwargs: Keyword arguments to pass to the nnx class `__init__`.
+
+  Returns:
+    A linen module.
+  """
+  nnx_methods = [
+      attr
+      for attr in dir(cls)
+      if callable(getattr(cls, attr))
+      and not attr.startswith('__')
+      and attr not in dir(LinenFromNnxDef)
+  ]
+  linen_methods = {
+      k: partial(LinenFromNnxDef.__call__, nnx_method=k) for k in nnx_methods
+  }
+  LinenClass = type(
+      f'LinenFromNnx{cls.__name__}', (LinenFromNnxDef,), linen_methods
+  )
+  return LinenClass(
       nnx_class=cls, args=args, kwargs=flax.core.FrozenDict(kwargs)
   )
 
@@ -202,6 +230,8 @@ def _nnx_rngs_from_scope(scope: flax.core.scope.Scope) -> nnx.Rngs:
     rng keys in the nnx format.
   """
   rng_keys = scope.rngs
+  if not rng_keys:
+    return nnx.Rngs()
   if isinstance(next(iter(rng_keys.values())), flax.core.scope.LazyRng):
     rng_keys = {k: v.rng for k, v in rng_keys.items()}
   # if there is a lazy rng wrapper, probably there is also a kauldron PRNGKey
@@ -210,3 +240,26 @@ def _nnx_rngs_from_scope(scope: flax.core.scope.Scope) -> nnx.Rngs:
   if isinstance(next(iter(rng_keys.values())), kd.random.PRNGKey):
     rng_keys = {k: v.rng for k, v in rng_keys.items()}
   return nnx.Rngs(**rng_keys)
+
+
+def _reseed_rng_vars(rng_vars_state: T, rngs: nnx.Rngs) -> T:
+  """Reseed the rng vars state with the given rngs.
+
+  We use this on rng_vars coming from the split module, because nnx.reseed
+  does not work on module when a nnx.Rngs object is stored at multiple places in
+  the module.
+
+  Args:
+    rng_vars_state: The rng variables state from `nnx.split`.
+    rngs: The new `nnx.Rngs` to reseed with.
+
+  Returns:
+    A deepcopy of `rng_vars_state` with reseeded `nnx.RngKey` values.
+  """
+  rng_vars_state = nnx.clone(rng_vars_state)
+  for path, var in nnx.graph.iter_graph(rng_vars_state):
+    if isinstance(var, nnx.RngKey):
+      assert len(path) >= 2, 'Incorrect structure for input rng_vars_state.'
+      key_tag = path[-2]
+      var[...] = rngs[key_tag]()
+  return rng_vars_state
