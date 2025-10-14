@@ -20,6 +20,7 @@ import abc
 import dataclasses
 import functools
 import types
+import typing
 from typing import Any, Callable, Literal, Self, TypeAlias, TypeVar
 
 import jax
@@ -135,11 +136,15 @@ class AutoState(base_state.State[_MetricT]):
     # (since it is called by AuxiliariesState.compute() anyways. But we leave it
     #  here for now to avoid breaking existing code.)
     final = self.finalize()
-    return _AutoStateOutput(**{  # pytype: disable=bad-return-type
-        f.name: getattr(final, f.name)
-        for f in dataclasses.fields(final)
-        if not _is_static_field(f)
-    })
+    output = {}
+    for f in dataclasses.fields(final):
+      if not _is_static_field(f):
+        value = getattr(final, f.name)
+        if isinstance(value, base_state.State):
+          value = value.compute()
+        output[f.name] = value
+
+    return _AutoStateOutput(**output)  # pytype: disable=bad-return-type
 
 
 # TODO(klausg): overloaded type annotation similar to dataclasses.field?
@@ -189,8 +194,7 @@ def sum_field(
     total_values: Float['*any'] = sum_field()
 
     def compute(self):
-      result = super().compute()
-      return result.summed_values / result.total_values
+      return self.summed_values / self.total_values
   ```
 
   Note: `sum_field` can handle arbitrary pytrees of arrays.
@@ -365,6 +369,44 @@ def truncate_field(
   return dataclasses.field(default=default, metadata=metadata, **kwargs)
 
 
+def state_field(
+    *,
+    default: Any = dataclasses.MISSING,
+    **kwargs,
+) -> Any:
+  """Defines a AutoState data-field that is merged by calling its merge method.
+
+  This is useful for reusing other States as fields.
+
+  Usage:
+
+  ```python
+  @flax.struct.dataclass
+  class AggregateState(AutoState):
+    state_a: StateA = state_field()
+    state_b: StateB = state_field()
+
+    def compute(self):
+      return {"a": state_a.compute(), "b": state_b.compute()}
+  ```
+
+  Args:
+    default: The default value of the field.
+    **kwargs: Additional arguments to pass to the dataclasses.field.
+
+  Returns:
+    A dataclasses.Field instance with additional metadata that marks this field
+    as a pytree_node for jax and sets the field merger to
+    _Merge(axis=axis, num_field=num_field).
+  """
+  metadata = kwargs.pop("metadata", {})
+  metadata = metadata | {
+      "pytree_node": True,
+      "kd_field_merger": _StateMerger(),
+  }
+  return dataclasses.field(default=default, metadata=metadata, **kwargs)
+
+
 class _FieldMerger(abc.ABC):
   """Abstract base class defining the interface for merging data-fields."""
 
@@ -452,7 +494,7 @@ class _Concatenate(_FieldMerger):
   ) -> Array | None:
     del state
     if v is EMPTY or v is None:
-      return None
+      return None  # TODO(klausg): this potentially breaks finalize + merge()
     v = _normalize_to_tuple(v)
     return np.concatenate(v, axis=self.axis)
 
@@ -526,6 +568,38 @@ class _Truncate(_FieldMerger):
       return None
     num = kontext.get_by_path(state, self.num_field)
     return self._maybe_truncate(v, num)
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True)
+class _StateMerger(_FieldMerger):
+  """Merges two values by calling their merge method."""
+
+  def merge(  # pytype: disable=signature-mismatch
+      self,
+      v1: base_state.State | Empty | None,
+      v2: base_state.State | Empty | None,
+      state: base_state.State,
+  ) -> base_state.State | Empty | None:
+    if v1 is EMPTY:
+      return v2
+    if v2 is EMPTY:
+      return v1
+    if v1 is None or v2 is None:
+      if not (v1 is None and v2 is None):
+        raise ValueError("Cannot merge None and non-None values.")
+      return None
+    assert isinstance(v1, base_state.State) and isinstance(v2, base_state.State)
+    return v1.merge(v2)
+
+  def finalize(  # pytype: disable=signature-mismatch
+      self,
+      v: base_state.State | Empty | None,
+      state: base_state.State,
+  ) -> base_state.State | None:
+    if v is EMPTY or v is None:
+      return None
+    v = typing.cast(base_state.State, v)
+    return v.finalize()
 
 
 def _assert_static_field_equal(

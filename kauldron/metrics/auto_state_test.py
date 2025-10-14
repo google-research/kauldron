@@ -21,6 +21,20 @@ import numpy as np
 import pytest
 
 
+@flax.struct.dataclass(kw_only=True)
+class _StateFieldInnerState(auto_state.AutoState):
+  x: Float = auto_state.sum_field()
+
+  def compute(self):
+    return self.x * 2
+
+
+@flax.struct.dataclass(kw_only=True)
+class _StateFieldOuterState(auto_state.AutoState):
+  inner: _StateFieldInnerState = auto_state.state_field()
+  y: Float = auto_state.sum_field()
+
+
 def test_empty():
 
   @flax.struct.dataclass(kw_only=True)
@@ -209,6 +223,24 @@ def test_merge_max():
   result = s.compute()
   assert result.b.shape == (3, 2)
   np.testing.assert_allclose(result.b, 5.0)
+
+
+def test_state_field():
+  s1 = _StateFieldOuterState(
+      inner=_StateFieldInnerState(x=jnp.array(1.0)), y=jnp.array(2.0)
+  )
+  s2 = _StateFieldOuterState(
+      inner=_StateFieldInnerState(x=jnp.array(10.0)), y=jnp.array(20.0)
+  )
+
+  s_merged = s1.merge(s2)
+  assert isinstance(s_merged.inner, _StateFieldInnerState)
+  np.testing.assert_allclose(s_merged.inner.x, 11.0)
+  np.testing.assert_allclose(s_merged.y, 22.0)
+
+  result = s_merged.compute()
+  assert result.inner == 22.0  # inner.compute() should be called
+  assert result.y == 22.0
 
 
 def test_finalize():
