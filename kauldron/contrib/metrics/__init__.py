@@ -32,6 +32,7 @@ with _lazy_imports.lazy_api_imports(globals()):
   from kauldron.contrib.metrics.segmentation_tracking import SegmentationJaccard
 
   from kauldron.contrib.metrics.similarity import CosineSimilarity
+  from kauldron.contrib.metrics.meancov import MeanCov
   from kauldron.contrib.metrics.image import PsnrWithResize
   from kauldron.contrib.metrics.multilabel_average_precision import MultilabelAveragePrecision
   from kauldron.contrib.metrics.pose import RelativeRotationError
