@@ -41,10 +41,10 @@ class HistogramSummary(metrics.Metric):
   num_buckets: int = 30
 
   @flax.struct.dataclass
-  class State(metrics.CollectingState["HistogramSummary"]):
+  class State(metrics.AutoState["HistogramSummary"]):
     """Collecting state that returns Histograms."""
 
-    tensor: Array["n"]
+    tensor: Array["n"] = metrics.concat_field()
 
     @typechecked
     def compute(self) -> Histogram:

@@ -33,8 +33,8 @@ def test_roc():
   s0 = metric.get_state(logits=logits, labels=labels)
   s1 = metrics.RocAuc().empty()
 
-  x = s0.merge(s1).compute()
-  y = s1.merge(s0).compute()
+  x = s0.merge(s1).finalize().compute()
+  y = s1.merge(s0).finalize().compute()
   np.testing.assert_allclose(x, y)
 
   # Parent is correctly forwarded

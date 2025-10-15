@@ -24,6 +24,7 @@ import flax.linen as nn
 import flax.struct
 import jax.numpy as jnp
 from kauldron import kontext
+from kauldron import metrics
 from kauldron.metrics import base
 from kauldron.metrics import base_state
 from kauldron.typing import Bool, Float, Int, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
@@ -126,17 +127,16 @@ class RocAuc(base.Metric):
   multi_class_mode: str = "ovr"  # One-vs-Rest ("ovr") or One-vs-One ("ovo")
 
   @flax.struct.dataclass
-  class State(base_state.CollectingState["RocAuc"]):
+  class State(metrics.AutoState["RocAuc"]):
     """RocAuc state."""
 
-    labels: Int["*b 1"]
-    probs: Float["*b n"]
-    mask: Bool["*b 1"] | Float["*b 1"]
+    labels: Int["*b 1"] = metrics.concat_field()
+    probs: Float["*b n"] = metrics.concat_field()
+    mask: Bool["*b 1"] | Float["*b 1"] = metrics.concat_field()
 
     @typechecked
     def compute(self) -> float:
-      out = super().compute()
-      labels = out.labels[..., 0]
+      labels = self.labels[..., 0]
       check_type(labels, Int["b"])
       # roc_auc_score is very picky so we first filter out all the classes
       # for which there are no GT examples and renormalize probabilities
@@ -152,7 +152,7 @@ class RocAuc(base.Metric):
         unique_labels = self.parent.unique_labels
         curr_unique_label = np.unique(labels).tolist()
 
-      probs = out.probs[..., unique_labels]
+      probs = self.probs[..., unique_labels]
       probs /= probs.sum(axis=-1, keepdims=True)  # renormalize
       check_type(probs, Float["b n"])
       if len(unique_labels) == 2:
@@ -161,7 +161,7 @@ class RocAuc(base.Metric):
             probs.shape[-1] == 2
         ), f"Unique labels are binary but probs.shape is {probs.shape}"
         probs = probs[..., 1]
-      mask = out.mask[..., 0].astype(np.float32)
+      mask = self.mask[..., 0].astype(np.float32)
       check_type(mask, Float["b"])
       if len(curr_unique_label) > 1:
         # See comment above about small data subsets.

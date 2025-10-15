@@ -20,8 +20,8 @@ import dataclasses
 
 import flax.struct
 from kauldron import kontext
+from kauldron import metrics
 from kauldron.metrics import base
-from kauldron.metrics import base_state
 from kauldron.typing import Float, Int, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import sklearn.metrics
 
@@ -37,31 +37,27 @@ class MultilabelAveragePrecision(base.Metric):
   labels: kontext.Key = kontext.REQUIRED  # e.g. "batch.label"
 
   @flax.struct.dataclass
-  class State(base_state.CollectingState):
+  class State(metrics.AutoState):
     """MultiLabelAveragePrecision state."""
 
-    scores: Float["*b n"]
-    labels: Int["*b n"]
+    scores: Float["b n"] = metrics.concat_field()
+    labels: Int["b n"] = metrics.concat_field()
 
     @typechecked
     def compute(self) -> float:
-      out = super().compute()
-      labels = out.labels
-      check_type(labels, Int["b n"])
-
-      scores = out.scores
-      check_type(scores, Float["b n"])
+      check_type(self.labels, Int["b n"])
+      check_type(self.scores, Float["b n"])
       # Aggregate average precision scores for each class.
       return sklearn.metrics.average_precision_score(
-          y_true=labels,
-          y_score=scores,
+          y_true=self.labels,
+          y_score=self.scores,
       )
 
   @typechecked
   def get_state(
       self,
-      scores: Float["*b n"],
-      labels: Int["*b n"],
+      scores: Float["b n"],
+      labels: Int["b n"],
   ) -> MultilabelAveragePrecision.State:
     return self.State(
         labels=labels,

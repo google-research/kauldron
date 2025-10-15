@@ -62,11 +62,11 @@ class TapOcclusionAccuracy(metrics.Metric):
   axis_order: Literal["BQTC", "BTQC"] = "BQTC"
 
   @flax.struct.dataclass
-  class State(metrics.CollectingState):
-    values: Float["*"] | tuple[Float["*"], ...]
+  class State(metrics.AutoState):
+    values: Float["*"] | tuple[Float["*"], ...] = metrics.concat_field()
 
     def compute(self):
-      return jnp.array(super().compute().values).mean()
+      return jnp.array(self.values).mean()
 
   @typechecked
   def get_state(
@@ -168,11 +168,11 @@ class TapPositionAccuracy(metrics.Metric):
   thresholds: Sequence[float] = (1 / 256, 2 / 256, 4 / 256, 8 / 256, 16 / 256)
 
   @flax.struct.dataclass
-  class State(metrics.CollectingState):
-    values: Float["*"] | tuple[Float["*"], ...]
+  class State(metrics.AutoState):
+    values: Float["*"] | tuple[Float["*"], ...] = metrics.concat_field()
 
     def compute(self):
-      return jnp.array(super().compute().values).mean()
+      return jnp.array(self.values).mean()
 
   @typechecked
   def get_state(
@@ -296,11 +296,11 @@ class TapAverageJaccard(metrics.Metric):
   thresholds: Sequence[float] = (1 / 256, 2 / 256, 4 / 256, 8 / 256, 16 / 256)
 
   @flax.struct.dataclass
-  class State(metrics.CollectingState):
-    values: Float["*"] | tuple[Float["*"], ...]
+  class State(metrics.AutoState):
+    values: Float["*"] | tuple[Float["*"], ...] = metrics.concat_field()
 
     def compute(self):
-      return jnp.array(super().compute().values).mean()
+      return jnp.array(self.values).mean()
 
   @typechecked
   def get_state(

@@ -67,11 +67,11 @@ class ShowPointCloud(metrics.Metric):
 
   # TODO(klausg): use CollectFirstState after adding support for keep_first=None
   @flax.struct.dataclass
-  class State(metrics.CollectingState["ShowPointCloud"]):
+  class State(metrics.AutoState["ShowPointCloud"]):
     """Collecting state that returns PointCloudsData."""
 
-    point_clouds: Float["n 3"]
-    point_colors: Optional[Float["n 3"]]
+    point_clouds: Float["n 3"] = metrics.concat_field()
+    point_colors: Optional[Float["n 3"]] = metrics.concat_field()
 
     def compute(self) -> PointCloud:
       results = super().compute()

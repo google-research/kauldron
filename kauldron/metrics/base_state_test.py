@@ -14,7 +14,6 @@
 
 """Test the metric base states."""
 
-import chex
 import flax
 import jax.numpy as jnp
 from kauldron import kd
@@ -24,15 +23,18 @@ import sklearn.metrics
 
 
 @flax.struct.dataclass
-class AveragePrecision(kd.metrics.CollectingState):
-  labels: Float['n_samples'] | Float['n_samples n_classes']
-  logits: Float['n_samples'] | Float['n_samples n_classes']
+class AveragePrecision(kd.metrics.AutoState):
+  labels: Float['n_samples'] | Float['n_samples n_classes'] = (
+      kd.metrics.concat_field()
+  )
+  logits: Float['n_samples'] | Float['n_samples n_classes'] = (
+      kd.metrics.concat_field()
+  )
 
   def compute(self) -> Float['']:
-    values = super().compute()
     return sklearn.metrics.average_precision_score(
-        values.labels,
-        values.logits,
+        self.labels,
+        self.logits,
     )
 
 
@@ -54,7 +56,10 @@ def test_collecting():
   np.testing.assert_allclose(state.compute(), 0.833333333333333)
 
   # Merging `empty()` is a no-op
-  chex.assert_trees_all_close(state, state.merge(AveragePrecision.empty()))
+  np.testing.assert_allclose(
+      state.merge(AveragePrecision.empty()).finalize().compute(),
+      state.finalize().compute(),
+  )
 
 
 def test_collecting_merge():
@@ -83,10 +88,11 @@ def test_collecting_merge():
       labels=jnp.asarray([1]),
       logits=jnp.asarray([0.8]),
   )
-  final_state = state0.merge(state1)
+  final_state = state0.merge(state1).finalize()
   np.testing.assert_allclose(final_state.compute(), 0.833333333333333)
   # Inverse merging should provide the same result
-  np.testing.assert_allclose(state1.merge(state0).compute(), 0.833333333333333)
+  final_state_2 = state1.merge(state0).finalize()
+  np.testing.assert_allclose(final_state_2.compute(), 0.833333333333333)
 
 
 @flax.struct.dataclass
@@ -97,7 +103,7 @@ class FirstNImages(kd.metrics.CollectFirstState):
 def test_collecting_first_image():
   state0 = FirstNImages(images=jnp.zeros((4, 16, 16, 3)), keep_first=5)
   state1 = FirstNImages(images=jnp.ones((4, 16, 16, 3)), keep_first=5)
-  final_state = state0.merge(state1)
+  final_state = state0.merge(state1).finalize()
   result = final_state.compute()
 
   assert result.images.shape == (5, 16, 16, 3)

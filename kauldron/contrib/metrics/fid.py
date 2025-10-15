@@ -25,8 +25,8 @@ from etils import epath
 import flax
 import jax
 from kauldron import kontext
+from kauldron import metrics
 from kauldron.metrics import base
-from kauldron.metrics import base_state
 from kauldron.metrics import image as image_metrics
 from kauldron.metrics.fid import _get_fid_score  # pylint: disable=g-importing-member
 from kauldron.metrics.fid import _get_stats_for_fid  # pylint: disable=g-importing-member
@@ -53,15 +53,14 @@ class FidWithStats(base.Metric):
     return self.reference_stats_loader()
 
   @flax.struct.dataclass
-  class State(base_state.CollectingState["FidWithStats"]):
+  class State(metrics.AutoState["FidWithStats"]):
     """FID state."""
 
-    pred_feats: Float["b h w d"]
+    pred_feats: Float["b h w d"] = metrics.concat_field()
 
     @typechecked
     def compute(self) -> float:
-      out = super().compute()  # Reduce the `list` to singleton
-      pred_feats = out.pred_feats
+      pred_feats = self.pred_feats
       if self.parent.cns_dump_file is not None:
         fpath = epath.Path(self.parent.cns_dump_file)
         fpath.parent.mkdir(exist_ok=True, parents=True)

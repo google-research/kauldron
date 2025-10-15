@@ -43,15 +43,15 @@ def test_multilabel_average_precision_correct_classes(
 
   # Merging empty states when added before or after should not change the final
   # score.
-  x = s0.merge(s1).compute()
-  y = s1.merge(s0).compute()  # pylint: disable=arguments-out-of-order
+  x = s0.merge(s1).finalize().compute()
+  y = s1.merge(s0).finalize().compute()  # pylint: disable=arguments-out-of-order
   np.testing.assert_allclose(x, ref_correct_score)
   np.testing.assert_allclose(y, ref_correct_score)
 
   # Accuracy should remain 1 when combining twice scores with matching labels.
   s0 = metric.get_state(scores=scores, labels=labels)
   s1 = metric.get_state(scores=scores, labels=labels)
-  mean_ap = s0.merge(s1).compute()
+  mean_ap = s0.merge(s1).finalize().compute()
   np.testing.assert_allclose(mean_ap, 1)
 
 
