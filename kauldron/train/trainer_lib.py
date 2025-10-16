@@ -31,6 +31,7 @@ import jax
 from jax.experimental import checkify
 from kauldron import checkpoints
 from kauldron import data
+from kauldron import export
 from kauldron import konfig
 from kauldron import losses
 from kauldron import metrics
@@ -219,6 +220,11 @@ class Trainer(config_util.BaseConfig):
       default_factory=lambda: checkpoints.NoopTransform(),  # pylint: disable=unnecessary-lambda
   )
 
+  # Exporter
+  exporter: export.ModelExporter = dataclasses.field(
+      default_factory=export.JaxModelExporter
+  )
+
   # Train, eval loop
   trainstep: train_step.TrainStep = dataclasses.field(
       default_factory=train_step.TrainStep, repr=False
@@ -276,6 +282,7 @@ class Trainer(config_util.BaseConfig):
     for attr_name in (
         'train_ds',
         'eval_ds',
+        'exporter',
         'rng_streams',
         'checkpointer',
         'profiler',
