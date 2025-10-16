@@ -253,7 +253,8 @@ def typechecked(fn):
     # Hide the function from the traceback. Supported by Pytest and IPython
     __tracebackhide__ = True  # pylint: disable=unused-variable,invalid-name
 
-    if not (annotations := getattr(fn, "_cached_annotations", None)):
+    annotations = getattr(fn, "_cached_annotations", None)
+    if not annotations:
       annotations = typing.get_type_hints(fn, include_extras=True)
       fn._cached_annotations = annotations  # pylint: disable=protected-access
 
