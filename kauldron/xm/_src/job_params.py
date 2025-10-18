@@ -129,6 +129,7 @@ class JobParams:
     use_interpreter: If True, use `ml_python` or the interpreter specified in
       `interpreter_mpm`.
     interpreter_info: Additional interpreter configuration options.
+    num_slices: Number of slices to use for the job.
     constraints: Additional scheduling constraints (e.g. cell restrictions)
     requirements: Additional resources requirements (e.g. local disk, ram,...)
     executor: Executor options.
@@ -153,6 +154,7 @@ class JobParams:
   interpreter_info: InterpreterInfo = dataclasses.field(
       default_factory=InterpreterInfo
   )
+  num_slices: int = 1
   constraints: list[rs.Constraint] = dataclasses.field(default_factory=list)
   # Use lambda to not resolve the lazy-imports
   requirements: xm.JobRequirements = dataclasses.field(

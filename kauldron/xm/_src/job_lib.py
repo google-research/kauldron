@@ -167,8 +167,8 @@ class Job(job_params.JobParams):
       *,
       sweep_args: dict[str, Any],
       dir_builder: dir_utils.DirectoryBuilder,
-  ) -> xm.Job:
-    """Returns the XManager job."""
+  ) -> xm.Job | xm.JobGroup:
+    """Returns the XManager job or job group."""
 
     # Build up the environment variables:
     env_vars = dict(self.env_vars)
@@ -203,6 +203,22 @@ class Job(job_params.JobParams):
     if self.debug.g3pdb_port:
       args["g3pdb_port"] = "%port_g3pdb%"
 
+    if self.num_slices <= 1:
+      return self._make_single_job(
+          args=args,
+          env_vars=env_vars,
+      )
+    else:
+      return self._make_job_group_for_slices(
+          args=args,
+          env_vars=env_vars,
+      )
+
+  def _make_single_job(
+      self, *, args: dict[str, Any], env_vars: dict[str, Any]
+  ) -> xm.Job:
+    """Creates a single xm.Job."""
+
     # TODO(b/322769542): Remove once XM fix this issue.
     use_auto_host_resources = _get_use_auto_host_resources(
         executor=self.executor,
@@ -221,6 +237,69 @@ class Job(job_params.JobParams):
         env_vars=env_vars,
         name=self.name,
     )
+
+  def _make_job_group_for_slices(
+      self, *, args: dict[str, Any], env_vars: dict[str, Any]
+  ) -> xm.JobGroup:
+    """Creates an xm.JobGroup for multi-slice training."""
+    args = dict(args)
+    slice_job_name_prefix = f"{self.name}_" if self.name else ""
+    slice_0_job_name = f"{slice_job_name_prefix}00"
+
+    # Megacore was not well supported by MegaScale XLA, potentially causing
+    # the program to hang.
+    if args.get("deepsea_chip_config_name") in (
+        "megachip",
+        "megacore",
+        "megacore_dense",
+    ):
+      del args["deepsea_chip_config_name"]
+
+    address = f"{slice_0_job_name}.get_job_bns_prefix()"
+    args["jax_num_tasks"] = xm_abc.RESTRICTED_BorgToken(
+        f"replicas * {self.num_slices}"
+    )
+    args["jax_controller_address"] = xm_abc.RESTRICTED_BorgToken(
+        f'{address}+"/0:jax"'
+    )
+    args["megascale_coordinator_address"] = xm_abc.RESTRICTED_BorgToken(
+        f'{address}+"/0:megascale"'
+    )
+    args["megascale_num_slices"] = self.num_slices
+    args["megascale_port"] = "%port_megascale%"
+    args["megascale_debug_port"] = "%port_megascaledebug%"
+    args["megascale_port_name"] = "megascale"
+    args["megascale_abort_on_errors"] = True
+    args["megascale_transport_type"] = "grpc"
+    args["xla_tpu_use_enhanced_launch_barrier"] = False
+
+    jobs = {}
+    for i in range(self.num_slices):
+      job_name = f"{slice_job_name_prefix}{i:02d}"
+      slice_args = dict(args)
+      slice_args["jax_task_id"] = xm_abc.RESTRICTED_BorgToken(
+          f'"\\"$(( %task% + {i} * " + replicas + " ))\\""'
+      )
+      slice_args["megascale_slice_id"] = i
+
+      use_auto_host_resources = _get_use_auto_host_resources(
+          executor=self.executor,
+          requirements=self.requirements,
+      )
+      executor = attr.evolve(
+          self.executor,
+          use_auto_host_resources=use_auto_host_resources,
+          requirements=self.requirements,
+      )
+
+      jobs[job_name] = xm.Job(
+          executable=self.executable,
+          executor=executor,
+          args=slice_args,
+          env_vars=env_vars,
+          name=job_name,
+      )
+    return xm.JobGroup(**jobs)
 
   @functools.cached_property
   def fileset(self) -> xm_abc.Fileset:
