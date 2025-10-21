@@ -261,5 +261,5 @@ def _reseed_rng_vars(rng_vars_state: T, rngs: nnx.Rngs) -> T:
     if isinstance(var, nnx.RngKey):
       assert len(path) >= 2, 'Incorrect structure for input rng_vars_state.'
       key_tag = path[-2]
-      var[...] = rngs[key_tag]()
+      var.value = rngs[key_tag]()
   return rng_vars_state
