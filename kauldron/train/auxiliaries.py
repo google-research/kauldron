@@ -22,6 +22,7 @@ from typing import Any, Mapping, Optional
 import flax
 import jax
 from jax.experimental import checkify
+from kauldron import checkpoints
 from kauldron import kontext
 from kauldron import losses as kd_losses
 from kauldron import metrics as kd_metrics
@@ -30,6 +31,7 @@ from kauldron.utils import config_util
 from kauldron.utils import immutabledict
 from kauldron.utils.kdash import dashboard_utils
 import numpy as np
+from orbax import checkpoint as ocp
 
 
 @dataclasses.dataclass(kw_only=True, eq=True, frozen=True)
@@ -82,7 +84,7 @@ class Auxiliaries(config_util.UpdateFromRootCfg):
 
 
 @flax.struct.dataclass
-class AuxiliariesState:
+class AuxiliariesState(checkpoints.items.StandardCheckpointItem):
   """Auxiliaries (intermediate states to be accumulated)."""
 
   loss_states: Mapping[str, kd_metrics.State] = dataclasses.field(
@@ -181,6 +183,15 @@ class AuxiliariesState:
         metric_values=metric_values,
         summary_values=summary_values,
     )
+
+  def __kd_ocp_handlers__(self) -> ocp.CheckpointHandler:
+    return ocp.StandardCheckpointHandler()
+
+  def __kd_ocp_save_args__(self) -> ocp.args.CheckpointArgs:
+    return ocp.args.StandardSave(self.replace(error=None))
+
+  def __kd_ocp_restore_args__(self) -> ocp.args.CheckpointArgs:
+    return ocp.args.StandardRestore(self.replace(error=None))
 
 
 @flax.struct.dataclass
