@@ -19,6 +19,7 @@ from __future__ import annotations
 import dataclasses
 from typing import Any, Mapping, Optional
 
+from etils import epy
 import flax
 import jax
 from jax.experimental import checkify
@@ -142,7 +143,7 @@ class AuxiliariesState(checkpoints.items.StandardCheckpointItem):
     """Compute losses and metrics."""
     final = self.finalize()
     # losses
-    loss_values = jax.tree.map(
+    loss_values = jax.tree.map_with_path(
         _compute_metric, final.loss_states, is_leaf=kd_metrics.State.isinstance
     )
 
@@ -154,14 +155,14 @@ class AuxiliariesState(checkpoints.items.StandardCheckpointItem):
       loss_values[dashboard_utils.TOTAL_LOSS_KEY] = total_loss
 
     # metrics
-    metric_values = jax.tree.map(
+    metric_values = jax.tree.map_with_path(
         _compute_metric,
         final.metric_states,
         is_leaf=kd_metrics.State.isinstance,
     )
 
     # summaries
-    summary_values = jax.tree.map(
+    summary_values = jax.tree.map_with_path(
         _compute_metric,
         final.summary_states,
         is_leaf=kd_metrics.State.isinstance,
@@ -217,23 +218,34 @@ def _nested_mappings_to_dict(obj):
     return obj
 
 
-def _compute_metric(state: Any):
+def _compute_metric(path, state: Any):
   """Compute the value of a metric for a given state and return the result."""
   # Accept cross-process computation (some metrics cannot be jitted)
   with jax.transfer_guard("allow"):
-    result = state.compute()
-    # Convert all results from jax.Array to np.array.
-    # We do this to ensure that the metric writers do not accidentally invoke
-    # any jax operations. This is important because metric writers are often
-    # multi-threaded, and in a multi-host setup this can lead to problems.
-    # See cl/751110291 for more context.  # copybara: strip
-    return jax.tree.map(_convert_leaf, result)
+    try:
+      result = state.compute()
+      # Convert all results from jax.Array to np.array.
+      # We do this to ensure that the metric writers do not accidentally invoke
+      # any jax operations. This is important because metric writers are often
+      # multi-threaded, and in a multi-host setup this can lead to problems.
+      # See cl/751110291 for more context.  # copybara: strip
+      return jax.tree.map(_convert_leaf, result)
+    except Exception as e:  # pylint: disable=broad-exception-caught
+      # Chain exception so we see the name of the metric compute that failed.
+      path = kontext.Path.from_jax_path(path)
+      epy.reraise(e, f"compute() failed for loss/metric/summary {path!r}")
 
 
-def _reduce_states_single(*states: kd_metrics.State) -> kd_metrics.State:
+def _reduce_states_single(path, *states: kd_metrics.State) -> kd_metrics.State:
   final_state, *rest_states = states
-  for state in rest_states:
-    final_state = final_state.merge(state)
+  try:
+    for state in rest_states:
+      final_state = final_state.merge(state)
+  except Exception as e:  # pylint: disable=broad-exception-caught
+    # Chain exception so we see the name of the metric merge that failed.
+    path = kontext.Path.from_jax_path(path)
+    epy.reraise(e, f"Merge state failed for loss/metric/summary {path!r}")
+
   return final_state
 
 
@@ -245,19 +257,30 @@ def _reduce_states(
   all_states = tuple(state for state in all_states if state)
   if not all_states:
     return {}
-  return jax.tree.map(
+  return jax.tree.map_with_path(
       _reduce_states_single,
       *all_states,
-      is_leaf=lambda x: isinstance(x, kd_metrics.State),
+      is_leaf=kd_metrics.State.isinstance,
   )
+
+
+def _finalize_state_single(path, state: kd_metrics.State):
+  try:
+    if isinstance(state, kd_metrics.State):
+      return state.finalize()
+    return state
+  except Exception as e:  # pylint: disable=broad-exception-caught
+    # Chain exception so we see the name of the metric merge that failed.
+    path = kontext.Path.from_jax_path(path)
+    epy.reraise(e, f"Finalizing state failed for loss/metric/summary {path!r}")
 
 
 def _finalize_states(
     states: Mapping[str, kd_metrics.State],
 ) -> dict[str, kd_metrics.State]:
   """finalize all the states from the different metrics."""
-  return jax.tree.map(
-      lambda x: x.finalize() if isinstance(x, kd_metrics.State) else x,
+  return jax.tree.map_with_path(
+      _finalize_state_single,
       states,
-      is_leaf=lambda x: isinstance(x, kd_metrics.State),
+      is_leaf=kd_metrics.State.isinstance,
   )
