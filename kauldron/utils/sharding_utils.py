@@ -25,7 +25,7 @@ from typing import TypeVar
 
 import jax
 from jax._src import source_info_util
-from kauldron.typing import PyTree  # pylint: disable=g-importing-member
+from kauldron.ktyping import PyTree  # pylint: disable=g-importing-member
 from kauldron.utils import _jax
 import numpy as np
 

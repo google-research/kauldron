@@ -25,9 +25,10 @@ import jax
 from jax import numpy as jnp
 import jax.scipy as jsp
 from kauldron import kontext
+import kauldron.ktyping as kt
+from kauldron.ktyping import Bool, Float  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.metrics import base
 from kauldron.metrics import base_state
-from kauldron.typing import Bool, Dim, Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 
 def rescale_image(
@@ -38,7 +39,7 @@ def rescale_image(
   return (x - vmin) / (vmax - vmin)
 
 
-@typechecked
+@kt.typechecked
 def psnr(
     a: Float["*b h w c"],
     b: Float["*b h w c"],
@@ -52,7 +53,7 @@ def psnr(
     # If mask is all-zero, we want to avoid division.
     divisor = jnp.maximum(1, jnp.sum(mask, axis=(-3, -2, -1)))
   else:
-    divisor = Dim("h*w*c")
+    divisor = kt.dim["h"] * kt.dim["w"] * kt.dim["c"]
   error = jnp.square(a - b).sum(axis=(-3, -2, -1))
   mse = error / divisor
   return 20.0 * jnp.log10(dynamic_range) - 10.0 * jnp.log10(mse[..., None])
@@ -73,7 +74,7 @@ class Psnr(base.Metric):
   class State(base_state.AverageState):
     pass
 
-  @typechecked
+  @kt.typechecked
   def get_state(
       self,
       pred: Float["*b h w c"],
@@ -88,7 +89,7 @@ class Psnr(base.Metric):
 
 
 # https://github.com/google-research/google-research/blob/abe03104c849ca228af386d785027809d7976a8c/jaxnerf/nerf/utils.py#L278
-@typechecked
+@kt.typechecked
 def ssim(
     img0: Float["*b h w c"],
     img1: Float["*b h w c"],
@@ -178,7 +179,7 @@ class Ssim(base.Metric):
   class State(base_state.AverageState):
     pass
 
-  @typechecked
+  @kt.typechecked
   def get_state(
       self,
       pred: Float["*b h w c"],

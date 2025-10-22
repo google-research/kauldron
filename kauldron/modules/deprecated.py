@@ -25,9 +25,10 @@ from flax import linen as nn
 import jax
 import jax.numpy as jnp
 from kauldron import kontext
+from kauldron.ktyping import Axes, Bool, Float, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.modules import knn_types
 from kauldron.modules import pos_embeddings
-from kauldron.typing import Axes, Bool, Float, Initializer, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Initializer  # pylint: disable=g-importing-member
 from kauldron.utils import interms_property
 
 

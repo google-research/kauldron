@@ -67,7 +67,6 @@ _EVAL_NAMES = flags.DEFINE_list(
 @_catch_post_mortem
 def main(_):
   tf.config.set_visible_devices([], "GPU")
-  kd.typing.enable_kd_type_checking()  # Enable custom checks before resolve
   eval_names = _EVAL_NAMES.value
   cfg = _CONFIG.value
   trainer: kd.train.Trainer = kd.konfig.resolve(cfg)

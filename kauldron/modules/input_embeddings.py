@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import einops
 from flax import linen as nn
-from kauldron.typing import Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.ktyping import Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 
 class Patchify(nn.Module):

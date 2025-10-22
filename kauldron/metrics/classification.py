@@ -25,9 +25,10 @@ import flax.struct
 import jax.numpy as jnp
 from kauldron import kontext
 from kauldron import metrics
+import kauldron.ktyping as kt
+from kauldron.ktyping import Bool, Float, Int  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.metrics import base
 from kauldron.metrics import base_state
-from kauldron.typing import Bool, Float, Int, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import numpy as np
 
 
@@ -66,7 +67,7 @@ class Accuracy(base.Metric):
           f"Got {self.logits=} and {self.pred_labels=}"
       )
 
-  @typechecked
+  @kt.typechecked
   def get_state(
       self,
       *,
@@ -94,7 +95,7 @@ class Precision1(base.Metric):
   class State(base_state.AverageState):
     pass
 
-  @typechecked
+  @kt.typechecked
   def get_state(
       self,
       logits: Float["*b n"],
@@ -117,7 +118,7 @@ class BinaryAccuracy(base.Metric):
   class State(base_state.AverageState):
     pass
 
-  @typechecked
+  @kt.typechecked
   def get_state(
       self,
       logits: Float["*any"],
@@ -158,10 +159,10 @@ class RocAuc(base.Metric):
     probs: Float["*b n"] = metrics.concat_field()
     mask: Bool["*b 1"] | Float["*b 1"] = metrics.concat_field()
 
-    @typechecked
+    @kt.typechecked
     def compute(self) -> float:
       labels = self.labels[..., 0]
-      check_type(labels, Int["b"])
+      kt.check_type(labels, Int["b"])
       # roc_auc_score is very picky so we first filter out all the classes
       # for which there are no GT examples and renormalize probabilities
       # This will give wrong results, but allows getting a value during training
@@ -178,7 +179,7 @@ class RocAuc(base.Metric):
 
       probs = self.probs[..., unique_labels]
       probs /= probs.sum(axis=-1, keepdims=True)  # renormalize
-      check_type(probs, Float["b n"])
+      kt.check_type(probs, Float["b n"])
       if len(unique_labels) == 2:
         # Binary mode: make it binary, otherwise sklearn complains.
         assert (
@@ -186,7 +187,7 @@ class RocAuc(base.Metric):
         ), f"Unique labels are binary but probs.shape is {probs.shape}"
         probs = probs[..., 1]
       mask = self.mask[..., 0].astype(np.float32)
-      check_type(mask, Float["b"])
+      kt.check_type(mask, Float["b"])
       if len(curr_unique_label) > 1:
         # See comment above about small data subsets.
         return sklearn_metrics.roc_auc_score(
@@ -199,7 +200,7 @@ class RocAuc(base.Metric):
       else:
         return 0.0
 
-  @typechecked
+  @kt.typechecked
   def get_state(
       self,
       logits: Float["*b n"],
