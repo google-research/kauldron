@@ -25,7 +25,7 @@ from flax import linen as nn
 import flax.core
 import jax.numpy as jnp
 from kauldron import kontext
-from kauldron.typing import Array, Float, PRNGKey, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.ktyping import Array, Float, PRNGKey, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import train_property
 
 FrozenDict = dict if typing.TYPE_CHECKING else flax.core.FrozenDict

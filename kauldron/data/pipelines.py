@@ -26,7 +26,8 @@ from etils.etree import jax as etree  # pylint: disable=g-importing-member
 from kauldron.data import data_utils
 from kauldron.data import iterators
 from kauldron.data import utils
-from kauldron.typing import PRNGKeyLike, PyTree  # pylint: disable=g-importing-member,g-multiple-import
+from kauldron.ktyping import PyTree  # pylint: disable=g-importing-member
+from kauldron.typing import PRNGKeyLike  # pylint: disable=g-importing-member
 from kauldron.utils import config_util
 
 # Output of `tfds.as_numpy`

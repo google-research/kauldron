@@ -23,12 +23,13 @@ from typing import Literal, Optional, Sequence
 import flax.linen as nn
 import jax.numpy as jnp
 from kauldron import kontext
+from kauldron.ktyping import Float, check_type, get_shape, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.modules import attention
 from kauldron.modules import input_embeddings
 from kauldron.modules import knn_types
 from kauldron.modules import pos_embeddings
 from kauldron.modules import transformers
-from kauldron.typing import Float, Initializer, Shape, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Initializer  # pylint: disable=g-importing-member
 
 
 @dataclasses.dataclass(frozen=True)
@@ -132,8 +133,10 @@ class VitEncoder(nn.Module):
 
     # Add a cls token (optional).
     if self.prepend_cls_token:
-      cls_tok = self.param('cls', self.cls_token_init, Shape('d'), tokens.dtype)
-      cls_tok = jnp.broadcast_to(cls_tok, Shape('*b 1 d'))
+      cls_tok = self.param(
+          'cls', self.cls_token_init, get_shape('d'), tokens.dtype
+      )
+      cls_tok = jnp.broadcast_to(cls_tok, get_shape('*b 1 d'))
       tokens = jnp.concatenate([cls_tok, tokens], axis=-2)
 
     check_type(tokens, Float['*b n d'])

@@ -24,8 +24,8 @@ from typing import Any, Mapping, TypeVar
 import flax
 import jax
 from kauldron import kontext
+from kauldron.ktyping import Float, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.metrics import base_state
-from kauldron.typing import Float, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 
 _FnT = TypeVar("_FnT")
 
