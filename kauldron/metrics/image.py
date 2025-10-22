@@ -25,9 +25,9 @@ import jax
 from jax import numpy as jnp
 import jax.scipy as jsp
 from kauldron import kontext
+from kauldron.ktyping import Bool, Float, dims, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.metrics import base
 from kauldron.metrics import base_state
-from kauldron.typing import Bool, Dim, Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 
 def rescale_image(
@@ -52,7 +52,7 @@ def psnr(
     # If mask is all-zero, we want to avoid division.
     divisor = jnp.maximum(1, jnp.sum(mask, axis=(-3, -2, -1)))
   else:
-    divisor = Dim("h*w*c")
+    divisor = dims["h*w*c"]
   error = jnp.square(a - b).sum(axis=(-3, -2, -1))
   mse = error / divisor
   return 20.0 * jnp.log10(dynamic_range) - 10.0 * jnp.log10(mse[..., None])

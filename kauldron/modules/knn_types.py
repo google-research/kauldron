@@ -16,7 +16,8 @@
 
 from __future__ import annotations
 from typing import Callable, Optional, Protocol
-from kauldron.typing import Axes, Bool, Float, Initializer, Shape  # pylint: disable=g-multiple-import,g-importing-member,unused-import
+from kauldron.ktyping import Bool, Float  # pylint: disable=g-multiple-import,g-importing-member,unused-import
+from kauldron.typing import Axes, Initializer, Shape  # pylint: disable=g-multiple-import,g-importing-member,unused-import
 
 
 ActivationFunction = Callable[[Float['*any']], Float['*any']]

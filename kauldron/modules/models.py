@@ -23,7 +23,7 @@ from typing import Any, Callable, Optional, Sequence
 import einops
 from flax import linen as nn
 from kauldron import kontext
-from kauldron.typing import Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.ktyping import Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 
 class Sequential(nn.Module):

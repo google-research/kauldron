@@ -27,11 +27,11 @@ from jax import numpy as jnp
 from kauldron import data
 from kauldron import kontext
 from kauldron.evals import evaluators
+from kauldron.ktyping import Array, Float, Int, Scalar, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.metrics import base
 from kauldron.metrics import base_state
 from kauldron.train import auxiliaries
 from kauldron.train import train_step
-from kauldron.typing import Array, Float, Int, Scalar, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import config_util
 from kauldron.utils import kdash
 from kauldron.utils import utils
