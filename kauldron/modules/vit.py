@@ -241,3 +241,25 @@ class Vit(nn.Module):
         bias_init=self.init_head_bias,
     )(pre_logits)
     return {'logits': logits}
+
+
+class VitAutoEncoder(nn.Module):
+  """Basic Vision Transformer autoencoder."""
+
+  encoder: nn.Module
+
+  image: kontext.Key = kontext.REQUIRED  # E.g. 'batch.image'.
+
+  @typechecked
+  @nn.compact
+  def __call__(self, image: Float['*b h w c']) -> dict[str, Float['*b h w c']]:
+    tokens = self.encoder(image)
+    # reshape tokens to be an image
+    h, w, c = image.shape[-3:]
+    l, _ = tokens.shape[-2:]
+    output_dim = h * w * c // l
+    tokens = nn.Dense(features=output_dim, name='decoder')(tokens)
+
+    ae_image = tokens.reshape(*image.shape)
+
+    return {'image': ae_image}
