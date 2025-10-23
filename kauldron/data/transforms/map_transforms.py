@@ -154,6 +154,7 @@ class Resize(base.ElementWiseTransform):
     super().__post_init__()
     self._validate_params()
 
+  @tf.autograph.experimental.do_not_convert
   @typechecked
   def map_element(self, element: XArray["*b h w c"]) -> XArray["*b h2 w2 c"]:
     if self.method is None:
