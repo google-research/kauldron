@@ -130,6 +130,59 @@ def test_merge_concat():
     s3.merge(s1)
 
 
+def test_merge_pytree_concat():
+
+  @flax.struct.dataclass(kw_only=True)
+  class ConcatState(auto_state.AutoState):
+    a: str = "irrelevant"
+    b: Float = auto_state.concat_field()
+    c: Float = auto_state.concat_field(axis=1)
+    d: Float | None = auto_state.concat_field(default=None)
+
+  pytree1 = dict(key1=np.ones((3, 2)), key2=np.zeros((3, 2)))
+  pytree2 = dict(key1=np.ones((3, 2)), key2=np.ones((3, 2)))
+  s1 = ConcatState(b=pytree1, c=pytree2)
+  s2 = ConcatState(b=pytree2, c=pytree2)
+  s3 = ConcatState(b=pytree1, c=pytree1, d=pytree2)
+
+  s = s1.merge(s2)
+  assert s.a == "irrelevant"
+  result = s.compute()
+
+  assert result.b.keys() == pytree1.keys()
+  assert result.b["key1"].shape == (6, 2)
+  assert result.b["key2"].shape == (6, 2)
+  assert result.c["key1"].shape == (3, 4)
+  assert result.c["key2"].shape == (3, 4)
+  np.testing.assert_allclose(result.b["key1"], 1.0)
+  np.testing.assert_allclose(result.b["key2"][:3], 0.0)
+  np.testing.assert_allclose(result.b["key2"][3:], 1.0)
+
+  # merge twice
+  s = s1.merge(s2).merge(s2)
+
+  assert s.a == "irrelevant"
+  result = s.compute()
+
+  assert result.b.keys() == pytree1.keys()
+  assert result.b["key1"].shape == (9, 2)
+  assert result.b["key2"].shape == (9, 2)
+  assert result.c["key1"].shape == (3, 6)
+  assert result.c["key2"].shape == (3, 6)
+  np.testing.assert_allclose(result.b["key1"], 1.0)
+  np.testing.assert_allclose(result.b["key2"][:3], 0.0)
+  np.testing.assert_allclose(result.b["key2"][3:], 1.0)
+
+  # no error:
+  _ = s3.merge(s3)
+
+  with pytest.raises(ValueError, match="Cannot concatenate None"):
+    s1.merge(s3)
+
+  with pytest.raises(ValueError, match="Cannot concatenate None"):
+    s3.merge(s1)
+
+
 def test_merge_truncate():
 
   @flax.struct.dataclass(kw_only=True)

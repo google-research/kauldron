@@ -473,8 +473,8 @@ class _Concatenate(_FieldMerger):
 
   def merge(
       self,
-      v1: Array | Empty | None | tuple[Array, ...],
-      v2: Array | Empty | None | tuple[Array, ...],
+      v1: Array | PyTree[Array] | Empty | None | tuple[Array, ...],
+      v2: Array | PyTree[Array] | Empty | None | tuple[Array, ...],
       state: base_state.State,
   ) -> tuple[Array, ...] | None:
     _assert_no_tracer(state, v1, v2)
@@ -483,9 +483,11 @@ class _Concatenate(_FieldMerger):
         raise ValueError("Cannot concatenate None and non-None values.")
       return None
 
-    v1 = _normalize_to_tuple(v1)
-    v2 = _normalize_to_tuple(v2)
-    return v1 + v2  # concatenated tuples
+    v1 = jax.tree.map(_normalize_to_tuple, v1, is_leaf=_is_tuple_leaf)
+    v2 = jax.tree.map(_normalize_to_tuple, v2)
+    return jax.tree.map(
+        lambda x, y: x + y, v1, v2, is_leaf=_is_tuple_leaf
+    )  # concatenated tuples
 
   def finalize(
       self,
@@ -495,8 +497,17 @@ class _Concatenate(_FieldMerger):
     del state
     if v is EMPTY or v is None:
       return None  # TODO(klausg): this potentially breaks finalize + merge()
-    v = _normalize_to_tuple(v)
-    return np.concatenate(v, axis=self.axis)
+    v = jax.tree.map(_normalize_to_tuple, v, is_leaf=_is_tuple_leaf)
+    return jax.tree.map(
+        lambda t: np.concatenate(t, axis=self.axis), v, is_leaf=_is_tuple_leaf
+    )
+
+
+def _is_tuple_leaf(x: Any) -> bool:
+  """Returns True if x is a tuple that only contains ndarrays."""
+  return isinstance(x, Array) or (
+      isinstance(x, tuple) and all(isinstance(y, Array) for y in x)
+  )
 
 
 def _normalize_to_tuple(
