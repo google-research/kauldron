@@ -108,7 +108,13 @@ class EveryNSteps(AlongTrain):
 
   n: int
 
+  _ = dataclasses.KW_ONLY
+
+  skip_init: bool = False
+
   def should_eval_in_train(self, step: int) -> bool:
+    if step == 0 and self.skip_init:
+      return False
     return step % self.n == 0
 
 
