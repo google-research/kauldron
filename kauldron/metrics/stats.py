@@ -22,9 +22,9 @@ from typing import Literal, Optional
 import flax.struct
 import jax.numpy as jnp
 from kauldron import kontext
+from kauldron.ktyping import Bool, Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.metrics import base
 from kauldron.metrics import base_state
-from kauldron.typing import Bool, Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
 
 
