@@ -138,6 +138,9 @@ class Job(job_params.JobParams):
         args={
             "adhoc_import_dir": citc_info.g3_dir,
         },
+        env_vars={
+            "GOOGLE_PYTHON_USE_LAZY_IMPORTS": "0",
+        },
     )
 
   @functools.cached_property
