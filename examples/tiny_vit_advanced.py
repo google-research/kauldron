@@ -127,6 +127,12 @@ def get_config():
       max_to_keep=1,
   )
 
+  # Exporter
+  cfg.exporter = kd.export.JaxModelExporter(
+      # Customize the exporter to also export the model for GPU and ROCM
+      platforms=("cpu", "tpu", "cuda", "rocm"),
+  )
+
   cfg.evals = {
       "eval": kd.evals.Evaluator(
           # Evals can be run either along train or as separate jobs. Here, we

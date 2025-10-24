@@ -86,6 +86,14 @@ def train_impl(
     writer.write_element_spec(initial_step, global_elem_spec)
     writer.write_context_structure(initial_step, trainer)
 
+    # Export the model.
+    trainer.exporter.export(
+        model=trainer.model,
+        state=state,
+        element_spec=ds_iter.element_spec,
+        is_training=True,
+    )
+
   aux = None
   log_metrics = None
 
