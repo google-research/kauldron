@@ -78,6 +78,20 @@ class ModelExporter(abc.ABC, config_util.UpdateFromRootCfg):
     """
 
 
+class NoopExporter(ModelExporter):
+  """Noop exporter."""
+
+  def export(
+      self,
+      *,
+      model: nn.Module,
+      state: train.TrainState,
+      element_spec: Any,
+      is_training: bool,
+  ) -> None:
+    pass
+
+
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=False)
 class JaxModelExporter(ModelExporter):
   """Exports a model to a jax serialized model.

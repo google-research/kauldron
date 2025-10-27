@@ -17,3 +17,4 @@
 # pylint: disable=g-importing-member
 from kauldron.export.exporter import JaxModelExporter
 from kauldron.export.exporter import ModelExporter
+from kauldron.export.exporter import NoopExporter

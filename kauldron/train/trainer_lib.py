@@ -222,7 +222,7 @@ class Trainer(config_util.BaseConfig):
 
   # Exporter
   exporter: export.ModelExporter = dataclasses.field(
-      default_factory=export.JaxModelExporter
+      default_factory=export.NoopExporter
   )
 
   # Train, eval loop
