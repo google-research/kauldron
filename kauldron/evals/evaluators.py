@@ -230,7 +230,7 @@ class Evaluator(EvaluatorBase):
 
   def evaluate(
       self, state: train_step.TrainState, step: int
-  ) -> auxiliaries.AuxiliariesState:
+  ) -> auxiliaries.AuxiliariesState | None:
     """Run one full evaluation."""
     self._assert_root_cfg_resolved()
     if self.discard_opt:
