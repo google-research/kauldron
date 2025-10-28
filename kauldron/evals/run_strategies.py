@@ -104,11 +104,23 @@ class Standalone(RunStrategy, job_params.JobParams):
 
 @dataclasses.dataclass(frozen=True)
 class EveryNSteps(AlongTrain):
-  """Run eval every N train steps."""
+  """Run eval every N train steps.
+
+  Attributes:
+    n: The number of steps between each evaluation.
+    skip_first: If True, do not run evaluation at step 0. This is useful for
+      expensive evaluators, so as to not waste compute on an untrained model.
+  """
 
   n: int
 
+  _ = dataclasses.KW_ONLY
+
+  skip_first: bool = False
+
   def should_eval_in_train(self, step: int) -> bool:
+    if step == 0 and self.skip_first:
+      return False
     return step % self.n == 0
 
 
