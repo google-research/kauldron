@@ -26,3 +26,5 @@ with _epy.lazy_api_imports(globals()):
   from kauldron.utils import chrono_utils as chrono
   from kauldron.utils import colab
   from kauldron.utils.status_utils import status
+  from kauldron.utils import config_util
+  from kauldron.utils import utils
