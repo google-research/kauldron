@@ -33,7 +33,7 @@ Usage example:
       loss_a=optax.adam(...),
       loss_b=optax.adam(...),
   )
-  cfg.train_step = kd.contrib.train.MultiTrainStep()
+  cfg.trainstep = kd.contrib.train.MultiTrainStep()
 ```
 """
 
@@ -119,7 +119,7 @@ def forward_with_loss(
   )
 
 
-@dataclasses.dataclass(kw_only=True, eq=True, frozen=True)
+@dataclasses.dataclass(kw_only=True, eq=False, frozen=True)
 class MultiTrainStep(kd.train.TrainStep):
   """Multi-Optimizer Training Step."""
 
@@ -204,6 +204,10 @@ class MultiTrainStep(kd.train.TrainStep):
 
     context = self.aux.update_context(context)
     return next_state, context
+
+  def __hash__(self) -> int:
+    # Make MultiTrainStep hashable, so its methods can be jitted.
+    return id(self)
 
 
 class MultiGradientTransformation(optax.GradientTransformationExtraArgs):
