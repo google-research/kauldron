@@ -20,7 +20,7 @@
 import abc
 import dataclasses
 import inspect
-from typing import Any, Optional, Sequence
+from typing import Any, Literal, Optional, Sequence
 from etils import epath
 import flax.linen as nn
 import jax
@@ -113,7 +113,7 @@ class JaxModelExporter(ModelExporter):
   batch_specs: Any = 'b, ...'  # prefix pytree of strings
   model_method: Optional[str] = None
 
-  platforms: Sequence[str] = ('cpu', 'tpu')  # "cuda", "rocm"
+  platforms: Sequence[Literal['cpu', 'tpu', 'cuda', 'rocm']] = ('cpu', 'tpu')
   vjp_order: int = 1
 
   path_template: str = '{workdir}/{name}.jax_exported'
