@@ -78,6 +78,7 @@ class ModelExporter(abc.ABC, config_util.UpdateFromRootCfg):
     """
 
 
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=False)
 class NoopExporter(ModelExporter):
   """Noop exporter."""
 
