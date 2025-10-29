@@ -58,7 +58,7 @@ def get_config():
           # This can help quite a bit for batch/freebie jobs:
           scheduling=xm_abc.BorgScheduling(
               max_task_failures=-1,
-              max_per_task_failures=0,
+              max_per_task_failures=10,
               task_failure_credit_period=3600,
           ),
       ),
