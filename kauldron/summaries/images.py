@@ -236,7 +236,7 @@ class ShowSegmentations(metrics.Metric):
   @typechecked
   def get_state(
       self,
-      segmentations: Float["..."],
+      segmentations: Integer["..."] | Float["..."],
   ) -> ShowSegmentations.State:
     # maybe rearrange and then check shape
     segmentations = _maybe_rearrange(
