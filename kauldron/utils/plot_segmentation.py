@@ -384,8 +384,8 @@ def plot_segmentation(
 
   nr_colors = palette.shape[0] if palette is not None else None
   soft_seg = _maybe_convert_to_wide_form(segmentation, nr_colors)
-  hard_seg = _convert_to_one_hot(segmentation, nr_colors)
   k = soft_seg.shape[-1]
+  hard_seg = _convert_to_one_hot(segmentation, k)
 
   if palette is None:
     palette = _palette_lch(k)
