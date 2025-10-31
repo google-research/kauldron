@@ -205,6 +205,7 @@ class ShowSegmentations(metrics.Metric):
     num_images: Number of segmentations to collect and display. Default 5.
     entropy: Whether to scale the lightness of the segments in proportion to the
       (normalized) per-pixel entropy of the soft-segmentation.
+    hard: Whether to plot hard segmentations when the input array is float.
     rearrange: Optional einops string to reshape the images.
     rearrange_kwargs: Optional keyword arguments for the einops reshape.
   """
@@ -213,6 +214,7 @@ class ShowSegmentations(metrics.Metric):
 
   num_images: int = 5
   entropy: bool = False
+  hard: bool = False
 
   rearrange: Optional[str] = None
   rearrange_kwargs: Mapping[str, Any] | None = None
@@ -228,7 +230,7 @@ class ShowSegmentations(metrics.Metric):
     @typechecked
     def compute(self) -> Float["n h w #3"]:
       segmentation_images = segplot.plot_segmentation(
-          self.segmentations, entropy=self.parent.entropy
+          self.segmentations, entropy=self.parent.entropy, hard=self.parent.hard
       )
       # always clip to avoid display problems in TB and Datatables
       return np.clip(segmentation_images, 0.0, 1.0)
