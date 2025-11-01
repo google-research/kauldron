@@ -206,6 +206,6 @@ class ConfigProvider(ConfigProviderBase):
       xp.context.annotations.set_title(self.config_path.stem)
 
     xp.context.add_config_file(
-        file_content=inspect.getsource(self.module),
+        file_content=str(self.module),
         description=f"Content of {self.config_path}",
     )
