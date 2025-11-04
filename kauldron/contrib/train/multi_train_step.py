@@ -53,6 +53,7 @@ import optax
 @flax.struct.dataclass
 class MultiContext(kd.train.Context):
   subgrads: Any = None
+  subupdates: Any = None
 
   @classmethod
   def from_context(cls, context: kd.train.Context, subgrads: Any) -> Self:
@@ -195,6 +196,7 @@ class MultiTrainStep(kd.train.TrainStep):
     # add the gradients, computed updates, and *old* optimizer state to context
     context = context.replace(
         subgrads=subgrads,
+        subupdates=all_updates,
         grads=grads,
         updates=updates,
         opt_state=state.opt_state,
