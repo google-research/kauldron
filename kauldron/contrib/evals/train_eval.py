@@ -256,6 +256,9 @@ class TrainEvaluator(kd.evals.EvaluatorBase):
               barrier_sync_key_prefix=f"{self.name}_{step}"
           ),
       )
+    elif isinstance(checkpointer, checkpointer_lib.NoopCheckpointer):
+      # NoopCheckpointer doesn't need workdir or any configuration
+      workdir = self.readout_trainer_base.workdir
     else:
       raise ValueError(f"Unsupported checkpointer type: {type(checkpointer)}")
     return dataclasses.replace(
