@@ -203,7 +203,7 @@ def test_sample_from_datasets(dummy_builder: tfds.core.GeneratorBasedBuilder):  
           kd.contrib.data.AddConstants({'src': 0}),
       ],
   )
-  ds2 = dummy_tfds_legacy_ds(
+  ds2 = dummy_tfds_legacy_ds(  # pytype: disable=wrong-keyword-args
       data_dir=dummy_builder.data_dir_root,
       num_epochs=2,
       shuffle=False,
