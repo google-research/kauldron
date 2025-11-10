@@ -25,9 +25,9 @@ import flax.struct
 import jax.numpy as jnp
 from kauldron import kontext
 from kauldron import metrics
+from kauldron.ktyping import Bool, Float, Int, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.metrics import base
 from kauldron.metrics import base_state
-from kauldron.typing import Bool, Float, Int, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import numpy as np
 
 

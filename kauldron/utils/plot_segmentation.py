@@ -20,7 +20,7 @@ Usage: `plot_segmentation.plot_segmentation(my_array)`
 import functools
 from typing import Optional, Union
 
-from kauldron.typing import Float, Int, UInt8  # pylint: disable=g-multiple-import
+from kauldron.ktyping import Float, Int, UInt8  # pylint: disable=g-multiple-import
 import matplotlib as mpl
 import numpy as np
 import scipy.ndimage
