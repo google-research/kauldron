@@ -27,4 +27,18 @@ Kauldron is a library for training machine learning models, optimized for
     post-mortem debugging on borg, runtime shape checking, and many others...).
 [Open an issue](https://github.com/google-research/kauldron/issues)..
 
+## Citing Kauldron
+
+If Kauldron was helpful for a publication, please cite this repository:
+
+```
+@software{kauldron2025github,
+  author = {Klaus Greff and Etienne Pot and Mehdi S. M. Sajjadi},
+  title = {{Kauldron}: A neural network training framework, optimized for research velocity and modularity.},
+  url = {https://github.com/google-research/kauldron},
+  version = {1.3.0},
+  year = {2025},
+}
+```
+
 *This is not an officially supported Google product.*
