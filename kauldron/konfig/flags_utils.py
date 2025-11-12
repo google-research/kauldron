@@ -15,6 +15,7 @@
 """Flags utils."""
 
 from absl import flags
+from absl.flags import _helpers
 from kauldron.konfig import configdict_base
 from ml_collections import config_flags
 
@@ -52,4 +53,7 @@ def DEFINE_config_file(  # pylint: disable=g-bad-name
       flag_values=flag_values,
       lock_config=lock_config,
       accept_new_attributes=True,
+      # Pass the module name of the caller, otherwise the flag is assumed to
+      # be created in this file, which creates duplicated flag errors.
+      module_name=_helpers.get_calling_module(),
   )
