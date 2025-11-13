@@ -19,7 +19,6 @@
 
 import warnings
 from absl import flags
-from etils import epy
 from kauldron.konfig import configdict_base
 from kauldron.konfig import module_configdict
 from ml_collections.config_flags import config_flags
@@ -109,17 +108,19 @@ class _LazyConfigFlag(config_flags._ConfigFlag):
     assert _value is not None, "None for _value is not supported."
     if isinstance(self._value, module_configdict.ModuleConfigDict):
       return _value.module_config
-    elif epy.is_test():
+    else:
+      # absl.testing.flagsaver.save_flag_values copies the value into ._value
+      # and then later calls the setter with the original value. This is why
+      # we need to be flexible here. The first time value is called, the module
+      # config is built and stored in ._value. The second time it is called,
+      # _value is not the module config dict anymore but rather the built config
+      # so we just return that.
       warnings.warn(
-          "The value of the flag is not a ModuleConfigDict. This is normal if"
-          " happening inside an absl test."
+          "The value of the flag is not a ModuleConfigDict."
+          "This can happen if triggered from "
+          "absl.testing.flagsaver.save_flag_values"
       )
       return _value
-    else:
-      raise ValueError(
-          "The value of the flag should be a ModuleConfigDict. Got"
-          f" {self._value}"
-      )
 
   @value.setter
   def value(self, val):
