@@ -60,3 +60,4 @@ from kauldron.modules.transformers import TransformerMLP
 # vit
 from kauldron.modules.vit import Vit
 from kauldron.modules.vit import VitEncoder
+from kauldron.modules.vit import VitAutoEncoder

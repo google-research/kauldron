@@ -75,6 +75,9 @@ class ConfigProvider(ConfigProviderBase):
       like this `config.py:args`.
     overrides: Optional `ConfigDict` overwrides (e.g. `{'batch_size': 64}`)
     module: Module containing the config.
+    requires_local_config_update: if ConfigProvider is initialized from flag,
+    there is no need to update the config locally with overrides, since it has
+    already been resolved with cli args.
   """
 
   config: konfig.ConfigDictLike[Any]
@@ -84,6 +87,7 @@ class ConfigProvider(ConfigProviderBase):
   # TODO(epot): Make `module` optional. Currently required to ship the
   # config to the trainer. But could have a fully-serializable mode.
   module: types.ModuleType
+  requires_local_config_update: bool = True
 
   @classmethod
   def from_module(
@@ -99,10 +103,9 @@ class ConfigProvider(ConfigProviderBase):
     elif not isinstance(module, types.ModuleType):
       raise TypeError(f"Expected module. Got: {type(module)}")
 
-    if config_parameter is None:
-      config = module.get_config()
-    else:
-      config = module.get_config(config_parameter)
+    config = konfig.get_config_from_module(module,
+                                           cli_str_arg=config_parameter)
+
     return cls(
         module=module,
         config=config,
@@ -141,15 +144,20 @@ class ConfigProvider(ConfigProviderBase):
         for flag_name in flagvalues
         if flag_name.startswith(f"{flag.name}.")
     }
+
     return cls(
         module=config_module,
         config=flag.value,
         config_parameter=config_parameter[0] if config_parameter else None,
         overrides=config_overrides,
+        requires_local_config_update=False,
     )
 
   def __post_init__(self) -> None:
     # TODO(epot): I don't think this should be a limitation if `v == 'None'` str
+    # TODO(geco): Since this causes
+    # problems with using --cfg.__args__.x = y, I just removed it when the obj
+    # comes from a flag, because in that case overrides are already applied.
     for k, v in self.overrides.items():
       if v is None:
         raise ValueError(
@@ -161,8 +169,9 @@ class ConfigProvider(ConfigProviderBase):
         )
 
     # Apply the `overrides` as they can contain info on XM `--cfg.xm_job....`
-    for k, v in self.overrides.items():
-      kontext.set_by_path(self.config, k, v)
+    if self.requires_local_config_update:
+      for k, v in self.overrides.items():
+        kontext.set_by_path(self.config, k, v)
 
   @functools.cached_property
   def config_path(self) -> pathlib.Path:

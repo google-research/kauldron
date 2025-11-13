@@ -66,10 +66,10 @@ def iter_sweep_configs(
   with ecolab.collapse(f'Resolving {len(all_sweep_items)} sweeps configs'):
     for i, sweep_item in enumerate(all_sweep_items):
       # Re-create the config to avoid mutations leak between iterations.
-      if config_args:
-        cfg = module.get_config(config_args)
-      else:
-        cfg = module.get_config()
+      cfg = konfig.get_config_from_module(
+          module=module,
+          cli_str_arg=config_args,
+      )
 
       sweep_kwargs = kauldron_utils.deserialize_job_kwargs(
           sweep_item.job_kwargs

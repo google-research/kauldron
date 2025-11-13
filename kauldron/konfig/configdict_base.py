@@ -566,6 +566,11 @@ def _normalize_config_only_value(value, name, *, id_to_dict) -> Any:
           # way ?
           _normalized=True,
       )
+    case _ if (
+        dataclasses.is_dataclass(value) and type(value).__name__ == 'ConfigArgs'
+    ):
+      # We allow setting a dataclass python object if it is a ConfigArgs.
+      return normalize_fn(dataclasses.asdict(value), name)
     case _:
       raise ValueError(
           f'Error setting `cfg.{name}`: To avoid mixing configurable and'
