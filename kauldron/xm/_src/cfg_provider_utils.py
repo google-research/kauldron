@@ -76,8 +76,8 @@ class ConfigProvider(ConfigProviderBase):
     overrides: Optional `ConfigDict` overwrides (e.g. `{'batch_size': 64}`)
     module: Module containing the config.
     requires_local_config_update: if ConfigProvider is initialized from flag,
-    there is no need to update the config locally with overrides, since it has
-    already been resolved with cli args.
+      there is no need to update the config locally with overrides, since it has
+      already been resolved with cli args.
   """
 
   config: konfig.ConfigDictLike[Any]
@@ -103,8 +103,7 @@ class ConfigProvider(ConfigProviderBase):
     elif not isinstance(module, types.ModuleType):
       raise TypeError(f"Expected module. Got: {type(module)}")
 
-    config = konfig.get_config_from_module(module,
-                                           cli_str_arg=config_parameter)
+    config = konfig.get_config_from_module(module, cli_str_arg=config_parameter)
 
     return cls(
         module=module,
