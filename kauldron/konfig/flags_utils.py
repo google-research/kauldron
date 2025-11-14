@@ -31,6 +31,7 @@ def DEFINE_config_file(  # pylint: disable=invalid-name
     *,
     flag_values: flags.FlagValues = flags.FLAGS,
     lock_config: bool = False,
+    use_legacy_flag: bool = True,
 ) -> flags.FlagHolder[configdict_base.ConfigDict]:
   """Defines flag for `ConfigDict`.
 
@@ -46,11 +47,21 @@ def DEFINE_config_file(  # pylint: disable=invalid-name
     flag_values: FlagValues instance used for parsing. (default:
       absl.flags.FLAGS)
     lock_config: Unused argument that we keep for compatibility.
+    use_legacy_flag: Whether to use the legacy flag.
 
   Returns:
     a handle to defined flag.
   """
   assert not lock_config, "lock_config is not supported."
+  if use_legacy_flag:
+    return config_flags.DEFINE_config_file(
+        name,
+        default,
+        help_string,
+        flag_values=flag_values,
+        lock_config=lock_config,
+        accept_new_attributes=True,
+    )
   flag = _LazyConfigFlag(
       parser=_RecordConfigFileFlagParser(name=name),
       serializer=flags.ArgumentSerializer(),
