@@ -169,7 +169,9 @@ def _parse_kv_string_to_dict(data_string: str) -> dict[str, Any]:
 
 def _apply_overrides(config: konfig.ConfigDict, overrides: konfig.ConfigDict):
   """Apply overrides to config."""
-  for k, v in kontext.flatten_with_path(overrides).items():
+  for k, v in kontext.flatten_with_path(
+      overrides, is_leaf=lambda x: isinstance(x, list)
+  ).items():
     if not k.startswith("__args__"):
       kontext.set_by_path(config, k, v)
 
