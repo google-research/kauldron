@@ -70,7 +70,7 @@ def placeholder(
 # TODO(epot): konfig should raise error if `_required` field is not set. This
 # could be done by having resolve check for the presence of any placeholder
 # not set.
-def required(field_type: type[Any]) -> Any:
+def required(field_type: type[Any] = object) -> Any:
   """Defines a required attribute in the config that has no value yet."""
   return placeholder(field_type)
 
