@@ -215,9 +215,11 @@ class ShowSegmentations(metrics.Metric):
   num_images: int = 5
   entropy: bool = False
   hard: bool = False
+  palette: Optional[Float["K 3"]] = None
 
   rearrange: Optional[str] = None
   rearrange_kwargs: Mapping[str, Any] | None = None
+  edge_kwargs: Mapping[str, Any] | None = None
 
   @struct.dataclass
   class State(metrics.AutoState["ShowSegmentations"]):
@@ -229,8 +231,18 @@ class ShowSegmentations(metrics.Metric):
 
     @typechecked
     def compute(self) -> Float["n h w #3"]:
+      data = super().compute()
+      segmentations = data.segmentations
+      edge_kwargs = (
+          self.parent.edge_kwargs if self.parent.edge_kwargs is not None else {}
+      )
+      palette = np.asarray(self.parent.palette) if self.parent.palette else None
       segmentation_images = segplot.plot_segmentation(
-          self.segmentations, entropy=self.parent.entropy, hard=self.parent.hard
+          segmentations,
+          entropy=self.parent.entropy,
+          hard=self.parent.hard,
+          palette=palette,
+          **edge_kwargs,
       )
       # always clip to avoid display problems in TB and Datatables
       return np.clip(segmentation_images, 0.0, 1.0)
@@ -284,6 +296,8 @@ class ShowDifferenceImages(metrics.Metric):
 
     @typechecked
     def compute(self) -> Float["n h w #3"]:
+      data = super().compute()
+      diff_images = data.diff_images
 
       # Use the vrange bounds for the colormapping if available.
       if self.parent.vrange is not None:
@@ -295,7 +309,7 @@ class ShowDifferenceImages(metrics.Metric):
 
       # Apply the colormap.
       images = media.to_rgb(
-          self.diff_images[..., 0],
+          diff_images[..., 0],
           cmap=self.parent.cmap,
           vmin=diff_vmin,
           vmax=diff_vmax,
