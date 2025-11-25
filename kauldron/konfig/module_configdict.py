@@ -45,14 +45,20 @@ class AutoNestedConfigDict(configdict_base.ConfigDict):
       super().__setitem__(key, AutoNestedConfigDict())
       return super().__getitem__(key)
 
-  def to_dict(self) -> dict[str, Any]:
-    # this handles the case where we added a dict as element:
-    # we don't want to flatten these added dicts because otherwise we cannot
-    # tell the difference between --cfg.a.b=1 and --cfg.a=dict(b=1)
-    return {
-        k: v.to_dict() if isinstance(v, AutoNestedConfigDict) else v
-        for k, v in self.items()
-    }
+  def as_flat_dict(self) -> dict[str, Any]:
+    flat_dict = {}
+    for k, v in self.items():
+      if isinstance(v, AutoNestedConfigDict):
+        flat_dict.update(
+            {f"{k}.{k2}": v2 for k2, v2 in v.as_flat_dict().items()}
+        )
+      else:
+        flat_dict[k] = v
+    return flat_dict
+
+  def __repr__(self):
+    obj = super().__repr__()
+    return f"{type(self).__name__}({obj})"
 
 
 class ModuleConfigDict(AutoNestedConfigDict):
@@ -120,14 +126,19 @@ class ModuleConfigDict(AutoNestedConfigDict):
     self._validate_attributes()
 
     # get args and instantiate config
-    if self.config_args:
-      config = self.module.get_config(self.config_args)
-
-    else:
-      config = self.module.get_config()
+    try:
+      if self.config_args:
+        config = self.module.get_config(self.config_args)
+      else:
+        config = self.module.get_config()
+    except Exception as e:
+      raise ValueError(
+          f"Failed to instantiate config from module {self.module} with args"
+          f" {self.config_args}"
+      ) from e
 
     # merge with cfg overrides which are stored in root of self.
-    _apply_overrides(config, overrides=self)
+    _apply_overrides(config, overrides=self.as_flat_dict())
 
     return config
 
@@ -167,9 +178,9 @@ def _parse_kv_string_to_dict(data_string: str) -> dict[str, Any]:
     return {}
 
 
-def _apply_overrides(config: konfig.ConfigDict, overrides: konfig.ConfigDict):
+def _apply_overrides(config: konfig.ConfigDict, overrides: dict[str, Any]):
   """Apply overrides to config."""
-  for k, v in kontext.flatten_with_path(overrides).items():
+  for k, v in overrides.items():
     if not k.startswith("__args__"):
       kontext.set_by_path(config, k, v)
 
@@ -178,4 +189,5 @@ def get_config_from_module(
     module: types.ModuleType, cli_str_arg: str = ""
 ) -> konfig.ConfigDict:
   """Get config from module and cli_str_arg."""
-  return ModuleConfigDict(module=module, cli_str_arg=cli_str_arg).module_config
+  modulecfg = ModuleConfigDict(module=module, cli_str_arg=cli_str_arg)
+  return modulecfg.module_config

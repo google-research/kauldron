@@ -23,7 +23,10 @@ from kauldron.xm._src import kauldron_utils
 from kauldron.xm._src import sweep_cfg_utils
 
 with kd.konfig.imports():
-  from flax import linen as nn  # pylint: disable=g-import-not-at-top
+  # pylint: disable=g-import-not-at-top
+  from flax import linen as nn
+  from kauldron import data as kd_data
+  # pylint: enable=g-import-not-at-top
 
 
 def sweep():
@@ -78,6 +81,9 @@ def test_sweep_overwrite():
       ' --cfg.train_ds.name=imagenet'
       ' --cfg.train_ds.transforms[0].keep[0]=other_image'
       ' --cfg.model="{\\"__qualname__\\": \\"flax.linen:Dense\\", \\"0\\": 12}"'
+      ' --cfg.evals.eval.ds.transforms="['
+      '{\\"__qualname__\\": \\"kauldron.data:ValueRange\\", '
+      '\\"key\\": \\"image\\", \\"vrange\\": (0,1)}]"'
       # fmt: on
   )
 
@@ -96,6 +102,9 @@ def test_sweep_overwrite():
   assert cfg.train_ds.transforms[0].keep == ['other_image']
   assert cfg.train_ds.name == 'imagenet'
   assert cfg.model == nn.Dense(12)
+  assert cfg.evals.eval.ds.transforms == [
+      kd_data.ValueRange(key='image', vrange=(0, 1))
+  ]
   assert isinstance(cfg.model, kd.konfig.ConfigDict)
 
 

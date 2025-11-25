@@ -122,3 +122,20 @@ def test_immutabledict():
   cfg.a = immutabledict.ImmutableDict({'a': 1})
 
   assert cfg == konfig.ConfigDict({'a': {'a': 1}})
+
+
+def test_module_configdict():
+  cfg = konfig.module_configdict.AutoNestedConfigDict()
+  cfg.a.a = 1
+  cfg.a.b.c = [1, 2]
+  cfg.a.b.d = {'e': 3}
+  cfg.b = [{'a': [1, 3]}, [2, 3]]
+  assert cfg.as_flat_dict() == {
+      'a.a': 1,
+      'a.b.c': [1, 2],
+      'a.b.d': konfig.ConfigDict({'e': 3}),
+      'b': [konfig.ConfigDict(dict({'a': [1, 3]})), [2, 3]],
+  }
+  cfg = konfig.module_configdict.AutoNestedConfigDict()
+  cfg.a[0].b = dict(c=2)
+  assert cfg.as_flat_dict() == {'a.0.b': konfig.ConfigDict(dict(c=2))}

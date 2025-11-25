@@ -117,7 +117,7 @@ class _LazyConfigFlag(config_flags._ConfigFlag):
     # we need to be flexible here and just trigger a warning.
     _value = self._value  # pylint: disable=invalid-name
     assert _value is not None, "None for _value is not supported."
-    if isinstance(self._value, module_configdict.ModuleConfigDict):
+    if isinstance(_value, module_configdict.ModuleConfigDict):
       return _value.module_config
     else:
       # absl.testing.flagsaver.save_flag_values copies the value into ._value
