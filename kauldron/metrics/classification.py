@@ -37,24 +37,47 @@ with epy.lazy_imports():
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
 class Accuracy(base.Metric):
-  """Classification Accuracy."""
+  """Classification Accuracy.
 
-  logits: kontext.Key = kontext.REQUIRED  # e.g. "preds.logits"
+  Attributes:
+    labels: The groundtruth labels.
+    logits: The logits to evaluate. If provided, pred_labels must be None.
+    pred_labels: The predicted labels. If provided, logits must be None.
+    mask: Optional sample weights for computing the average.
+  """
+
   labels: kontext.Key = kontext.REQUIRED  # e.g. "batch.label"
+
+  logits: Optional[kontext.Key] = None  # e.g. "preds.logits"
+  pred_labels: Optional[kontext.Key] = None  # e.g. "preds.label"
+
   mask: Optional[kontext.Key] = None
 
   @flax.struct.dataclass
   class State(base_state.AverageState):
     pass
 
+  def __post_init__(self):
+    if self.logits is None and self.pred_labels is None:
+      raise ValueError("Either logits or pred_labels must be provided.")
+    if self.logits is not None and self.pred_labels is not None:
+      raise ValueError(
+          "Only one of logits or pred_labels must be provided. "
+          f"Got {self.logits=} and {self.pred_labels=}"
+      )
+
   @typechecked
   def get_state(
       self,
-      logits: Float["*b n"],
+      *,
       labels: Int["*b 1"],
+      logits: Float["*b n"] | None = None,
+      pred_labels: Int["*b 1"] | None = None,
       mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> Accuracy.State:
-    correct = logits.argmax(axis=-1, keepdims=True) == labels
+    if pred_labels is None:
+      pred_labels = logits.argmax(axis=-1, keepdims=True)
+    correct = pred_labels == labels
     return self.State.from_values(values=correct, mask=mask)
 
 
