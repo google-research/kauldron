@@ -17,7 +17,7 @@
 from collections.abc import Iterable
 import dataclasses
 import typing
-from typing import Any
+from typing import Any, List
 
 import einops
 from etils import enp
@@ -273,3 +273,15 @@ class CenterCrop(base.ElementWiseTransform):
 
 def _is_integer(dtype: Any) -> bool:
   return np.issubdtype(enp.lazy.as_dtype(dtype), np.integer)
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class Stack(base.ElementWiseTransform):
+  """Stacks entries along a single dimension."""
+
+  axis: int
+
+  @typechecked
+  def map_element(self, element: List[XArray]) -> XArray:
+    xnp = enp.lazy.get_xnp(element, strict=False)
+    return xnp.stack(element, axis=self.axis)

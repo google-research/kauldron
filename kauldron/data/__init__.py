@@ -64,4 +64,5 @@ with _epy.lazy_api_imports(globals()):
   from kauldron.data.transforms.map_transforms import Gather
   from kauldron.data.transforms.map_transforms import Rearrange
   from kauldron.data.transforms.map_transforms import Resize
+  from kauldron.data.transforms.map_transforms import Stack
   from kauldron.data.transforms.map_transforms import ValueRange
