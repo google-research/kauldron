@@ -206,8 +206,16 @@ class ShowSegmentations(metrics.Metric):
     entropy: Whether to scale the lightness of the segments in proportion to the
       (normalized) per-pixel entropy of the soft-segmentation.
     hard: Whether to plot hard segmentations when the input array is float.
+    palette: Optional color palette to use as a float array of RGB colors
+      `Float["K 3"]`. If not provided, a palette of uniform hues in OKLAB space
+      is used.
     rearrange: Optional einops string to reshape the images.
     rearrange_kwargs: Optional keyword arguments for the einops reshape.
+    entropy: Whether to scale the lightness of the segments in proportion to
+      the (normalized) per-pixel entropy of the soft-segmentation.
+    edges: Whether to plot the edges of the segmentation.
+    edge_lightness: The lightness of the edges.
+    image_contrast: The contrast of the image.
   """
 
   segmentations: kontext.Key
@@ -215,9 +223,14 @@ class ShowSegmentations(metrics.Metric):
   num_images: int = 5
   entropy: bool = False
   hard: bool = False
+  palette: Optional[Float["K 3"]] = None
 
   rearrange: Optional[str] = None
   rearrange_kwargs: Mapping[str, Any] | None = None
+  entropy: bool = False
+  edges: bool = False
+  edge_lightness: float = 1.0
+  image_contrast: float = 0.6
 
   @struct.dataclass
   class State(metrics.AutoState["ShowSegmentations"]):
@@ -229,8 +242,15 @@ class ShowSegmentations(metrics.Metric):
 
     @typechecked
     def compute(self) -> Float["n h w #3"]:
+      palette = np.asarray(self.parent.palette) if self.parent.palette else None
       segmentation_images = segplot.plot_segmentation(
-          self.segmentations, entropy=self.parent.entropy, hard=self.parent.hard
+          self.segmentations,
+          palette=palette,
+          hard=self.parent.hard,
+          entropy=self.parent.entropy,
+          edges=self.parent.edges,
+          edge_lightness=self.parent.edge_lightness,
+          image_contrast=self.parent.image_contrast,
       )
       # always clip to avoid display problems in TB and Datatables
       return np.clip(segmentation_images, 0.0, 1.0)
