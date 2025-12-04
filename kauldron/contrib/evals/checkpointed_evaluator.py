@@ -126,7 +126,10 @@ class CheckpointedEvaluator(evaluators.Evaluator):
       merged_aux = None
 
     # steps are 1-indexed.
-    total_steps = len(self.ds) + 1
+    try:
+      total_steps = len(self.ds) + 1
+    except TypeError:  # Unknown length.
+      total_steps = None
 
     # MARK: Run evaluation.
     for step_nr, batch in utils.enum_iter(
