@@ -11,10 +11,10 @@ be followed to avoid mixing the two.
 
 * All config code should go **inside** the `configs/` folder. If you need to
   split your config in multiple files, those should be imported **outside** the
-  `kontext.imports()` context.
+  `konfig.imports()` context.
 * All the actual implementation (models, dataset implementation, additional
   logic,...) should go **outside** the `configs/` folder. Those are imported
-  **inside** the `kontext.imports()` context.
+  **inside** the `konfig.imports()` context.
 
 ```python
 from my_project.configs import base_config
