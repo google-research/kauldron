@@ -53,6 +53,7 @@ if typing.TYPE_CHECKING or not _IS_IPYTHON_SUBPROCESS:
       None,
       "Training configuration.",
       lock_config=False,
+      use_legacy_flag=False,
   )
 
 _EVAL_NAMES = flags.DEFINE_list(
