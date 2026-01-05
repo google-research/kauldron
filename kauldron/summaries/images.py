@@ -79,6 +79,10 @@ class ShowImages(metrics.Metric):
         images = media.to_rgb(
             images[..., 0], cmap=self.parent.cmap, vmin=vmin, vmax=vmax
         )
+        # In case of Nan values in the input, the output can have more than 3
+        # channels (RGBA), so we truncate to 3 channels here to avoid mismatch
+        # with the expected return shape.
+        images = images[..., :3]
 
       # always clip to avoid display problems in TB and Datatables
       return np.clip(images, 0.0, 1.0)
