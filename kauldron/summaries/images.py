@@ -338,7 +338,7 @@ class ShowDifferenceImages(metrics.Metric):
     images1 = _maybe_rearrange(images1, self.rearrange, self.rearrange_kwargs)
     images2 = _maybe_rearrange(images2, self.rearrange, self.rearrange_kwargs)
     check_type(images1, Float["n h w c"])
-    check_type(images1, Float["n h w c"])
+    check_type(images2, Float["n h w c"])
 
     # Truncate just as an optimization to avoid unnecessary computations.
     images1 = images1[: self.num_images]
