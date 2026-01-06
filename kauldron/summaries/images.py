@@ -346,13 +346,13 @@ class ShowDifferenceImages(metrics.Metric):
 
     if self.vrange is not None:
       vmin, vmax = self.vrange
-      images1 = np.clip(images1, vmin, vmax)
-      images2 = np.clip(images2, vmin, vmax)
+      images1 = images1.clip(vmin, vmax)
+      images2 = images2.clip(vmin, vmax)
       images1 = (images1 - vmin) / (vmax - vmin)
       images2 = (images2 - vmin) / (vmax - vmin)
 
-    diff_images = np.abs(images1 - images2)
-    diff_images = np.mean(diff_images, axis=-1, keepdims=True)
+    diff_images = (images1 - images2).abs()
+    diff_images = diff_images.mean(axis=-1, keepdims=True)
 
     return self.State(diff_images=diff_images)
 
