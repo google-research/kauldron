@@ -20,8 +20,6 @@ import dataclasses
 import functools
 from typing import Any
 
-from etils import enp
-from etils import epy
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
@@ -149,38 +147,6 @@ def get_model_inputs_from_batch(
   context = context_lib.Context(step=0, batch=batch)
   args, kwargs = get_model_inputs(model, context)
   return args, kwargs
-
-
-def spec_to_json(spec: PyTree[enp.ArraySpec]) -> epy.typing.Json:
-  """Convert the element_spec tree to a json representation."""
-  # TODO(epot): Supports non-dict structures (dataclasses, and arbitrary
-  # `__json__` protocol). Likely cannot use jax `xx_with_path` function to
-  # automatically convert any tree to a json as the objects couldn't be
-  # restored.
-  return jax.tree.map(_spec_to_json, spec)
-
-
-def _spec_to_json(spec: enp.ArraySpec) -> epy.typing.Json:
-  return {
-      "shape": spec.shape,
-      "dtype": spec.dtype.name,
-  }
-
-
-def json_to_spec(data: epy.typing.Json) -> PyTree[enp.ArraySpec]:
-  """Convert a json representation to a element_spec tree."""
-  return jax.tree.map(_json_to_spec, data, is_leaf=_is_spec_leaf)
-
-
-def _is_spec_leaf(spec: epy.typing.Json) -> bool:
-  return isinstance(spec, dict) and set(spec) == {"shape", "dtype"}
-
-
-def _json_to_spec(data: epy.typing.Json) -> enp.ArraySpec:
-  return enp.ArraySpec(
-      dtype=np.dtype(data["dtype"]),
-      shape=data["shape"],
-  )
 
 
 def _make_concrete_shape(shape: tuple[int | None, ...]) -> tuple[int, ...]:

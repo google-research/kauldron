@@ -23,15 +23,11 @@ from typing import Any, Callable, ContextManager, Optional
 
 from etils import enp
 from etils import epath
-from etils import epy
 from kauldron import konfig
 from kauldron import kontext
 from kauldron.typing import PyTree  # pylint: disable=g-importing-member
 from kauldron.utils import constants
 from kauldron.utils import xmanager as xm_lib
-
-with epy.lazy_imports():
-  from kauldron.data import utils as data_utils  # pylint: disable=g-import-not-at-top
 
 
 if typing.TYPE_CHECKING:
@@ -132,7 +128,7 @@ def get_element_spec(
   """
   path = get_workdir(xid, wid) / constants.ELEMENT_SPEC_FILENAME
   spec = json.loads(path.read_text())
-  return data_utils.json_to_spec(spec)
+  return konfig.resolve(spec, freeze=False)
 
 
 def _adhoc_cm(

@@ -43,6 +43,8 @@ from kauldron.konfig.configdict_base import ConfigDict
 from kauldron.konfig.configdict_base import register_aliases
 from kauldron.konfig.configdict_base import register_default_values
 from kauldron.konfig.configdict_proxy import resolve
+from kauldron.konfig.export_utils import export
+from kauldron.konfig.export_utils import export_qualname
 from kauldron.konfig.fake_import_utils import imports
 from kauldron.konfig.fake_import_utils import mock_modules
 from kauldron.konfig.fake_import_utils import set_lazy_imported_modules

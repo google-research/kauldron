@@ -27,9 +27,9 @@ from absl import logging
 from etils import enp
 from etils import epath
 from kauldron import data
+from kauldron import konfig
 from kauldron.checkpoints import checkpointer
 from kauldron.checkpoints import partial_loader
-from kauldron.data import utils as data_utils
 from kauldron.evals import evaluators as evaluators_lib
 from kauldron.evals import run_strategies
 from kauldron.train import auxiliaries
@@ -283,4 +283,4 @@ def _get_element_spec(trainer: trainer_lib.Trainer) -> PyTree[enp.ArraySpec]:
     )
     time.sleep(sleep_time)
   spec = json.loads(path.read_text())
-  return data_utils.json_to_spec(spec)
+  return konfig.resolve(spec, freeze=False)

@@ -35,7 +35,6 @@ import jax
 from kauldron import konfig
 from kauldron import kontext
 from kauldron import summaries
-from kauldron.data import utils as data_utils
 from kauldron.train import auxiliaries
 from kauldron.typing import Array, Float, Scalar  # pylint: disable=g-multiple-import
 from kauldron.utils import chrono_utils
@@ -325,7 +324,7 @@ class MetadataWriter(WriterBase):
     if status.is_lead_host:
       # Save the raw config (for easy re-loading)
       spec_path = self.workdir / f"{constants.ELEMENT_SPEC_FILENAME}.tmp"
-      element_spec = data_utils.spec_to_json(element_spec)
+      element_spec = konfig.export(element_spec)
       element_spec = json.dumps(element_spec, indent=2)
       spec_path.write_text(element_spec)
       # Move the file to the final location atomically to avoid race conditions.
