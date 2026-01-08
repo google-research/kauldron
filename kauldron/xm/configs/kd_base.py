@@ -61,6 +61,10 @@ def get_config():
               max_per_task_failures=0,
               task_failure_credit_period=3600,
           ),
+          ml_workload_class=ml_workload_class_pb2.MLWorkloadClass(
+              type=ml_workload_class_pb2.MLWorkloadClass.Type.TRAINING,
+              mode=ml_workload_class_pb2.MLWorkloadClass.Mode.BATCH,
+          ),
       ),
       # Activate tensorboard.corp
       add_tensorboard_corp=True,
