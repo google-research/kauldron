@@ -23,12 +23,13 @@ from typing import Any, Callable, ContextManager, Optional
 
 from etils import enp
 from etils import epath
+from etils.enp import array_spec
+import jax
 from kauldron import konfig
 from kauldron import kontext
 from kauldron.typing import PyTree  # pylint: disable=g-importing-member
 from kauldron.utils import constants
 from kauldron.utils import xmanager as xm_lib
-
 
 if typing.TYPE_CHECKING:
   from kauldron import kd  # pylint: disable=g-bad-import-order
@@ -128,6 +129,7 @@ def get_element_spec(
   """
   path = get_workdir(xid, wid) / constants.ELEMENT_SPEC_FILENAME
   spec = json.loads(path.read_text())
+  spec = _maybe_update_spec_from_older_format(spec)
   return konfig.resolve(spec, freeze=False)
 
 
@@ -142,3 +144,39 @@ def _adhoc_cm(
   from etils import ecolab  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
 
   return ecolab.adhoc(source=adhoc_from, invalidate=False)
+
+
+def _maybe_update_spec_from_older_format(json_spec: dict[str, Any]):
+  """Backwards compatibility for element specs in the older format.
+
+  If we try to load an element spec from an older experiment, it will be
+
+  in the older format, e.g.
+  {"image": {"shape": [1, 224, 224, 3], "dtype": "float32"},
+  "labels": {"shape": [1, 1], "dtype": "int32"}}
+
+  We need to update it to the current format, which will be resolve to ArraySpec
+  object when resolving the spec with konfig.resolve.
+  For that we export the correct ArraySpec object with konfig.export.
+
+  Args:
+    json_spec: The element spec to update.
+
+  Returns:
+    The updated element spec.
+  """
+  is_old_format_leaf = (
+      lambda d: isinstance(d, dict)
+      and set(d.keys()) == set(("dtype", "shape"))
+      and isinstance(d["shape"], (tuple, list))
+      and isinstance(d["dtype"], str)
+  )
+
+  def update_leaf_format(d):
+    if not is_old_format_leaf(d):
+      return d
+    return konfig.export(
+        array_spec.ArraySpec(shape=d["shape"], dtype=d["dtype"])
+    )
+
+  return jax.tree.map(update_leaf_format, json_spec, is_leaf=is_old_format_leaf)
