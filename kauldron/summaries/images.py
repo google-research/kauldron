@@ -76,6 +76,11 @@ class ShowImages(metrics.Metric):
           vmin, vmax = None, None
         else:
           vmin, vmax = 0.0, 1.0  # Explicitly set the range if in_vrange is set.
+
+        # to_rgb doesn't support bfloat16, so we cast to float32 in that case.
+        if images.dtype.name == "bfloat16":
+          images = images.astype(np.float32)
+
         images = media.to_rgb(
             images[..., 0], cmap=self.parent.cmap, vmin=vmin, vmax=vmax
         )
