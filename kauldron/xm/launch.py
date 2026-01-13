@@ -49,6 +49,7 @@ try:
       "third_party/py/kauldron/xm/configs/kd_base.py",
       "Path to the XManager config to be run.",
       lock_config=False,
+      use_legacy_flag=False,
   )
 except Exception as e_:  # pylint: disable=broad-exception-caught
   epy.reraise(e_, suffix="See all flags at")
@@ -58,6 +59,7 @@ _CONFIG = konfig.DEFINE_config_file(
     None,
     "Path to the configuration file to be run.",
     lock_config=False,
+    use_legacy_flag=False,
 )
 
 
