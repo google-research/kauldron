@@ -27,7 +27,7 @@ from etils.enp import array_spec
 import jax
 from kauldron import konfig
 from kauldron import kontext
-from kauldron.typing import PyTree  # pylint: disable=g-importing-member
+from kauldron.ktyping import PyTree  # pylint: disable=g-importing-member
 from kauldron.utils import constants
 from kauldron.utils import xmanager as xm_lib
 

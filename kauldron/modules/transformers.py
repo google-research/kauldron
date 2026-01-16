@@ -20,9 +20,10 @@ import dataclasses
 from typing import Any, Optional
 
 import flax.linen as nn
+from kauldron.ktyping import Bool, Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.modules import knn_types
 import kauldron.modules.attention as knn_attn
-from kauldron.typing import Bool, Float, Initializer, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Initializer  # pylint: disable=g-importing-member
 
 
 class TransformerMLP(nn.Module):

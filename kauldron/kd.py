@@ -42,6 +42,7 @@ with _epy.lazy_api_imports(globals()):
   from kauldron import train
   from kauldron import testing
   from kauldron import typing
+  from kauldron import ktyping
   from kauldron.utils import api as utils
   from kauldron.utils import from_xid
   from kauldron.utils import kdash

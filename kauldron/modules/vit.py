@@ -23,12 +23,14 @@ from typing import Literal, Optional, Sequence
 import flax.linen as nn
 import jax.numpy as jnp
 from kauldron import kontext
+import kauldron.ktyping as kt
+from kauldron.ktyping import Float  # pylint: disable=g-importing-member
 from kauldron.modules import attention
 from kauldron.modules import input_embeddings
 from kauldron.modules import knn_types
 from kauldron.modules import pos_embeddings
 from kauldron.modules import transformers
-from kauldron.typing import Float, Initializer, Shape, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Initializer  # pylint: disable=g-importing-member
 
 
 @dataclasses.dataclass(frozen=True)
@@ -119,24 +121,26 @@ class VitEncoder(nn.Module):
   # Keys. If top-level module this will be used to gather args for __call__.
   image: kontext.Key = kontext.REQUIRED  # e.g. 'batch.image'
 
-  @typechecked
+  @kt.typechecked
   @nn.compact
   def __call__(self, image: Float['*b h w c']) -> Float['*b n d']:
     # Embed the inputs into tokens of shape `*b n1 d`. Note that it's n1 instead
     # of n here, because there might be an additional cls token.
     tokens = self.embedding(image)
-    check_type(tokens, Float['*b n1 d'])
+    kt.check_type(tokens, Float['*b n1 d'])
 
     # Add position embeddings.
     tokens = tokens + self.pos_embedding(tokens.shape, axis=-2)
 
     # Add a cls token (optional).
     if self.prepend_cls_token:
-      cls_tok = self.param('cls', self.cls_token_init, Shape('d'), tokens.dtype)
-      cls_tok = jnp.broadcast_to(cls_tok, Shape('*b 1 d'))
+      cls_tok = self.param(
+          'cls', self.cls_token_init, kt.shape('d'), tokens.dtype
+      )
+      cls_tok = jnp.broadcast_to(cls_tok, kt.shape('*b 1 d'))
       tokens = jnp.concatenate([cls_tok, tokens], axis=-2)
 
-    check_type(tokens, Float['*b n d'])
+    kt.check_type(tokens, Float['*b n d'])
 
     # Self Attention Layers.
     for layer in self.layers:
@@ -201,14 +205,14 @@ class Vit(nn.Module):
   # Keys. If top-level module this will be used to gather args for __call__.
   image: kontext.Key = kontext.REQUIRED  # E.g. 'batch.image'.
 
-  @typechecked
+  @kt.typechecked
   @nn.compact
   def __call__(
       self,
       image: Float['*b h w c'],
   ) -> dict[str, Float['*b num_classes']]:
     tokens = self.encoder(image)
-    check_type(tokens, Float['*b n feat'])
+    kt.check_type(tokens, Float['*b n feat'])
 
     # Determine the input to the classification layer.
     if self.mode == 'gap':
@@ -227,7 +231,7 @@ class Vit(nn.Module):
           f'Unknown {self.mode=}. '
           'Has to be one of ["gap", "cls_token", "cls_token_forced"].'
       )
-    check_type(encoder_out, Float['*b feat'] | Float['*b n 2*feat'])
+    kt.check_type(encoder_out, Float['*b feat'] | Float['*b n 2*feat'])
 
     # Add a dense hidden layer with tanh activations.
     pre_logits = nn.Dense(
@@ -250,7 +254,7 @@ class VitAutoEncoder(nn.Module):
 
   image: kontext.Key = kontext.REQUIRED  # E.g. 'batch.image'.
 
-  @typechecked
+  @kt.typechecked
   @nn.compact
   def __call__(self, image: Float['*b h w c']) -> dict[str, Float['*b h w c']]:
     tokens = self.encoder(image)
