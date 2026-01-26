@@ -19,6 +19,7 @@ from kauldron.contrib import _lazy_imports
 # pylint: disable=g-importing-member,g-import-not-at-top,unused-import
 
 with _lazy_imports.lazy_api_imports(globals()):
+  from kauldron.contrib.train.gif_video_writer import GifVideoWriter
   from kauldron.contrib.train.mlflow_metric_writer import MLFlowMetricWriter
   from kauldron.contrib.train.multi_train_step import MultiTrainStep
   from kauldron.contrib.train.multi_train_step import multi_optimizer
