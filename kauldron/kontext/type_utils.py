@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import functools
+import inspect
 import typing
 from typing import Annotated, Any, TypeVar, Union
 
@@ -74,7 +75,7 @@ def get_annotated(
   return [
       name
       for name, hint in hints.items()
-      if _is_hint_annotated_with(hint, annotated_token)
+      if _is_hint_annotated_with(hint, annotated_token, cls=cls)
   ]
 
 
@@ -85,7 +86,12 @@ def _is_optional(annotation: type[Any]) -> bool:
   return origin is Union and type(None) in args
 
 
-def _is_hint_annotated_with(hint: _TypeForm, annotated_token: _Token) -> bool:
+def _is_hint_annotated_with(
+    hint: _TypeForm,
+    annotated_token: _Token,
+    *,
+    cls: type[Any],
+) -> bool:
   """Returns `True` if the hint is annotated with `annotated_token`."""
   origin = typing.get_origin(hint)
 
@@ -93,17 +99,21 @@ def _is_hint_annotated_with(hint: _TypeForm, annotated_token: _Token) -> bool:
     return False
 
   # For generic types, check if the type itself is Annotated
-  if origin == typing.Annotated and any(
-      a is annotated_token for a in hint.__metadata__
-  ):
-    return True
+  if origin == typing.Annotated:
+    if any(a is annotated_token for a in hint.__metadata__):
+      return True
+
+    # Check whether the annotations depend on an invalidated adhoc reloaded
+    # module
+    for a in hint.__metadata__:
+      _is_adhoc_reloaded(a, cls)
 
   # Recurse
   # Note that `get_args` can return non-type values (e.g. `...`,
   # `[]` for Callable, and any values for `Annotated`)
   # `Callable[[int], Any]` won't be recursed into.
   return any(
-      _is_hint_annotated_with(arg, annotated_token)
+      _is_hint_annotated_with(arg, annotated_token, cls=cls)
       for arg in typing.get_args(hint)
   )
 
@@ -127,3 +137,15 @@ def _get_type_hints(cls) -> dict[str, _TypeForm]:
 def _is_annotated_type(hint: _TypeForm) -> bool:
   """`_is_annotated_type(Annotated[int, ...]) == True`."""
   return typing_extensions.get_origin(hint) is Annotated
+
+
+def _is_adhoc_reloaded(annotation: _TypeForm, cls: type[Any]) -> None:
+  """Check if the annotation is from an invalidated adhoc reloaded module."""
+  if inspect.getattr_static(annotation, '__is_adhoc_reloaded__', None):
+    try:
+      annotation.__is_adhoc_reloaded__()
+    except NameError as e:
+      epy.reraise(
+          e,
+          prefix=f'{cls.__module__}:{cls.__qualname__} was not reloaded:\n',
+      )

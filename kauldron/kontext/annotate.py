@@ -30,7 +30,18 @@ from kauldron.kontext import type_utils
 
 _T = TypeVar("_T")
 
-_key_token = object()
+
+class _KeyToken:
+  """Token used to infer the Key type."""
+
+  def __is_adhoc_reloaded__(self) -> None:
+    # When adhoc_reload this module, this `_KeyToken` will be removed, thus
+    # raising an explicit error message.
+    _ = _KeyToken
+
+
+_key_token = _KeyToken()
+
 Key = Annotated[Any, _key_token]  # `str` or `path_builder_from()`
 # `KeyTree` can wrap arbitrary PyTree objects when typing annotations cannot
 # be infered (e.g `ray: KeyTree[v3d.Ray]`)

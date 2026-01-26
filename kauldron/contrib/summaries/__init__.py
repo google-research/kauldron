@@ -21,3 +21,4 @@ with _lazy_imports.lazy_api_imports(globals()):
   from kauldron.contrib.summaries.image_grid import ImageGrid
   from kauldron.contrib.summaries.print_summary import Print
   from kauldron.contrib.summaries.confusion_matrix import ConfusionMatrix
+  from kauldron.contrib.summaries.show_videos_as_gif import ShowVideosAsGif
