@@ -27,7 +27,8 @@ import flax.struct
 import jax
 from jax import numpy as jnp
 from kauldron import kontext
-from kauldron.ktyping import Bool, Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+import kauldron.ktyping as kt
+from kauldron.ktyping import Bool, Float  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.metrics import base
 from kauldron.metrics import base_state
 from kauldron.metrics import image as image_metrics
@@ -40,8 +41,11 @@ class VggBlock(nn.Module):
   num_features: int
   num_layers: int
 
+  @kt.typechecked
   @nn.compact
-  def __call__(self, x):
+  def __call__(
+      self, x: Float["*b h w _c"]
+  ) -> Float["*b h w {self.num_features}"]:
     for _ in range(self.num_layers):
       x = nn.Conv(
           features=self.num_features, kernel_size=(3, 3), padding="SAME"
@@ -54,8 +58,15 @@ class VggBlock(nn.Module):
 class VggNet(nn.Module):
   """Implementation of the VGG network which returns some partial results."""
 
+  @kt.typechecked
   @nn.compact
-  def __call__(self, x):
+  def __call__(self, x: Float["*b h w c"]) -> tuple[
+      Float["*b h w 64"],
+      Float["*b h//2 w//2 128"],
+      Float["*b h//4 w//4 256"],
+      Float["*b h//8 w//8 512"],
+      Float["*b h//16 w//16 512"],
+  ]:
     assert x.shape[-2] >= 16, str(x.shape)
     assert x.shape[-3] >= 16, str(x.shape)
     outputs = []
@@ -84,7 +95,7 @@ class _LpipsVgg(nn.Module):
       )
     return flax.serialization.from_bytes(params, path.read_bytes())
 
-  @typechecked
+  @kt.typechecked
   @nn.compact
   def __call__(
       self,
@@ -164,7 +175,7 @@ class LpipsVgg(base.Metric):
   class State(base_state.AverageState):
     pass
 
-  @typechecked
+  @kt.typechecked
   def get_state(
       self,
       pred: Float["*b h w c"],
