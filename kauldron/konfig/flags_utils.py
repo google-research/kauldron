@@ -19,6 +19,7 @@
 
 import warnings
 from absl import flags
+from absl.flags import _helpers
 from kauldron.konfig import configdict_base
 from kauldron.konfig import module_configdict
 from ml_collections.config_flags import config_flags
@@ -70,6 +71,9 @@ def DEFINE_config_file(  # pylint: disable=invalid-name
       help_string=help_string,
       flag_values=flag_values,
       accept_new_attributes=True,
+      # Pass the module name of the caller, otherwise the flag is assumed to
+      # be created in this file, which creates duplicated flag errors.
+      module_name=_helpers.get_calling_module(),
   )
 
   flag_holder = flags.DEFINE_flag(flag, flag_values)
