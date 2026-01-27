@@ -20,9 +20,9 @@
 # fmt: skip-import-sorting
 
 from kauldron.modules.pos_embeddings import convert_to_fourier_features
+from kauldron.utils.interms_property import interms_property
 from kauldron.utils.train_property import set_train_property
 from kauldron.utils.train_property import train_property
-from kauldron.utils.interms_property import interms_property
 
 # module types
 from kauldron.modules.knn_types import AttentionModule

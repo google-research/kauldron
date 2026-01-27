@@ -22,8 +22,9 @@ import warnings
 from flax import linen as nn
 import jax
 import jax.numpy as jnp
+from kauldron.ktyping import Axes, DType, Float, Shape, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.modules import knn_types
-from kauldron.typing import Axes, DType, Float, Initializer, Shape, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Initializer  # pylint: disable=g-importing-member
 
 
 class AddEmbedding(nn.Module):

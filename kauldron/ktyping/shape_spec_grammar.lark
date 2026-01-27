@@ -1,0 +1,76 @@
+// try grammar online: https://www.lark-parser.org/ide/#
+
+// A shape spec is a list of dim_specs separated by whitespace
+// e.g. "*b h w//2 3"
+// We keep this rule as simple as possible to make the grammar simpler.
+// This helps us use fewer examples when using
+// UnexpectedInputError.match_by_example to provide better error messages.
+// The downside is that the grammar requires trailing whitespace.
+// But that is easily handled by the parse function.
+start: (dim_spec _WHITESPACE+)*
+
+
+?dim_spec: or_expr
+         | or_expr "?" -> optional_dim
+
+
+// Dim specs are sub-structured into:
+// or_expr, expr,term, factor, unary, power, and atom
+// to account for operator precedence:
+// or_expr (lowest precedence): or operation |
+?or_expr: expr
+        | or_expr "|" expr  -> or_op
+
+// expr: sum operations (+, -)
+?expr: term
+     | expr SUM_OP term    -> binary_op
+SUM_OP.1: "+" | "-"
+
+// term: multiplication operations (*, /, //, %)
+?term: unary
+     | term MUL_OP unary   -> binary_op
+MUL_OP.2: "*" | "/" | "//" | "%"
+
+// unary operators: (we only support "-", not "+" or "~")
+?unary: power
+      | "-" unary          -> neg
+
+// power: raising a value to the power of another (**)
+?power: atom
+      | atom POW_OP unary  -> binary_op
+POW_OP.3: "**"
+
+// atoms (highest precedence): include ints, named dims, anonymous dims,
+// parenthesized expressions, and functions.
+?atom: "(" expr ")"
+     | INT             -> int_dim
+// Named Dims
+     | DIM_NAME        -> name_dim
+     | "*" DIM_NAME    -> var_dim
+     | "+" DIM_NAME    -> plus_dim
+// Annonymous Dims
+     |  "_" DIM_NAME?    -> anon_dim
+     | "*_" DIM_NAME?    -> anon_var_dim
+     | "+_" DIM_NAME?    -> anon_plus_dim
+     | "..."             -> anon_var_dim
+// Broadcast Dims
+     |  "#" INT         -> broadcast_int_dim
+     |  "#" DIM_NAME    -> broadcast_dim
+     | "*#" DIM_NAME    -> broadcast_var_dim
+     | "+#" DIM_NAME    -> broadcast_plus_dim
+
+     | FUNCTION "(" arg_list ")"  -> func
+
+FUNCTION.4: "min" | "max" | "sum" | "prod"
+
+?arg_list: expr ("," expr)*
+
+// dimension names consist of letters, digits and underscores but have to start
+// with a letter (underscores are used to indicate anonymous dims)
+DIM_NAME: LETTER ("_"|LETTER|DIGIT)*
+
+_WHITESPACE: (" "|/\t/)+
+
+%import common.INT
+%import common.LETTER
+%import common.DIGIT

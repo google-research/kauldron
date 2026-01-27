@@ -29,7 +29,7 @@ from etils import epy
 import flax.struct
 import jax
 import jax.numpy as jnp
-from kauldron.typing import Array, Bool, Float  # pylint: disable=g-multiple-import
+from kauldron.ktyping import Array, Bool, Float  # pylint: disable=g-multiple-import
 import numpy as np
 
 

@@ -22,9 +22,9 @@ from typing import Optional, Sequence
 from etils import epy
 import flax.struct
 from kauldron import kontext
+from kauldron.ktyping import Bool, Float, Int, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.metrics import base
 from kauldron.metrics import base_state
-from kauldron.typing import Bool, Float, Integer, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 with epy.lazy_imports():
   from grand_vision.eval.metrics import clustering as gv_clustering  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
@@ -62,8 +62,8 @@ class Ari(base.Metric):
   @typechecked
   def get_state(
       self,
-      predictions: Integer["*b t h w 1"],
-      labels: Integer["*b t h w 1"],
+      predictions: Int["*b t h w 1"],
+      labels: Int["*b t h w 1"],
       mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> Ari.State:
     # TODO(svansteenkiste): support non video inputs.

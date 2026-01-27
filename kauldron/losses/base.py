@@ -25,8 +25,8 @@ import jax
 from jax import numpy as jnp
 from kauldron import kontext
 from kauldron import metrics
+from kauldron.ktyping import Array, Float, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.metrics import base_state
-from kauldron.typing import Array, Float, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 
 
 Schedule = Callable[[int], float]

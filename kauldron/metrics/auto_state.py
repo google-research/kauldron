@@ -26,9 +26,9 @@ from typing import Any, Callable, Literal, Self, TypeAlias, TypeVar
 import jax
 import jax.numpy as jnp
 from kauldron import kontext
+from kauldron.ktyping import Array, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.metrics import base_state
 from kauldron.metrics.base_state import EMPTY  # pylint: disable=g-importing-member
-from kauldron.typing import Array, PyTree  # pylint: disable=g-multiple-import,g-importing-member
 import numpy as np
 
 _MetricT = TypeVar("_MetricT")

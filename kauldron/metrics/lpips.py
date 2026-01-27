@@ -27,10 +27,10 @@ import flax.struct
 import jax
 from jax import numpy as jnp
 from kauldron import kontext
+from kauldron.ktyping import Bool, Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.metrics import base
 from kauldron.metrics import base_state
 from kauldron.metrics import image as image_metrics
-from kauldron.typing import Bool, Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 
 # Should be private, but changing the name of the class breaks ckpt loading...

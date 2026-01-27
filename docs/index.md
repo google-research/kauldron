@@ -25,7 +25,7 @@
     metrics
     klinen
     random
-    typing
+    ktyping
 
 
 .. toctree::

@@ -21,8 +21,9 @@ from typing import Callable, Optional
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
+from kauldron.ktyping import Axes, Bool, DType, Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import kauldron.modules as knn
-from kauldron.typing import Axes, Bool, DType, Float, Initializer, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import Initializer  # pylint: disable=g-importing-member
 
 
 def softmax(
@@ -213,9 +214,9 @@ class ImprovedMultiHeadDotProductAttention(nn.Module):
       # Normalizing query and key projections stabilizes training with higher
       # LR. See ViT-22B paper http://arxiv.org/abs/2302.05442 for analysis.
       query = nn.LayerNorm(
-          name='query_norm', use_bias=False, dtype=query.dtype)(query)
-      key = nn.LayerNorm(
-          name='key_norm', use_bias=False, dtype=key.dtype)(key)
+          name='query_norm', use_bias=False, dtype=query.dtype
+      )(query)
+      key = nn.LayerNorm(name='key_norm', use_bias=False, dtype=key.dtype)(key)
 
     # Compute attention weights.
     attn_weights = self.attn_weights_fn(  # pylint: disable=redundant-keyword-arg

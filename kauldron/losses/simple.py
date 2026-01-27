@@ -20,8 +20,8 @@ import dataclasses
 
 import jax.numpy as jnp
 from kauldron import kontext
+from kauldron.ktyping import Array, Float, Int, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.losses import base
-from kauldron.typing import Array, Float, Int, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import optax
 
 
@@ -80,6 +80,7 @@ class L2(base.Loss):
 @dataclasses.dataclass(eq=True, frozen=True, kw_only=True)
 class Huber(base.Loss):
   """Huber loss."""
+
   delta: float = 1.0
 
   preds: kontext.Key = kontext.REQUIRED
@@ -113,7 +114,8 @@ class NegativeCosineSimilarity(base.Loss):
     targets = self._safe_normalize(targets)
 
     similarity = jnp.sum(preds * targets, axis=-1, keepdims=True)
-    return - similarity
+    return -similarity
+
 
 # ============================== Classification ===============================
 

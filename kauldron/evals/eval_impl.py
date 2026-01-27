@@ -32,10 +32,10 @@ from kauldron.checkpoints import checkpointer
 from kauldron.checkpoints import partial_loader
 from kauldron.evals import evaluators as evaluators_lib
 from kauldron.evals import run_strategies
+from kauldron.ktyping import PyTree  # pylint: disable=g-importing-member
 from kauldron.train import auxiliaries
 from kauldron.train import train_step
 from kauldron.train import trainer_lib
-from kauldron.typing import PyTree  # pylint: disable=g-importing-member
 from kauldron.utils import constants
 from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
 import orbax.checkpoint as ocp
