@@ -35,7 +35,7 @@ _T = TypeVar('_T')
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class PartialCLULoader(partial_loader.AbstractPartialLoader):
+class PartialCLULoader(partial_loader.InitTransform):
   """Parial loader for CLU checkpoints.
 
   Allow to use pretrained weights from a CLU checkpoint.

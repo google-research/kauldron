@@ -191,7 +191,7 @@ class Evaluator(EvaluatorBase):
   )
   model: nn.Module = config_util.ROOT_CFG_REF.model
   model_method: Optional[str] = None
-  init_transform: checkpoints.AbstractPartialLoader = dataclasses.field(
+  init_transform: checkpoints.InitTransform = dataclasses.field(
       default_factory=lambda: checkpoints.NoopTransform(),  # pylint: disable=unnecessary-lambda
   )
   checkify_error_categories: frozenset[CheckifyErrorCategory] = (

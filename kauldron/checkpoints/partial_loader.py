@@ -40,8 +40,7 @@ FrozenDict = dict if typing.TYPE_CHECKING else flax.core.FrozenDict
 _T = TypeVar('_T')
 
 
-# TODO(epot): rename to `InitTransform`
-class AbstractPartialLoader(abc.ABC):
+class InitTransform(abc.ABC):
   """Abstract class for partial checkpoint loaders.
 
   During state initialization, order is as follow:
@@ -97,17 +96,21 @@ class AbstractPartialLoader(abc.ABC):
     return state
 
 
-class NoopTransform(AbstractPartialLoader):
+# Deprecated alias for backward compatibility.
+AbstractPartialLoader = InitTransform
+
+
+class NoopTransform(InitTransform):
   """`init_transform` that does nothing."""
 
   def transform(self, state):
     return state
 
 
-class MultiTransform(AbstractPartialLoader):
+class MultiTransform(InitTransform):
   """Transform which applies multiple transformations sequentially."""
 
-  def __init__(self, **transforms: AbstractPartialLoader):
+  def __init__(self, **transforms: InitTransform):
     self._transforms = transforms
 
   def transform(self, state):
@@ -128,7 +131,7 @@ class MultiTransform(AbstractPartialLoader):
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class PartialKauldronLoader(epy.ContextManager, AbstractPartialLoader):
+class PartialKauldronLoader(epy.ContextManager, InitTransform):
   """Partial loader for Kauldron checkpoints.
 
   Allow to use pretrained weights from another Kauldron checkpoint.

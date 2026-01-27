@@ -415,7 +415,7 @@ class TrainEvaluator(kd.evals.EvaluatorBase):
 
 
 @dataclasses.dataclass(kw_only=True, eq=True, frozen=True)
-class _OverwriteParams(kd.ckpts.AbstractPartialLoader):
+class _OverwriteParams(kd.ckpts.InitTransform):
   """Overwrite the params of the state to train in the readout...
 
   ...with the params from the global state from the parent training loop.

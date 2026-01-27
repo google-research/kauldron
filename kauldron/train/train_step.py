@@ -91,7 +91,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
   optimizer: optax.GradientTransformation = config_util.ROOT_CFG_REF.optimizer
   rng_streams: rngs_lib.RngStreams = config_util.ROOT_CFG_REF.rng_streams
   sharding: sharding_lib.ShardingStrategy = config_util.ROOT_CFG_REF.sharding
-  init_transform: partial_loader.AbstractPartialLoader = (
+  init_transform: partial_loader.InitTransform = (
       config_util.ROOT_CFG_REF.init_transform
   )
   aux: auxiliaries.Auxiliaries = dataclasses.field(

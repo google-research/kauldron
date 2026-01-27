@@ -105,7 +105,7 @@ def ema_params(
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class UseEmaParams(partial_loader.AbstractPartialLoader):
+class UseEmaParams(partial_loader.InitTransform):
   """Use the EMA parameters stored by the `ema_params` transform.
 
   Attributes:

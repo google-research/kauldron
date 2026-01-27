@@ -216,7 +216,7 @@ class Trainer(config_util.BaseConfig):
   checkpointer: checkpoints.checkpointer.BaseCheckpointer = dataclasses.field(
       default_factory=checkpoints.NoopCheckpointer
   )
-  init_transform: checkpoints.AbstractPartialLoader = dataclasses.field(
+  init_transform: checkpoints.InitTransform = dataclasses.field(
       default_factory=lambda: checkpoints.NoopTransform(),  # pylint: disable=unnecessary-lambda
   )
 
