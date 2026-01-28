@@ -136,11 +136,11 @@ def _jax_key_entry_to_str(
   """Convert a JaxKeyEntry into a valid `kontext.Path` element."""
   match jax_key_entry:
     case jax.tree_util.DictKey(key):
-      return key
+      return str(key)
     case jax.tree_util.SequenceKey(idx):
       return str(idx)
     case jax.tree_util.GetAttrKey(name):
-      return name
+      return str(name)
     case _:
       raise TypeError(
           f"Unknown key entry type {type(jax_key_entry)}, {jax_key_entry}"
