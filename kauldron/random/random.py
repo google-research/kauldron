@@ -171,9 +171,14 @@ class PRNGKey(_Base):
     construct the rng).
 
     Returns:
-      An integer seed.
+      An integer seed that is guaranteed to be in the range [0, 2**32 - 1].
     """
-    return int(self.bits())  # pytype: disable=missing-parameter
+
+    # Sometimes, the call to `bits()` returns a uint64. Some methods
+    # (e.g. `grain.MapDataset.shuffle`) require a uint32, so here we take the
+    # last 32 bits. This is consistent with the behavior of jax.random.key()
+    # when passed a value larger than max uint32.
+    return int(self.bits()) % (2**32)  # pytype: disable=missing-parameter
 
   ball = jax.random.ball
   bernoulli = jax.random.bernoulli

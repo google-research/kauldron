@@ -43,10 +43,7 @@ class Mix(base.PyGrainPipeline):
     ds = grain.MapDataset.mix(datasets, weights=self.weights)
 
     if self.shuffle:
-      # Sometimes, the call to `as_seed()` returns a 64-bit unsigned int. The
-      # modulo ensures that the seed fits into a 32-bit unsigned integer which
-      # is the expected type by `grain.MapDataset.shuffle`.
-      seed = rng.fold_in("shuffle").as_seed() % (2 ** 32)
+      seed = rng.fold_in("shuffle").as_seed()
       ds = ds.shuffle(seed=seed)
     return ds
 
