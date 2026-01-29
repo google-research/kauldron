@@ -31,7 +31,7 @@ def DEFINE_config_file(  # pylint: disable=invalid-name
     *,
     flag_values: flags.FlagValues = flags.FLAGS,
     lock_config: bool = False,
-    use_legacy_flag: bool = True,
+    use_legacy_flag: bool = False,
 ) -> flags.FlagHolder[configdict_base.ConfigDict]:
   """Defines flag for `ConfigDict`.
 
