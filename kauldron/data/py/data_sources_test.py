@@ -14,6 +14,7 @@
 
 """Tests for data sources."""
 
+import contextlib
 from etils import enp
 from grain import python as grain
 from kauldron import kd
@@ -64,3 +65,88 @@ def test_range(num_workers: int):
       num_workers=num_workers,
   )
   assert list(ds.take(10)) == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+
+@pytest.mark.parametrize(
+    'batch_drop_remainder,expected_output,should_raise',
+    [
+        pytest.param(True, [[0, 1, 2], [3, 4, 5], [6, 7, 8]], False, id='True'),
+        pytest.param(
+            False, [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9]], False, id='False'
+        ),
+        pytest.param(
+            kd.data.py.DropRemainder.DROP,
+            [[0, 1, 2], [3, 4, 5], [6, 7, 8]],
+            False,
+            id='DROP',
+        ),
+        pytest.param(
+            'drop',
+            [[0, 1, 2], [3, 4, 5], [6, 7, 8]],
+            False,
+            id='drop',
+        ),
+        pytest.param(
+            kd.data.py.DropRemainder.KEEP,
+            [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9]],
+            False,
+            id='KEEP',
+        ),
+        pytest.param(
+            'keep',
+            [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9]],
+            False,
+            id='keep',
+        ),
+        pytest.param(
+            kd.data.py.DropRemainder.PAD,
+            [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9, 0, 0]],
+            False,
+            id='PAD',
+        ),
+        pytest.param(
+            'pad',
+            [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9, 0, 0]],
+            False,
+            id='pad',
+        ),
+        pytest.param(
+            'keepp',
+            [],
+            True,
+            id='Invalid',
+        ),
+    ],
+)
+def test_drop_remainder(
+    batch_drop_remainder: bool | kd.data.py.DropRemainder,
+    expected_output: list[list[int]],
+    should_raise: bool,
+):
+  if should_raise:
+    cm = pytest.raises(ValueError, match='is not a valid DropRemainder')
+  else:
+    cm = contextlib.nullcontext()
+  with cm:
+    ds = kd.data.py.DataSource(
+        grain.RangeDataSource(0, 10, 1),
+        shuffle=False,
+        num_epochs=1,
+        num_workers=0,
+        batch_size=3,
+        batch_drop_remainder=batch_drop_remainder,
+    )
+  if should_raise:
+    return
+
+  actual_output = list(ds)
+  assert len(actual_output) == len(expected_output), (
+      actual_output,
+      expected_output,
+  )
+  for i, (actual, expected) in enumerate(zip(actual_output, expected_output)):
+    np.testing.assert_array_equal(
+        actual,
+        expected,
+        err_msg=f'mismatch at index {i}: {actual=} vs {expected=}',
+    )

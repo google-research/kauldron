@@ -17,12 +17,14 @@
 from __future__ import annotations
 
 import dataclasses
+import enum
 import functools
 import math
 import os
 import typing
 from typing import Callable
 from typing import Optional
+from typing import TypeVar
 
 from etils import enp
 from etils import epy
@@ -37,6 +39,24 @@ from kauldron.data.transforms import normalize as tr_normalize
 from kauldron.typing import PRNGKeyLike, PyTree  # pylint: disable=g-importing-member,g-multiple-import
 import tensorflow as tf
 
+_ConsistentDatasetType = TypeVar(
+    "_ConsistentDatasetType", grain.MapDataset, grain.IterDataset
+)
+
+
+class DropRemainder(enum.StrEnum):
+  """Determines how to handle a final partial batch of a dataset.
+
+  Attributes:
+    DROP: Drop the last partial batch.
+    KEEP: Keep the last partial batch as is (may have size < `batch_size`).
+    PAD: Pad the last partial batch with zeros to reach `batch_size`.
+  """
+
+  DROP = enum.auto()
+  KEEP = enum.auto()
+  PAD = enum.auto()
+
 
 @dataclasses.dataclass(frozen=True, kw_only=True, eq=True)
 class PyGrainPipeline(pipelines.Pipeline):
@@ -50,8 +70,9 @@ class PyGrainPipeline(pipelines.Pipeline):
       `grain.RandomMapTransform`.
     num_epochs: Number of epoch. If missing, iterate indefinitely (number of
       iteration is given by `cfg.num_training_steps`)
-    batch_drop_remainder: Whether or not drop the last examples if `len(ds) %
-      batch_size != 0`
+    batch_drop_remainder: What to do with the last partial batch. See
+      `DropRemainder` for possible values. True is equivalent to
+      `DropRemainder.DROP`, False is equivalent to `DropRemainder.KEEP`.
     num_workers: how many worker processes to use for data loading (0 to disable
       multiprocessing)
     read_options: Options for reading data from the DataSource.
@@ -75,7 +96,7 @@ class PyGrainPipeline(pipelines.Pipeline):
 
   # Params only relevant for the root top-level dataset (when dataset mixture)
   num_epochs: Optional[int] = None
-  batch_drop_remainder: bool = True
+  batch_drop_remainder: bool | str | DropRemainder = True
   num_workers: int = 16
   read_options: grain.ReadOptions | None = None
   enable_profiling: bool = False
@@ -83,6 +104,16 @@ class PyGrainPipeline(pipelines.Pipeline):
   shard_by_process: bool = True
 
   worker_init_fn: Callable[[int, int], None] | None = None
+
+  def __post_init__(self):
+    if hasattr(super(), "__post_init__"):
+      super().__post_init__()  # Future proof to run `__post_init__` in parents  # pylint: disable=attribute-error
+
+    object.__setattr__(
+        self,
+        "batch_drop_remainder",
+        _normalize_batch_drop_remainder(self.batch_drop_remainder),
+    )
 
   # The pipeline is constructed in 4 functions:
   # * `ds_for_current_process`
@@ -98,6 +129,30 @@ class PyGrainPipeline(pipelines.Pipeline):
     ds = self.ds_for_current_process(rng)
     ds = transform_utils.apply_transforms(ds, self.transforms)
     return ds
+
+  def _apply_batch(self, ds: _ConsistentDatasetType) -> _ConsistentDatasetType:
+    if not isinstance(self.batch_drop_remainder, DropRemainder):
+      raise TypeError("Did you forgot to call super().__post_init__ ?")
+
+    match self.batch_drop_remainder:
+      case DropRemainder.PAD:
+        batch_fn = functools.partial(
+            grain.experimental.batch_and_pad, batch_size=self.host_batch_size
+        )
+        drop_remainder = False
+      case DropRemainder.KEEP:
+        batch_fn = None
+        drop_remainder = False
+      case DropRemainder.DROP:
+        batch_fn = None
+        drop_remainder = True
+      case _:
+        # Unreachable, but leaving it here to protect against future additions
+        # to the enum.
+        raise ValueError("Invalid batch_drop_remainder: {batch_drop_remainder}")
+    return ds.batch(
+        self.host_batch_size, batch_fn=batch_fn, drop_remainder=drop_remainder
+    )
 
   @functools.cached_property
   def _root_map_ds(self) -> grain.MapDataset:
@@ -139,9 +194,7 @@ class PyGrainPipeline(pipelines.Pipeline):
     # We do batching after conversion to `IterDataset` to avoid None during
     # batching.
     if self.batch_size:
-      ds = ds.batch(
-          self.host_batch_size, drop_remainder=self.batch_drop_remainder
-      )
+      ds = self._apply_batch(ds)
 
     # Distribute the execution across multiple worker processes.
     if num_workers > 0:
@@ -187,7 +240,7 @@ class PyGrainPipeline(pipelines.Pipeline):
     if not self.batch_size:
       return ds_len
 
-    if self.batch_drop_remainder:
+    if self.batch_drop_remainder == DropRemainder.DROP:
       return ds_len // self.host_batch_size
     else:
       return math.ceil(ds_len / self.host_batch_size)
@@ -198,9 +251,7 @@ class PyGrainPipeline(pipelines.Pipeline):
     # Re-apply the batching, as in the standard pipeline, it is applied after
     # conversion to `IterDataset`.
     if self.batch_size:
-      ds = ds.batch(
-          self.host_batch_size, drop_remainder=self.batch_drop_remainder
-      )
+      ds = self._apply_batch(ds)
     return ds[record_key]
 
 
@@ -278,3 +329,15 @@ def _worker_init_fn(
 
   if custom_worker_init_fn is not None:
     custom_worker_init_fn(worker_idx, worker_count)
+
+
+def _normalize_batch_drop_remainder(
+    batch_drop_remainder: bool | str | DropRemainder,
+) -> DropRemainder:
+  """Normalize the batch drop remainder to an enum value."""
+  if batch_drop_remainder is True:  # pylint: disable=g-bool-id-comparison
+    return DropRemainder.DROP
+  elif batch_drop_remainder is False:  # pylint: disable=g-bool-id-comparison
+    return DropRemainder.KEEP
+  else:
+    return DropRemainder(batch_drop_remainder)
