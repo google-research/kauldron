@@ -91,7 +91,7 @@ class CheckpointedEvaluator(evaluators.Evaluator):
   ) -> auxiliaries.AuxiliariesState:
     """Get the initial aux state from the first batch."""
     batch = next(iter(self.ds))
-    batch = sharding_lib.device_put(batch, self.base_cfg.sharding.ds)
+    batch = sharding_lib.device_put(batch, self.base_cfg.sharding.batch)
     step_nr_jax = sharding_lib.device_put(0, sharding_lib.REPLICATED)
     return self.step(step_nr=step_nr_jax, state=state, batch=batch).finalize()
 
@@ -142,7 +142,7 @@ class CheckpointedEvaluator(evaluators.Evaluator):
         if step_nr > self.num_batches:
           break
       step_nr_jax = sharding_lib.device_put(step_nr, sharding_lib.REPLICATED)
-      batch = sharding_lib.device_put(batch, self.base_cfg.sharding.ds)
+      batch = sharding_lib.device_put(batch, self.base_cfg.sharding.batch)
       aux_state = self.step(
           step_nr=step_nr_jax,
           state=state,

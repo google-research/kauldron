@@ -430,7 +430,7 @@ class Trainer(config_util.BaseConfig):
   def context_specs(self) -> context_lib.Context:
     """Shape evaluate the model (fast) and return the context structure."""
     elem_spec = self.train_ds.element_spec
-    elem_sharding = self.sharding.ds
+    elem_sharding = self.sharding.batch
     # TODO(epot): There shouldn't be the need to actually create a dummy batch.
     # Instead just creating the `spec` should be enough.
     m_batch = data_utils.mock_batch_from_elem_spec(elem_spec, elem_sharding)

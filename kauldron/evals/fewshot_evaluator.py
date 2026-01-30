@@ -165,7 +165,7 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
   ) -> tuple[dict[str, Array['...']], Array['...']]:
     merged_aux = None
     for eval_step, batch in utils.enum_iter(
-        ds.device_put(self.base_cfg.sharding.ds),
+        ds.device_put(self.base_cfg.sharding.batch),
         desc=f'{self.name}_{split}',
     ):
       eval_step = sharding.device_put(eval_step, sharding.REPLICATED)

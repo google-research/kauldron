@@ -118,7 +118,7 @@ class JaxModelExporter(ModelExporter):
 
   path_template: str = '{workdir}/{name}.jax_exported'
 
-  ds_sharding: sharding.ShardingTree = config_util.ROOT_CFG_REF.sharding.ds
+  ds_sharding: sharding.ShardingTree = config_util.ROOT_CFG_REF.sharding.batch
 
   def export(
       self,

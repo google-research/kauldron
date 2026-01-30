@@ -61,6 +61,6 @@ def _step(state: TrainState, batch) -> TrainState:
   return kd.sharding.with_sharding_constraint(state, trainer.sharding.state)
 
 
-for ex in trainer.train_ds.device_put(trainer.sharding.ds):
+for ex in trainer.train_ds.device_put(trainer.sharding.batch):
   state = _step(state, ex)
 ```

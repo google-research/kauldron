@@ -220,7 +220,7 @@ class Evaluator(EvaluatorBase):
       if self.num_batches is None:
         raise ValueError('Can only cache if num_batches is set.')
       ds_iter = ds_iter.cache()
-    return ds_iter.device_put(self.base_cfg.sharding.ds)
+    return ds_iter.device_put(self.base_cfg.sharding.batch)
 
   @functools.cached_property
   def aux(self) -> auxiliaries.Auxiliaries:

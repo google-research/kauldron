@@ -81,7 +81,7 @@ def train_impl(
     writer.write_config(trainer.raw_cfg)
     writer.write_param_overview(initial_step, state.params)
     global_elem_spec = data_utils.get_global_elem_spec(
-        ds_iter.element_spec, trainer.sharding.ds
+        ds_iter.element_spec, trainer.sharding.batch
     )
     writer.write_element_spec(initial_step, global_elem_spec)
     writer.write_context_structure(initial_step, trainer)
@@ -142,7 +142,7 @@ def train_impl(
       log_any = log_metrics or log_summaries
 
       batch = next(ds_iter)  # Only mutate `ds_iter` after `ckpt.save`
-      batch = sharding_lib.device_put(batch, trainer.sharding.ds)
+      batch = sharding_lib.device_put(batch, trainer.sharding.batch)
       state, aux = trainstep.step(
           state,
           batch,

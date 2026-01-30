@@ -484,7 +484,7 @@ def lower_trainstep(trainer: train.Trainer) -> str:
       lambda x: jax.ShapeDtypeStruct(shape=x.shape, dtype=x.dtype),
       trainer.train_ds.element_spec,
   )
-  batch = sharding.with_sharding_constraint(batch, trainer.sharding.ds)
+  batch = sharding.with_sharding_constraint(batch, trainer.sharding.batch)
 
   return trainer.trainstep.step.lower(
       trainer.trainstep,

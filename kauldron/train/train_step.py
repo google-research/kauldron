@@ -154,7 +154,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
       model_method: Optional[str] = None,
   ) -> TrainState:
     """Initialize the model and return the initial TrainState."""
-    batch = data_utils.mock_batch_from_elem_spec(elem_spec, self.sharding.ds)
+    batch = data_utils.mock_batch_from_elem_spec(elem_spec, self.sharding.batch)
     args, kwargs = data_utils.get_model_inputs_from_batch(self.model, batch)
     with self.sharding.set_global_mesh():
       collections = self.model.init(

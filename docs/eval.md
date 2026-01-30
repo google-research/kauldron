@@ -143,7 +143,7 @@ If you only need to run the training loop:
 ```python
 state = trainer.init_state()
 
-for batch in trainer.train_ds.device_put(trainer.sharding.ds):
+for batch in trainer.train_ds.device_put(trainer.sharding.batch):
   state, aux = trainer.trainstep.step(state, batch)
 ```
 

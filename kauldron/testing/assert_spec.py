@@ -43,7 +43,7 @@ def assert_step_specs(trainer: trainer_lib.Trainer) -> None:
     trainer: The trainer to test.
   """
   elem_spec = trainer.train_ds.element_spec
-  elem_sharding = trainer.sharding.ds
+  elem_sharding = trainer.sharding.batch
 
   # Skip the `init_transform`. Indeed, restoring checkpoint (partial
   # loading) will fail inside `jax.eval_shape / `jax.jit`
