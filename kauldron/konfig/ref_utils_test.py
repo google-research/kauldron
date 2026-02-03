@@ -18,6 +18,7 @@ import copy
 import json
 
 from kauldron import konfig
+import pytest
 
 
 def test_ref():
@@ -121,6 +122,34 @@ def test_ref_copy():
   assert train_ds.src.split == 'eval'
   assert test_ds.src.name == 'mnist'
   assert test_ds.src.split == 'test'
+
+
+def test_ref_bool_error():
+  """Test that using a reference in control flow raises a helpful error."""
+
+  cfg = konfig.ConfigDict(dict(x=10))
+  ref = cfg.ref.x
+
+  with pytest.raises(NotImplementedError) as exc_info:
+    if ref:
+      pass
+
+  error_msg = str(exc_info.value)
+  assert 'cannot be used for control flow' in error_msg
+  assert '&' in error_msg or 'logical' in error_msg
+  assert 'cfg.ref.x' in error_msg  # Verify path is shown
+
+  # Test nested path tracking
+  cfg.aux = {}
+  cfg.aux.flag = True
+  nested_ref = cfg.ref.aux.flag
+
+  with pytest.raises(NotImplementedError) as exc_info:
+    if nested_ref:
+      pass
+
+  error_msg = str(exc_info.value)
+  assert 'cfg.ref.aux.flag' in error_msg  # Verify nested path is shown
 
 
 def test_deepcopy():

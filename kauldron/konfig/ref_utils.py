@@ -102,13 +102,22 @@ class _FieldReference(ml_collections.FieldReference):
       )
 
   def __getattr__(self, name: str) -> _FieldReference:
-    return self._apply_op(operator.attrgetter(name), new_type=object)
+    return self._apply_op(
+        operator.attrgetter(name),
+        new_type=object,
+        append_path=name,
+    )
 
   def __getitem__(self, name: Any) -> Any:
     def fn_flow(value, name):
       return value[name]
 
-    return self._apply_op(fn_flow, name, new_type=object)
+    return self._apply_op(
+        fn_flow,
+        name,
+        new_type=object,
+        append_path=f'[{name!r}]',
+    )
 
   def __call__(self, *args, **kwargs):
     # Flatten/repack args/kwargs
@@ -148,6 +157,13 @@ class _FieldReference(ml_collections.FieldReference):
     # iterable, but this lead to infinite loop.
     raise TypeError(f'{type(self).__name__} object is not iterable')
 
+  def __bool__(self) -> bool:  # pylint: disable=invalid-bool-returned
+    path_str = '.'.join(self._path) if self._path else '<root>'
+    raise NotImplementedError(
+        f'{self!r} (path: cfg.ref.{path_str}) cannot be used for control flow. '
+        'For boolean operations use "&" (logical "and") or "|" (logical "or").'
+    )
+
   # =========== Other functions ===========
 
   def __init__(
@@ -156,8 +172,10 @@ class _FieldReference(ml_collections.FieldReference):
       field_type: Any | None = None,
       op: Any | None = None,
       required: bool = False,
+      path: list[str] | None = None,
   ):
     self._value = None
+    self._path: list[str] = path if path is not None else []
     super().__init__(default, field_type=field_type, op=op, required=required)
 
   def __repr__(self) -> str:
@@ -170,15 +188,19 @@ class _FieldReference(ml_collections.FieldReference):
 
   # TODO(epot): Should try yo merge the fixes back to `ml_collections`
 
-  def _apply_op(self, fn, *args, new_type: Any = None):
+  def _apply_op(
+      self, fn, *args, new_type: Any = None, append_path: str | None = None
+  ):
     """Overwrite `_apply_op` to return `FieldReference` from `konfig`."""
     args = [config_dict._safe_cast(arg, self._field_type) for arg in args]  # pylint: disable=protected-access
     if new_type is None:
       new_type = self._field_type
+    new_path = self._path + [append_path] if append_path else self._path
     return _FieldReference(
         self,
         field_type=new_type,
         op=config_dict._Op(fn, args),  # pylint: disable=protected-access
+        path=new_path,
     )
 
   def get(self):
