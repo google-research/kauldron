@@ -465,6 +465,10 @@ _ReduceMin = functools.partial(_ReduceOp, reduce_op=jnp.minimum)
 _ReduceMax = functools.partial(_ReduceOp, reduce_op=jnp.maximum)
 
 
+class ConcatContainer(tuple):
+  """Container for concatenate fields."""
+
+
 @dataclasses.dataclass(kw_only=True, frozen=True)
 class _Concatenate(_FieldMerger):
   """Merges two data-fields by concatenating them along the first dimension."""
@@ -476,17 +480,19 @@ class _Concatenate(_FieldMerger):
       v1: Array | PyTree[Array] | Empty | None | tuple[Array, ...],
       v2: Array | PyTree[Array] | Empty | None | tuple[Array, ...],
       state: base_state.State,
-  ) -> tuple[Array, ...] | None:
+  ) -> PyTree[ConcatContainer] | None:
     _assert_no_tracer(state, v1, v2)
     if v1 is None or v2 is None:
       if not (v1 is None and v2 is None):
         raise ValueError("Cannot concatenate None and non-None values.")
       return None
 
-    v1 = jax.tree.map(_normalize_to_tuple, v1, is_leaf=_is_tuple_leaf)
-    v2 = jax.tree.map(_normalize_to_tuple, v2)
+    v1 = jax.tree.map(
+        _normalize_to_concat_container, v1, is_leaf=_is_concat_leaf
+    )
+    v2 = jax.tree.map(_normalize_to_concat_container, v2)
     return jax.tree.map(
-        lambda x, y: x + y, v1, v2, is_leaf=_is_tuple_leaf
+        lambda x, y: ConcatContainer(x + y), v1, v2, is_leaf=_is_concat_leaf
     )  # concatenated tuples
 
   def finalize(
@@ -497,27 +503,27 @@ class _Concatenate(_FieldMerger):
     del state
     if v is EMPTY or v is None:
       return None  # TODO(klausg): this potentially breaks finalize + merge()
-    v = jax.tree.map(_normalize_to_tuple, v, is_leaf=_is_tuple_leaf)
+    v = jax.tree.map(
+        _normalize_to_concat_container, v, is_leaf=_is_concat_leaf
+    )
     return jax.tree.map(
-        lambda t: np.concatenate(t, axis=self.axis), v, is_leaf=_is_tuple_leaf
+        lambda t: np.concatenate(t, axis=self.axis), v, is_leaf=_is_concat_leaf
     )
 
 
-def _is_tuple_leaf(x: Any) -> bool:
-  """Returns True if x is a tuple that only contains ndarrays."""
-  return isinstance(x, Array) or (
-      isinstance(x, tuple) and all(isinstance(y, Array) for y in x)
-  )
+def _is_concat_leaf(x: Any) -> bool:
+  """Returns True if x is an Array or a ConcatContainer."""
+  return isinstance(x, (Array, ConcatContainer))
 
 
-def _normalize_to_tuple(
+def _normalize_to_concat_container(
     v: Array | Empty | tuple[Array, ...],
-) -> tuple[np.ndarray, ...]:
+) -> ConcatContainer:
   if v is EMPTY:
-    return ()
-  if not isinstance(v, tuple):
-    v = (np.asarray(v),)
-  return v
+    return ConcatContainer()
+  if isinstance(v, tuple):
+    return ConcatContainer(v)
+  return ConcatContainer((np.asarray(v),))
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True)
