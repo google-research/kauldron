@@ -22,6 +22,7 @@ from typing import Any, Mapping, Optional
 import einops
 from etils import epy
 from flax import struct
+import jax.numpy as jnp
 from kauldron import kontext
 from kauldron import metrics
 from kauldron.typing import Array, Bool, Float, Integer, UInt8, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
@@ -356,7 +357,7 @@ class ShowDifferenceImages(metrics.Metric):
       images1 = (images1 - vmin) / (vmax - vmin)
       images2 = (images2 - vmin) / (vmax - vmin)
 
-    diff_images = (images1 - images2).abs()
+    diff_images = jnp.abs(images1 - images2)
     diff_images = diff_images.mean(axis=-1, keepdims=True)
 
     return self.State(diff_images=diff_images)
