@@ -19,6 +19,8 @@ import functools
 import re
 import types
 from typing import Any
+
+from etils import epy
 from kauldron import konfig
 from kauldron import kontext
 from kauldron.konfig import configdict_base
@@ -131,11 +133,12 @@ class ModuleConfigDict(AutoNestedConfigDict):
         config = self.module.get_config(self.config_args)
       else:
         config = self.module.get_config()
-    except Exception as e:
-      raise ValueError(
-          f"Failed to instantiate config from module {self.module} with args"
-          f" {self.config_args}"
-      ) from e
+    except Exception as e:  # pylint: disable=broad-exception-caught
+      msg = f"Failed to instantiate config from {self.module.__name__!r}"
+      if self.config_args:
+        msg += f" with args {self.config_args}"
+      msg += ".\n\n"
+      epy.reraise(e, prefix=msg)
 
     # merge with cfg overrides which are stored in root of self.
     _apply_overrides(config, overrides=self.as_flat_dict())
