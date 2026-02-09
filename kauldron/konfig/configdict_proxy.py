@@ -128,6 +128,8 @@ def resolve(cfg, *, freeze=True):
   Returns:
     The resolved config.
   """
+  # Hide the function from the traceback (in Pytest and IPython 7).
+  __tracebackhide__ = True  # pylint: disable=unused-variable,invalid-name
 
   # Check if the config has a `_konfig_experimental_nofreeze` key.
   # TODO(klausg): make freeze=False the default and remove this.
@@ -140,6 +142,7 @@ def resolve(cfg, *, freeze=True):
     return _ConstructorResolver(freeze=freeze)._resolve_value(cfg)  # pylint: disable=protected-access
   except Exception as e:  # pylint: disable=broad-exception-caught
     logging.info(f'Full config (failing): {cfg}')  # pylint: disable=logging-fstring-interpolation
+    utils.filter_traceback(e.__traceback__)
     epy.reraise(e, 'Error resolving the config:\n')
 
 
@@ -250,8 +253,11 @@ class _ConstructorResolver(_ConfigDictVisitor):
         for k, v in kwargs.items()
     }
     args = [kwargs.pop(str(i)) for i in range(num_args(kwargs))]
-    with epy.maybe_reraise(prefix=lambda: _make_cfg_error_msg(value)):
+    try:
       obj = constructor(*args, **kwargs)
+    except Exception as e:  # pylint: disable=broad-exception-caught
+      e = _wrap_cfg_error(e, value, frame=value._frame)  # pylint: disable=protected-access
+      raise e from e.__cause__
     # Allow the object to save the config it is comming from.
     if hasattr(type(obj), '__post_konfig_resolve__'):
       obj.__post_konfig_resolve__(value)
@@ -283,12 +289,40 @@ def num_args(obj: Mapping[str, Any]) -> int:
   return arg_id  # pylint: disable=undefined-loop-variable,undefined-variable
 
 
-def _make_cfg_error_msg(cfg: ml_collections.ConfigDict) -> str:
+def _wrap_cfg_error(
+    e: Exception,
+    cfg: ml_collections.ConfigDict,
+    frame: utils.FrameStack,
+) -> Exception:
+  """Wrap the exception with the config information."""
   cfg_str = repr(cfg)
   cfg_str = cfg_str.removeprefix('<ConfigDict[').removesuffix(']>')
   if len(cfg_str) > 300:  # `textwrap.shorten` remove `\n` so don't use it
     cfg_str = cfg_str[:295] + '[...]'
-  return f'Error while constructing cfg: {cfg_str}\n'
+  msg = (
+      f'For: {cfg_str}\n'
+      'Look at the the exception cause above to see where the ConfigDict'
+      ' was created.\n'
+      '======================================================================\n'
+  )
+
+  cause = ValueError('The ConfigDict was created here.').with_traceback(
+      frame.as_traceback()
+  )
+
+  # Backward compatibility.
+  if not hasattr(epy.reraise_utils, 'wrap_error'):
+    try:
+      epy.reraise(e, prefix=msg)
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+      e = exc
+  else:
+    e = epy.reraise_utils.wrap_error(e, prefix=msg)
+
+  while e.__cause__ is not None:
+    e = e.__cause__
+  e.__cause__ = cause
+  return e
 
 
 def _as_dict(values: Mapping[str, Any]) -> dict[str, Any]:

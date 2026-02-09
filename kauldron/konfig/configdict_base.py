@@ -69,6 +69,9 @@ class ConfigDict(ml_collections.ConfigDict):
     init_dict = dict(init_dict or {})
     init_dict = _maybe_update_init_dict(init_dict)  # pytype: disable=name-error
 
+    # Capture the frame stack (to trace back where the ConfigDict is created)
+    object.__setattr__(self, '_frame', utils.FrameStack.from_current())
+
     # Normalize here rather than at the individul field level (`__setattr__`),
     # to have a global cache for all shared values (so shared fields are
     # correctly handled).

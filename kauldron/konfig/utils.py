@@ -14,11 +14,15 @@
 
 """Utils."""
 
+from __future__ import annotations
+
 import ast
 import dataclasses
 import functools
 import itertools
 import os
+import sys
+import types
 import typing
 from typing import Any, Generic, TypeVar
 
@@ -172,3 +176,56 @@ def maybe_decode_json_key(key: Any) -> Any:
     return ast.literal_eval(key.removeprefix(_JSON_RAW_PREFIX))
   else:
     return key
+
+
+@dataclasses.dataclass(slots=True, kw_only=True)
+class FrameInfo:
+  frame: types.FrameType
+  lasti: int
+  lineno: int
+
+
+class FrameStack(list[FrameInfo]):
+  """A list of FrameInfo objects.
+
+  Allow to reraise the stack trace from the current frame later on.
+
+  Note: This keep the frame objects alive.
+  """
+
+  @classmethod
+  def from_current(cls, depth: int = 0) -> FrameStack:
+    """Returns the current frame stack."""
+    stack = cls()
+    frame = sys._getframe(depth + 1)  # pylint: disable=protected-access
+    while frame:
+      # Do not capture internals IPython frames.
+      if frame.f_code.co_filename.endswith('IPython/core/interactiveshell.py'):
+        break
+      # Skip the konfig frames.
+      if '/kauldron/konfig/' in frame.f_code.co_filename:
+        frame = frame.f_back
+        continue
+
+      # Capture the current f_lasti and f_lineno as those values get updated
+      # as execution continues.
+      info = FrameInfo(frame=frame, lasti=frame.f_lasti, lineno=frame.f_lineno)  # pytype: disable=attribute-error
+      stack.append(info)
+      frame = frame.f_back  # pytype: disable=attribute-error
+    return stack
+
+  def as_traceback(self) -> types.TracebackType:
+    """Returns a traceback object for the current stack."""
+    tb = None
+    for info in self:
+      tb = types.TracebackType(tb, info.frame, info.lasti, info.lineno)
+    return tb  # pytype: disable=bad-return-type
+
+
+def filter_traceback(tb: types.TracebackType) -> None:
+  """Returns a filtered version of the traceback."""
+  # TODO(epot): Should also actually remove the tb for non-IPython frames.
+  while tb:
+    if '/kauldron/konfig/' in tb.tb_frame.f_code.co_filename:
+      tb.tb_frame.f_locals['__tracebackhide__'] = True
+    tb = tb.tb_next
