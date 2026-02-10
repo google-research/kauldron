@@ -105,7 +105,9 @@ class ShardingStrategy:
   @property
   def ds(self):
     """DEPRECATED: Use `batch` instead."""
-    return self.batch
+    raise DeprecationWarning(
+        '`sharding.ds` is deprecated. Use `sharding.batch` instead.'
+    )
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
