@@ -21,6 +21,7 @@ import copy
 import dataclasses
 import functools
 import importlib
+import inspect
 import itertools
 import typing
 from typing import Any, TypeVar
@@ -259,7 +260,7 @@ class _ConstructorResolver(_ConfigDictVisitor):
       e = _wrap_cfg_error(e, value, frame=value._frame)  # pylint: disable=protected-access
       raise e from e.__cause__
     # Allow the object to save the config it is comming from.
-    if hasattr(type(obj), '__post_konfig_resolve__'):
+    if inspect.getattr_static(type(obj), '__post_konfig_resolve__', None):
       obj.__post_konfig_resolve__(value)
     self._id_to_obj[id(value)] = utils.CachedObj(ref=value, value=obj)
     return obj
