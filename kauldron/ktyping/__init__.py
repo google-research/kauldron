@@ -118,6 +118,7 @@ from kauldron.ktyping.scope import get_current_scope
 from kauldron.ktyping.scope import ShapeScope
 from kauldron.ktyping.shape_tools import shape
 from kauldron.ktyping.typeguard_checkers import check_type
+from kauldron.ktyping.typeguard_checkers import isinstance_ as isinstance  # pylint: disable=redefined-builtin
 # pylint: enable=g-multiple-import, g-importing-member
 
 # Permissive dtype annotation that accepts:

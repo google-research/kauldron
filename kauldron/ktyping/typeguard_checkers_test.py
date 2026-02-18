@@ -157,6 +157,74 @@ def test_check_type_in_typechecked_function():
   assert f(x) is None  # no error
 
 
+def test_simple_types():
+  assert tgc.isinstance_(1, int)
+  assert not tgc.isinstance_(1, str)
+  assert tgc.isinstance_(1, (str, int))
+  assert tgc.isinstance_(1, int | str)
+  assert tgc.isinstance_(None, Optional[int])
+  assert not tgc.isinstance_(1.0, int)
+
+
+def test_composite_types():
+  assert tgc.isinstance_([1, 2], list[int])
+  assert not tgc.isinstance_(["1", "2"], list[int])
+  assert tgc.isinstance_({"a": 1}, dict[str, int])
+  assert not tgc.isinstance_({"a": "1"}, dict[str, int])
+
+
+def test_array_types_with_scope():
+  x = np.zeros((2, 3), dtype=np.float32)
+  y = np.ones(4, dtype=np.int32)
+  with typechecked():
+    assert tgc.isinstance_(x, Float["2 3"])
+    assert tgc.isinstance_(x, Float["a b"])
+    assert not tgc.isinstance_(x, Float["2 4"])
+    assert not tgc.isinstance_(x, Int["2 3"])
+    assert tgc.isinstance_(y, Int["4"])
+    assert tgc.isinstance_(y, Int["c"])
+
+
+def test_array_types_no_scope_fails():
+  x = np.zeros((2, 3), dtype=np.float32)
+  with pytest.raises(frame_utils.NoActiveScopeError):
+    tgc.isinstance_(x, Float["2 3"])
+
+
+def test_mixed_array_and_simple_types_with_scope():
+  x = np.zeros((2, 3), dtype=np.float32)
+  with typechecked():
+    assert tgc.isinstance_(x, Float["2 3"] | int)
+    assert tgc.isinstance_(12, Float["2 3"] | int)
+    assert not tgc.isinstance_("a", Float["2 3"] | int)
+    assert tgc.isinstance_([x], list[Float["2 3"]])
+    assert not tgc.isinstance_([12], list[Float["2 3"]])
+
+
+def test_mixed_array_and_simple_types_no_scope_fails():
+  x = np.zeros((2, 3), dtype=np.float32)
+  with pytest.raises(frame_utils.NoActiveScopeError):
+    tgc.isinstance_(x, Float["2 3"] | int)
+  with pytest.raises(frame_utils.NoActiveScopeError):
+    tgc.isinstance_(12, Float["2 3"] | int)
+
+
+def test_isinstance_tuple_with_scope():
+  x = np.zeros((2, 3), dtype=np.float32)
+  with typechecked():
+    assert tgc.isinstance_(x, (Float["2 3"], int))
+    assert tgc.isinstance_(12, (Float["2 3"], int))
+    assert not tgc.isinstance_("a", (Float["2 3"], int))
+
+
+def test_isinstance_tuple_no_scope_fails():
+  x = np.zeros((2, 3), dtype=np.float32)
+  with pytest.raises(frame_utils.NoActiveScopeError):
+    tgc.isinstance_(x, (Float["2 3"], int))
+  with pytest.raises(frame_utils.NoActiveScopeError):
+    tgc.isinstance_(12, (Float["2 3"], int))
+
+
 def test_check_type_fails_without_scope():
   def unscoped(x):
     check_type(x, Float["a"])

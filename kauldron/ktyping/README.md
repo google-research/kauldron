@@ -182,6 +182,36 @@ def manual(x: Float["*b h w c"]):
 Note that `kt.check_type` can only be called from within a `kt.typechecked`
 function or context.
 
+### `kt.isinstance`
+`ktyping`'s custom `kt.isinstance` behaves like the built-in `isinstance` but it
+fully supports:
+
+ * ktyping annotations like `Float["b"]` (requires an active scope)
+ * Parameterized types like `dict[str, int]` or `list[bool]`.
+ * Union Types like `Union[byte, str]`, `int | float`, or `Optional[int]`
+
+```python
+@kt.typechecked
+def fn(x: Float["*b h w c"]):
+  if kt.isinstance(x, Float["1 h w 3"]):
+    print("Found single image")
+```
+`kt.isinstance` behaves as follows:
+
+  * It returns either `True` or `False`.
+  * Unlike `kt.check_type` it **never modifies** the active scope.
+  * It only requires an active scope when checking ktyping annotations. <br/>
+    (i.e. `kt.isinstance(x, list[int] | int))` works even without an active scope)
+  * Be aware that only the first element of container types are checked. <br/>
+    (i.e. `kt.isinstance([1, "2"], list[int]) == True`).
+
+Note: Python's built-in `isinstance(x, kt.Float["b"])` can also be used with
+ktyping annotations, and works even without an active scope
+(see [Working without an active scope](#working-without-an-active-scope)).
+However, this is not recommended since it will silently reuse a parent scope
+without raising an error
+(e.g. when a `@kt.typechecked` decorator was forgotten).
+
 ## Scopes
 Dimension assignments (e.g. `b=32`) are tracked using a stack of
 `kt.ShapeScope`s. Shape checks always refer to the active (topmost) scope on the

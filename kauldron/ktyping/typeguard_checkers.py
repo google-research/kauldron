@@ -71,6 +71,46 @@ def check_type(
   return typeguard.check_type(value, expected_type)
 
 
+def isinstance_(obj: Any, class_or_tuple: Any, /) -> bool:
+  """Custom isinstance check that fully supports ktyping and composite types.
+
+  This uses the typeguard library to perform the type checking. That means that
+  even complex types such as `dict[str | None, list[Float["b n"]]]` are
+  fully supported.
+
+  When checking ktyping array types it also checks that the caller has an active
+  ktyping scope, and raises an NoActiveScopeError otherwise.
+
+
+  Args:
+    obj: The object to check.
+    class_or_tuple: The type annotation or tuple of classes to check against.
+
+  Returns:
+    True if the object matches the class_or_tuple.
+
+  Raises:
+    errors.NoActiveScopeError: If checking ktyping array types and no active
+      ktyping scope is found.
+  """
+
+  __ktyping_ignore_frame__ = True  # pylint: disable=invalid-name,unused-variable
+
+  if isinstance(class_or_tuple, tuple):
+    class_or_tuple = functools.reduce(operator.or_, class_or_tuple)
+
+  # For non-array types the scope is irrelevant and we can use a dummy scope.
+  sscope = (
+      scope.get_current_scope()
+      if _contains_any_array_type(class_or_tuple)
+      else scope.ShapeScope()
+  )
+
+  frame = sys._getframe(1)  # pylint: disable=protected-access
+  memo = typeguard.TypeCheckMemo(frame.f_globals, frame.f_locals)
+  return bool(_match_type(obj, class_or_tuple, sscope, memo))
+
+
 def check_type_internal(
     value: object,
     expected_type: Any,
