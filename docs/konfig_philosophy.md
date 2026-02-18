@@ -75,7 +75,7 @@ cfg = optax.chain(
 All python classes / functions / constants are supported without any changes to
 your codebase! (`optax` doesn't know anything about konfig)
 
-### How does it works ?
+### How does it work ?
 
 Conceptually, the idea is very simple. **A config is just a nested tree of
 `dict`**. There's a **one-to-one** mapping between a nested call of Python
