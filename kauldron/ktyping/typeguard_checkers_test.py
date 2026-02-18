@@ -15,9 +15,11 @@
 import dataclasses
 import typing
 from typing import Annotated, Never, NoReturn, Optional, Union
+from kauldron.ktyping import dim_view
 from kauldron.ktyping import errors
 from kauldron.ktyping import frame_utils
 from kauldron.ktyping import pytree
+from kauldron.ktyping import scope as scope_mod
 from kauldron.ktyping import typeguard_checkers as tgc
 from kauldron.ktyping.array_types import Float, Int, Scalar, ScalarInt  # pylint: disable=g-multiple-import
 from kauldron.ktyping.decorator import typechecked  # pylint: disable=g-importing-member
@@ -241,3 +243,95 @@ def test_check_type_fails_without_scope():
 
   with pytest.raises(frame_utils.NoActiveScopeError):
     scoped_fn(x)
+
+
+# MARK: Phase 0 - Regression tests for $ structure keys in candidates
+
+
+def test_shape_checking_with_structure_in_scope():
+  x = np.zeros((2, 3), dtype=np.float32)
+  with typechecked():
+    check_type(x, Float["a b"])
+    s = scope_mod.get_current_scope(nested_ok=True)
+    s.candidates = [dict(c) | {"$S": "fake_treedef"} for c in s.candidates]
+    y = np.ones((2, 3), dtype=np.float32)
+    check_type(y, Float["a b"])
+
+
+def test_dim_view_str_ignores_structures():
+  x = np.zeros((2, 3), dtype=np.float32)
+  with typechecked():
+    check_type(x, Float["a b"])
+    s = scope_mod.get_current_scope(nested_ok=True)
+    s.candidates = [dict(c) | {"$S": "fake_treedef"} for c in s.candidates]
+    dv = dim_view.DimView(s)
+    dims_str = str(dv)
+    assert "$S" not in dims_str
+    assert "a" in dims_str
+
+
+def test_error_display_with_structures_does_not_crash():
+  x = np.zeros((2, 3), dtype=np.float32)
+  with typechecked():
+    check_type(x, Float["a b"])
+    s = scope_mod.get_current_scope(nested_ok=True)
+    s.candidates = [dict(c) | {"$T": "fake_treedef"} for c in s.candidates]
+    with pytest.raises(errors.KTypeCheckError) as exc_info:
+      check_type(np.ones((5,), dtype=np.int32), Float["a b"])
+    error_str = str(exc_info.value)
+    assert "$T" in error_str
+    assert "Tree Structures" in error_str
+
+
+# MARK: Phase 2 - PyTree structure binding tests
+
+
+def test_pytree_structure_binding():
+  with typechecked():
+    check_type({"a": 1, "b": (3, 4)}, pytree.PyTree[int, "$S"])
+
+
+def test_pytree_structure_same_match():
+  with typechecked():
+    tree1 = {"a": 1, "b": 2}
+    tree2 = {"a": 3, "b": 4}
+    check_type(tree1, pytree.PyTree[int, "$S"])
+    check_type(tree2, pytree.PyTree[int, "$S"])
+
+
+def test_pytree_structure_mismatch():
+  with typechecked():
+    check_type({"a": 1, "b": 2}, pytree.PyTree[int, "$S"])
+    with pytest.raises(errors.KTypeCheckError):
+      check_type([1, 2, 3], pytree.PyTree[int, "$S"])
+
+
+def test_pytree_structure_different_names():
+  with typechecked():
+    check_type({"a": 1, "b": 2}, pytree.PyTree[int, "$S"])
+    check_type([1, 2, 3], pytree.PyTree[int, "$T"])
+
+
+def test_pytree_structure_with_arrays():
+  with typechecked():
+    tree = {"x": np.zeros((3, 4), dtype=np.float32)}
+    check_type(tree, pytree.PyTree[Float["b n"], "$S"])
+
+
+def test_pytree_structure_in_typechecked_fn():
+  @typechecked
+  def f(x: pytree.PyTree[int, "$S"]) -> pytree.PyTree[int, "$S"]:
+    return x
+
+  assert f({"a": 1, "b": 2}) is not None
+  assert f({"a": 1, "b": 2}) is not None
+
+  @typechecked
+  def g(
+      x: pytree.PyTree[int, "$S"],
+  ) -> pytree.PyTree[int, "$S"]:
+    del x
+    return [1, 2, 3]
+
+  with pytest.raises(errors.KTypeCheckError):
+    g({"a": 1, "b": 2})

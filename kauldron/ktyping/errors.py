@@ -161,10 +161,24 @@ class KTypeCheckError(TypeCheckError):
 
     for candidate in self.candidates:
       dim_assignments = [
-          _format_dim_assignment(dim, value) for dim, value in candidate.items()
+          _format_dim_assignment(dim, value)
+          for dim, value in candidate.items()
+          if not internal_typing.is_structure_key(dim)
       ]
       dims = ", ".join(dim_assignments)
       scope_lines.append(f" - {{{dims}}}")
+
+    tree_structures = {}
+    for candidate in self.candidates:
+      for key, value in candidate.items():
+        if internal_typing.is_structure_key(key):
+          tree_structures[key] = value
+    if tree_structures:
+      scope_lines.append("Tree Structures:")
+      for key, value in tree_structures.items():
+        # TODO(klausg): abbreviated display for long treedefs
+        scope_lines.append(f"  {key}: {value}")
+
     return "\n".join(scope_lines)
 
   def _format_arg_line(self, name, value, annot):

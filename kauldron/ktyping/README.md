@@ -108,6 +108,58 @@ def foo(x: VeryUsefulArray["a b c"]):
   ...
 ```
 
+## PyTree Types
+
+`PyTree[T]` annotates nested containers (dicts, lists, tuples, etc.) whose
+leaves are all of type `T`.
+
+```python
+import kauldron.ktyping as kt
+from kauldron.ktyping import PyTree
+
+@kt.typechecked
+def total(x: PyTree[int]) -> int:
+  return jax.tree.reduce(lambda a, b: a + b, x)
+
+total({"a": 1, "b": [2, 3]})  # ok
+```
+
+WARNING: **All of the leaves** of a `PyTree[T]` are typechecked at runtime,
+  which can potentially be slow for large pytrees.
+
+### Named Structures
+
+Use `PyTree[T, "$S"]` to bind the tree structure to a name. When the same
+name appears on multiple parameters, `ktyping` verifies that they share the
+same `PyTreeDef` (same nesting of dicts/lists/tuples with the same keys).
+
+```python
+@kt.typechecked
+def tree_add(
+    x: pytree.PyTree[Float["*b"], "$S"],
+    y: pytree.PyTree[Float["*b"], "$S"],
+) -> pytree.PyTree[Float["*b"], "$S"]:
+  return jax.tree.map(lambda a, b: a + b, x, y)
+
+# ok - both dicts with keys "a", "b"
+tree_add({"a": f32[3], "b": f32[3]}, {"a": f32[3], "b": f32[3]})
+
+# fails - different structures (dict vs list)
+tree_add({"a": f32[3]}, [f32[3]])
+```
+
+Structure names must start with `$` (e.g. `"$S"`, `"$Tree"`).
+Different names track independent structures:
+
+```python
+@kt.typechecked
+def cross(
+    x: pytree.PyTree[int, "$A"],
+    y: pytree.PyTree[int, "$B"],
+) -> None:
+  ...  # $A and $B are checked independently
+```
+
 ## `kt.typechecked`
 `kt.typechecked` enables runtime type checking (using `typeguard`).
 It can be used as a decorator for functions and dataclasses, or as a
@@ -599,9 +651,11 @@ submodules):
   the same `TypedDict` annotation can be reused for multiple arguments without
   requiring identical dimensions for all items.
 
-* **Limited `PyTree` support**: Currently, `ktyping` only supports annotations
-  like `PyTree[int]`, and does not support checking named structures like
-  `PyTree[int, "S"]` yet.
+* **`PyTree` structures**: `ktyping` supports named PyTree structures via
+  `PyTree[T, "$S"]`, with the same bind-on-first-use semantics as dimension
+  names. Unlike `jaxtyping`, structure names use a `$` prefix to clearly
+  separate them from dimension names. Composing pytree structures in the
+  structure spec (e.g. `PyTree[T, "$S $T"]`) is not yet supported.
 
 ## Migration
 

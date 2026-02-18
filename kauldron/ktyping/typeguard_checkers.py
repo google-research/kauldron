@@ -452,7 +452,19 @@ def _pytree_checker(
 
   sscope = scope.get_current_scope(nested_ok=True)
   paths_and_leaves, treedef = jax.tree.flatten_with_path(value)
-  del treedef  # TODO(klausg): remember treedef and check structure
+
+  structure_spec = origin_type.structure_spec
+  if structure_spec is not internal_typing.MISSING:
+    updated = _apply_structure_binding(
+        sscope.candidates, structure_spec, treedef
+    )
+    if not updated:
+      raise errors.KTypeCheckError(
+          "tree structure does not match previously bound structure for"
+          f" {structure_spec!r}",
+          scope=sscope,
+      )
+    sscope.candidates = list(updated)
 
   for path, leaf in paths_and_leaves:
     try:
@@ -464,6 +476,22 @@ def _pytree_checker(
           scope=sscope,
           additional_path_element=f"value of tree leaf at path {path_str}",
       )
+
+
+def _apply_structure_binding(
+    candidates: internal_typing.CandidateDims,
+    structure_spec: str,
+    treedef: Any,
+) -> internal_typing.CandidateDims:
+  """Binds or checks a tree structure in the candidate set."""
+  updated = set()
+  for cand in candidates:
+    existing = cand.get(structure_spec, internal_typing.MISSING)
+    if existing is internal_typing.MISSING:
+      updated.add(cand | {structure_spec: treedef})
+    elif existing == treedef:
+      updated.add(cand)
+  return frozenset(updated)
 
 
 # MARK: lookup_fn
@@ -517,6 +545,8 @@ def _contains_any_array_type(hint: Any) -> bool:
   """Recursively check the typehint and all of its arguments for array types."""
   if array_type_meta.is_array_type(hint):
     return True
+  elif pytree.is_pytree_type(hint):
+    return _contains_any_array_type(hint.leaf_type)
   elif typing.is_typeddict(hint):
     annot = utils.get_type_hints(hint)
     return any(_contains_any_array_type(a) for a in annot.values())

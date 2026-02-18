@@ -54,3 +54,9 @@ DimValues: typing.TypeAlias = immutabledict.immutabledict[str, DimValue]
 # This can be more than one if the annotations allow multiple different
 # assignments of dimensions (usually because of a Union).
 CandidateDims: typing.TypeAlias = frozenset[DimValues]
+
+STRUCTURE_KEY_PREFIX = "$"
+
+
+def is_structure_key(key: str) -> bool:
+  return key.startswith(STRUCTURE_KEY_PREFIX)

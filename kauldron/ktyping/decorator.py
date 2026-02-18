@@ -42,6 +42,7 @@ class _TypeCheckedPartial(epy.ContextManager):
   new_scope: bool = True
 
   def __call__(self, obj: _WrappableT) -> _WrappableT:
+    source = utils.CodeLocation.from_any(obj)
     # The decorator case.
     # Dataclasses
     if dataclasses.is_dataclass(obj):
@@ -52,7 +53,7 @@ class _TypeCheckedPartial(epy.ContextManager):
           _wrap_fn_with_typechecks(
               obj.__func__,
               new_scope=self.new_scope,
-              source=utils.CodeLocation.from_any(obj),
+              source=source,
           )
       )
     # Staticmethods
@@ -61,7 +62,7 @@ class _TypeCheckedPartial(epy.ContextManager):
           _wrap_fn_with_typechecks(
               obj.__func__,
               new_scope=self.new_scope,
-              source=utils.CodeLocation.from_any(obj),
+              source=source,
           )
       )
     elif isinstance(obj, property):
@@ -69,10 +70,14 @@ class _TypeCheckedPartial(epy.ContextManager):
     # Generator functions
     # TODO(klausg): support classmethod / staticmethod generator functions
     elif inspect.isgeneratorfunction(obj):
-      return _wrap_generator_with_typechecks(obj, new_scope=self.new_scope)
+      return _wrap_generator_with_typechecks(
+          obj, new_scope=self.new_scope, source=source
+      )
     # Functions and regular methods
     elif inspect.isfunction(obj):
-      return _wrap_fn_with_typechecks(obj, new_scope=self.new_scope)
+      return _wrap_fn_with_typechecks(
+          obj, new_scope=self.new_scope, source=source
+      )
     else:
       raise ValueError(f"Unsupported object type: {type(obj)}")
 

@@ -165,7 +165,8 @@ class DimView:
   def __str__(self) -> str:
     __ktyping_ignore_frame__ = True  # pylint: disable=unused-variable
 
-    all_dims = {dim for cand in self._scope.candidates for dim in cand}  # pylint: disable=g-complex-comprehension
+    # TODO(klausg): add useful display of structure assignments as well
+    all_dims = {dim for cand in self._scope.candidates for dim in cand if not internal_typing.is_structure_key(dim)}  # pylint: disable=g-complex-comprehension
     ambiguous_dims = {}
     unambiguous_dims = {}
     for d in all_dims:

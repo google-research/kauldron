@@ -31,14 +31,21 @@ class _PyTreeMeta(type):
   """Metaclass for creating pytree types."""
 
   leaf_type: Any | Missing
+  structure_spec: str | Missing
 
   def __new__(
       mcs,
       name: str,
       *,
       leaf_type: type[Any] | Missing = MISSING,
+      structure_spec: str | Missing = MISSING,
   ):
-    return super().__new__(mcs, name, (), {"leaf_type": leaf_type})
+    return super().__new__(
+        mcs,
+        name,
+        (),
+        {"leaf_type": leaf_type, "structure_spec": structure_spec},
+    )
 
   def __init__(cls, *args, **kwargs):
     del args, kwargs  # unused
@@ -49,12 +56,12 @@ class _PyTreeMeta(type):
       args: type[Any] | tuple[type[Any], str],  # PyTree[T]  | PyTree[T, "S"]
   ) -> _PyTreeMeta:
     """Item access syntax is used to create new pytree types."""
+    structure_spec = MISSING
     if not isinstance(args, tuple):
       leaf_type = args
     elif len(args) == 2:
-      raise TypeError(
-          "Providing a structure specification is not supported yet."
-      )
+      leaf_type, structure_spec = args
+      structure_spec = _validate_structure_spec(structure_spec)
     else:
       raise TypeError(f"Expected 1 or 2 arguments, got {len(args)}")
 
@@ -67,11 +74,15 @@ class _PyTreeMeta(type):
           f" {leaf_type}={leaf_type_name}."
       )
 
-    name = f"{cls.__name__}[{leaf_type_name}]"
+    if structure_spec is MISSING:
+      name = f"{cls.__name__}[{leaf_type_name}]"
+    else:
+      name = f"{cls.__name__}[{leaf_type_name}, {structure_spec!r}]"
 
     return _PyTreeMeta(
         name=name,
         leaf_type=leaf_type,
+        structure_spec=structure_spec,
     )
 
   def __instancecheck__(cls, instance: Any) -> bool:
@@ -91,7 +102,27 @@ class _PyTreeMeta(type):
     )
 
 
-PyTree = _PyTreeMeta("PyTree")
+def _validate_structure_spec(name: Any) -> str:
+  """Validates and normalizes a structure spec string."""
+  if not isinstance(name, str):
+    raise TypeError(
+        f"Structure name must be a string, got {type(name).__name__}."
+    )
+  name = name.strip()
+  if not name.startswith(internal_typing.STRUCTURE_KEY_PREFIX):
+    raise TypeError(
+        "Structure name must start with"
+        f" '{internal_typing.STRUCTURE_KEY_PREFIX}', got {name!r}."
+    )
+  if len(name) < 2:
+    raise TypeError(
+        "Structure name must have at least one character after"
+        f" '{internal_typing.STRUCTURE_KEY_PREFIX}', got {name!r}."
+    )
+  return name
+
+
+PyTree = _PyTreeMeta("PyTree")  # pylint: disable=invalid-name
 
 
 # MARK: Utils

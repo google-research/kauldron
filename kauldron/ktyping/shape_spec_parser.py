@@ -254,6 +254,7 @@ def _get_expected_tokens(u: lark.UnexpectedInput) -> list[str]:
   ])
 
 
+@functools.lru_cache(maxsize=4096)
 def parse(spec: str) -> shape_spec.ShapeSpec:
   """Parse a shape spec string into a ShapeSpec.
 

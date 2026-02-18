@@ -187,7 +187,6 @@ class CodeLocation:
       filename = inspect.getfile(obj)
       try:
         # Try to get sourcelines if available
-        # TODO(klausg): this is slow, make it lazy
         _, lineno = inspect.getsourcelines(obj)
         return cls(
             description=description,
