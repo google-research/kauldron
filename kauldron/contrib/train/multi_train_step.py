@@ -46,7 +46,7 @@ from flax import linen as nn
 import flax.struct
 import jax
 from kauldron import kd
-from kauldron.typing import PyTree  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.ktyping import PyTree  # pylint: disable=g-multiple-import,g-importing-member
 import optax
 
 

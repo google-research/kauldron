@@ -14,9 +14,9 @@
 
 import flax.struct
 import jax.numpy as jnp
+from kauldron.ktyping import Float  # pylint: disable=g-importing-member
 from kauldron.metrics import auto_state
 from kauldron.metrics import base_state
-from kauldron.typing import Float  # pylint: disable=g-importing-member
 import numpy as np
 import pytest
 

@@ -35,8 +35,8 @@ import jax
 from kauldron import konfig
 from kauldron import kontext
 from kauldron import summaries
+from kauldron.ktyping import Array, Float, Scalar  # pylint: disable=g-multiple-import
 from kauldron.train import auxiliaries
-from kauldron.typing import Array, Float, Scalar  # pylint: disable=g-multiple-import
 from kauldron.utils import chrono_utils
 from kauldron.utils import config_util
 from kauldron.utils import constants

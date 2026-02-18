@@ -36,7 +36,8 @@ from kauldron.data import iterators
 from kauldron.data import pipelines
 from kauldron.data.py import transform_utils
 from kauldron.data.transforms import normalize as tr_normalize
-from kauldron.typing import PRNGKeyLike, PyTree  # pylint: disable=g-importing-member,g-multiple-import
+from kauldron.ktyping import PyTree  # pylint: disable=g-importing-member
+from kauldron.typing import PRNGKeyLike  # pylint: disable=g-importing-member
 import tensorflow as tf
 
 _ConsistentDatasetType = TypeVar(

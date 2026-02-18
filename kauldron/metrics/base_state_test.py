@@ -17,7 +17,7 @@
 import flax
 import jax.numpy as jnp
 from kauldron import kd
-from kauldron.typing import Float
+from kauldron.ktyping import Float
 import numpy as np
 import sklearn.metrics
 

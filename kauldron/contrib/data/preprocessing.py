@@ -30,7 +30,7 @@ import grain.tensorflow as grain
 import jax
 from jax import tree_util
 from kauldron import kd
-from kauldron.typing import PyTree, TfArray, TfFloat, XArray, typechecked  # pylint: disable=g-importing-member,g-multiple-import
+from kauldron.ktyping import PyTree, TfArray, TfFloat, XArray, typechecked  # pylint: disable=g-importing-member,g-multiple-import
 import numpy as np
 import tensorflow as tf
 
