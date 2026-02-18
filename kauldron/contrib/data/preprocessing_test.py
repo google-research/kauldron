@@ -288,3 +288,29 @@ def test_repeat_frames(size, divisible_by, expected_size, expected_out, use_tf):
   out = out["video"]
   assert out.shape == (expected_size, 1, 1, 1)
   np.testing.assert_array_equal(out[:, 0, 0, 0], expected_out)
+
+
+def test_tree_flatten_unflatten():
+  """Tests TreeUnflattenForKey against TreeFlattenWithPath."""
+  features = {"a": {"b": 2, "c": {"d": 3}}, "e": 5, "f": {"g": 6}}
+  flatten_op = kd.data.TreeFlattenWithPath(key="a", separator="_")
+  unflatten_op = kd.contrib.data.TreeUnflattenForKey(key="a", separator="_")
+
+  flattened_features = flatten_op.map(features)
+  expected_flattened = {"a_b": 2, "a_c_d": 3, "e": 5, "f": {"g": 6}}
+  assert flattened_features == expected_flattened
+
+  unflattened_features = unflatten_op.map(flattened_features)
+  assert unflattened_features == features
+
+  # Test with different separator
+  flatten_op = kd.data.TreeFlattenWithPath(key="a", separator=".")
+  unflatten_op = kd.contrib.data.TreeUnflattenForKey(key="a", separator=".")
+  flattened_features = flatten_op.map(features)
+  expected_flattened = {"a.b": 2, "a.c.d": 3, "e": 5, "f": {"g": 6}}
+  assert flattened_features == expected_flattened
+  unflattened_features = unflatten_op.map(flattened_features)
+  assert unflattened_features == features
+
+  # Test with no keys to unflatten
+  assert unflatten_op.map({"e": 5}) == {"e": 5}
