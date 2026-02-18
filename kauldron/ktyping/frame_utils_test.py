@@ -19,32 +19,34 @@ import pytest
 
 def test_get_caller_frame():
   this_fn_name = test_get_caller_frame.__name__
-  assert frame_utils.get_caller_frame().function == this_fn_name
+  assert frame_utils.get_caller_frame().f_code.co_name == this_fn_name
 
   # ignores context managers
   with contextlib.nullcontext():
-    assert frame_utils.get_caller_frame().function == this_fn_name
+    assert frame_utils.get_caller_frame().f_code.co_name == this_fn_name
 
   # ignores lambda expressions
-  lambda_fn = lambda: frame_utils.get_caller_frame().function
+  lambda_fn = lambda: frame_utils.get_caller_frame().f_code.co_name
   assert lambda_fn() == this_fn_name
 
   # ignores list comprehensions
-  frame_list = [frame_utils.get_caller_frame().function for _ in range(1)]
+  frame_list = [frame_utils.get_caller_frame().f_code.co_name for _ in range(1)]
   assert frame_list == [this_fn_name]
 
   # ignores dict comprehensions
-  frame_dict = {i: frame_utils.get_caller_frame().function for i in range(1)}
+  frame_dict = {
+      i: frame_utils.get_caller_frame().f_code.co_name for i in range(1)
+  }
   assert frame_dict == {0: this_fn_name}
 
   # ignores generator expressions
-  frame_gen = (frame_utils.get_caller_frame().function for _ in range(1))
+  frame_gen = (frame_utils.get_caller_frame().f_code.co_name for _ in range(1))
   assert next(frame_gen) == this_fn_name
 
 
 def test_get_caller_frame_with_offset():
   def fn0(stacklevel: int):
-    return frame_utils.get_caller_frame(stacklevel=stacklevel).function
+    return frame_utils.get_caller_frame(stacklevel=stacklevel).f_code.co_name
 
   def fn1(stacklevel: int):
     with contextlib.nullcontext():  # ignore context manager

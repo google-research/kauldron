@@ -17,6 +17,7 @@
 import inspect
 import os
 import sys
+import types
 
 # Local variable that is set to mark a frame as having an active scope.
 # Used by assert_caller_has_active_scope()
@@ -39,7 +40,7 @@ _LAMBDA_AND_COMPREHENSIONS = frozenset((
 class NoActiveScopeError(RuntimeError):
   """Raised when there is no active scope."""
 
-  def __init__(self, frame: inspect.FrameInfo | None = None):
+  def __init__(self, frame: types.FrameType | None = None):
     stack_summary = _get_stack_summary(limit=10, frame_to_highlight=frame)
     super().__init__(
         "No active scope found. Has to be called within the context of a"
@@ -51,7 +52,7 @@ class NoActiveScopeError(RuntimeError):
 # MARK: get_caller_frame
 def get_caller_frame(
     stacklevel: int = 0,
-) -> inspect.FrameInfo:
+) -> types.FrameType:
   """Returns FrameInfo for the caller function while ignoring lambdas etc.
 
   Args:
@@ -61,32 +62,39 @@ def get_caller_frame(
   """
   __ktyping_ignore_frame__ = True  # pylint: disable=unused-variable
 
-  filtered_stack = (f for f in inspect.stack() if not _should_ignore(f))
-  for i, frame in enumerate(filtered_stack):
-    if i == stacklevel:
+  frame = inspect.currentframe()
+  i = 0
+  while frame and frame.f_back:
+    if _should_ignore(frame):
+      frame = frame.f_back
+      continue
+    if i >= stacklevel:
       return frame
+    i += 1
+    frame = frame.f_back
+
   raise ValueError(f"{stacklevel=} is out of bounds.")
 
 
-def _should_ignore(frame: inspect.FrameInfo) -> bool:
-  return frame.function in _LAMBDA_AND_COMPREHENSIONS or bool(
-      frame.frame.f_locals.get(_SCOPE_IGNORE_MARKER, False)
+def _should_ignore(frame: types.FrameType) -> bool:
+  return frame.f_code.co_name in _LAMBDA_AND_COMPREHENSIONS or bool(
+      frame.f_locals.get(_SCOPE_IGNORE_MARKER, False)
   )
 
 
 # MARK: mark/unmark
-def mark_frame_as_active_scope(frame: inspect.FrameInfo) -> None:
+def mark_frame_as_active_scope(frame: types.FrameType) -> None:
   """Adds/increments a SCOPE_COUNTER marker in the frame's local variables."""
-  active_scope_count = frame.frame.f_locals.get(_SCOPE_COUNTER, 0)
-  frame.frame.f_locals[_SCOPE_COUNTER] = active_scope_count + 1
+  active_scope_count = frame.f_locals.get(_SCOPE_COUNTER, 0)
+  frame.f_locals[_SCOPE_COUNTER] = active_scope_count + 1
 
 
-def unmark_frame_as_active_scope(frame: inspect.FrameInfo) -> None:
+def unmark_frame_as_active_scope(frame: types.FrameType) -> None:
   """Removes/decrements SCOPE_COUNTER marker in the frame's local variables."""
-  active_scope_count = frame.frame.f_locals.get(_SCOPE_COUNTER, 0)
+  active_scope_count = frame.f_locals.get(_SCOPE_COUNTER, 0)
   if not active_scope_count and not is_running_in_debugger():
-    raise AssertionError(f"Not an active DimScope: {frame.function}")
-  frame.frame.f_locals[_SCOPE_COUNTER] = active_scope_count - 1
+    raise AssertionError(f"Not an active DimScope: {frame.f_code.co_name}")
+  frame.f_locals[_SCOPE_COUNTER] = active_scope_count - 1
 
 
 # MARK: assert active
@@ -104,15 +112,15 @@ def assert_caller_has_active_scope(stacklevel: int = 0) -> None:
     raise NoActiveScopeError(frame=frame)
 
 
-def has_active_scope(frame: inspect.FrameInfo) -> bool:
+def has_active_scope(frame: types.FrameType) -> bool:
   """Returns True if the given frame has an active scope."""
 
-  is_active_scope = frame.frame.f_locals.get(_SCOPE_COUNTER, 0)
+  is_active_scope = frame.f_locals.get(_SCOPE_COUNTER, 0)
   if is_active_scope:
     return True
 
   # check if the parent frame is a wrapper (which always has an active scope)
-  parent_frame = frame.frame.f_back
+  parent_frame = frame.f_back
   if parent_frame is None:
     return False
 
@@ -130,7 +138,7 @@ def is_running_in_debugger() -> bool:
 
 def _get_stack_summary(
     limit: int | None = None,
-    frame_to_highlight: inspect.FrameInfo | None = None,
+    frame_to_highlight: types.FrameType | None = None,
 ) -> str:
   """Returns a text summary of the stack.
 
@@ -153,8 +161,8 @@ def _get_stack_summary(
   def _format_frame_line(frame: inspect.FrameInfo) -> str:
     is_active_scope = frame.frame.f_locals.get(_SCOPE_COUNTER, 0)
 
-    indent = ">>" if frame == frame_to_highlight else "  "
-    if _should_ignore(frame):
+    indent = ">>" if frame.frame == frame_to_highlight else "  "
+    if _should_ignore(frame.frame):
       description = "[ignored]"
     elif is_active_scope:
       description = "ACTIVE SCOPE"

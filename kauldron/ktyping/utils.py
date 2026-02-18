@@ -187,6 +187,7 @@ class CodeLocation:
       filename = inspect.getfile(obj)
       try:
         # Try to get sourcelines if available
+        # TODO(klausg): this is slow, make it lazy
         _, lineno = inspect.getsourcelines(obj)
         return cls(
             description=description,
@@ -225,12 +226,13 @@ class CodeLocation:
     __ktyping_ignore_frame__ = True  # pylint: disable=unused-variable
 
     caller_frame = frame_utils.get_caller_frame(stacklevel=stacklevel)
-    filename = caller_frame.filename
+    caller_frame_info = inspect.getframeinfo(caller_frame)
+    filename = caller_frame_info.filename
     module_name = inspect.getmodulename(filename) or "<unknown>"
     return cls(
         description=description,
         file=filename,
-        line=caller_frame.lineno,
+        line=caller_frame_info.lineno,
         module_name=module_name,
     )
 

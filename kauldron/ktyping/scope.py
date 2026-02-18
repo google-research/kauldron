@@ -135,6 +135,7 @@ class ShapeScope(epy.ContextManager):
 
   def _check_for_jaxtyping_annotations(self) -> None:
     """Warns about non-ktyping types in the annotations to help migrations."""
+    # TODO(klausg): this is somewhat slow. Only execute it once per function.
     reporting_policy = config.get_config(self.source).jaxtyping_annotations
     for name, annot in self.annotations.items():
       if utils.contains_jaxtyping_type(annot):
