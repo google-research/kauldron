@@ -94,7 +94,7 @@ def add_config_override(module_regex: str, config: Config) -> uuid.UUID:
 
   Args:
     module_regex: A regex that matches the module name of the source code. This
-      is match against the module name of typecked function or class with
+      is matched against the module name of typecked function or class with
       `re.match` (so the match is anchored at the start but not the end of the
       module name)
     config: The config to override the default config with. Only fields that are
@@ -104,6 +104,7 @@ def add_config_override(module_regex: str, config: Config) -> uuid.UUID:
     The ID of the config override. This can be used to remove the override
     using `kt.remove_config_override`.
   """
+
   cfg_id = uuid.uuid4()
   CONFIG_OVERRIDES[cfg_id] = (module_regex, config)
   return cfg_id

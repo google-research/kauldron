@@ -245,6 +245,6 @@ def shape_error_message(
     )
   else:
     return (
-        f"has shape {value.shape} which  is not shape-compatible with any of"
+        f"has shape {value.shape} which is not shape-compatible with any of"
         f" {acceptable_shapes!r}{array_spec_str}."
     )

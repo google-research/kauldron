@@ -406,7 +406,7 @@ class AnonDims(DimSpec):
     raise ShapeError(f"Cannot evaluate anonymous dimension: {self!r}")
 
   def evaluate_all(self, dim_values: DimValues) -> Iterator[Shape]:
-    raise StopIteration()  # cannot be evaluated / is underconstrained
+    yield from ()  # cannot be evaluated / is underconstrained
 
   def get_all_prefix_matches(
       self, shape: Shape, dim_values: DimValues

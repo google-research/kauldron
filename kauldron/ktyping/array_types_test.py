@@ -217,3 +217,9 @@ def test_shape():
 def test_shape_call_raises():
   with pytest.raises(RuntimeError, match="cannot be instantiated"):
     art.Shape("b n")
+
+
+def test_xarray_accepts_any_dtype():
+  for dtype in (np.float32, np.int32, np.bool_, np.complex64, np.uint8):
+    assert art.XArray.dtype_matches(np.empty((), dtype=dtype))
+    assert isinstance(np.zeros((2, 3), dtype=dtype), art.XArray)

@@ -256,7 +256,7 @@ def _wrap_generator_with_typechecks(
       # Check argument types
       for argname, (value, annot) in annotated_args.items():
         check.assert_not_never(gen_fn, annot)
-        print(f"Checking argument {argname} = {value} with annot {annot}")
+
         try:
           check.check_type_internal(value, annot)
         except errors.TypeCheckError as exc:

@@ -52,6 +52,10 @@ class _ShapeSpecTransformer(lark.Transformer):
     name = str(args[0]) if args else None
     return shape_spec.AnonDims(name=name, length=None)
 
+  def anon_plus_dim(self, args: list[Any]) -> shape_spec.AnonDims:
+    name = str(args[0]) if args else None
+    return shape_spec.AnonDims(name=name, length=(1, None))
+
   def broadcast_int_dim(self, args: list[Any]) -> shape_spec.IntDim:
     return shape_spec.IntDim(value=int(args[0]), broadcastable=True)
 

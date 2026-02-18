@@ -135,7 +135,7 @@ def _create_x_type(name, dtype=MISSING):
 
 
 # Generic array type.
-XArray = _create_x_type("XArray", None)
+XArray = _create_x_type("XArray")
 
 # Any numerical type: int, float, complex, etc. but NOT bool.
 # see also https://numpy.org/doc/2.1/reference/arrays.scalars.html#scalars

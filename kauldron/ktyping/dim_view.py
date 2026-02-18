@@ -98,6 +98,7 @@ class DimView:
     """Returns True if the dimension is defined in all candidates."""
     __ktyping_ignore_frame__ = True  # pylint: disable=unused-variable
 
+    _, name = _get_dim_type(name)
     values = {alt.get(name, MISSING) for alt in self._scope.candidates}
     if MISSING in values:
       return False
@@ -230,7 +231,9 @@ def _format_dim_assignment(dim_name: str, value: DimValue, align: int) -> str:
 def _format_ambiguous_dim(
     dim_name: str, values: list[DimValue], align: int
 ) -> str:
-  is_tuple = any(len(v) > 1 for v in values)
+  """Formats a dimension with multiple ambiguous candidate values."""
+  defined_values = [v for v in values if v is not MISSING]
+  is_tuple = any(len(v) > 1 for v in defined_values)
 
   if is_tuple:
     dim_name = f"*{dim_name}".rjust(align)

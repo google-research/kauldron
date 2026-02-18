@@ -195,3 +195,23 @@ def test_dim():
   with kt.ShapeScope():
     kt.dim["a"] = 1
     assert kt.dim["a"] == 1
+
+
+def test_dim_contains_with_prefix():
+  with kt.ShapeScope(candidates=[{"b": (8, 16)}]) as scope:
+    assert "b" in scope.dim
+    assert "*b" in scope.dim
+    assert "c" not in scope.dim
+    assert "*c" not in scope.dim
+
+  with kt.ShapeScope(candidates=[{"a": (5,)}]) as scope:
+    assert "a" in scope.dim
+    assert "*a" in scope.dim
+
+
+def test_dim_str_with_partially_defined_candidates():
+  candidate1 = {"a": (1,), "b": (2, 3)}
+  candidate2 = {"a": (4,)}
+  with kt.ShapeScope(candidates=[candidate1, candidate2]) as scope:
+    assert "a" in scope.dim
+    assert "b" not in scope.dim

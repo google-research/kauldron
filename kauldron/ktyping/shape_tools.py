@@ -96,7 +96,7 @@ def _eval_shape(spec_str: str, candidates: CandidateDims) -> Shape:
     # }
     raise shape_spec.ShapeError(
         f"{spec_str!r} is ambiguous under the current set of possible"
-        " dim_values. Could be one of:/n - "
+        " dim_values. Could be one of:\n - "
         + "\n - ".join(f"{k!r}" for k in valid_shapes)
     )
   return valid_shapes.pop()  # return the only valid shape

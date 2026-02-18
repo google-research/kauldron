@@ -144,7 +144,7 @@ class PointCloud:
   color: UInt8["n 3"]
 
 # Fails because n from pos is different than n from color:
-p = PointCloud(pos=np.zeros((17, 3)), color=np.ones((16, 3, dtype=np.uint8)))
+p = PointCloud(pos=np.zeros((17, 3)), color=np.ones((16, 3), dtype=np.uint8))
 ```
 
 Decorating any `dataclass` with `@kt.typechecked` has two effects:

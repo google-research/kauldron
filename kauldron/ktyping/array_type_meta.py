@@ -131,7 +131,7 @@ class ArrayTypeMeta(type):
       case (array_types, str(shape_spec), dtype):
         # Long form: Array[np.ndarray, "a b", np.float32]
         name = f"{cls.__name__}[{array_types!r}, {shape_spec!r}, {dtype!r}]"
-        if isinstance(array_types, tuple):
+        if not isinstance(array_types, tuple):
           array_types = (array_types,)
       case _:
         name = cls.__name__
