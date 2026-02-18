@@ -197,9 +197,17 @@ def _check_argument_types(func, args, kwargs, bound_args, annotations):
           if k in annotations
       }
       memo = typeguard.TypeCheckMemo(func.__globals__, local_ns)
-      typeguard._functions.check_argument_types(  # pylint: disable=protected-access
-          func.__name__, annotated_arguments, memo=memo
-      )
+
+      if hasattr(typeguard._functions, "check_argument_types_internal"):  # pylint: disable=protected-access
+        # In typeguard >= 4.5.0 check_argument_types has been renamed/refactored
+        # so we need to use check_argument_types_internal instead
+        typeguard._functions.check_argument_types_internal(  # pylint: disable=protected-access
+            func.__name__, annotated_arguments, memo=memo
+        )
+      else:  # typeguard = 4.4.*
+        typeguard._functions.check_argument_types(  # pylint: disable=protected-access
+            func.__name__, annotated_arguments, memo=memo
+        )
   except typeguard.TypeCheckError:
     raise
   except Exception as e:
@@ -224,9 +232,16 @@ def _check_return_type(func, retval, bound_args, annotations, memo):
       if hasattr(typeguard, "CallMemo"):  # old version of typeguard
         typeguard.check_return_type(retval, memo)
       else:
-        typeguard._functions.check_return_type(  # pylint: disable=protected-access
-            func.__name__, retval, annotations["return"], memo
-        )
+        if hasattr(typeguard._functions, "check_return_type_internal"):  # pylint: disable=protected-access
+          # In typeguard >= 4.5.0 check_return_type has been renamed/refactored
+          # so we need to use check_return_type_internal instead
+          typeguard._functions.check_return_type_internal(  # pylint: disable=protected-access
+              func.__name__, retval, annotations["return"], memo
+          )
+        else:  # typeguard = 4.4.*
+          typeguard._functions.check_return_type(  # pylint: disable=protected-access
+              func.__name__, retval, annotations["return"], memo
+          )
   except typeguard.TypeCheckError:
     raise
   except Exception as e:
