@@ -72,6 +72,7 @@ with _lazy_imports.lazy_api_imports(globals()):
   from kauldron.contrib.data.preprocessing import TemporalRandomWalk
   from kauldron.contrib.data.preprocessing import TemporalRandomWindow
   from kauldron.contrib.data.preprocessing import TimeChunkedFlattenVideo
+  from kauldron.contrib.data.preprocessing import TreeUnflattenForKey
   from kauldron.contrib.data.preprocessing import VStack
   from kauldron.contrib.data.preprocessing import ValueRange
   from kauldron.contrib.data.preprocessing import VideoMAENormalization

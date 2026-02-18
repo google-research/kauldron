@@ -19,6 +19,7 @@ from __future__ import annotations
 import abc
 from collections.abc import Mapping
 import dataclasses
+import functools
 import typing
 from typing import Any, Callable, List, Literal, Optional, Sequence
 
@@ -1630,3 +1631,63 @@ class MaskedVideoVisualization(grain.MapTransform):
 
     features[self.output_key] = final_video
     return features
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
+class TreeUnflattenForKey(kd.data.MapTransform):
+  """Unflattens a previously flattened dictionary within an element.
+
+  This transform is designed to reverse the effect of
+  kd.data.TreeFlattenWithPath.
+  """
+
+  key: str
+  separator: str = "_"
+
+  @functools.cached_property
+  def _prefix(self) -> str:
+    return self.key + self.separator
+
+  def map(self, element: dict[str, Any]) -> dict[str, Any]:
+    element = dict(element)  # Ensure the element is mutable
+    flat_subtree = {}
+    keys_to_remove = []
+
+    # Extract keys belonging to the flattened subtree
+    for k, v in element.items():
+      if k.startswith(self._prefix):
+        flat_subtree[k] = v
+        keys_to_remove.append(k)
+
+    if not flat_subtree:
+      # No keys to unflatten for the specified key
+      return element
+
+    # Reconstruct the nested dictionary
+    nested_subtree = {}
+    for long_key, value in flat_subtree.items():
+      # Remove the prefix
+      path_str = long_key[len(self._prefix) :]
+      parts = path_str.split(self.separator)
+
+      current_level = nested_subtree
+      for i, part in enumerate(parts):
+        if i == len(parts) - 1:
+          # Last part of the path, assign the value
+          current_level[part] = value
+        else:
+          # Navigate/create nested dictionaries
+          if part not in current_level:
+            current_level[part] = {}
+          elif not isinstance(current_level[part], dict):
+            # This case should ideally not happen if flattening was consistent
+            # Handle potential conflicts if a path is both a leaf and a branch
+            raise ValueError(f"Conflict at path {'.'.join(parts[:i+1])}")
+          current_level = current_level[part]
+
+    # Update the element: add the nested structure, remove old flat keys
+    element[self.key] = nested_subtree
+    for k in keys_to_remove:
+      del element[k]
+
+    return element
