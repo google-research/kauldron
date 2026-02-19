@@ -2,7 +2,7 @@
 
 Kontext is a small self-contained library to manipulate nested trees.
 
-Kontext introduce 2 main concepts: **Paths** and **Keys**.
+Kontext introduces 2 main concepts: **Paths** and **Keys**.
 
 ## Paths
 
@@ -86,7 +86,7 @@ Those keys can then be resolved with:
 Rather than hardcoding the available keys as annotations (`x: Key`), it is
 possible to dynamically define keys through the `__kontext_keys__` protocol.
 
-This can be used to propagate keys from an inner objects:
+This can be used to propagate keys from an inner object:
 
 ```python
 @dataclasses.dataclass
@@ -102,7 +102,7 @@ b = B(inner_keyed_obj=A(x='a[0].b.inner', y='a[1].e'))
 
 assert kontext.get_keypaths(b) == {
     'x': 'a[0].b.inner',
-    'y': None,
+    'y': 'a[1].e',
 }
 ```
 
@@ -148,12 +148,12 @@ pred = model.apply(rng, **model_kwargs)
 
 ### Helper
 
-Rather than using string which can be fragile, it is possible to use
-`kontext.path_builder_from` to dynamically generate the paths with auto-complete
+Rather than using strings, which can be fragile, it is possible to use
+`kontext.path_builder_from` to dynamically generate paths with auto-complete
 and type checking.
 
-Let's imaging your dataset yield some structured object (e.g.
-`typing.TypedDict`, `dataclass`,...):
+Imagine your dataset yields a structured object (e.g. `typing.TypedDict`,
+`dataclass`,...):
 
 ```python
 @flax.struct.dataclass

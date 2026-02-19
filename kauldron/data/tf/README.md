@@ -66,7 +66,7 @@ cfg.train_ds = kd.data.tf.SampleFromDatasets(
 * `kd.data.tf.SeqIOMixture`: SeqIO mixture
 
 Other sources will be added in the future. If your dataset is not yet supported,
-please [contact us](https://kauldron.rtfd.io/en/latest-help#bugs-feedback).
+please [contact us](http://https://kauldron.rtfd.io/en/latest-help#bugs-feedback).
 
 <!--
 
