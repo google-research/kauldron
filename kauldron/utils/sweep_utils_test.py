@@ -78,6 +78,11 @@ def test_sweep_overwrite():
       'my_app'
       f' --cfg={mnist_autoencoder.__file__}'
       ' --cfg.seed=12'
+      ' --cfg.schedules.none_1=null'  # Json
+      ' --cfg.schedules.none_2=None'  # Python
+      ' --cfg.schedules.none_3="\'None\'"'  # Python
+      ' --cfg.schedules.value_1="{\\"null\\": null, \\"false\\": false, \\"1\\": 1}"'  # Json   # pylint: disable=line-too-long
+      ' --cfg.schedules.value_2="{\\"None\\": None, \\"false\\": False, \\"1\\": 1}"'  # Python  # pylint: disable=line-too-long
       ' --cfg.train_ds.name=imagenet'
       ' --cfg.train_ds.transforms[0].keep[0]=other_image'
       ' --cfg.model="{\\"__qualname__\\": \\"flax.linen:Dense\\", \\"0\\": 12}"'
@@ -102,6 +107,19 @@ def test_sweep_overwrite():
   assert cfg.train_ds.transforms[0].keep == ['other_image']
   assert cfg.train_ds.name == 'imagenet'
   assert cfg.model == nn.Dense(12)
+  assert cfg.schedules.none_1 is None
+  assert cfg.schedules.none_2 is None
+  assert cfg.schedules.none_3 == 'None'
+  assert cfg.schedules.value_1 == kd.konfig.ConfigDict({
+      'null': None,
+      'false': False,
+      '1': 1,
+  })
+  assert cfg.schedules.value_2 == kd.konfig.ConfigDict({
+      'None': None,
+      'false': False,
+      '1': 1,
+  })
   assert cfg.evals.eval.ds.transforms == [
       kd_data.ValueRange(key='image', vrange=(0, 1))
   ]
