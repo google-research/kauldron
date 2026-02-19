@@ -62,7 +62,10 @@ class NpDType(DType):
   def matches(self, obj: Any) -> bool:
     if not hasattr(obj, "dtype"):
       return False
-    obj_dtype = lazy.as_np_dtype(obj.dtype)  # convert tf and torch dtypes
+    try:
+      obj_dtype = lazy.as_np_dtype(obj.dtype)
+    except TypeError:
+      return False
     if lazy.has_jax:
       # use jax.dtypes.issubdtype if jax is available
       # this is needed so that e.g. bfloat16 will be matched by np.number
@@ -83,10 +86,9 @@ class JaxDType(DType):
   def matches(self, obj: Any) -> bool:
     if not hasattr(obj, "dtype"):
       return False
-    obj_dtype = lazy.as_jax_dtype(obj.dtype)  # convert tf and torch dtypes
     if lazy.has_jax:
       target_dtype = getattr(lazy.jax.dtypes, self.dtype)
-      return lazy.jax.dtypes.issubdtype(obj_dtype, target_dtype)
+      return lazy.jax.dtypes.issubdtype(obj.dtype, target_dtype)
     else:
       return False
 

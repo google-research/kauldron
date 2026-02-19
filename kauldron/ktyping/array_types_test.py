@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import jax
 import jax.numpy as jnp
 from kauldron.ktyping import array_type_meta as atm
 from kauldron.ktyping import array_types as art
@@ -223,3 +224,16 @@ def test_xarray_accepts_any_dtype():
   for dtype in (np.float32, np.int32, np.bool_, np.complex64, np.uint8):
     assert art.XArray.dtype_matches(np.empty((), dtype=dtype))
     assert isinstance(np.zeros((2, 3), dtype=dtype), art.XArray)
+
+
+def test_prng_key_array_dtype():
+  key = jax.random.key(0)
+  assert art.PRNGKeyArray.dtype_matches(key)
+  assert art.PRNGKey.dtype_matches(key)
+
+  keys = jax.random.split(key, 4)
+  assert art.PRNGKeyArray.dtype_matches(keys)
+  assert isinstance(keys, art.PRNGKeyArray)
+
+  assert not art.Float32.dtype_matches(key)
+  assert not art.Int.dtype_matches(key)
