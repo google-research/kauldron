@@ -96,10 +96,6 @@ class InitTransform(abc.ABC):
     return state
 
 
-# Deprecated alias for backward compatibility.
-AbstractPartialLoader = InitTransform
-
-
 class NoopTransform(InitTransform):
   """`init_transform` that does nothing."""
 

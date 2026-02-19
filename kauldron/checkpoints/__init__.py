@@ -25,6 +25,3 @@ from kauldron.checkpoints.partial_loader import MultiTransform
 from kauldron.checkpoints.partial_loader import NoopTransform
 from kauldron.checkpoints.partial_loader import PartialKauldronLoader
 from kauldron.checkpoints.partial_loader import workdir_from_xid
-
-# Deprecated alias for backward compatibility.
-AbstractPartialLoader = InitTransform
