@@ -56,6 +56,7 @@ with _lazy_imports.lazy_api_imports(globals()):
   from kauldron.contrib.data.preprocessing import PadImageEdgeVal
   from kauldron.contrib.data.preprocessing import RandomDropTokens
   from kauldron.contrib.data.preprocessing import RandomFlipLeftRightVideo
+  from kauldron.contrib.data.preprocessing import RandomMapTransform
   from kauldron.contrib.data.preprocessing import RandomResize
   from kauldron.contrib.data.preprocessing import RandomSubsetAlongAxis
   from kauldron.contrib.data.preprocessing import Repeat

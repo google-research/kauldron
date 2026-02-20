@@ -30,6 +30,7 @@ import grain.tensorflow as grain
 import jax
 from jax import tree_util
 from kauldron import kd
+from kauldron.data.tf import transform_utils
 from kauldron.typing import PyTree, TfArray, TfFloat, XArray, typechecked  # pylint: disable=g-importing-member,g-multiple-import
 import numpy as np
 import tensorflow as tf
@@ -41,6 +42,18 @@ KeyEntry = Any
 KeyPath = tuple[KeyEntry, ...]
 
 FrozenDict = dict if typing.TYPE_CHECKING else flax.core.FrozenDict
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class RandomMapTransform(grain.RandomMapTransform):
+  """Wraps `random_map` to remove the Grain meta features."""
+
+  def __init_subclass__(cls, **kwargs):
+    super().__init_subclass__(**kwargs)
+
+    # Overwrite the random_map method with the wrapped version to remove the
+    # Grain meta features.
+    cls.random_map = transform_utils.wrap_map(cls.random_map)
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
