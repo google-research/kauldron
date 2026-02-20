@@ -24,6 +24,7 @@ from etils import epy
 from kauldron import konfig
 from kauldron import kontext
 from kauldron.konfig import configdict_base
+from kauldron.konfig import py_flag_utils
 
 
 class AutoNestedConfigDict(configdict_base.ConfigDict):
@@ -185,6 +186,7 @@ def _apply_overrides(config: konfig.ConfigDict, overrides: dict[str, Any]):
   """Apply overrides to config."""
   for k, v in overrides.items():
     if not k.startswith("__args__"):
+      v = py_flag_utils.maybe_parse_py_flag_value(v)
       kontext.set_by_path(config, k, v)
 
 

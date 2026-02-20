@@ -14,6 +14,7 @@
 
 import json
 import pathlib
+import types
 
 from etils import epy
 from kauldron import konfig
@@ -139,3 +140,36 @@ def test_module_configdict():
   cfg = konfig.module_configdict.AutoNestedConfigDict()
   cfg.a[0].b = dict(c=2)
   assert cfg.as_flat_dict() == {'a.0.b': konfig.ConfigDict(dict(c=2))}
+
+
+def test_py_flag_overrides():
+  cfg = konfig.ConfigDict({})
+
+  overrides = {
+      'x': 'py::types.SimpleNamespace(a=1)',
+      'y': 'py::pathlib.Path',
+      'y2': 'py::[pathlib.Path, 1]',
+      'z': 'regular_string',
+  }
+  konfig.module_configdict._apply_overrides(cfg, overrides)
+
+  assert cfg.x == konfig.ConfigDict({
+      '__qualname__': 'types:SimpleNamespace',
+      'a': 1,
+  })
+  assert cfg.y == konfig.ConfigDict({
+      '__const__': 'pathlib:Path',
+  })
+  assert cfg.y2 == [
+      konfig.ConfigDict({'__const__': 'pathlib:Path'}),
+      1,
+  ]
+  assert cfg.z == 'regular_string'
+
+  resolved = konfig.resolve(cfg, freeze=False)
+  assert resolved == {
+      'x': types.SimpleNamespace(a=1),
+      'y': pathlib.Path,
+      'y2': [pathlib.Path, 1],
+      'z': 'regular_string',
+  }
