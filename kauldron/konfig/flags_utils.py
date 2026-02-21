@@ -60,7 +60,7 @@ def DEFINE_config_file(  # pylint: disable=invalid-name
         help_string,
         flag_values=flag_values,
         lock_config=lock_config,
-        override_mode=config_flags.OverrideMode.ALWAYS,
+        accept_new_attributes=True,
     )
   flag = _LazyConfigFlag(
       parser=_RecordConfigFileFlagParser(name=name),
@@ -69,7 +69,7 @@ def DEFINE_config_file(  # pylint: disable=invalid-name
       default=default,
       help_string=help_string,
       flag_values=flag_values,
-      override_mode=config_flags.OverrideMode.ALWAYS,
+      accept_new_attributes=True,
   )
 
   flag_holder = flags.DEFINE_flag(flag, flag_values)
