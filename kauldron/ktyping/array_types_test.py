@@ -14,6 +14,7 @@
 
 import jax
 import jax.numpy as jnp
+from kauldron import ktyping as kt
 from kauldron.ktyping import array_type_meta as atm
 from kauldron.ktyping import array_types as art
 from kauldron.ktyping import dtypes
@@ -226,14 +227,20 @@ def test_xarray_accepts_any_dtype():
     assert isinstance(np.zeros((2, 3), dtype=dtype), art.XArray)
 
 
-def test_prng_key_array_dtype():
-  key = jax.random.key(0)
-  assert art.PRNGKeyArray.dtype_matches(key)
-  assert art.PRNGKey.dtype_matches(key)
+@pytest.mark.parametrize("key_type", (jax.random.key, jax.random.PRNGKey))
+def test_prng_key_array_dtype(key_type):
+  with kt.typechecked():
+    key = key_type(0)
+    assert kt.isinstance(key, art.PRNGKeyArray)
+    assert kt.isinstance(key, art.PRNGKey)
+    assert isinstance(key, art.PRNGKey)
+    assert isinstance(key, art.PRNGKeyArray)
 
-  keys = jax.random.split(key, 4)
-  assert art.PRNGKeyArray.dtype_matches(keys)
-  assert isinstance(keys, art.PRNGKeyArray)
+    keys = jax.random.split(key, 4)
+    assert kt.isinstance(keys, art.PRNGKeyArray)
+    assert isinstance(keys, art.PRNGKeyArray)
 
-  assert not art.Float32.dtype_matches(key)
-  assert not art.Int.dtype_matches(key)
+    assert not art.Float32.dtype_matches(key)
+
+    key = jax.random.key(0)
+    assert not art.Int.dtype_matches(key)

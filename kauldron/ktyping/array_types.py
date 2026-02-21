@@ -66,16 +66,15 @@ Complex64 = atm.ArrayTypeMeta("Complex64", dtype=dtypes.complex64)
 Complex128 = atm.ArrayTypeMeta("Complex128", dtype=dtypes.complex128)
 
 
-# RNG keys
-# Support both uint32 and the newer jax.dtypes.prng_key dtypes.
+# MARK: PRNG keys
+# New-style PRNG keys
 # See: https://docs.jax.dev/en/latest/jep/9263-typed-keys.html
-PRNGKey = atm.ArrayTypeMeta(
-    "PRNGKey", dtype=dtypes.prng_key | dtypes.uint32, shape_spec="2"
-)
+Fry = atm.ArrayTypeMeta("Fry", dtype=dtypes.prng_key)
 
-# Only support new jax.dtypes.prng_key dtype for the array of prgn keys.
-PRNGKeyArray = atm.ArrayTypeMeta("PRNGKeyArray", dtype=dtypes.prng_key)
-
+# Single key (supports both new and old style)
+PRNGKey = UInt32["2"] | Fry[""]
+# Array of keys (e.g. after split)
+PRNGKeyArray = UInt32["... 2"] | Fry["..."]
 
 # MARK: tf ArrayTypes
 
