@@ -39,6 +39,7 @@ from kauldron.data import utils as data_utils
 from kauldron.evals import eval_impl
 from kauldron.evals import evaluators
 from kauldron.inspect import profile_utils
+from kauldron.ktyping import PyTree  # pylint: disable=g-importing-member
 from kauldron.train import auxiliaries
 from kauldron.train import context as context_lib
 from kauldron.train import metric_writer
@@ -46,7 +47,6 @@ from kauldron.train import rngs_lib
 from kauldron.train import setup_utils
 from kauldron.train import train_loop
 from kauldron.train import train_step
-from kauldron.typing import PyTree  # pylint: disable=g-importing-member
 from kauldron.utils import _jax
 from kauldron.utils import chrono_utils
 from kauldron.utils import config_util

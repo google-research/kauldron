@@ -31,15 +31,18 @@ from kauldron import losses as kd_losses
 from kauldron.checkpoints import checkpoint_items
 from kauldron.checkpoints import partial_loader
 import kauldron.data.utils as data_utils
+from kauldron.ktyping import Float  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.ktyping import PyTree  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.train import auxiliaries
 from kauldron.train import context as context_lib
 from kauldron.train import rngs_lib
-from kauldron.typing import ElementSpec, Float, PyTree  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import ElementSpec  # pylint: disable=g-importing-member
 from kauldron.utils import config_util
 from kauldron.utils import train_property  # pylint: disable=unused-import
 from kauldron.utils import utils
 from kauldron.utils.sharding_utils import sharding as sharding_lib  # pylint: disable=g-importing-member
 import optax
+
 
 # Do not import `trainer_lib` at runtime to avoid circular imports
 if typing.TYPE_CHECKING:

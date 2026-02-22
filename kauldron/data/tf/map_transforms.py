@@ -22,7 +22,7 @@ from typing import Optional
 import einops
 from kauldron.data.tf import transform_utils
 from kauldron.data.transforms import base
-from kauldron.typing import TfArray, TfFloat, TfInt, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.ktyping import TfArray, TfFloat, TfInt, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 import tensorflow as tf
 
 

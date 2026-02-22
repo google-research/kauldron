@@ -24,8 +24,9 @@ import flax.linen as nn
 import jax
 import jax.numpy as jnp
 from kauldron import kontext
+from kauldron.ktyping import PyTree  # pylint: disable=g-importing-member
 from kauldron.train import context as context_lib
-from kauldron.typing import ArraySpec, ElementSpec, PyTree  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.typing import ArraySpec, ElementSpec  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.utils import _jax
 from kauldron.utils import sharding_utils
 import numpy as np
