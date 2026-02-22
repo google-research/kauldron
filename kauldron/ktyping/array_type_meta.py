@@ -226,7 +226,10 @@ class ArrayTypeMeta(type):
       shape_spec = eval("f" + repr(shape_spec), {}, fstring_locals)  # pylint: disable=eval-used
     spec = shape_spec_parser.parse(shape_spec)
 
-    return spec.match(instance.shape, candidates=candidates)
+    shape = tuple(instance.shape)
+    if any(d is None for d in shape):
+      return candidates
+    return spec.match(tuple(int(d) for d in shape), candidates=candidates)
 
   def __repr__(cls):
     return cls.__name__

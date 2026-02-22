@@ -26,7 +26,7 @@ from kauldron.ktyping import frame_utils
 from kauldron.ktyping import scope
 from kauldron.ktyping import typeguard_checkers  # pylint: disable=unused-import
 from kauldron.ktyping.array_type_meta import ArrayTypeMeta  # pylint: disable=g-importing-member
-from kauldron.ktyping.array_types import Float, Int  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.ktyping.array_types import Float, Int, TfArray, XArray  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.ktyping.decorator import typechecked  # pylint: disable=g-importing-member
 import numpy as np
 import pytest
@@ -416,3 +416,46 @@ def test_typechecked_generator_args():
   with pytest.raises(errors.KTypeCheckError, match="return value"):
     _ = [x for x in my_gen(3)]
     assert False
+
+
+def test_typechecked_with_tf_tensor_eager():
+  @typechecked
+  def fn(x: TfArray["B H W C"]) -> TfArray["B H W C"]:
+    return x
+
+  t = tf.constant(np.zeros((2, 5, 5, 3), dtype=np.int32))
+  result = fn(t)
+  assert result.shape == (2, 5, 5, 3)
+
+
+def test_typechecked_with_tf_tensor_graph():
+  @typechecked
+  def fn(x: TfArray["B H W C"]) -> TfArray["B H W C"]:
+    return x
+
+  with tf.Graph().as_default():
+    t = tf.reshape(tf.range(150), (2, 5, 5, 3))
+    result = fn(t)
+    assert result.shape == (2, 5, 5, 3)
+
+
+def test_typechecked_with_xarray_tf_graph():
+  @typechecked
+  def fn(x: XArray["*b T H W C"]) -> XArray["*b T H W C"]:
+    return x
+
+  with tf.Graph().as_default():
+    t = tf.cast(tf.reshape(tf.range(3), [3, 1, 1, 1]), tf.float32)
+    result = fn(t)
+    assert result.shape == (3, 1, 1, 1)
+
+
+def test_typechecked_with_unknown_tf_dims_graph():
+  @typechecked
+  def fn(x: TfArray["B H W C"]) -> TfArray["B H W C"]:
+    return x
+
+  with tf.Graph().as_default():
+    t = tf.compat.v1.placeholder(tf.float32, shape=[None, 5, 5, 3])
+    result = fn(t)
+    assert result.shape[1] == 5

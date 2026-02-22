@@ -20,8 +20,7 @@ from kauldron.ktyping import array_types as art
 from kauldron.ktyping import dtypes
 import numpy as np
 import pytest
-
-# TODO(klausg): test tf and torch types
+import tensorflow as tf
 
 
 def test_array_type_creation():
@@ -225,6 +224,42 @@ def test_xarray_accepts_any_dtype():
   for dtype in (np.float32, np.int32, np.bool_, np.complex64, np.uint8):
     assert art.XArray.dtype_matches(np.empty((), dtype=dtype))
     assert isinstance(np.zeros((2, 3), dtype=dtype), art.XArray)
+
+
+def test_tf_array_type_match_eager():
+  t = tf.constant(np.zeros((2, 5, 5, 3), dtype=np.float32))
+  assert art.TfArray.array_types_match(t)
+  assert art.TfFloat.array_types_match(t)
+  assert art.TfFloat.dtype_matches(t)
+  assert art.TfFloat.shape_matches(t)
+
+
+def test_tf_array_type_match_with_shape_spec_eager():
+  t = tf.constant(np.zeros((2, 5, 5, 3), dtype=np.float32))
+  tf_type = art.TfArray["B H W C"]
+  assert tf_type.array_types_match(t)
+  assert tf_type.dtype_matches(t)
+  assert tf_type.shape_matches(t)
+
+
+def test_tf_array_type_match_with_shape_spec_graph():
+  with tf.Graph().as_default():
+    t = tf.reshape(tf.range(150), (2, 5, 5, 3))
+    tf_type = art.TfArray["B H W C"]
+    assert tf_type.array_types_match(t)
+    assert tf_type.dtype_matches(t)
+    assert tf_type.shape_matches(t)
+
+
+def test_tf_array_isinstance_eager():
+  t = tf.constant(np.zeros((2, 5, 5, 3), dtype=np.int32))
+  assert isinstance(t, art.TfArray["B H W C"])
+
+
+def test_tf_array_isinstance_graph():
+  with tf.Graph().as_default():
+    t = tf.reshape(tf.range(150), (2, 5, 5, 3))
+    assert isinstance(t, art.TfArray["B H W C"])
 
 
 @pytest.mark.parametrize("key_type", (jax.random.key, jax.random.PRNGKey))
