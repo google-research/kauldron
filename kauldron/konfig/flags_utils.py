@@ -32,7 +32,7 @@ def DEFINE_config_file(  # pylint: disable=invalid-name
     flag_values: flags.FlagValues = flags.FLAGS,
     lock_config: bool = False,
     use_legacy_flag: bool = False,
-) -> flags.FlagHolder[configdict_base.ConfigDict]:
+) -> flags.FlagHolder[configdict_base.ConfigDict | None]:
   """Defines flag for `ConfigDict`.
 
   This is similar to `ml_collections.config_flags.DEFINE_config_file`, but
@@ -52,6 +52,7 @@ def DEFINE_config_file(  # pylint: disable=invalid-name
   Returns:
     a handle to defined flag.
   """
+
   assert not lock_config, "lock_config is not supported."
   if use_legacy_flag:
     return config_flags.DEFINE_config_file(
