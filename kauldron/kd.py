@@ -26,6 +26,7 @@ from etils import epy as _epy
 # Namespaces
 with _epy.lazy_api_imports(globals()):
   from kauldron import checkpoints as ckpts
+  from kauldron import cli
   from kauldron import data
   from kauldron import evals
   from kauldron import export

@@ -72,6 +72,9 @@ docs = [
     "sphinx-apitree[ext]",
 ]
 
+[project.scripts]
+kauldron = "kauldron.cli:main"
+
 [tool.pyink]
 # Formatting configuration to follow Google style-guide
 line-length = 80
