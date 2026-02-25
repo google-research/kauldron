@@ -109,7 +109,7 @@ class _PyFlagTransformer(lark.Transformer):
   def explicit_qualname(args: list[Any]) -> str:
     module_path = args[0]
     attr_path = args[1]
-    return f'{module_path}:{attr_path}'
+    return configdict_base.expand_qualname(f'{module_path}:{attr_path}')
 
   @staticmethod
   def implicit_qualname(args: list[Any]) -> str:
@@ -119,7 +119,8 @@ class _PyFlagTransformer(lark.Transformer):
       raise ValueError(
           f'Invalid py:: qualname: {dotted!r}. Must be at least `module.Name`.'
       )
-    return '.'.join(parts[:-1]) + ':' + parts[-1]
+    qualname = '.'.join(parts[:-1]) + ':' + parts[-1]
+    return configdict_base.expand_qualname(qualname)
 
   @staticmethod
   def dotted_name(args: list[Any]) -> str:

@@ -421,6 +421,21 @@ def _normalize_qualname(name: str) -> str:
   return name.replace(':', '.')
 
 
+def expand_qualname(qualname: str) -> str:
+  """Expand alias back to full qualname (reverse of `_normalize_qualname`)."""
+  module, _, attr = qualname.partition(':')
+  for full_path, alias in _ALIASES.items():
+    if module == alias:
+      module = full_path
+      break
+    if module.startswith(f'{alias}.'):
+      suffix = module[len(alias) + 1 :]
+      module = full_path
+      attr = f'{suffix}.{attr}' if attr else suffix
+      break
+  return f'{module}:{attr}'
+
+
 def register_aliases(aliases: dict[str, str]) -> None:
   """Register module aliases for nicer display.
 

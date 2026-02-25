@@ -100,6 +100,15 @@ def test_aliases():
   assert repr_('tensorflow_datasets:load') == 'tfds.load'
 
 
+def test_expand_qualname():
+  expand = konfig.configdict_base.expand_qualname
+  assert expand('kd.data:Xxx') == 'kauldron.kd:data.Xxx'
+  assert expand('kd:Trainer') == 'kauldron.kd:Trainer'
+  assert expand('np:int32') == 'numpy:int32'
+  assert expand('nn:Module') == 'flax.linen:Module'
+  assert expand('my.module:Cls') == 'my.module:Cls'
+
+
 def test_indices():
   data = {
       0: {

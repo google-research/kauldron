@@ -138,6 +138,14 @@ def test_maybe_parse_py_prefix():
   })
 
 
+def test_maybe_parse_py_prefix_alias():
+  result = py_flag_utils.maybe_parse_py_flag_value('py::kd.data.Xxx(x=1)')
+  assert result == konfig.ConfigDict({
+      '__qualname__': 'kauldron.kd:data.Xxx',
+      'x': 1,
+  })
+
+
 def test_literals():
   assert py_flag_utils.parse_py_flag_value('42') == 42
   assert py_flag_utils.parse_py_flag_value('"hello"') == 'hello'

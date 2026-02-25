@@ -83,6 +83,22 @@ _CALL_CASES = [
         }),
         id='trailing_comma',
     ),
+    pytest.param(
+        'kd.data.Xxx(x=1)',
+        konfig.ConfigDict({
+            '__qualname__': 'kauldron.kd:data.Xxx',
+            'x': 1,
+        }),
+        id='alias_kd',
+    ),
+    pytest.param(
+        'nn.Module(x=1)',
+        konfig.ConfigDict({
+            '__qualname__': 'flax.linen:Module',
+            'x': 1,
+        }),
+        id='alias_nn',
+    ),
 ]
 
 
@@ -105,6 +121,16 @@ _CONST_REF_CASES = [
             '__const__': 'path.to.project.module.MyEnum:VALUE',
         }),
         id='deep',
+    ),
+    pytest.param(
+        'np.int32',
+        konfig.ConfigDict({'__const__': 'numpy:int32'}),
+        id='alias_np',
+    ),
+    pytest.param(
+        'kd.data.Xxx',
+        konfig.ConfigDict({'__const__': 'kauldron.kd:data.Xxx'}),
+        id='alias_kd',
     ),
 ]
 
