@@ -66,6 +66,21 @@ def test_deep_const_ref():
   })
 
 
+def test_explicit_colon_qualname():
+  result = py_flag_utils.parse_py_flag_value('path.to.module:MyEnum.VALUE')
+  assert result == konfig.ConfigDict({
+      '__const__': 'path.to.module:MyEnum.VALUE',
+  })
+
+
+def test_explicit_colon_call():
+  result = py_flag_utils.parse_py_flag_value('path.to.module:MyClass(x=1)')
+  assert result == konfig.ConfigDict({
+      '__qualname__': 'path.to.module:MyClass',
+      'x': 1,
+  })
+
+
 def test_list():
   result = py_flag_utils.parse_py_flag_value(
       '[types.SimpleNamespace(), 4, "hello"]'

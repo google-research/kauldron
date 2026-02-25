@@ -1,0 +1,67 @@
+// Grammar for py:: flag expressions.
+// Supports Python-like expressions with an explicit `:` separator in qualnames.
+// E.g. `path.to.module:MyEnum.VALUE` or `path.to.module:MyClass(x=1)`
+
+start: value
+
+?value: call
+      | qualname          -> const_ref
+      | list_expr
+      | tuple_expr
+      | dict_expr
+      | neg_number
+      | IMAG_NUMBER        -> imag_literal
+      | FLOAT_NUMBER       -> float_literal
+      | HEX_NUMBER         -> int_literal
+      | OCT_NUMBER         -> int_literal
+      | BIN_NUMBER         -> int_literal
+      | DEC_NUMBER         -> int_literal
+      | STRING             -> string_literal
+      | "True"             -> true_literal
+      | "False"            -> false_literal
+      | "None"             -> none_literal
+
+call: qualname "(" [arguments] ")"
+
+arguments: argument ("," argument)* ","?
+argument: NAME "=" value  -> kwarg
+        | value           -> posarg
+
+qualname: dotted_name ":" dotted_name  -> explicit_qualname
+        | dotted_name                  -> implicit_qualname
+
+dotted_name: NAME ("." NAME)*
+
+list_expr: "[" [value ("," value)* ","?] "]"
+tuple_expr: "(" ")"
+          | "(" value "," ")"
+          | "(" value ("," value)+ ","? ")"
+
+dict_expr: "{" [key_value ("," key_value)* ","?] "}"
+key_value: value ":" value
+
+neg_number: "-" DEC_NUMBER   -> neg_int
+          | "-" HEX_NUMBER   -> neg_int
+          | "-" OCT_NUMBER   -> neg_int
+          | "-" BIN_NUMBER   -> neg_int
+          | "-" FLOAT_NUMBER -> neg_float
+          | "-" IMAG_NUMBER  -> neg_imag
+
+NAME: /[a-zA-Z_]\w*/
+
+_SPECIAL_DEC: "0".."9"        ("_"?  "0".."9"                       )*
+DEC_NUMBER:   "1".."9"        ("_"?  "0".."9"                       )*
+          |   "0"             ("_"?  "0"                            )* /(?![1-9])/
+HEX_NUMBER.2: "0" ("x" | "X") ("_"? ("0".."9" | "a".."f" | "A".."F"))+
+OCT_NUMBER.2: "0" ("o" | "O") ("_"?  "0".."7"                       )+
+BIN_NUMBER.2: "0" ("b" | "B") ("_"?  "0".."1"                       )+
+
+_EXP: ("e"|"E") ["+" | "-"] _SPECIAL_DEC
+DECIMAL: "." _SPECIAL_DEC | _SPECIAL_DEC "." _SPECIAL_DEC?
+FLOAT_NUMBER.2: _SPECIAL_DEC _EXP | DECIMAL _EXP?
+IMAG_NUMBER.2: (_SPECIAL_DEC      | FLOAT_NUMBER) ("J" | "j")
+
+STRING: /\"(?:[^\"\\]|\\.)*\"/ | /'(?:[^'\\]|\\.)*'/
+
+%import common.WS
+%ignore WS
