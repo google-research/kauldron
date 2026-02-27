@@ -16,3 +16,4 @@
 
 from kauldron.cli import config
 from kauldron.cli import data
+from kauldron.cli import patch_config

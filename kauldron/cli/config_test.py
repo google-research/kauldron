@@ -19,31 +19,18 @@ from kauldron.cli import config
 
 
 def test_show_returns_repr():
-  """show() should return the repr of the unresolved ConfigDict."""
+  """show() should return the unresolved ConfigDict."""
+
   cfg = konfig.ConfigDict({"seed": 42, "num_train_steps": 1000})
-  result = config.Show(cfg=cfg).execute()
+  result = config.Show()(cfg=cfg)
 
   assert "seed" in result
-  assert "num_train_steps" in result
-
-
-def test_show_with_qualname():
-  """show() should include __qualname__ in the repr."""
-  cfg = konfig.ConfigDict({
-      "__qualname__": "kauldron.train.trainer_lib:Trainer",
-      "seed": 0,
-      "num_train_steps": 100,
-  })
-  result = config.Show(cfg=cfg).execute()
-
-  assert "Trainer" in result
   assert "num_train_steps" in result
 
 
 def test_resolve_simple():
   cfg = konfig.ConfigDict({"seed": 42, "num_train_steps": 1000})
-  result = config.Resolve(cfg=cfg).execute()
+  result = config.Resolve()(cfg=cfg)
 
-  assert "seed" in result
-  assert "42" in result
-
+  assert result["seed"] == 42
+  assert result["num_train_steps"] == 1000

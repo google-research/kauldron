@@ -19,18 +19,26 @@ from __future__ import annotations
 import dataclasses
 from typing import Union
 
+from etils import epy
+from kauldron import konfig
 from kauldron import kontext
 from kauldron.cli import cmd_utils
+from kauldron.cli import patch_config
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True, kw_only=True)
 class ElementSpec(cmd_utils.SubCommand):
   """Display the element spec of the training data pipeline."""
 
   # TODO(klausg): add support for eval_ds and other evaluation datasets
 
-  def execute(self) -> str:
-    elem_spec = self.trainer.train_ds.element_spec
+  def __call__(
+      self,
+      cfg: konfig.ConfigDict,
+      origin: patch_config.ConfigOrigin | None = None,
+  ) -> str:
+    trainer = konfig.resolve(cfg)
+    elem_spec = trainer.train_ds.element_spec
     # TODO(klausg): What formatting do we want here?
     result = "batch:\n"
     result += "\n".join(
@@ -42,10 +50,16 @@ class ElementSpec(cmd_utils.SubCommand):
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class DataCmd:
+class Data(cmd_utils.CommandGroup):
   """Data commands."""
 
   sub_command: Union[ElementSpec]
 
-  def execute(self) -> None:
-    self.sub_command.execute()
+  def __call__(
+      self,
+      cfg: konfig.ConfigDict,
+      origin: patch_config.ConfigOrigin | None = None,
+  ) -> None:
+    if origin is not None:
+      print(origin.summary())
+    epy.pprint(self.sub_command(cfg=cfg, origin=origin))

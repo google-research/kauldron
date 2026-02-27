@@ -22,15 +22,16 @@ Usage:
 from __future__ import annotations
 
 import dataclasses
+import tempfile
 
 from absl import app
 from absl import flags
-from etils import eapp
+import jax
 from kauldron import konfig
-from kauldron import kontext
 from kauldron.cli import cmd_utils
 from kauldron.cli import config
 from kauldron.cli import data
+from kauldron.cli import patch_config
 import simple_parsing
 
 FLAGS = flags.FLAGS
@@ -44,87 +45,74 @@ _CONFIG = konfig.DEFINE_config_file(
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class MutationArgs:
-  """Arguments for mutating the config."""
-
-  # Set the cfg.workdir (required to run). Defaults to /tmp/kauldron.
-  workdir: str | None = "/tmp/kauldron"
-
-  # Stop training after N steps. Defaults to 1.
-  stop_after_steps: int | None = 1
-
-  # Override the batch size in train and eval datasets.
-  batch_size: int | None = None
-
-  # Whether to run eval. Defaults to True.
-  eval: bool = True
-
-  # Whether to run checkpointer. Defaults to False.
-  checkpointer: bool = False
-
-  # Whether to compute metrics. Defaults to True.
-  metrics: bool = True
-
-  # Whether to compute summaries. Defaults to True.
-  summaries: bool = True
-
-  def mutate_config(self, cfg: konfig.ConfigDict) -> konfig.ConfigDict:
-    """Returns a mutated config."""
-    if self.stop_after_steps is not None:
-      cfg.stop_after_steps = self.stop_after_steps
-
-    if self.batch_size is not None:
-      kontext.set_by_path(cfg, "train_ds.**.batch_size", self.batch_size)
-      kontext.set_by_path(cfg, "train_ds.**.shuffle_buffer_size", 1)
-      if hasattr(cfg, "evals"):
-        kontext.set_by_path(cfg, "evals.**.batch_size", self.batch_size)
-        kontext.set_by_path(cfg, "evals.**.num_batches", 1)
-
-    if not self.eval:
-      cfg.evals = {}
-
-    if not self.checkpointer:
-      cfg.checkpointer = None
-
-    if not self.metrics:
-      cfg.train_metrics = {}
-
-    if not self.summaries:
-      cfg.train_summaries = {}
-
-    return cfg
-
-
-@dataclasses.dataclass(frozen=True, kw_only=True)
 class Args:
   """Kauldron CLI for inspecting and debugging configurations."""
 
-  mutation_args: MutationArgs
+  command: config.Config | data.Data
 
-  command: config.ConfigCmd | data.DataCmd = simple_parsing.subparsers({
-      "config": config.ConfigCmd,
-      "data": data.DataCmd,
-  })
+  patch: patch_config.PatchConfig = dataclasses.field(
+      default_factory=patch_config.PatchConfig,
+      # Manually added in flag_parser() to support "--patch." prefix.
+      metadata={"cmd": False},
+  )
 
 
-flag_parser = eapp.make_flags_parser(Args)
+def flag_parser(argv: list[str]) -> Args:
+  """Parses CLI flags from argv using simple_parsing."""
+  args_parser = simple_parsing.ArgumentParser(
+      prog="kauldron",
+      description="Kauldron CLI entry point.",
+  )
+  args_parser.add_arguments(Args, dest="args")
+  args_parser.add_arguments(
+      patch_config.PatchConfig, dest="patch", prefix="patch."
+  )
+
+  with konfig.set_lazy_imported_modules():
+    # TODO(klausg): why argv[1:]?
+    namespace, remaining_argv = args_parser.parse_known_args(argv[1:])
+
+    FLAGS([""] + remaining_argv)
+
+  return namespace.args
+
+
+def _get_config(
+    patcher: patch_config.PatchConfig,
+) -> tuple[konfig.ConfigDict, patch_config.ConfigOrigin]:
+  """Returns a config and its provenance."""
+  cfg = _CONFIG.value
+  filename = FLAGS["cfg"].config_filename  # pytype: disable=attribute-error
+  overrides = FLAGS["cfg"].override_values  # pytype: disable=attribute-error
+
+  patches = {}
+  with tempfile.TemporaryDirectory(prefix="kauldron_") as workdir:
+    if cfg.workdir is None:
+      cfg.workdir = workdir
+    patches["workdir"] = cfg.workdir
+
+  # Apply Patches
+  final_cfg = patcher(cfg)  # TODO(klausg): keep track of patch-overrides
+
+  provenance = patch_config.ConfigOrigin(
+      filename=filename,
+      overrides=overrides,
+      patches=patches,
+  )
+
+  return final_cfg, provenance
 
 
 def main(args: Args) -> None:
   """Dispatches to the selected CLI command."""
-  if not hasattr(args, "command"):
-    raise SystemExit("No command specified. Use --help for usage.")
-  cmd = args.command
-  sub_cmd = cmd.sub_command
-  assert isinstance(sub_cmd, cmd_utils.SubCommand)
-  cfg = _CONFIG.value
-  updated_cfg = args.mutation_args.mutate_config(cfg)
+  patcher: patch_config.PatchConfig = args.patch
+  cfg, origin = _get_config(patcher)
 
-  sub_cmd = dataclasses.replace(sub_cmd, cfg=updated_cfg)
-  cmd = dataclasses.replace(cmd, sub_command=sub_cmd)
-  cmd.execute()
+  command: cmd_utils.CommandGroup = args.command
+  command(cfg=cfg, origin=origin)
 
 
 if __name__ == "__main__":
-  with konfig.set_lazy_imported_modules():
-    app.run(main, flags_parser=flag_parser)
+  # Adds jax flags to the program.
+  jax.config.config_with_absl()
+  app.run(main)  # external
