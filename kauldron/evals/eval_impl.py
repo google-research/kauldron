@@ -159,7 +159,14 @@ class _ExceptionTracker:
       logging.exception('Failed to evaluate %s at step %s', name, step)
       exc_name = type(e).__name__
       status.xp.add_tags(f'🚨 Eval {name}: {exc_name} 🚨')
-      self.eval_names.remove(name)
+      if name in self.eval_names:
+        self.eval_names.remove(name)
+      else:
+        logging.warning(
+            'Eval %s failed, but it is not in the list of eval names: %s',
+            name,
+            self.eval_names,
+        )
     if not self.eval_names:
       # All evaluator have failed, re-raise the exception
       raise ExceptionGroup('All evaluators have failed', self.exceptions)
