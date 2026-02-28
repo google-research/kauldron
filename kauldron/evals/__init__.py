@@ -21,6 +21,9 @@ from etils import epy as _epy
 # Lazy-import is import here as `run_strategies` is imported from kxm and
 # we do not want to trigger a full import.
 with _epy.lazy_api_imports(globals()):
+  from kauldron.evals.eval_impl import TRAIN_COMPLETE_FILENAME
+  from kauldron.evals.eval_impl import EVAL_COMPLETE_FILENAME
+
   from kauldron.evals.evaluators import CollectionKeys
   from kauldron.evals.evaluators import Evaluator
   from kauldron.evals.evaluators import EvaluatorBase
