@@ -61,8 +61,13 @@ def array_spec_to_jnp_empty(spec: ArraySpec, batch_dim: int = 17) -> jax.Array:
   Returns:
     An empty jnp array with the requested shape and dtype.
   """
-  # silently convert int64 -> int32 to avoid jax warning
-  dtype = jnp.int32 if spec.dtype in [jnp.int64, np.int64] else spec.dtype
+  # silently convert int64 -> int32 and float64 -> float32 to avoid jax warning
+  if spec.dtype in [jnp.int64, np.int64]:
+    dtype = jnp.int32
+  elif spec.dtype in [jnp.float64, np.float64]:
+    dtype = jnp.float32
+  else:
+    dtype = spec.dtype
 
   # Ensure spec.shape is fully concrete by replacing None with 1. This is a
   # workaround for datasets that yield variable shapes, as JAX requires concrete
