@@ -18,31 +18,48 @@ from __future__ import annotations
 
 import dataclasses
 
+from etils import epy
+from kauldron import konfig
 from kauldron.cli import cmd_utils
+from kauldron.cli import patch_config
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class Show(cmd_utils.SubCommand):
   """Display the unresolved config tree."""
 
-  def execute(self) -> str:
-    return repr(self.cfg)
+  def __call__(
+      self,
+      cfg: konfig.ConfigDict,
+      origin: patch_config.ConfigOrigin | None = None,
+  ) -> konfig.ConfigDict:
+    return cfg
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class Resolve(cmd_utils.SubCommand):
   """Resolve and display the fully-instantiated config."""
 
-  def execute(self) -> str:
-    return repr(self.trainer)
+  def __call__(
+      self,
+      cfg: konfig.ConfigDict,
+      origin: patch_config.ConfigOrigin | None = None,
+  ) -> konfig.ConfigDict:
+    trainer = konfig.resolve(cfg)
+    return trainer
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class ConfigCmd:
+class Config(cmd_utils.CommandGroup):
   """Config commands."""
 
   sub_command: Show | Resolve
 
-  def execute(self) -> None:
-    # TODO(klausg): could also move the print to main.
-    print(self.sub_command.execute())
+  def __call__(
+      self,
+      cfg: konfig.ConfigDict,
+      origin: patch_config.ConfigOrigin | None = None,
+  ) -> None:
+    if origin is not None:
+      print(origin.summary())
+    epy.pprint(self.sub_command(cfg=cfg, origin=origin))

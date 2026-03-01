@@ -18,12 +18,28 @@ from __future__ import annotations
 
 import abc
 import dataclasses
-import functools
+from typing import Any
 
 from kauldron import konfig
+from kauldron.cli import patch_config
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class CommandGroup(abc.ABC):
+  """Base class for all commands."""
+
+  sub_command: SubCommand
+
+  @abc.abstractmethod
+  def __call__(
+      self,
+      cfg: konfig.ConfigDict,
+      origin: patch_config.ConfigOrigin | None = None,
+  ) -> None:
+    pass
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
 class SubCommand(abc.ABC):
   """Base class for all sub-commands.
 
@@ -32,17 +48,10 @@ class SubCommand(abc.ABC):
   commands.
   """
 
-  # `cmd=False` prevents simple_parsing from registering --cfg as a CLI arg,
-  # which would conflict with the absl --cfg flag defined in main.py.
-  cfg: konfig.ConfigDict | None = dataclasses.field(
-      default=None, metadata={"cmd": False}
-  )
-
-  @functools.cached_property
-  def trainer(self):
-    return konfig.resolve(self.cfg)
-
-  # TODO(klausg): should this be __call__ instead?
   @abc.abstractmethod
-  def execute(self) -> str:
+  def __call__(
+      self,
+      cfg: konfig.ConfigDict,
+      origin: patch_config.ConfigOrigin | None = None,
+  ) -> Any:
     pass
