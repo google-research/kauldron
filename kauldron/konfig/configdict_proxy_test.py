@@ -238,3 +238,8 @@ def test_configdict_not_freeze():
   c = konfig.resolve(c, freeze=False)
   assert isinstance(c, dict)
   assert isinstance(c["schedules"]["learning_rate"], np.ndarray)
+
+
+def test_resolve_plain_dict_no_frame_crash():
+  with pytest.raises(TypeError):
+    konfig.resolve({"__qualname__": "builtins:int", "bad_kwarg": "x"})

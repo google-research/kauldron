@@ -289,6 +289,8 @@ def _format_axis(axis: Any) -> str:
   """Format a single axis of a tensor slice."""
   if isinstance(axis, int):
     return str(axis)
+  elif isinstance(axis, (str, tuple)):
+    return repr(axis)
   elif isinstance(axis, slice):
     return _format_slice(axis)
   elif axis == ...:

@@ -99,8 +99,10 @@ def export(obj: Any) -> epy.typing.Json:
         'dtype': obj.dtype.name,
     }
   elif isinstance(obj, immutabledict.ImmutableDict):
-    fields = {k: export(v) for k, v in obj.items()}
-    fields['__qualname__'] = export_qualname(obj)
+    fields = {
+        '__qualname__': export_qualname(obj),
+        '0': [[export(k), export(v)] for k, v in obj.items()],
+    }
   elif isinstance(obj, enp.ArraySpec):
     # TODO(geco): In theory this is not needed as ArraySpec now defines its own
     # __konfig_export__. However, there are binaries that have been built before
@@ -111,13 +113,18 @@ def export(obj: Any) -> epy.typing.Json:
         'dtype': obj.dtype.name,
     }
   elif isinstance(obj, dict):
-    fields = {k: export(v) for k, v in obj.items()}
-    if type(obj) != dict:  # pylint: disable=unidiomatic-typecheck
-      # if it is a subclass of dict, we can probably re-create the object
-      # as follows:
-      fields['__qualname__'] = export_qualname(obj)
+    fields = {
+        '__qualname__': export_qualname(obj),
+        '0': [[export(k), export(v)] for k, v in obj.items()],
+    }
   elif isinstance(obj, list):
     fields = [export(v) for v in obj]
+  elif isinstance(obj, tuple) and hasattr(type(obj), '_fields'):
+    fields = {
+        '__qualname__': export_qualname(obj),
+    }
+    for i, t in enumerate(obj):
+      fields[str(i)] = export(t)
   elif isinstance(obj, tuple):
     fields = {'__qualname__': 'builtins.tuple', '0': [export(t) for t in obj]}
   elif isinstance(obj, int | float | type(None) | str | bool):

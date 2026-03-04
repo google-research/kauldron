@@ -257,7 +257,9 @@ class _ConstructorResolver(_ConfigDictVisitor):
     try:
       obj = constructor(*args, **kwargs)
     except Exception as e:  # pylint: disable=broad-exception-caught
-      e = _wrap_cfg_error(e, value, frame=value._frame)  # pylint: disable=protected-access
+      # konfig.resolve also accepts plain dicts
+      if isinstance(value, configdict_base.ConfigDict):
+        e = _wrap_cfg_error(e, value, frame=value._frame)  # pylint: disable=protected-access
       raise e from e.__cause__
     # Allow the object to save the config it is comming from.
     if inspect.getattr_static(type(obj), '__post_konfig_resolve__', None):

@@ -15,8 +15,9 @@
 """Test functions for export utils."""
 
 import dataclasses
+import json
 import typing
-from typing import Any
+from typing import Any, NamedTuple
 from etils import enp
 from kauldron import konfig
 import numpy as np
@@ -66,3 +67,33 @@ def test_konfig_export():
   a_json = konfig.export(a)
   a_restored = konfig.resolve(a_json, freeze=False)
   assert type(a_restored) == type(a) and a_restored.__dict__ == a.__dict__
+
+
+def test_non_string_key():
+  spec = {
+      ('edge_a', ('src', 'dst')): np.array([1, 2, 3]),
+      ('edge_b', ('x', 'y')): np.array([4, 5]),
+  }
+  spec_json = konfig.export(spec)
+  json_str = json.dumps(spec_json, indent=2)
+  spec_loaded = json.loads(json_str)
+  spec_restored = konfig.resolve(spec_loaded, freeze=False)
+  assert list(spec_restored.keys()) == list(spec.keys())
+  for k in spec:
+    np.testing.assert_array_equal(spec_restored[k], spec[k])
+
+
+class MyKey(NamedTuple):
+  foo: str
+  bar: tuple[str, ...]
+
+
+def test_non_string_key_dict_json_serializable():
+  spec = {
+      MyKey('x', ('a', 'b')): np.array([1, 2, 3]),
+      MyKey('y', ('c', 'd')): np.array([4, 5]),
+  }
+  spec_json = konfig.export(spec)
+  spec_restored = konfig.resolve(spec_json, freeze=False)
+  assert isinstance(spec_restored, dict)
+  assert type(list(spec_restored.keys())[0]) == type(list(spec.keys())[0])
