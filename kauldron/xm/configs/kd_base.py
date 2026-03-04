@@ -48,6 +48,7 @@ def get_config():
           xprof_port=True,
           g3pdb_port=True,
       ),
+      cell='viglobal',  # Reasonable default for most projects
       subdir_format=kxm.SubdirFormat(
           wu_dirname='{wid}{separator_if_sweep}{sweep_kwargs}',
       ),
