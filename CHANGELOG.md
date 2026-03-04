@@ -8,6 +8,61 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-03-04
+
+### Added
+
+* `kd.ktyping`: Major new runtime typechecking tool.
+* New `kauldron` CLI tool.
+* New Model exporter (`kd.evals.ModelExporter`).
+* Added support for setting Python objects from CLI using `py::` prefix.
+* Added NNX wrapper module and documentation
+* `kd.optim.ema_weights` for exponential moving average of parameters.
+* `konfig.export()` function for serialization of any object as json.
+*  Added support for parameterizing `get_config` with `ConfigArgs`.
+* `kd.metrics`: `finalize` method for metric states, `merge_field`,
+  `min_field`, `max_field`, `concat_field` pytree support, online
+  Mean+Covariance estimation summary.
+* Added `kd.data.py.CenterCrop`, `kd.data.py.ElementWiseRandomTransform`,
+  random transforms for PyGrain pipelines.
+* `kd.data.py.SelectFromDatasets` for data mixtures.
+* Support padding batches with zeros in PyGrain pipelines.
+* `NoOpTrainStep` and `NoOpCheckpointer`.
+* `ShowConfusionMatrix` and `AddBias` transform.
+* `ShowSegmentations` supports predicted labels and plotting without logits.
+* `cmap` option for `ShowImages`.
+* `kd.data.Resize` generalized to min/max size.
+* `kd.evals.CheckpointedEvaluator` to allow resumption of evaluations.
+* `eval_step` added to `Evaluator`.
+* Option to skip initial step 0 for evaluators.
+* `konfig_freeze` option for configs.
+* Custom orbax preservation policies.
+* `xp.debug.jax_log_compiles` flag.
+
+### Changed
+
+* **Breaking:** Removed deprecated `AbstractPartialLoader` alias.
+* `ShardingStrategy.ds` renamed to `ShardingStrategy.data`.
+* `CollectingState` deprecated in favor of `auto_state` fields.
+
+### Fixed
+
+* `ema_params` debias logic fix.
+* `kd.random.as_seed` truncation fix.
+* Various checkpoint loading fixes.
+* Fix hang when using custom dataset in eval.
+* Fix `ml_python` + adhoc error.
+* Fix `konfig` resolve errors and better traceback for Config objects.
+* Fix json args parsing.
+* Fix `kd.data.py.Tfds.decoders` with `ImmutableDict`.
+* Fix `checkify` handling for static inspect.
+* Compatibility fix for typeguard 4.5.0.
+* Various `ShowSegmentations` and image summary fixes.
+* Fix `transfer_guard` with certain JAX versions.
+* Fix duplicated `job_group` in `eval_only`.
+* Improved `FieldReference` error messages in `konfig`.
+
+
 ## [1.3.0] - 2025-07-15
 
 * Various bug fixes and improvements
@@ -139,11 +194,12 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 <!-- mdlint off(LINK_UNUSED_ID) -->
 
-[Unreleased]: https://github.com/google-research/kauldron/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/google-research/kauldron/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/google-research/kauldron/releases/tag/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/google-research/kauldron/releases/tag/v1.2.2...v1.3.0
 [1.2.2]: https://github.com/google-research/kauldron/releases/tag/v1.2.1...v1.2.2
-[1.2.1]: https://github.com/google-research/kauldron/releases/tag/v1.2.0...v1.2.1
-[1.2.0]: https://github.com/google-research/kauldron/releases/tag/v1.1.1...v1.2.0
+[1.2.1]: https://github.com/google-research/kauldron/releases/tag/v1.1.2...v1.2.1
+[1.1.2]: https://github.com/google-research/kauldron/releases/tag/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/google-research/kauldron/releases/tag/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/google-research/kauldron/releases/tag/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/google-research/kauldron/releases/tag/v0.1.0...v1.0.0
