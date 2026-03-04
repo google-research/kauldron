@@ -4,6 +4,66 @@ Kauldron natively uses
 [Flax Linen](https://flax.readthedocs.io/en/latest/linen_intro/index.html)
 modules. If your model is written with the newer
 [Flax NNX](https://flax.readthedocs.io/en/latest/nnx_basics.html) API, you can
+use it in Kauldron by wrapping it with `kd.contrib.knnx.KdNnxModule`.
+
+## Usage
+
+Because we don't want to create the Nnx module during config resolution, we use
+the following syntax to create a knnx module:
+
+```python
+from kauldron import kd
+import dataclasses
+
+@dataclasses.dataclass(kw_only=True)
+class MyKdNnxModule(kd.contrib.knnx.KdNnxModule):
+  input_dim: int = 3
+  hdim: int = 10
+
+  image: kontext.Key = "batch.image"
+
+  def setup(self, rngs: nnx.Rngs=nnx.Rngs(0)):
+    self.lin = nnx.Linear(self.input_dim, self.hdim, rngs=rngs)
+
+  def __call__(self, image):
+    return self.lin(image)
+```
+
+Then the module can be used either as a Nnx module:
+
+```python
+mod = MyModule()
+mod.setup()
+out = mod(jnp.ones(1, 32, 32, 3))
+```
+
+Or as a flax linen module:
+
+```python
+mod = MyModule()
+vars = mod.init({'params':jax.random.key(0)}, jnp.ones(1, 32, 32, 3))
+out = mod.apply(vars, rngs={})
+```
+
+Note: To capture intermediates, use the following syntax in your NNX module:
+
+```python
+class MyModel(nnx.Module):
+    def __init__(self, rngs):
+        self.linear = nnx.Linear(2, 5, rngs=rngs)
+
+    def __call__(self, x):
+        x = self.linear(x)
+        self.sow(nnx.Intermediate, 'h1', x)  # Sowing here
+        return x
+```
+
+## Legacy wrapper documentation
+
+Kauldron natively uses
+[Flax Linen](https://flax.readthedocs.io/en/latest/linen_intro/index.html)
+modules. If your model is written with the newer
+[Flax NNX](https://flax.readthedocs.io/en/latest/nnx_basics.html) API, you can
 use it in Kauldron by wrapping it with `kd.contrib.nn.linen_from_nnx`.
 
 ## Usage
