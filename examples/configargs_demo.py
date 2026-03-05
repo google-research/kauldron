@@ -158,6 +158,6 @@ def sweep_main():
     ):
       yield {
           "optimizer.learning_rate": lr,
-          "__args__.dataset_name": dataset_names,
+          "__args__.dataset_names": dataset_names,
           "__args__.dataset_weights": dataset_weights,
       }
