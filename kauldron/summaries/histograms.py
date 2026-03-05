@@ -22,7 +22,8 @@ from etils import etree
 import flax
 from kauldron import kontext
 from kauldron import metrics
-from kauldron.typing import Array, typechecked  # pylint: disable=g-multiple-import,g-importing-member
+import kauldron.ktyping as kt
+from kauldron.ktyping import Array  # pylint: disable=g-multiple-import,g-importing-member
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -46,7 +47,7 @@ class HistogramSummary(metrics.Metric):
 
     tensor: Array["n"] = metrics.concat_field()
 
-    @typechecked
+    @kt.typechecked
     def compute(self) -> Histogram:
       """Returns the concatenated and flattened values as a `Histogram`."""
       tensor = super().compute().tensor.reshape((-1,))
@@ -60,6 +61,6 @@ class HistogramSummary(metrics.Metric):
           num_buckets=self.parent.num_buckets,
       )
 
-  @typechecked
+  @kt.typechecked
   def get_state(self, tensor: Array["*any"]) -> HistogramSummary.State:
     return self.State(tensor=tensor.reshape((-1,)))
