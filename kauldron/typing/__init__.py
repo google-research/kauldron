@@ -19,7 +19,7 @@ from __future__ import annotations
 # pylint: disable=g-multiple-import,g-importing-member
 from collections.abc import Hashable, Sequence
 from typing import Any, Callable, Union
-from clu.data.dataset_iterator import ArraySpec, ElementSpec, PyTree
+from clu.data.dataset_iterator import PyTree
 import jax
 from kauldron.typing.array_types import (
     Array,

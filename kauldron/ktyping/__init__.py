@@ -41,6 +41,7 @@ from kauldron.ktyping.array_types import (
     Num,
     PRNGKey,
     PRNGKeyArray,
+    PRNGKeyLike,
     SInt,
     UInt,
     UInt16,
