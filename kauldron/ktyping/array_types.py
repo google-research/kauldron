@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Common array type definitions."""
-
+from typing import Sequence
 from kauldron.ktyping import array_type_meta as atm
 from kauldron.ktyping import dtypes
 from kauldron.ktyping import internal_typing
@@ -65,16 +65,6 @@ Complex = atm.ArrayTypeMeta(
 Complex64 = atm.ArrayTypeMeta("Complex64", dtype=dtypes.complex64)
 Complex128 = atm.ArrayTypeMeta("Complex128", dtype=dtypes.complex128)
 
-
-# MARK: PRNG keys
-# New-style PRNG keys
-# See: https://docs.jax.dev/en/latest/jep/9263-typed-keys.html
-Fry = atm.ArrayTypeMeta("Fry", dtype=dtypes.prng_key)
-
-# Single key (supports both new and old style)
-PRNGKey = UInt32["2"] | Fry[""]
-# Array of keys (e.g. after split)
-PRNGKeyArray = UInt32["... 2"] | Fry["..."]
 
 # MARK: tf ArrayTypes
 
@@ -206,6 +196,22 @@ ScalarComplex = atm.ArrayTypeMeta(
     dtype=dtypes.complex_like,
     shape_spec="",
 )
+
+# MARK: PRNG keys
+# New-style PRNG keys
+# See: https://docs.jax.dev/en/latest/jep/9263-typed-keys.html
+Fry = atm.ArrayTypeMeta("Fry", dtype=dtypes.prng_key)
+
+# Single key (supports both new and old style)
+PRNGKey = UInt32["2"] | Fry[""]
+# Array of keys (e.g. after split)
+PRNGKeyArray = UInt32["... 2"] | Fry["..."]
+
+# Permissive type for PRNG keys, integers, or sequences of integers that can be
+# used as sources of entropy for functions like `np.random.default_rng`.
+# Note that functions in `jax.random` do not support sequences of integers for
+# this while `numpy.random` typically does.
+PRNGKeyLike = PRNGKey | ScalarInt | Sequence[int]
 
 
 # MARK: Shape types

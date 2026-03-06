@@ -22,6 +22,7 @@ import typing
 from typing import Any, Mapping, Optional, Protocol
 import warnings
 
+from etils import enp
 import flax
 import flax.linen as nn
 import jax
@@ -36,7 +37,6 @@ from kauldron.ktyping import PyTree  # pylint: disable=g-multiple-import,g-impor
 from kauldron.train import auxiliaries
 from kauldron.train import context as context_lib
 from kauldron.train import rngs_lib
-from kauldron.typing import ElementSpec  # pylint: disable=g-importing-member
 from kauldron.utils import config_util
 from kauldron.utils import train_property  # pylint: disable=unused-import
 from kauldron.utils import utils
@@ -106,7 +106,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
   # MARK: .init()
   def init(
       self,
-      elem_spec: ElementSpec,
+      elem_spec: PyTree[enp.ArraySpec],
       *,
       model_method: Optional[str] = None,
       skip_transforms: bool = False,
@@ -152,7 +152,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
   )
   def _init_model(
       self,
-      elem_spec: ElementSpec,
+      elem_spec: PyTree[enp.ArraySpec],
       *,
       model_method: Optional[str] = None,
   ) -> TrainState:
