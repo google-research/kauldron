@@ -335,6 +335,16 @@ def _is_scalar_like_type(obj: Any) -> bool:
   is_py_scalar = isinstance(obj, (int, float, complex, bool))
   return is_py_scalar or lazy.is_array(obj)
 
+
+def _is_array_spec_like_type(obj: Any) -> bool:
+  """Returns True if object is has shape and dtype attributes."""
+  return (
+      hasattr(obj, "shape")
+      and hasattr(obj, "dtype")
+      and not lazy.is_array(obj)  # Exclude actual array types
+  )
+
+
 # pylint: disable=invalid-name   # Why are they treated as constants by pylint?
 NpArray = _LazyArrayMeta("NpArray", lazy_is_array_check=lazy.is_np)
 JaxArray = _LazyArrayMeta("JaxArray", lazy_is_array_check=lazy.is_jax)
@@ -342,5 +352,8 @@ TfArray = _LazyArrayMeta("TfArray", lazy_is_array_check=lazy.is_tf)
 TorchArray = _LazyArrayMeta("TorchArray", lazy_is_array_check=lazy.is_torch)
 ScalarLike = _LazyArrayMeta(
     "ScalarLike", lazy_is_array_check=_is_scalar_like_type
+)
+ArraySpecLike = _LazyArrayMeta(
+    "ArraySpecLike", lazy_is_array_check=_is_array_spec_like_type
 )
 # pylint: enable=invalid-name
