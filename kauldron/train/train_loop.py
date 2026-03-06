@@ -29,6 +29,7 @@ from kauldron.evals import eval_impl
 from kauldron.inspect import profile_utils
 from kauldron.train import auxiliaries
 from kauldron.train import checkpoint_state
+from kauldron.train import metric_writer
 from kauldron.train import setup_utils
 from kauldron.train import train_step
 from kauldron.train import trainer_lib
@@ -162,13 +163,14 @@ def train_impl(
       if log_any:
         # TODO(epot): Could report metrics writing separately
         # with chrono.pause(chrono_utils.Pause.METRICS_WRITING):
-        writer.write_step_metrics(
+        values = metric_writer.prepare_step_metrics(
             step=i,
             aux=aux,
             schedules=trainer.schedules,
             timer=chrono,
             log_summaries=log_summaries,
         )
+        writer.write_step_metrics(step=i, values=values)
 
   # Ensure all hosts exit together. See section in dm/jax-faqs.
   _sync()
