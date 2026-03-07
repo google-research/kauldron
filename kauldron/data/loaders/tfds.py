@@ -21,7 +21,7 @@ from absl import logging
 from grain._src.core import constants
 import jax
 from kauldron.data.loaders import base
-from kauldron.typing import PRNGKey, PRNGKeyLike  # pylint: disable=g-multiple-import
+from kauldron.ktyping import PRNGKey, PRNGKeyLike  # pylint: disable=g-multiple-import
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
