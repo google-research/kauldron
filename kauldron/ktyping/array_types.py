@@ -208,5 +208,9 @@ ScalarComplex = atm.ArrayTypeMeta(
 )
 
 
-# MARK: Shape types
+# MARK: Other
 Shape = atm.ShapeMeta("Shape")
+
+# Any object that has `shape` and `dtype` attributes (but is not an array).
+# E.g. enp.ArraySpec, tf.TensorSpec, jax.ShapeDtypeStruct, etc.
+ArraySpec = atm.ArrayTypeMeta("ArraySpec", array_types=(atm.ArraySpecLike,))
