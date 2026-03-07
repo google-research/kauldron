@@ -18,7 +18,7 @@ import abc
 from typing import Optional
 
 from etils import edc
-from kauldron.typing import PRNGKeyLike
+from kauldron.ktyping import PRNGKeyLike
 import tensorflow as tf
 
 

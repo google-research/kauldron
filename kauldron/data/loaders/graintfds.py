@@ -22,7 +22,7 @@ import grain.tensorflow as grain
 import jax
 from kauldron import random
 from kauldron.data.loaders import base
-from kauldron.typing import PRNGKeyLike  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.ktyping import PRNGKeyLike  # pylint: disable=g-multiple-import,g-importing-member
 import tensorflow as tf
 import tensorflow_datasets as tfds
 

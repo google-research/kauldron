@@ -37,8 +37,7 @@ from kauldron.data import loaders
 from kauldron.data import pipelines
 from kauldron.data import utils
 from kauldron.data.loaders import base as base_data_loader
-from kauldron.ktyping import PyTree  # pylint: disable=g-importing-member
-from kauldron.typing import PRNGKeyLike  # pylint: disable=g-importing-member
+from kauldron.ktyping import PRNGKeyLike, PyTree  # pylint: disable=g-importing-member
 from kauldron.utils import config_util
 import tensorflow as tf
 import tensorflow_datasets as tfds
