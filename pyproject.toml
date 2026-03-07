@@ -38,6 +38,7 @@ dependencies = [
     "scikit-image",
     "scikit-learn",
     "tabulate",  # used by pandas.DataFrame.to_markdown (for logging context)
+    "tensorboard",  # required by clu.metric_writers
     "tensorflow",
     "tensorflow_datasets>=4.9.7",
     "tqdm",
