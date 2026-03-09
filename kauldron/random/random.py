@@ -92,7 +92,7 @@ class PRNGKey(_Base):
             jax.core.ShapedArray,
         ),
     ):
-      self.rng = seed_or_rng
+      self.rng = seed_or_rng  # pytype: disable=annotation-type-mismatch
     elif hasattr(jax.random, 'PRNGKeyArray') and isinstance(
         seed_or_rng, jax.random.PRNGKeyArray
     ):
