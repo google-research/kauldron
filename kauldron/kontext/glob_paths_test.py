@@ -24,6 +24,7 @@ def _assert_path(
     ctx,
     expected_ctx=None,
     expected_error=None,
+    expected_paths=None,
 ) -> None:
   path = kontext.GlobPath.from_str(path_str)
   assert str(path) == path_str
@@ -32,8 +33,10 @@ def _assert_path(
     with pytest.raises(type(expected_error), match=expected_error.args[0]):
       path.set_in(ctx, 'new')
   else:
-    path.set_in(ctx, 'new')
+    modified = path.set_in(ctx, 'new')
     assert ctx == expected_ctx
+    if expected_paths is not None:
+      assert sorted(modified) == sorted(expected_paths)
 
 
 def test_glob_paths():
@@ -54,6 +57,7 @@ def test_glob_paths():
           },
           'b2': 5,
       },
+      expected_paths=['a.b[0]', 'a.b2[0]'],
   )
   _assert_path(
       path_str='**.b',
@@ -73,6 +77,7 @@ def test_glob_paths():
           'b2': 5,
           'b': 'new',
       },
+      expected_paths=['b', 'a.b'],
   )
   _assert_path(
       path_str='a.**[0]',
@@ -102,6 +107,7 @@ def test_glob_paths():
           'a1': 5,
           'a2': [1, 2, 3],
       },
+      expected_paths=['a.b[0]', 'a.b2[0]', 'a.b3.c2[0]'],
   )
   _assert_path(
       path_str='a.**.b2[0]',
@@ -131,6 +137,7 @@ def test_glob_paths():
           'a1': {'b2': [1, 2, 3]},
           'a2': [1, 2, 3],
       },
+      expected_paths=['a.b2[0]', 'a.b3.b2[0]'],
   )
 
 
@@ -152,6 +159,7 @@ def test_config_dict():
               konfig.ConfigDict({'b': 'new'}),
           ],
       }),
+      expected_paths=['a[0].b', 'a[1].b', 'a[2].b'],
   )
 
 
@@ -199,6 +207,7 @@ def test_glob_key_error():
           'a2': {'b': 'new', 'b2': 5},
           'a3': {'b': 'new'},
       },
+      expected_paths=['a.b', 'a2.b', 'a3.b'],
   )
 
 
@@ -216,3 +225,58 @@ def test_glob_first_non_glob_parent(glob_str, parent_str):
   assert kontext.GlobPath.from_str(
       glob_str
   ).first_non_glob_parent == kontext.Path.from_str(parent_str)
+
+
+def test_set_by_path_returns_modified_paths():
+  ctx = {'a': {'b': [1, 2], 'c': [3, 4]}, 'z': 5}
+  modified = kontext.set_by_path(ctx, 'a.*[0]', 'new')
+  assert sorted(modified) == ['a.b[0]', 'a.c[0]']
+
+  ctx = {'x': {'y': 'old'}, 'z': 'old2'}
+  modified = kontext.set_by_path(ctx, 'x.y', 'new')
+  assert modified == ['x.y']
+
+  ctx = {'a': {'b': 'old', 'c': {'b': 'old'}}, 'b': 'old'}
+  modified = kontext.set_by_path(ctx, '**.b', 'new')
+  assert sorted(modified) == ['a.b', 'a.c.b', 'b']
+
+
+def test_get_by_glob_path():
+  ctx = {
+      'a': {
+          'b': [1, 2, 3],
+          'c': [4, 5, 6],
+      },
+      'd': 7,
+  }
+  assert kontext.get_by_glob_path(ctx, 'a.b') == {'a.b': [1, 2, 3]}
+
+  assert kontext.get_by_glob_path(ctx, 'a.*') == {
+      'a.b': [1, 2, 3],
+      'a.c': [4, 5, 6],
+  }
+
+  assert kontext.get_by_glob_path(ctx, 'a.*[0]') == {
+      'a.b[0]': 1,
+      'a.c[0]': 4,
+  }
+
+
+def test_get_by_glob_path_double_star():
+  ctx = {
+      'a': {
+          'b': 'v1',
+          'c': {'b': 'v2'},
+      },
+      'b': 'v3',
+  }
+  assert kontext.get_by_glob_path(ctx, '**.b') == {
+      'b': 'v3',
+      'a.b': 'v1',
+      'a.c.b': 'v2',
+  }
+
+
+def test_get_by_glob_path_double_star_end_error():
+  with pytest.raises(ValueError, match='cannot be at the end'):
+    kontext.get_by_glob_path({'a': 1}, 'a.**')
