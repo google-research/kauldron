@@ -20,7 +20,7 @@ from typing import Any, Callable, Optional
 from grain._src.core import constants
 import jax
 from kauldron.data.loaders import base
-from kauldron.typing import PRNGKey, PRNGKeyLike  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.ktyping import PRNGKey, PRNGKeyLike  # pylint: disable=g-multiple-import,g-importing-member
 import tensorflow as tf
 
 
