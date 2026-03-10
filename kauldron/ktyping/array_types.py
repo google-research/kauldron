@@ -198,10 +198,6 @@ ScalarComplex = atm.ArrayTypeMeta(
 )
 
 
-# MARK: Shape types
-Shape = atm.ShapeMeta("Shape")
-
-
 # MARK: PRNG keys
 # New-style PRNG keys
 # See: https://docs.jax.dev/en/latest/jep/9263-typed-keys.html
@@ -215,3 +211,10 @@ PRNGKeyArray = UInt32["... 2"] | Fry["..."]
 # Note that functions in `jax.random` do not support sequences of integers for
 # this while `numpy.random` typically does.
 PRNGKeyLike = PRNGKey | ScalarInt | Sequence[int]
+
+
+# MARK: Other
+Shape = atm.ShapeMeta("Shape")
+# Any object that has `shape` and `dtype` attributes (but is not an array).
+# E.g. enp.ArraySpec, tf.TensorSpec, jax.ShapeDtypeStruct, etc.
+ArraySpec = atm.ArrayTypeMeta("ArraySpec", array_types=(atm.ArraySpecLike,))

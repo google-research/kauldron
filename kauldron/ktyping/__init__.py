@@ -100,8 +100,9 @@ from kauldron.ktyping.array_types import (
     XUInt32,
     XUInt64,
     XUInt8,
-    # shape types
+    # other types
     Shape,
+    ArraySpec,
 )
 from kauldron.ktyping.config import (
     CONFIG,
@@ -131,3 +132,6 @@ DType = jax.typing.DTypeLike
 
 # Annotation for axes arguments (e.g. for `sum(array, axis=(1, 2))`)
 Axes = int | Sequence[int]
+
+# Annotation for element spec, e.g. as returned by datasets
+ElementSpec = PyTree[ArraySpec]

@@ -717,8 +717,8 @@ def fn(x: Float["b d"], y: Int["b"]) -> Float["b d"]:
   `kt.check_type(np.empty((1, 2, 3, 4)), Array["b h w c"])`, or (preffered) a
   set of single dim assignments via `kt.dim`.
 * `kauldron.typing` includes a few symbols that are not part of `ktyping`, such
-  as `Initializer`, `Schedule`, `Axes`, `AxisName`, `ArraySpec`, and
-  `ElementSpec`. Just keep importing them from `kauldron.typing` for now.
+  as `Initializer`, `Schedule`, `Axes`, `AxisName`. Just keep importing them
+  from `kauldron.typing` for now.
 
 **Example:**
 

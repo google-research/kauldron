@@ -279,3 +279,34 @@ def test_prng_key_array_dtype(key_type):
 
     key = jax.random.key(0)
     assert not art.Int.dtype_matches(key)
+
+
+def test_array_spec():
+  from etils import enp  # pylint: disable=g-import-not-at-top
+
+  spec = enp.ArraySpec(shape=(3, 4), dtype=np.float32)
+  assert isinstance(spec, art.ArraySpec)
+
+  spec_int = enp.ArraySpec(shape=(2,), dtype=np.int32)
+  assert isinstance(spec_int, art.ArraySpec)
+
+  scalar_spec = enp.ArraySpec(shape=(), dtype=np.float32)
+  assert isinstance(scalar_spec, art.ArraySpec)
+
+  sds = jax.ShapeDtypeStruct(shape=(3, 4), dtype=np.float32)
+  assert isinstance(sds, art.ArraySpec)
+
+  assert not isinstance(np.zeros((3, 4), dtype=np.float32), art.ArraySpec)
+  assert not isinstance(jnp.zeros((3, 4), dtype=np.float32), art.ArraySpec)
+  assert not isinstance(np.empty((5, 3)), art.ArraySpec)
+
+  assert not isinstance(1.0, art.ArraySpec)
+  assert not isinstance("hello", art.ArraySpec)
+
+  spec_with_shape = art.ArraySpec["3 4"]
+  assert isinstance(spec, spec_with_shape)
+  assert not isinstance(
+      enp.ArraySpec(shape=(2, 3), dtype=np.float32), spec_with_shape
+  )
+
+  assert isinstance(sds, spec_with_shape)
