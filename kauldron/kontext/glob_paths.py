@@ -32,8 +32,8 @@ def set_by_path(
     obj: paths.Context,
     path: str | tuple[str, ...] | paths.AbstractPath,
     value: Any,
-):
-  """Mutate the `obj` to set the value."""
+) -> list[str]:
+  """Mutate the `obj` to set the value. Returns the list of modified paths."""
   match path:
     case str():
       path = GlobPath.from_str(path)  # Otherwise, try parsing key as path.
@@ -47,17 +47,46 @@ def set_by_path(
   return path.set_in(obj, value)
 
 
+def get_by_glob_path(
+    obj: paths.Context,
+    path: str | tuple[str, ...] | paths.AbstractPath,
+) -> dict[str, Any]:
+  """Get values matching a (potentially glob) path."""
+  match path:
+    case str():
+      glob_path = GlobPath.from_str(path)
+    case tuple() as parts:
+      glob_path = GlobPath(*parts)
+    case GlobPath():
+      glob_path = path
+    case paths.AbstractPath():
+      glob_path = GlobPath(*path.parts)
+    case _:
+      raise TypeError(f"Unknown key/path {path} of type{type(path)}")
+
+  return glob_path.get_from(obj)
+
+
 class GlobPath(paths.AbstractPath):
   """Represents a string path."""
 
   _SUPPORT_GLOB = True
 
-  def set_in(self, context: paths.Context, value: Any) -> None:
-    """Set the object in the path."""
+  def set_in(self, context: paths.Context, value: Any) -> list[str]:
+    """Set the object in the path. Returns the list of modified paths."""
     try:
-      _set_in(context, self.parts, value)
+      return _set_in(context, self.parts, value)
     except Exception as e:  # pylint: disable=broad-exception-caught
       epy.reraise(e, prefix=f"Error trying to mutate path {self}: ")
+      raise  # Unreachable, but helps type checkers.
+
+  def get_from(self, context: paths.Context) -> dict[str, Any]:
+    """Get values matching the glob path."""
+    try:
+      return _get_in(context, self.parts)
+    except Exception as e:  # pylint: disable=broad-exception-caught
+      epy.reraise(e, prefix=f"Error trying to get path {self}: ")
+      raise  # Unreachable, but helps type checkers.
 
   @property
   def first_non_glob_parent(self) -> paths.Path:
@@ -222,8 +251,9 @@ def _set_in(
     value: Any,
     *,
     missing_ok: bool = False,
-) -> bool:
-  """Recursively set the value from the path."""
+    _prefix: tuple[paths.Part, ...] = (),
+) -> list[str]:
+  """Recursively set the value from the path. Returns modified paths."""
   # Field reference are resolved in the config.
   if not parts:
     raise ValueError("Path is empty")
@@ -233,7 +263,7 @@ def _set_in(
 
   # During glob, the object might contains branch which do not match
   if missing_ok and part not in wrapper:
-    return  # Leaf not found, do not assign this branch  # pytype: disable=bad-return-type
+    return []
 
   if not rest:  # Nothing left to recurse on, assign the leaf.
     if isinstance(part, path_parser.Wildcard):
@@ -241,15 +271,64 @@ def _set_in(
       # ambiguity too.
       raise ValueError("Wildcards cannot be located at the end of a path.")
     wrapper[part] = value
+    return [str(paths.Path(*(_prefix + (part,))))]
   elif part == path_parser.Wildcard.DOUBLE_STAR:
+    modified = []
     # Try to assign the rest in the current context
-    _set_in(context, rest, value, missing_ok=True)
+    modified.extend(
+        _set_in(context, rest, value, missing_ok=True, _prefix=_prefix)
+    )
     if isinstance(wrapper, Leaf):  # Leaf, do not recurse
-      return
+      return modified
     # Recurse over all elements
-    for _, new_context in wrapper.get_items(path_parser.Wildcard.STAR):
-      _set_in(new_context, parts, value)  # Propagate the `**` to the leaves
+    for key, new_context in wrapper.get_items(path_parser.Wildcard.STAR):
+      modified.extend(
+          _set_in(new_context, parts, value, _prefix=_prefix + (key,))
+      )
+    return modified
   else:  # Otherwise, recurse.
-    for _, new_context in wrapper.get_items(part):
-      _set_in(new_context, rest, value)  # pytype: disable=bad-return-type
-  # TODO(epot): Reraise with the full path branch in which the error occured
+    modified = []
+    for key, new_context in wrapper.get_items(part):
+      modified.extend(
+          _set_in(new_context, rest, value, _prefix=_prefix + (key,))
+      )
+    return modified
+
+
+def _get_in(
+    context: paths.Context,
+    parts: Sequence[paths.Part],
+    *,
+    missing_ok: bool = False,
+    _prefix: tuple[paths.Part, ...] = (),
+) -> dict[str, Any]:
+  """Recursively get values matching the glob path."""
+  if not parts:
+    raise ValueError("Path is empty")
+
+  wrapper = Node.make(context)
+  part, *rest = parts
+
+  if missing_ok and part not in wrapper:
+    return {}
+
+  if not rest:
+    if part == path_parser.Wildcard.DOUBLE_STAR:
+      raise ValueError("'**' cannot be at the end of a get path.")
+    elif part == path_parser.Wildcard.STAR:
+      return {str(paths.Path(*(_prefix + (k,)))): v for k, v in wrapper.items()}
+    else:
+      return {str(paths.Path(*(_prefix + (part,)))): wrapper[part]}
+  elif part == path_parser.Wildcard.DOUBLE_STAR:
+    result = {}
+    result.update(_get_in(context, rest, missing_ok=True, _prefix=_prefix))
+    if isinstance(wrapper, Leaf):
+      return result
+    for key, child in wrapper.get_items(path_parser.Wildcard.STAR):
+      result.update(_get_in(child, parts, _prefix=_prefix + (key,)))
+    return result
+  else:
+    result = {}
+    for key, child in wrapper.get_items(part):
+      result.update(_get_in(child, rest, _prefix=_prefix + (key,)))
+    return result
