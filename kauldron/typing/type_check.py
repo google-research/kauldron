@@ -36,6 +36,11 @@ import numpy as np
 with epy.lazy_imports():
   import typeguard  # pylint: disable=g-import-not-at-top
 
+  try:
+    from typeguard import _functions as _tg_functions  # pylint: disable=g-import-not-at-top
+  except ImportError:
+    _tg_functions = None
+
 # TODO(epot): Filter the typeguard from the stacktrace.
 
 
@@ -197,10 +202,12 @@ def _check_argument_types(func, args, kwargs, bound_args, annotations):
       }
       memo = typeguard.TypeCheckMemo(func.__globals__, local_ns)
 
-      if hasattr(typeguard._functions, "check_argument_types_internal"):  # pylint: disable=protected-access
+      if _tg_functions is not None and hasattr(
+          _tg_functions, "check_argument_types_internal"
+      ):
         # In typeguard >= 4.5.0 check_argument_types has been renamed/refactored
         # so we need to use check_argument_types_internal instead
-        typeguard._functions.check_argument_types_internal(  # pylint: disable=protected-access
+        _tg_functions.check_argument_types_internal(  # pylint: disable=protected-access
             func.__name__, annotated_arguments, memo=memo
         )
       else:  # typeguard = 4.4.*
@@ -231,10 +238,12 @@ def _check_return_type(func, retval, bound_args, annotations, memo):
       if hasattr(typeguard, "CallMemo"):  # old version of typeguard
         typeguard.check_return_type(retval, memo)
       else:
-        if hasattr(typeguard._functions, "check_return_type_internal"):  # pylint: disable=protected-access
+        if _tg_functions is not None and hasattr(
+            _tg_functions, "check_return_type_internal"
+        ):
           # In typeguard >= 4.5.0 check_return_type has been renamed/refactored
           # so we need to use check_return_type_internal instead
-          typeguard._functions.check_return_type_internal(  # pylint: disable=protected-access
+          _tg_functions.check_return_type_internal(  # pylint: disable=protected-access
               func.__name__, retval, annotations["return"], memo
           )
         else:  # typeguard = 4.4.*
