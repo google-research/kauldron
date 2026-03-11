@@ -56,7 +56,7 @@ class AbstractPath(collections.abc.Sequence):
 
   __slots__ = ("parts",)
 
-  _SUPPORT_GLOB: ClassVar[bool]
+  _SUPPORT_GLOB: ClassVar[bool]  # pylint: disable=declare-non-slot
 
   def __init__(self, *parts: Part):
     if not _is_valid_part(parts, wildcard_ok=self._SUPPORT_GLOB):
@@ -117,7 +117,7 @@ class AbstractPath(collections.abc.Sequence):
     """
     return cls(*(_jax_key_entry_to_kd_path_element(p) for p in jax_path))
 
-  def set_in(self, context: Context, value: Any) -> None:
+  def set_in(self, context: Context, value: Any) -> list[str]:
     raise NotImplementedError("Abstract method")
 
   def relative_to(self, other: AbstractPath) -> Self:
@@ -169,7 +169,7 @@ class Path(AbstractPath):
           return default
     return result
 
-  def set_in(self, context: Context, value: Any) -> None:
+  def set_in(self, context: Context, value: Any) -> list[str]:
     """Set the object in the path."""
     root = context
 
@@ -183,6 +183,7 @@ class Path(AbstractPath):
         )
 
     root[target] = value
+    return [str(self)]
 
 
 def _jax_key_entry_to_kd_path_element(
