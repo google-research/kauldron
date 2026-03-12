@@ -25,6 +25,7 @@ from typing import Any, Callable, Generator
 
 from etils import enp  # pylint: disable=g-importing-member
 from kauldron.ktyping import frame_utils
+from kauldron.ktyping import internal_typing
 import numpy as np
 
 TYPE_HINT_CACHING_KEY = "_ktyping_type_hint_cache"
@@ -81,8 +82,13 @@ def get_type_name(type_: Any, full_path: bool = False) -> str:
 def format_value(val: Any, truncate: int | None = 40):
   """Returns a string representation of any value with array spec formatting."""
   if enp.ArraySpec.is_array(val):
-    # Return type shorthand + ArraySpec for arrays (e.g. np.f32[32 32 3]).
     spec = enp.ArraySpec.from_array(val)
+    if spec is None:
+      return repr(val)
+    spec.shape = tuple(
+        str(s) if internal_typing.is_symbolic_dim(s) else s
+        for s in spec.shape
+    )
     array_type = _get_array_type_shorthand(val)
     return f"{array_type}.{spec}"
 

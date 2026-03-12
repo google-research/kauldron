@@ -34,6 +34,16 @@ CandidateDims = internal_typing.CandidateDims
 _ArrayType = type[Any]
 
 
+def _normalize_dim(d):
+  if d is None:
+    return internal_typing.UNKNOWN_DIM
+  if isinstance(d, int):
+    return d
+  if internal_typing.is_symbolic_dim(d):
+    return d
+  return int(d)
+
+
 # MARK: ArrayTypeMeta
 class ArrayTypeMeta(type):
   """Metaclass for creating array types with shape and dtype constraints.
@@ -228,9 +238,9 @@ class ArrayTypeMeta(type):
     spec = shape_spec_parser.parse(shape_spec)
 
     shape = tuple(instance.shape)
-    if any(d is None for d in shape):
-      return candidates
-    return spec.match(tuple(int(d) for d in shape), candidates=candidates)
+    return spec.match(
+        tuple(_normalize_dim(d) for d in shape), candidates=candidates
+    )
 
   def __repr__(cls):
     return cls.__name__
@@ -284,12 +294,14 @@ class ShapeMeta(type):
     super().__init__(cls)
 
   def __instancecheck__(cls, instance: Any) -> bool:
-    # TODO(klausg): support symbolic dimensions from jax.export ?
     # TODO(klausg): support None?
     # TODO(klausg): check for positivity?
     if not isinstance(instance, Sequence):
       return False
-    if not all(isinstance(s, int) for s in instance):
+    if not all(
+        isinstance(s, int) or internal_typing.is_symbolic_dim(s)
+        for s in instance
+    ):
       return False
     return True
 

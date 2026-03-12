@@ -16,6 +16,7 @@
 
 import enum
 import typing
+from typing import Any
 import immutabledict
 
 
@@ -35,15 +36,20 @@ MISSING = Missing.MISSING
 UNKNOWN_DIM = UnknownDim.UNKNOWN_DIM
 
 
-Shape: typing.TypeAlias = tuple[int, ...]
+# A single dimension value: int or a symbolic dimension expression (e.g.
+# jax._src.export.shape_poly._DimExpr).
+DimSize: typing.TypeAlias = int | Any
+
+Shape: typing.TypeAlias = tuple[DimSize, ...]
 
 
 # DimValue corresponds to the known value of a dimension.
-# It is either a tuple of integers, or a special value for unknown dimensions.
+# It is either a tuple of integers (or symbolic dimensions), or a special value
+# for unknown dimensions.
 # The latter can happen for broadcastable multi-dims where the observed value
 # for a dimension was 1. In that case the value of the dimension could be 1 or
 # any other value.
-DimValue: typing.TypeAlias = tuple[int | UnknownDim, ...]
+DimValue: typing.TypeAlias = tuple[DimSize | UnknownDim, ...]
 
 # Store the mappings of dim names to known values.
 DimValues: typing.TypeAlias = immutabledict.immutabledict[str, DimValue]
@@ -60,3 +66,7 @@ STRUCTURE_KEY_PREFIX = "$"
 
 def is_structure_key(key: str) -> bool:
   return key.startswith(STRUCTURE_KEY_PREFIX)
+
+
+def is_symbolic_dim(v: Any) -> bool:
+  return hasattr(v, "dimension_as_value")

@@ -215,6 +215,13 @@ def test_shape():
   assert not isinstance([0.2, None, 3], art.Shape)
 
 
+def test_shape_symbolic():
+  (sym_b,) = jax.export.symbolic_shape("B")
+  assert isinstance((sym_b, 128), art.Shape)
+  assert isinstance([sym_b, 64, 32], art.Shape)
+  assert not isinstance([sym_b, None, 3], art.Shape)
+
+
 def test_shape_call_raises():
   with pytest.raises(RuntimeError, match="cannot be instantiated"):
     art.Shape("b n")

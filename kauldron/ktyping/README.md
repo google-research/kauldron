@@ -657,6 +657,12 @@ submodules):
   separate them from dimension names. Composing pytree structures in the
   structure spec (e.g. `PyTree[T, "$S $T"]`) is not yet supported.
 
+* **Symbolic dimensions**: `ktyping` supports JAX's symbolic dimensions
+  (as used by `jax.export` for shape polymorphism). This means `@typechecked`
+  functions work seamlessly with `jax.export.symbolic_shape` and variable
+  batch sizes, without raising `TypeCheckError`s. `jaxtyping` does not support
+  symbolic dimensions.
+
 ## Migration
 
 ### Migration from `jaxtyping`

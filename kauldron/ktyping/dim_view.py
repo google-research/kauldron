@@ -26,6 +26,7 @@ from kauldron.ktyping import scope as kscope
 DimValue = internal_typing.DimValue
 DimValues = internal_typing.DimValues
 MISSING = internal_typing.MISSING
+UNKNOWN_DIM = internal_typing.UNKNOWN_DIM
 
 
 class DimView:
@@ -119,7 +120,9 @@ class DimView:
           f"Got: {value}"
       )
     if dim_type == _DimType.SINGLE:
-      if not isinstance(value, int):
+      if not isinstance(value, int) and not internal_typing.is_symbolic_dim(
+          value
+      ):
         raise ValueError(
             f"Single dims ({name!r}) must be assigned an int. Got: {value}"
         )
@@ -213,7 +216,16 @@ class DimView:
 
 
 def _format_dim_value(value: DimValue) -> str:
-  str_values = [str(v) if isinstance(v, int) else "#" for v in value]
+  """Formats a DimValue tuple into a human-readable string."""
+
+  def _fmt(v):
+    if isinstance(v, int):
+      return str(v)
+    if v == UNKNOWN_DIM:
+      return "#"
+    return f"&{v}"
+
+  str_values = [_fmt(v) for v in value]
   if len(value) == 1:
     return str_values[0]
   else:

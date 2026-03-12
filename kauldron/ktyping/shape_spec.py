@@ -19,18 +19,56 @@ from __future__ import annotations
 import abc
 import dataclasses
 import enum
+import functools
 import itertools
 import math
 import operator
 import typing
 from typing import Any, Callable, Iterator
 
+import jax.core
 from kauldron.ktyping import internal_typing
 
 Shape = internal_typing.Shape
 DimValue = internal_typing.DimValue
 DimValues = internal_typing.DimValues
 UNKNOWN_DIM = internal_typing.UNKNOWN_DIM
+
+
+def _maybe_equal(a: Any, b: Any) -> bool:
+  """Check if dim values a and b could be equal.
+
+  Returns False only when we can *prove* they are unequal.
+  For symbolic dims, JAX's __eq__ unsoundly returns False when inconclusive,
+  so we use __ge__ (which raises on inconclusive) to try to prove a != b.
+
+  Args:
+    a: First dimension value (concrete int or symbolic dim expression).
+    b: Second dimension value (concrete int or symbolic dim expression).
+
+  Returns:
+    True if a and b might be equal, False only if provably unequal.
+  """
+  if a is UNKNOWN_DIM or b is UNKNOWN_DIM:
+    return True
+  if a == b:
+    return True
+  if not internal_typing.is_symbolic_dim(
+      a
+  ) and not internal_typing.is_symbolic_dim(b):
+    return False  # both concrete and != → definitely unequal
+  # Try to prove definite inequality via >=.
+  try:
+    if a >= b + 1:  # a > b provably
+      return False
+  except Exception:  # pylint: disable=broad-except
+    pass
+  try:
+    if b >= a + 1:  # b > a provably
+      return False
+  except Exception:  # pylint: disable=broad-except
+    pass
+  return True  # can't prove inequality → might be equal
 
 
 class ShapeError(ValueError):
@@ -226,8 +264,8 @@ class IntDim(DimSpec):
     if not shape:
       return
 
-    elif shape[0] == self.value:
-      # first dim matches
+    elif _maybe_equal(shape[0], self.value):
+      # first dim matches (or might match for symbolic dims)
       yield shape[1:], dim_values
     elif self.broadcastable and shape[0] == 1:
       # first dim is broadcastable
@@ -254,7 +292,7 @@ def _consistent_with(
     return False
 
   return all(
-      s == c or c == UNKNOWN_DIM or (s == 1 and broadcastable)
+      _maybe_equal(s, c) or (s == 1 and broadcastable)
       for s, c in zip(shape, dim_values)
   )
 
@@ -511,7 +549,7 @@ class FunctionDim(DimSpec):
   ) -> Iterator[tuple[Shape, DimValues]]:
     # TODO(klausg): Could be used to infer unknown dims.
     for eval_shape in self.evaluate_all(dim_values):
-      if eval_shape[0] == shape[0]:
+      if _maybe_equal(eval_shape[0], shape[0]):
         yield shape[1:], dim_values
 
   def __repr__(self):
@@ -519,7 +557,15 @@ class FunctionDim(DimSpec):
     return f"{self.name}({arg_list})"
 
 
-NAME_2_FUNC = {"sum": sum, "min": min, "max": max, "prod": math.prod}
+def _sym_min(vals):
+  return functools.reduce(jax.core.min_dim, vals)
+
+
+def _sym_max(vals):
+  return functools.reduce(jax.core.max_dim, vals)
+
+
+NAME_2_FUNC = {"sum": sum, "min": _sym_min, "max": _sym_max, "prod": math.prod}
 
 
 @dataclasses.dataclass
@@ -558,7 +604,7 @@ class BinaryOpDim(DimSpec):
     # Check all possible combinations of left and right shapes for a match.
     for left, right in itertools.product(left_shapes, right_shapes):
       dim_value = self.op.fn(left, right)
-      if dim_value == shape[0]:
+      if _maybe_equal(dim_value, shape[0]):
         yield shape[1:], dim_values
 
     # If the right side is underconstrained, we can try to infer it.

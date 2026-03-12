@@ -214,6 +214,9 @@ PRNGKeyLike = PRNGKey | ScalarInt | Sequence[int]
 
 
 # MARK: Other
+
+# Roughly equivalent to Sequence[int], but also handles symbolic dimensions
+# which is useful for jax.export.
 Shape = atm.ShapeMeta("Shape")
 # Any object that has `shape` and `dtype` attributes (but is not an array).
 # E.g. enp.ArraySpec, tf.TensorSpec, jax.ShapeDtypeStruct, etc.

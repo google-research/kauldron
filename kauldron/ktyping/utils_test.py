@@ -85,6 +85,13 @@ def test_format_value(obj, expected_name):
   assert utils.format_value(obj) == expected_name
 
 
+def test_format_value_symbolic_dims():
+  (sym_b,) = jax.export.symbolic_shape("B")
+  obj = jax.ShapeDtypeStruct((sym_b, 32), jnp.float32)
+  result = utils.format_value(obj)
+  assert result == "ShapeDtypeStruct.f32[B 32]"
+
+
 @pytest.mark.parametrize(
     "obj, expected_str",
     [
