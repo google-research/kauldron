@@ -23,13 +23,13 @@ from kauldron import kontext
 from kauldron.cli import cmd_utils
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True, kw_only=True)
 class ElementSpec(cmd_utils.SubCommand):
   """Display the element spec of the training data pipeline."""
 
   # TODO(klausg): add support for eval_ds and other evaluation datasets
 
-  def execute(self) -> str:
+  def __call__(self) -> str:
     elem_spec = self.trainer.train_ds.element_spec
     # TODO(klausg): What formatting do we want here?
     result = "batch:\n"
@@ -42,10 +42,7 @@ class ElementSpec(cmd_utils.SubCommand):
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class DataCmd:
+class Data(cmd_utils.CommandGroup):
   """Data commands."""
 
-  sub_command: Union[ElementSpec]
-
-  def execute(self) -> None:
-    self.sub_command.execute()
+  sub_command: Union[ElementSpec]  # Union required for simple_parsing

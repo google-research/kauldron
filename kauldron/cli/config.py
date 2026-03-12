@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import dataclasses
 
+from etils import epy
 from kauldron.cli import cmd_utils
 
 
@@ -25,24 +26,32 @@ from kauldron.cli import cmd_utils
 class Show(cmd_utils.SubCommand):
   """Display the unresolved config tree."""
 
-  def execute(self) -> str:
-    return repr(self.cfg)
+  def __call__(
+      self,
+  ) -> str:
+    outputs = []
+    if self.origin is not None:
+      outputs.append(self.origin.summary())
+    outputs.append("========= Config (unresolved) =========")
+    outputs.append(epy.pretty_repr(self.cfg))
+    return "\n".join(outputs)
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class Resolve(cmd_utils.SubCommand):
   """Resolve and display the fully-instantiated config."""
 
-  def execute(self) -> str:
-    return repr(self.trainer)
+  def __call__(self) -> str:
+    outputs = []
+    if self.origin is not None:
+      outputs.append(self.origin.summary())
+    outputs.append("========= Config (resolved) ===========")
+    outputs.append(epy.pretty_repr(self.trainer))
+    return "\n".join(outputs)
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class ConfigCmd:
-  """Config commands."""
+class Config(cmd_utils.CommandGroup):
+  """Config command group."""
 
   sub_command: Show | Resolve
-
-  def execute(self) -> None:
-    # TODO(klausg): could also move the print to main.
-    print(self.sub_command.execute())

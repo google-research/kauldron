@@ -16,9 +16,11 @@ from __future__ import annotations
 
 from unittest import mock
 
+from absl import flags
 from kauldron.cli import config
 from kauldron.cli import data
 from kauldron.cli import main as cli_main
+from kauldron.cli import patch_config
 import pytest
 
 
@@ -26,17 +28,17 @@ class TestParseFlags:
 
   def test_config_show(self):
     args = cli_main.flag_parser(["prog", "config", "show"])
-    assert isinstance(args.command, config.ConfigCmd)
+    assert isinstance(args.command, config.Config)
     assert isinstance(args.command.sub_command, config.Show)
 
   def test_config_resolve(self):
     args = cli_main.flag_parser(["prog", "config", "resolve"])
-    assert isinstance(args.command, config.ConfigCmd)
+    assert isinstance(args.command, config.Config)
     assert isinstance(args.command.sub_command, config.Resolve)
 
   def test_data_element_spec(self):
     args = cli_main.flag_parser(["prog", "data", "element_spec"])
-    assert isinstance(args.command, data.DataCmd)
+    assert isinstance(args.command, data.Data)
     assert isinstance(args.command.sub_command, data.ElementSpec)
 
   def test_config_override(self, tmp_path):
@@ -56,11 +58,8 @@ class TestParseFlags:
     ]
     with mock.patch("sys.argv", argv):
       args = cli_main.flag_parser(argv)
-    assert isinstance(args.command, config.ConfigCmd)
+    assert isinstance(args.command, config.Config)
     assert isinstance(args.command.sub_command, config.Show)
-    assert args.command.sub_command.cfg is None
-    from absl import flags  # pylint: disable=g-import-not-at-top
-
     assert flags.FLAGS.cfg.seed == 123
 
   def test_no_noun_has_no_command(self):
@@ -76,9 +75,68 @@ class TestParseFlags:
       cli_main.flag_parser(["prog", "config"])
 
 
-class TestMain:
+class TestPatchFlags:
 
-  def test_no_command_raises(self):
-    args = mock.Mock(spec=[])
-    with pytest.raises(SystemExit, match="No command specified"):
-      cli_main.main(args)
+  def test_patch_stop_after_steps_via_cli(self):
+    """Passing --patch.stop_after_steps via CLI should not leak to absl."""
+    args = cli_main.flag_parser([
+        "prog",
+        "config",
+        "show",
+        "--patch.stop_after_steps=5",
+    ])
+    assert args.patch.stop_after_steps == 5
+
+  def test_default_patch_values(self):
+    args = cli_main.flag_parser(["prog", "config", "show"])
+    assert args.patch.stop_after_steps == 1
+    assert args.patch.batch_size == patch_config.BATCH_SIZE_DEVICES
+    assert args.patch.skip_checkpointer
+    assert not args.patch.skip_eval
+
+  def test_batch_size_devices_str(self):
+    """Passing the raw string 'devices' is equivalent to BATCH_SIZE_DEVICES."""
+    patcher = patch_config.PatchConfig(batch_size="devices")
+    assert patcher.batch_size == patch_config.BATCH_SIZE_DEVICES
+
+  def test_batch_size_default_is_devices(self):
+    patcher = patch_config.PatchConfig()
+    assert patcher.batch_size == patch_config.BATCH_SIZE_DEVICES
+
+  def test_patch_applied_to_config(self, tmp_path):
+    cfg_path = tmp_path / "dummy_cfg.py"
+    cfg_path.write_text(
+        "from kauldron import konfig\n"
+        "def get_config():\n"
+        "  return konfig.ConfigDict({\n"
+        "    'stop_after_steps': 100,\n"
+        "    'workdir': '/tmp/test',\n"
+        "    'train_ds': {'batch_size': 64, 'shuffle_buffer_size': 1000},\n"
+        "    'checkpointer': {'save_interval_steps': 10},\n"
+        "  })\n"
+    )
+
+    argv = [
+        "prog",
+        "config",
+        "show",
+        f"--cfg={cfg_path}",
+    ]
+    with mock.patch("sys.argv", argv):
+      cli_main.flag_parser(argv)
+    patcher = patch_config.PatchConfig(stop_after_steps=3, batch_size=16)
+
+    orig_cfg = flags.FLAGS["cfg"].value  # pytype: disable=attribute-error
+    assert orig_cfg is not None
+    cfg, updates = patcher(orig_cfg)
+
+    origin = patch_config.ConfigOrigin(
+        filename=cfg_path,
+        patches=updates,
+    )
+
+    assert cfg.stop_after_steps == 3
+    assert cfg.train_ds.batch_size == 16
+    assert cfg.checkpointer is None
+    assert isinstance(origin, patch_config.ConfigOrigin)
+    assert origin.filename is not None

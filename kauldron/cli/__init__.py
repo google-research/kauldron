@@ -16,3 +16,4 @@
 
 from kauldron.cli import config
 from kauldron.cli import data
+from kauldron.cli.patch_config import PatchConfig  # pylint: disable=g-importing-member

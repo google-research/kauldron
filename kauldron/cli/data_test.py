@@ -41,7 +41,8 @@ def test_element_spec():
   )
   cfg = konfig.ConfigDict({"seed": 0, "num_train_steps": 1000})
   with mock.patch("kauldron.konfig.resolve", return_value=trainer):
-    result = data.ElementSpec(cfg=cfg).execute()
+    cmd = data.ElementSpec(cfg=cfg)
+    result = cmd()
 
   assert "image" in result
   assert "float32" in result
