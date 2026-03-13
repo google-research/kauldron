@@ -33,7 +33,6 @@ jobs:
 
     # Run tests (in parallel)
     # Filter out:
-    # * Projects: Not part of core Kauldron (could be tested separately)
     # * Contrib: Filter to not block submits. Ideally should be tested too (maybe in a separate
     #   action).
     # * TF Data pipeline (not supported due to TFGrain not open-sourced)
@@ -44,7 +43,6 @@ jobs:
     - name: Run core tests
       run: |
         pytest -vv -n auto \
-          --ignore=projects/ \
           --ignore=kauldron/contrib/ \
           --ignore=kauldron/data/tf/ \
           --ignore=kauldron/xm/ \
