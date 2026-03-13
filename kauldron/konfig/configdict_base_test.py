@@ -14,11 +14,14 @@
 
 import json
 import pathlib
+import pickle
 import types
 
+import dill
 from etils import epy
 from kauldron import konfig
 from kauldron.utils import immutabledict
+import pytest
 
 
 def test_cycles():
@@ -182,3 +185,20 @@ def test_py_flag_overrides():
       'y2': [pathlib.Path, 1],
       'z': 'regular_string',
   }
+
+
+@pytest.mark.parametrize('pickler', [pickle, dill])
+def test_is_pickable(pickler):
+  cfg = konfig.ConfigDict({
+      'a': 1,
+      'b': 'abc',
+      'c': [1, 2, 3],
+      'd': {
+          'a': 1,
+          'b': 'abc',
+          'c': [1, 2, 3],
+      },
+  })
+  pickled = pickler.dumps(cfg)
+  unpickled = pickler.loads(pickled)
+  assert unpickled == cfg

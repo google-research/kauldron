@@ -221,6 +221,13 @@ class FrameStack(list[FrameInfo]):
       tb = types.TracebackType(tb, info.frame, info.lasti, info.lineno)
     return tb  # pytype: disable=bad-return-type
 
+  # We want this class to be picklable so that configs that include it can be
+  # picklable, but the frames themselves are not picklable and we don't actually
+  # care about the contents being preserved through pickling. Just produce an
+  # empty instance when unpickling.
+  def __reduce__(self):
+    return (self.__class__, ())
+
 
 def filter_traceback(tb: types.TracebackType) -> None:
   """Returns a filtered version of the traceback."""
