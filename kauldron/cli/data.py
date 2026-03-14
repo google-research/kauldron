@@ -20,29 +20,36 @@ import dataclasses
 from typing import Union
 
 from kauldron import kontext
-from kauldron.cli import cmd_utils
+from kauldron.cli import cmd_utils as cu
+import tensorflow_datasets as tfds
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class ElementSpec(cmd_utils.SubCommand):
+class ElementSpec(cu.SubCommand):
   """Display the element spec of the training data pipeline."""
 
-  # TODO(klausg): add support for eval_ds and other evaluation datasets
+  ds_path: str = "train_ds"
 
-  def __call__(self) -> str:
-    elem_spec = self.trainer.train_ds.element_spec
+  def __call__(self):
+    self.print_config_origin()
+    trainer = self.trainer  # trigger config resolution
+    ds = kontext.get_by_path(trainer, self.ds_path)
+    batch_size = getattr(ds, "batch_size", 1)
+    with (
+        cu.timed("Getting element spec"),
+        tfds.testing.mock_data(num_examples=batch_size),
+    ):
+      elem_spec = ds.element_spec
     # TODO(klausg): What formatting do we want here?
-    result = "batch:\n"
-    result += "\n".join(
-        f"  {k}: {v.dtype}{list(v.shape)}"
-        for k, v in kontext.flatten_with_path(elem_spec).items()
-    )
-    result += "\n"
-    return result
+    print("")
+    print(f"Dataset: {self.ds_path}")
+    print("batch:")
+    for k, v in kontext.flatten_with_path(elem_spec).items():
+      print(f"  {k}: {v.dtype}{list(v.shape)}")
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class Data(cmd_utils.CommandGroup):
+class Data(cu.CommandGroup):
   """Data commands."""
 
   sub_command: Union[ElementSpec]  # Union required for simple_parsing

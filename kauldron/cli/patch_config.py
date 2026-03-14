@@ -24,7 +24,7 @@ from etils import epath
 from etils import epy
 import jax
 from kauldron import konfig
-from kauldron import kontext
+from kauldron.cli import cmd_utils as cu
 
 # pylint: disable=g-import-not-at-top
 with konfig.imports(lazy=True):
@@ -34,14 +34,6 @@ with konfig.imports(lazy=True):
 # pylint: enable=g-import-not-at-top
 
 BATCH_SIZE_DEVICES = "devices"
-
-
-def _tracked_update(
-    cfg: konfig.ConfigDict, path: str, value: Any
-) -> dict[str, Any]:
-  """Sets value at path and returns {concrete_path: value} for tracking."""
-  modified = kontext.set_by_path(cfg, path, value)
-  return dict.fromkeys(modified, value)
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -89,27 +81,29 @@ class PatchConfig:
 
     updates = {}
     if self.stop_after_steps is not None:
-      updates |= _tracked_update(cfg, "stop_after_steps", self.stop_after_steps)
+      updates |= cu.tracked_update(
+          cfg, "stop_after_steps", self.stop_after_steps
+      )
 
     updates |= self._patch_batch_size(cfg)
 
     if self.skip_eval:
-      updates |= _tracked_update(cfg, "evals", {})
+      updates |= cu.tracked_update(cfg, "evals", {})
     else:
       updates |= self._patch_num_batches(cfg)
       updates |= self._patch_eval_run_once(cfg)
 
     if self.skip_checkpointer:
-      updates |= _tracked_update(cfg, "checkpointer", None)
+      updates |= cu.tracked_update(cfg, "checkpointer", None)
 
     if self.skip_metrics:
-      updates |= _tracked_update(cfg, "train_metrics", {})
+      updates |= cu.tracked_update(cfg, "train_metrics", {})
 
     if self.skip_summaries:
-      updates |= _tracked_update(cfg, "train_summaries", {})
+      updates |= cu.tracked_update(cfg, "train_summaries", {})
 
     if hasattr(cfg, "setup"):
-      updates |= _tracked_update(
+      updates |= cu.tracked_update(
           cfg, "setup.add_flatboard", not self.skip_flatboard
       )
 
@@ -126,10 +120,10 @@ class PatchConfig:
       if batch_size == BATCH_SIZE_DEVICES:
         batch_size = jax.local_device_count()
 
-      updates |= _tracked_update(cfg, "train_ds.**.batch_size", batch_size)
-      updates |= _tracked_update(cfg, "train_ds.**.shuffle_buffer_size", 1)
+      updates |= cu.tracked_update(cfg, "train_ds.**.batch_size", batch_size)
+      updates |= cu.tracked_update(cfg, "train_ds.**.shuffle_buffer_size", 1)
       if hasattr(cfg, "evals"):
-        updates |= _tracked_update(cfg, "evals.**.batch_size", batch_size)
+        updates |= cu.tracked_update(cfg, "evals.**.batch_size", batch_size)
     return updates
 
   def _patch_num_batches(self, cfg: konfig.ConfigDict) -> dict[str, Any]:
@@ -137,7 +131,7 @@ class PatchConfig:
     updates = {}
     if self.num_batches is not None:
       if hasattr(cfg, "evals"):
-        updates |= _tracked_update(
+        updates |= cu.tracked_update(
             cfg, "evals.**.num_batches", self.num_batches
         )
     return updates
@@ -165,9 +159,9 @@ class PatchConfig:
       # NOTE: kd_inspect is a konfig.import
       cfg.profiler = kd_inspect.Profiler()
       updates["profiler"] = cfg.profiler
-    updates |= _tracked_update(cfg, "stop_after_steps", 17)
-    updates |= _tracked_update(cfg, "profiler.profile_duration_ms", None)
-    updates |= _tracked_update(cfg, "profiler.on_colab", True)
+    updates |= cu.tracked_update(cfg, "stop_after_steps", 17)
+    updates |= cu.tracked_update(cfg, "profiler.profile_duration_ms", None)
+    updates |= cu.tracked_update(cfg, "profiler.on_colab", True)
     return updates
 
   def _patch_checkify(self, cfg: konfig.ConfigDict) -> dict[str, Any]:
@@ -175,7 +169,7 @@ class PatchConfig:
     if not self.checkify:
       return {}
     # NOTE: jax_checkify is a konfig.import
-    return _tracked_update(
+    return cu.tracked_update(
         cfg, "checkify_error_categories", jax_checkify.all_checks
     )
 
@@ -188,14 +182,15 @@ class ConfigOrigin:
   overrides: dict[str, Any] = dataclasses.field(default_factory=dict)
   patches: dict[str, Any] = dataclasses.field(default_factory=dict)
 
-  def summary(self) -> str:
+  def summary(self, include_patches: bool = True) -> str:
     """Returns a summary of the config origin as a string."""
-    summary = "========= Config =========\n"
+    qualifier = "(patched)" if include_patches else "(unpatched)"
+    summary = f"========= Config {qualifier} =========\n"
     if self.filename:
       summary += f"Filename: {self.filename}\n"
     if self.overrides:
       summary += f"Overrides:\n {epy.pretty_repr(self.overrides)}\n"
-    if self.patches:
+    if include_patches and self.patches:
       summary += f"Patches:\n {epy.pretty_repr(self.patches)}\n"
-    summary += "==========================\n"
+
     return summary
