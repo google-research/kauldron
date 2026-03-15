@@ -23,9 +23,13 @@ import functools
 import time
 from typing import Any, Iterator
 
+from etils import enp
+from etils import epy
+import jax
 from kauldron import konfig
 from kauldron import kontext
 from kauldron.cli import patch_config
+from kauldron.utils import immutabledict
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -71,7 +75,7 @@ class SubCommand(abc.ABC):
   @functools.cached_property
   def trainer(self):
     with timed("Resolving config"):
-      return konfig.resolve(self.cfg)
+      return konfig.resolve(self.cfg, freeze=False)
 
   def print_config_origin(self):
     if self.origin is not None:
@@ -111,3 +115,15 @@ def timed(action: str) -> Iterator[None]:
   print(f"{action}...", end="", flush=True)
   yield
   print(f"done ({time.time() - start:.1f} sec)")
+
+
+def print_spec(obj):
+  """Print the state spec."""
+  obj_spec = jax.tree.map(
+      lambda x: enp.ArraySpec.from_array(x)
+      if isinstance(x, jax.ShapeDtypeStruct) or enp.is_array(x)
+      else x,
+      obj,
+  )
+  obj_spec = immutabledict.unfreeze(obj_spec)
+  epy.pprint(obj_spec)

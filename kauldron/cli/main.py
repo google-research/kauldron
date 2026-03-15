@@ -32,6 +32,7 @@ from kauldron.cli import cmd_utils as cu
 from kauldron.cli import config
 from kauldron.cli import data
 from kauldron.cli import patch_config
+from kauldron.cli import run
 import simple_parsing
 
 FLAGS = flags.FLAGS
@@ -47,7 +48,7 @@ _CONFIG = konfig.DEFINE_config_file(
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class Args:
 
-  command: config.Config | data.Data
+  command: config.Config | data.Data | run.Run
 
   patch: patch_config.PatchConfig = dataclasses.field(
       default_factory=patch_config.PatchConfig,
