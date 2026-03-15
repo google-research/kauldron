@@ -29,7 +29,7 @@ class FakeSpec:
   shape: tuple[int, ...]
 
 
-def test_element_spec():
+def test_element_spec(capsys):
   # TODO(klausg): this mocking here is ugly. Write a proper test.
   trainer = dataclasses.make_dataclass("Trainer", ["train_ds"])(
       train_ds=dataclasses.make_dataclass("DS", ["element_spec"])(
@@ -42,7 +42,8 @@ def test_element_spec():
   cfg = konfig.ConfigDict({"seed": 0, "num_train_steps": 1000})
   with mock.patch("kauldron.konfig.resolve", return_value=trainer):
     cmd = data.ElementSpec(cfg=cfg)
-    result = cmd()
+    cmd()
+  result = capsys.readouterr().out
 
   assert "image" in result
   assert "float32" in result

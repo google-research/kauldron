@@ -28,7 +28,7 @@ from absl import app
 from absl import flags
 import jax
 from kauldron import konfig
-from kauldron.cli import cmd_utils
+from kauldron.cli import cmd_utils as cu
 from kauldron.cli import config
 from kauldron.cli import data
 from kauldron.cli import patch_config
@@ -127,24 +127,21 @@ def main(args: Args) -> None:
   overrides = FLAGS["cfg"].override_values  # pytype: disable=attribute-error
 
   # Workdir management
-  patches = {}
   with tempfile.TemporaryDirectory(prefix="kauldron_") as workdir:
     if cfg.workdir is None:
-      cfg.workdir = workdir
-    patches["workdir"] = cfg.workdir
+      overrides |= cu.tracked_update(cfg, "workdir", workdir)
 
-    # Apply Patches
-    cfg, updates = patcher(cfg)
+    patched_config, patches = patcher(cfg)
 
     origin = patch_config.ConfigOrigin(
         filename=filename,
         overrides=overrides,
-        patches=patches | updates,
+        patches=patches,
     )
 
-    cmd_utils.execute_command(
+    cu.execute_command(
         group=args.command,
-        cfg=cfg,
+        cfg=patched_config,
         origin=origin,
     )
 

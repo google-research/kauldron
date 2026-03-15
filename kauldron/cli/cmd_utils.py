@@ -17,12 +17,14 @@
 from __future__ import annotations
 
 import abc
+import contextlib
 import dataclasses
 import functools
-from typing import Any
+import time
+from typing import Any, Iterator
 
-from etils import epy
 from kauldron import konfig
+from kauldron import kontext
 from kauldron.cli import patch_config
 
 
@@ -68,21 +70,44 @@ class SubCommand(abc.ABC):
 
   @functools.cached_property
   def trainer(self):
-    return konfig.resolve(self.cfg)
+    with timed("Resolving config"):
+      return konfig.resolve(self.cfg)
+
+  def print_config_origin(self):
+    if self.origin is not None:
+      print(self.origin.summary())
 
   @abc.abstractmethod
-  def __call__(self) -> Any:
-    """Executes the command and return a printable object."""
+  def __call__(self) -> None:
+    """Executes the command."""
 
 
 def execute_command(
     group: CommandGroup,
     cfg: konfig.ConfigDict,
     origin: patch_config.ConfigOrigin,
-) -> Any:
+) -> None:
   """Executes the command and pretty-print the result."""
   cmd = dataclasses.replace(
-      group.sub_command, cfg=cfg, origin=origin, group=group
+      group.sub_command,
+      cfg=cfg,
+      origin=origin,
+      group=group,
   )
-  output = cmd()
-  epy.pprint(output)
+  cmd()
+
+
+def tracked_update(
+    cfg: konfig.ConfigDict, path: str, value: Any
+) -> dict[str, Any]:
+  """Sets value at path and returns {concrete_path: value} for tracking."""
+  modified = kontext.set_by_path(cfg, path, value)
+  return dict.fromkeys(modified, value)
+
+
+@contextlib.contextmanager
+def timed(action: str) -> Iterator[None]:
+  start = time.time()
+  print(f"{action}...", end="", flush=True)
+  yield
+  print(f"done ({time.time() - start:.1f} sec)")

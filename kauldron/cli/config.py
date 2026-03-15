@@ -19,39 +19,36 @@ from __future__ import annotations
 import dataclasses
 
 from etils import epy
-from kauldron.cli import cmd_utils
+from kauldron.cli import cmd_utils as cu
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class Show(cmd_utils.SubCommand):
+class Show(cu.SubCommand):
   """Display the unresolved config tree."""
 
-  def __call__(
-      self,
-  ) -> str:
-    outputs = []
-    if self.origin is not None:
-      outputs.append(self.origin.summary())
-    outputs.append("========= Config (unresolved) =========")
-    outputs.append(epy.pretty_repr(self.cfg))
-    return "\n".join(outputs)
+  def __call__(self):
+    self.print_config_origin()
+    epy.pprint(self.cfg)
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class Resolve(cmd_utils.SubCommand):
+class Resolve(cu.SubCommand):
   """Resolve and display the fully-instantiated config."""
 
-  def __call__(self) -> str:
-    outputs = []
-    if self.origin is not None:
-      outputs.append(self.origin.summary())
-    outputs.append("========= Config (resolved) ===========")
-    outputs.append(epy.pretty_repr(self.trainer))
-    return "\n".join(outputs)
+  verbose: bool = False
+
+  def __call__(self):
+    self.print_config_origin()
+    trainer = self.trainer  # trigger config resolution
+    if self.verbose:
+      print("======== Resolved Config ========")
+      epy.pprint(trainer)
+
+    print("Successfully resolved config!")
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class Config(cmd_utils.CommandGroup):
+class Config(cu.CommandGroup):
   """Config command group."""
 
   sub_command: Show | Resolve
