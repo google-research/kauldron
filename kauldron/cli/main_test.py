@@ -17,6 +17,8 @@ from __future__ import annotations
 from unittest import mock
 
 from absl import flags
+from kauldron import konfig
+from kauldron.cli import cmd_utils as cu
 from kauldron.cli import config
 from kauldron.cli import data
 from kauldron.cli import main as cli_main
@@ -140,3 +142,49 @@ class TestPatchFlags:
     assert cfg.checkpointer is None
     assert isinstance(origin, patch_config.ConfigOrigin)
     assert origin.filename is not None
+
+
+class TestUserOverridePrecedence:
+
+  @mock.patch("jax.local_device_count", return_value=2)
+  def test_user_override_wins_over_patch(self, _):
+
+    cfg = konfig.ConfigDict({
+        "stop_after_steps": 100,
+        "train_ds": {"batch_size": 64, "shuffle_buffer_size": 1000},
+        "checkpointer": None,
+    })
+    overrides = cu.tracked_update(cfg, "train_ds.batch_size", 32)
+
+    patcher = patch_config.PatchConfig()
+    patched_cfg, patches = patcher(cfg)
+
+    conflicts = set(overrides) & set(patches)
+    for key in conflicts:
+      cu.tracked_update(patched_cfg, key, overrides[key])
+      del patches[key]
+
+    assert patched_cfg.train_ds.batch_size == 32
+    assert "train_ds.batch_size" not in patches
+
+  @mock.patch("jax.local_device_count", return_value=2)
+  def test_non_overlapping_override_does_not_block_patch(self, _):
+    cfg = konfig.ConfigDict({
+        "seed": 42,
+        "stop_after_steps": 100,
+        "train_ds": {"batch_size": 64, "shuffle_buffer_size": 1000},
+        "checkpointer": None,
+    })
+    overrides = cu.tracked_update(cfg, "seed", 99)
+
+    patcher = patch_config.PatchConfig()
+    patched_cfg, patches = patcher(cfg)
+
+    conflicts = set(overrides) & set(patches)
+    for key in conflicts:
+      cu.tracked_update(patched_cfg, key, overrides[key])
+      del patches[key]
+
+    assert patched_cfg.train_ds.batch_size == 2
+    assert "train_ds.batch_size" in patches
+    assert patched_cfg.seed == 99
