@@ -20,7 +20,7 @@ import copy
 import dataclasses
 import inspect
 import typing as tp
-from typing import Any, Callable, ClassVar
+from typing import Any, Callable, ClassVar, Optional
 import warnings
 import flax
 from flax import linen as nn
@@ -51,7 +51,7 @@ class KdNnxModule(*bases):
     input_dim: int = 3
     hdim: int = 10
 
-    def setup(self, rngs: nnx.Rngs=nnx.Rngs(0)):
+    def setup(self, rngs: Optional[nnx.Rngs] = None):
       self.lin = nnx.Linear(self.input_dim, self.hdim, rngs=rngs)
 
     def __call__(self, x):
@@ -70,7 +70,7 @@ class KdNnxModule(*bases):
     assert hasattr(cls, 'setup'), """Subclass must implement setup method."""
     return super().__init_subclass__()
 
-  def setup(self, rngs: nnx.Rngs = nnx.Rngs(0)):
+  def setup(self, rngs: Optional[nnx.Rngs] = None):
     raise NotImplementedError()
 
   def get_linen_variables(self, capture_intermediates=False):
@@ -225,7 +225,7 @@ class LinenModuleFromNnxDef(KdNnxModule):
 
   nnx_init: Callable[..., nnx.Module]
 
-  def setup(self, rngs: nnx.Rngs = nnx.Rngs(0)):
+  def setup(self, rngs: Optional[nnx.Rngs] = None):
     try:
       self.module = self.nnx_init(rngs=rngs)
     except TypeError:
