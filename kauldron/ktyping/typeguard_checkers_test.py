@@ -15,6 +15,8 @@
 import dataclasses
 import typing
 from typing import Annotated, Never, NoReturn, Optional, Union
+
+import jax
 from kauldron.ktyping import dim_view
 from kauldron.ktyping import errors
 from kauldron.ktyping import frame_utils
@@ -27,6 +29,25 @@ from kauldron.ktyping.typeguard_checkers import check_type  # pylint: disable=g-
 import numpy as np
 import pytest
 import typeguard
+
+
+class _LeafNode:
+
+  def __init__(self, x, y):
+    self.x = x
+    self.y = y
+
+  def __eq__(self, other):
+    return (
+        isinstance(other, _LeafNode) and self.x == other.x and self.y == other.y
+    )
+
+
+jax.tree_util.register_pytree_node(
+    _LeafNode,
+    lambda node: ((node.x, node.y), None),
+    lambda _, children: _LeafNode(*children),
+)
 
 
 def test_contains_any_array_type():
@@ -335,3 +356,25 @@ def test_pytree_structure_in_typechecked_fn():
 
   with pytest.raises(errors.KTypeCheckError):
     g({"a": 1, "b": 2})
+
+
+# MARK: PyTree with registered JAX pytree node leaves (b/493013032)
+
+
+def test_pytree_with_registered_pytree_leaf():
+  with typechecked():
+    leaf = _LeafNode(x=1, y=2)
+    check_type({"a": leaf, "b": leaf}, pytree.PyTree[_LeafNode])
+
+
+def test_pytree_with_registered_pytree_leaf_fails():
+  with typechecked():
+    with pytest.raises(errors.KTypeCheckError, match="is not an instance of"):
+      check_type({"a": "not_a_leaf"}, pytree.PyTree[_LeafNode])
+
+
+def test_isinstance_pytree_with_registered_pytree_leaf():
+  with typechecked():
+    leaf = _LeafNode(x=1, y=2)
+    assert tgc.isinstance_({"a": leaf}, pytree.PyTree[_LeafNode])
+    assert not tgc.isinstance_({"a": "nope"}, pytree.PyTree[_LeafNode])

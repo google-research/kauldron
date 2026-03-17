@@ -451,7 +451,12 @@ def _pytree_checker(
   import jax  # pylint: disable=g-import-not-at-top
 
   sscope = scope.get_current_scope(nested_ok=True)
-  paths_and_leaves, treedef = jax.tree.flatten_with_path(value)
+  leaf_type = origin_type.leaf_type
+  if leaf_type is not internal_typing.MISSING:
+    is_leaf = lambda x: isinstance(x, leaf_type)
+  else:
+    is_leaf = None
+  paths_and_leaves, treedef = jax.tree.flatten_with_path(value, is_leaf=is_leaf)
 
   structure_spec = origin_type.structure_spec
   if structure_spec is not internal_typing.MISSING:
