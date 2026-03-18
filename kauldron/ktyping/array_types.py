@@ -203,9 +203,9 @@ ScalarComplex = atm.ArrayTypeMeta(
 # See: https://docs.jax.dev/en/latest/jep/9263-typed-keys.html
 Fry = atm.ArrayTypeMeta("Fry", dtype=dtypes.prng_key)
 # Single key (supports both new and old style)
-PRNGKey = UInt32["2"] | Fry[""]
+PRNGKey = UInt32["2"] | Fry[""] | atm.KdPRNGKey
 # Array of keys (e.g. after split)
-PRNGKeyArray = UInt32["... 2"] | Fry["..."]
+PRNGKeyArray = UInt32["... 2"] | Fry["..."] | atm.KdPRNGKey
 # Permissive type for PRNG keys, integers, or sequences of integers that can be
 # used as sources of entropy for functions like `np.random.default_rng`.
 # Note that functions in `jax.random` do not support sequences of integers for

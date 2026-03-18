@@ -288,6 +288,40 @@ def test_prng_key_array_dtype(key_type):
     assert not art.Int.dtype_matches(key)
 
 
+def test_kd_random_prng_key_isinstance():
+  """Test isinstance checks for kauldron.random.PRNGKey."""
+  from kauldron.random import random as kd_random  # pylint: disable=g-import-not-at-top
+
+  kd_key = kd_random.PRNGKey(0)
+
+  assert isinstance(kd_key, art.PRNGKey)
+  assert isinstance(kd_key, art.PRNGKeyArray)
+
+
+def test_kd_random_prng_key_kt_isinstance():
+  """Test kt.isinstance checks for kauldron.random.PRNGKey."""
+  from kauldron.random import random as kd_random  # pylint: disable=g-import-not-at-top
+
+  kd_key = kd_random.PRNGKey(0)
+
+  with kt.typechecked():
+    assert kt.isinstance(kd_key, art.PRNGKey)
+    assert kt.isinstance(kd_key, art.PRNGKeyArray)
+    kt.check_type(kd_key, art.PRNGKey)
+
+
+def test_kd_random_prng_key_split():
+  """Test kauldron.random.PRNGKey instances after split."""
+  from kauldron.random import random as kd_random  # pylint: disable=g-import-not-at-top
+
+  kd_key = kd_random.PRNGKey(0)
+  kd_keys = kd_key.split(4)
+
+  assert isinstance(kd_keys, art.PRNGKeyArray)
+  with kt.typechecked():
+    assert kt.isinstance(kd_keys, art.PRNGKeyArray)
+
+
 def test_array_spec():
   from etils import enp  # pylint: disable=g-import-not-at-top
 
