@@ -20,7 +20,9 @@ import dataclasses
 import functools
 from typing import Union
 
+from etils import epy
 import jax
+import kauldron as kd
 from kauldron.cli import cmd_utils as cu
 from kauldron.data import utils as data_utils
 import tensorflow_datasets as tfds
@@ -71,10 +73,59 @@ class EvalShape(cu.SubCommand):
     # TODO(klausg): could try to run the metrics computation too.
 
 
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class Train(cu.SubCommand):
+  """Run trainer.train()."""
+
+  def __call__(self) -> None:
+    self.print_config_origin()
+
+    # Ensure exactly one training step is performed to match kd_test.ipynb
+    self.cfg.stop_after_steps = 1
+
+    if hasattr(self.cfg, 'evals'):
+      kd.kontext.set_by_path(self.cfg, 'evals.**.num_batches', 1)
+
+    trainer = self.trainer  # trigger config resolution
+
+    with cu.timed('trainer.train()'):
+      train_state, aux = trainer.train()
+      del train_state, aux
+    # We don't print the output of train() as it might be very verbose
+    # but we can print that it succeeded.
+    print('Successfully completed trainer.train()')
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class Eval(cu.SubCommand):
+  """Run trainer.eval()."""
+
+  def __call__(self) -> None:
+    self.print_config_origin()
+
+    if hasattr(self.cfg, 'evals'):
+      kd.kontext.set_by_path(self.cfg, 'evals.**.num_batches', 1)
+
+    trainer = self.trainer  # trigger config resolution
+
+    with cu.timed('trainer.init_state()'):
+      state = trainer.init_state()
+
+    eval_metrics = {}
+    for name, evaluator in trainer.evals.items():
+      with cu.timed(f'evaluator.evaluate({name})'):
+        eval_metrics[name] = evaluator.evaluate(state=state, step=0)
+
+    if eval_metrics:
+      print('Evaluator metrics:')
+      epy.pprint(eval_metrics)
+
+
 _SUBCOMMANDS = {
     # Manually name the subcommand 'eval_shape' beacause simple-parsing
     # would turn this into 'evalshape' instead.
     'eval_shape': EvalShape,
+    'train': Train,
+    'eval': Eval,
 }
 
 
@@ -82,6 +133,6 @@ _SUBCOMMANDS = {
 class Run(cu.CommandGroup):
   """Run commands for local training validation."""
 
-  sub_command: Union[EvalShape] = dataclasses.field(
+  sub_command: Union[EvalShape, Train, Eval] = dataclasses.field(
       metadata={'subparsers': _SUBCOMMANDS}
   )
