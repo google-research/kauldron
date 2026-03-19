@@ -18,6 +18,7 @@ import functools
 import json
 import pathlib
 import types
+from unittest import mock
 
 from etils import epy
 from kauldron import konfig

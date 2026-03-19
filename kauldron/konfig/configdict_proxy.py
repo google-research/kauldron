@@ -278,10 +278,18 @@ def import_qualname(qualname_str: str) -> Callable[..., Any]:
     case _:
       raise ValueError(f'Invalid {qualname_str!r}')
 
-  obj = importlib.import_module(import_str)
+  try:
+    obj = importlib.import_module(import_str)
+  except ModuleNotFoundError as e:
+    _maybe_add_hint(e, import_str)
+    raise
   for attr in attributes.split('.'):
     obj = getattr(obj, attr)
   return obj  # pytype: disable=bad-return-type
+
+
+def _maybe_add_hint(exc: ModuleNotFoundError, import_str: str):
+  pass  # No used exeternally.
 
 
 def num_args(obj: Mapping[str, Any]) -> int:
