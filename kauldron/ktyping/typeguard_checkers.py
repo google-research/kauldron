@@ -453,7 +453,7 @@ def _pytree_checker(
   sscope = scope.get_current_scope(nested_ok=True)
   leaf_type = origin_type.leaf_type
   if leaf_type is not internal_typing.MISSING:
-    is_leaf = lambda x: isinstance(x, leaf_type)
+    is_leaf = lambda x: bool(_match_type(x, leaf_type, sscope, memo))
   else:
     is_leaf = None
   paths_and_leaves, treedef = jax.tree.flatten_with_path(value, is_leaf=is_leaf)
