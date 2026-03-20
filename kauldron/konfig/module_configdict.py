@@ -134,12 +134,12 @@ class ModuleConfigDict(AutoNestedConfigDict):
         config = self.module.get_config(self.config_args)
       else:
         config = self.module.get_config()
-    except Exception as e:  # pylint: disable=broad-exception-caught
+    except:  # pylint: disable=broad-exception-caught
       msg = f"Failed to instantiate config from {self.module.__name__!r}"
       if self.config_args:
         msg += f" with args {self.config_args}"
       msg += ".\n\n"
-      epy.reraise(e, prefix=msg)
+      raise ValueError(msg)  # pylint: disable=raise-missing-from
 
     # merge with cfg overrides which are stored in root of self.
     _apply_overrides(config, overrides=self.as_flat_dict())
