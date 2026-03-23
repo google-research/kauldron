@@ -121,7 +121,7 @@ class _LazyConfigFlag(config_flags._ConfigFlag):
     _value = self._value  # pylint: disable=invalid-name
     assert _value is not None, "None for _value is not supported."
     if isinstance(_value, module_configdict.ModuleConfigDict):
-      return _value.module_config
+      return _value.get_module_config()
     else:
       # absl.testing.flagsaver.save_flag_values copies the value into ._value
       # and then later calls the setter with the original value. This is why

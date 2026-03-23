@@ -118,8 +118,7 @@ class ModuleConfigDict(AutoNestedConfigDict):
     else:
       return self.cli_str_arg
 
-  @functools.cached_property
-  def module_config(self) -> konfig.ConfigDict:
+  def get_module_config(self) -> konfig.ConfigDict:
     """Initialize config from config file.
 
     Returns:
@@ -195,4 +194,4 @@ def get_config_from_module(
 ) -> konfig.ConfigDict:
   """Get config from module and cli_str_arg."""
   modulecfg = ModuleConfigDict(module=module, cli_str_arg=cli_str_arg)
-  return modulecfg.module_config
+  return modulecfg.get_module_config()

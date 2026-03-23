@@ -79,7 +79,7 @@ def iter_sweep_configs(
         kontext.set_by_path(module_cfg, k, v)
       # Only for visualization.
 
-      cfg = module_cfg.module_config
+      cfg = module_cfg.get_module_config()
 
       sweep_cfg_overwrites = konfig.ConfigDict(sweep_kwargs)
       print(f'Work-unit {i+1}:', flush=True)
