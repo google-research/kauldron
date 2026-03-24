@@ -49,3 +49,32 @@ def test_element_spec(capsys):
   assert "float32" in result
   assert "label" in result
   assert "int32" in result
+
+
+def test_batch(capsys):
+  class FakeDS:
+
+    def __iter__(self):
+      yield {"image": np.zeros((2, 32, 32, 3))}
+
+  class FakeDataFrame:
+
+    def to_string(self, **_):
+      return "Fake stats"
+
+  trainer = dataclasses.make_dataclass("Trainer", ["train_ds"])(
+      train_ds=FakeDS()
+  )
+  cfg = konfig.ConfigDict({"seed": 0})
+
+  with (
+      mock.patch("kauldron.konfig.resolve", return_value=trainer),
+      mock.patch(
+          "kauldron.inspect.get_batch_stats", return_value=FakeDataFrame()
+      ),
+  ):
+    cmd = data.Batch(cfg=cfg)
+    cmd()
+
+  result = capsys.readouterr().out
+  assert "Fake stats" in result
