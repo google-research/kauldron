@@ -71,6 +71,9 @@ class SubCommand(abc.ABC):
   group: CommandGroup | None = dataclasses.field(
       default=None, metadata={"cmd": False}
   )
+  patch: patch_config.PatchConfig = dataclasses.field(
+      default_factory=patch_config.PatchConfig
+  )
 
   @functools.cached_property
   def trainer(self):
