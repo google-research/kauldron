@@ -61,3 +61,55 @@ Arguments:
 
   assert exc.candidates_block == "Dim Assignments:\n - {a: 2, b: 3}"
   assert exc.candidates_block in msg
+
+
+def test_format_dim_assignment_with_unknown_dim():
+  """UNKNOWN_DIM should be formatted as '#' in dim assignments."""
+  from kauldron.ktyping import internal_typing  # pylint: disable=g-import-not-at-top
+
+  unknown = internal_typing.UNKNOWN_DIM
+
+  # Single unknown dim
+  result = errors._format_dim_assignment("batch", (unknown,))
+  assert result == "batch: #", result
+
+  # Multi-dim with unknown
+  result = errors._format_dim_assignment("data", (6, unknown))
+  assert result == "*data: (6, #)", result
+
+  # Multi-dim all unknown
+  result = errors._format_dim_assignment("b", (unknown, unknown))
+  assert result == "*b: (#, #)", result
+
+  # No unknown (sanity check)
+  result = errors._format_dim_assignment("x", (3, 5))
+  assert result == "*x: (3, 5)", result
+
+
+@typechecked
+def _broadcastable_fn(
+    x: Float["*#batch n"],
+    y: Int["*#batch m"],
+) -> Float["n"]:
+  del y
+  return x[..., :, 0]  # wrong return shape to trigger error
+
+
+def test_unknown_dim_in_error_message():
+  """UNKNOWN_DIM in candidates_block should show '#' not the enum repr."""
+  x = np.zeros((1, 6, 4), dtype=np.float32)  # #*batch=(1, 6) -> (#, 6)
+  y = np.zeros((1, 6, 3), dtype=np.int32)
+
+  with pytest.raises(errors.KTypeCheckError) as exc_info:
+    _broadcastable_fn(x, y)
+
+  msg = str(exc_info.value)
+  # The ugly enum repr should NOT appear in the error message
+  assert (
+      "UnknownDim" not in msg
+  ), f"UnknownDim leaked into error message:\n{msg}"
+  assert (
+      "UNKNOWN_DIM" not in msg
+  ), f"UNKNOWN_DIM leaked into error message:\n{msg}"
+  # The '#' formatting should be used instead
+  assert "#" in exc_info.value.candidates_block

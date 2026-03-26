@@ -204,9 +204,9 @@ class KTypeCheckError(TypeCheckError):
 
 def _format_dim_assignment(dim, value):
   if len(value) == 1:
-    return f"{dim}: {value[0]}"
+    return f"{dim}: {utils.format_dim_value(value)}"
   else:
-    return f"*{dim}: {value}"
+    return f"*{dim}: {utils.format_dim_value(value)}"
 
 
 # MARK: Error messages

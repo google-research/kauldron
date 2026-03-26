@@ -22,6 +22,7 @@ import immutabledict
 from kauldron.ktyping import errors
 from kauldron.ktyping import internal_typing
 from kauldron.ktyping import scope as kscope
+from kauldron.ktyping import utils
 
 DimValue = internal_typing.DimValue
 DimValues = internal_typing.DimValues
@@ -217,19 +218,7 @@ class DimView:
 
 def _format_dim_value(value: DimValue) -> str:
   """Formats a DimValue tuple into a human-readable string."""
-
-  def _fmt(v):
-    if isinstance(v, int):
-      return str(v)
-    if v == UNKNOWN_DIM:
-      return "#"
-    return f"&{v}"
-
-  str_values = [_fmt(v) for v in value]
-  if len(value) == 1:
-    return str_values[0]
-  else:
-    return f"({', '.join(str_values)})"
+  return utils.format_dim_value(value)
 
 
 def _format_dim_assignment(dim_name: str, value: DimValue, align: int) -> str:

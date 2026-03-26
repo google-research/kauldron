@@ -111,6 +111,24 @@ def _get_array_type_shorthand(array: Any) -> str:
   return get_type_name(array)
 
 
+# MARK: format_dim_value
+def format_dim_value(value: internal_typing.DimValue) -> str:
+  """Formats a DimValue tuple into a human-readable string."""
+
+  def _fmt(v):
+    if isinstance(v, int):
+      return str(v)
+    if v == internal_typing.UNKNOWN_DIM:
+      return "#"
+    return f"&{v}"
+
+  str_values = [_fmt(v) for v in value]
+  if len(value) == 1:
+    return str_values[0]
+  else:
+    return f"({', '.join(str_values)})"
+
+
 # MARK: get_type_hints
 def get_type_hints(fn: Callable[..., Any]) -> dict[str, Any]:
   """Return the type hints for the given function with caching."""
