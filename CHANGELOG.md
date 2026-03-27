@@ -8,6 +8,27 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-03-27
+
+* `kd.ktyping`:
+  * [Fix] Fix `PyTree[T]` traversing into registered types (e.g. `flax.struct.dataclass`).
+  * [Fix] Fix `as_np_dtype` lookup when `torchapix` is imported.
+  * [Fix] Fix `UNKNOWN_DIM` formatting in error messages.
+
+* `kd.konfig`:
+  * [Fix] Add hint to import errors if they look like the internal repo prefix is missing.
+  * [Fix] Update Error message propagation in `module_configdict`.
+
+* `kd.random`:
+  * [Extended] Support `kd.random.PRNGKey(seed)`.
+
+* `kd.cli`:
+  * [New] Add `run eval_shape` command.
+  * [Changed] Refactor/beautify CLI help aesthetics.
+
+* `kd.contrib`:
+  * [New] Add a configurable library for `kd.contrib.data.SSTable`.
+
 ## [1.4.0] - 2026-03-11
 
 Highlights:
