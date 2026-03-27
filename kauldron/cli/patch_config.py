@@ -129,7 +129,7 @@ class PatchConfig:
   def _patch_num_batches(self, cfg: konfig.ConfigDict) -> dict[str, Any]:
     """Patches the number of batches."""
     updates = {}
-    if self.num_batches is not None:
+    if self.num_batches:
       if hasattr(cfg, "evals"):
         updates |= cu.tracked_update(
             cfg, "evals.**.num_batches", self.num_batches

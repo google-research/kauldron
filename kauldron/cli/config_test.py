@@ -18,22 +18,21 @@ from kauldron import konfig
 from kauldron.cli import config
 
 
-def test_show_returns_repr(capsys):
-  """show() should print the unresolved ConfigDict."""
-
+def test_show_prints_repr(capsys):
   cfg = konfig.ConfigDict({"seed": 42, "num_train_steps": 1000})
   cmd = config.Show(cfg=cfg)
   cmd()
-  result = capsys.readouterr().out
 
-  assert "'seed': 42" in result
-  assert "'num_train_steps': 1000" in result
+  captured = capsys.readouterr().out
+  assert "'seed': 42" in captured
+  assert "'num_train_steps': 1000" in captured
 
 
-def test_resolve_simple(capsys):
+def test_resolve_prints_config(capsys):
   cfg = konfig.ConfigDict({"seed": 42, "num_train_steps": 1000})
   cmd = config.Resolve(cfg=cfg, verbose=True)
   cmd()
-  result = capsys.readouterr().out
-  assert "'seed': 42" in result
-  assert "'num_train_steps': 1000" in result
+
+  captured = capsys.readouterr().out
+  assert "'seed': 42" in captured
+  assert "'num_train_steps': 1000" in captured

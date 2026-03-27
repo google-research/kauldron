@@ -134,6 +134,11 @@ def main(args: Args) -> None:
 
     patched_config, patches = patcher(cfg)
 
+    conflicts = set(overrides) & set(patches)
+    for key in conflicts:
+      cu.tracked_update(patched_config, key, overrides[key])
+      del patches[key]
+
     origin = patch_config.ConfigOrigin(
         filename=filename,
         overrides=overrides,

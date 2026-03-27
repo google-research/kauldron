@@ -35,7 +35,7 @@ class Show(cu.SubCommand):
 class Resolve(cu.SubCommand):
   """Resolve and display the fully-instantiated config."""
 
-  verbose: bool = False
+  verbose: bool = True
 
   def __call__(self):
     self.print_config_origin()
