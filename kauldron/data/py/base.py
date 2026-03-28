@@ -146,7 +146,7 @@ class PyGrainPipeline(pipelines.Pipeline):
       case DropRemainder.DROP:
         batch_fn = None
         drop_remainder = True
-      case _:
+      case _:  # pylint: disable=unreachable
         # Unreachable, but leaving it here to protect against future additions
         # to the enum.
         raise ValueError("Invalid batch_drop_remainder: {batch_drop_remainder}")
