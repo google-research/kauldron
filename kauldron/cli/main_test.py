@@ -21,6 +21,7 @@ from kauldron import konfig
 from kauldron.cli import cmd_utils as cu
 from kauldron.cli import config
 from kauldron.cli import data
+from kauldron.cli import inspect_cli
 from kauldron.cli import main as cli_main
 from kauldron.cli import patch_config
 import pytest
@@ -42,6 +43,24 @@ class TestParseFlags:
     args = cli_main.flag_parser(["prog", "data", "element_spec"])
     assert isinstance(args.command, data.Data)
     assert isinstance(args.command.sub_command, data.ElementSpec)
+
+  def test_data_batch(self):
+    args = cli_main.flag_parser(["prog", "data", "batch"])
+    assert isinstance(args.command, data.Data)
+    assert isinstance(args.command.sub_command, data.Batch)
+
+  def test_inspect_model_overview(self):
+    args = cli_main.flag_parser(["prog", "inspect", "model_overview"])
+    assert isinstance(args.command, inspect_cli.Inspect)
+    assert isinstance(args.command.sub_command, inspect_cli.ModelOverview)
+
+  def test_show_patch_flag(self):
+    # This expects that we can pass a patch flag to a subcommand.
+    # By default, Show might use the default PatchConfig.
+    args = cli_main.flag_parser(["prog", "config", "show", "--batch_size=4"])
+    sub_cmd = args.command.sub_command
+    assert isinstance(sub_cmd, config.Show)
+    assert sub_cmd.patch.batch_size == 4  # type: ignore[attribute-error]
 
   def test_config_override(self, tmp_path):
     cfg_path = tmp_path / "dummy_cfg.py"
