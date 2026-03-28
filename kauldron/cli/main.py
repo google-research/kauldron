@@ -31,6 +31,7 @@ from kauldron import konfig
 from kauldron.cli import cmd_utils as cu
 from kauldron.cli import config
 from kauldron.cli import data
+from kauldron.cli import inspect_cli
 from kauldron.cli import patch_config
 from kauldron.cli import run
 import simple_parsing
@@ -48,46 +49,17 @@ _CONFIG = konfig.DEFINE_config_file(
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class Args:
 
-  command: config.Config | data.Data | run.Run
-
-  patch: patch_config.PatchConfig = dataclasses.field(
-      default_factory=patch_config.PatchConfig,
-      # Manually added in flag_parser() to support "--patch." prefix.
-      metadata={"cmd": False},
-  )
+  command: config.Config | data.Data | run.Run | inspect_cli.Inspect
 
 
 def flag_parser(argv: list[str]) -> Args:
   """Parses CLI flags from argv using simple_parsing."""
   with konfig.set_lazy_imported_modules():
-    patch, remaining_argv = _parse_patch_flags(argv[1:])
-    args, remaining_argv = _parse_main_args(remaining_argv)
+    args, remaining_argv = _parse_main_args(argv[1:])
 
     FLAGS(argv[:1] + remaining_argv)
 
-  return dataclasses.replace(args, patch=patch)
-
-
-def _parse_patch_flags(
-    argv: list[str],
-) -> tuple[patch_config.PatchConfig, list[str]]:
-  """Parses --patch.* flags and returns (PatchConfig, remaining_argv).
-
-  Uses a dedicated parser without subparsers so argparse can consume
-  --patch.* flags regardless of their position in argv.
-
-  Args:
-    argv: Command-line arguments without the program name.
-
-  Returns:
-    A tuple of (PatchConfig, remaining_argv).
-  """
-  patch_parser = simple_parsing.ArgumentParser(add_help=False)
-  patch_parser.add_arguments(
-      patch_config.PatchConfig, dest="patch", prefix="patch."
-  )
-  namespace, remaining_argv = patch_parser.parse_known_args(argv)
-  return namespace.patch, remaining_argv
+  return args
 
 
 def _parse_main_args(
@@ -102,9 +74,6 @@ def _parse_main_args(
           "  --cfg CFG           Path to the Kauldron config file.\n"
           "  --cfg.KEY=VALUE     Override config values.\n"
       ),
-  )
-  args_parser.add_arguments(
-      patch_config.PatchConfig, dest="_patch", prefix="patch."
   )
   args_parser.add_arguments(Args, dest="args")
   # Hacky way to tidy up the help message:
@@ -122,7 +91,7 @@ def _parse_main_args(
 def main(args: Args) -> None:
   """Dispatches to the selected CLI command."""
   # Get relevant info from commandline arguments
-  patcher: patch_config.PatchConfig = args.patch
+  patcher: patch_config.PatchConfig = args.command.sub_command.patch
   cfg = _CONFIG.value
   filename = FLAGS["cfg"].config_filename  # pytype: disable=attribute-error
   overrides = FLAGS["cfg"].override_values  # pytype: disable=attribute-error
