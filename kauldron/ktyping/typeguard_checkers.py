@@ -311,6 +311,40 @@ def _array_type_checker(
   shape_scope.candidates = match_result.updated_candidates
 
 
+# MARK: ShapeType chk
+def _shape_type_checker(
+    value: Any,
+    origin_type: Any,
+    args: tuple[Any, ...],
+    memo: typeguard.TypeCheckMemo,
+) -> None:
+  """Custom checker for Shape types with shape specs."""
+  del args, memo  # unused
+  assert array_type_meta.is_shape_type(origin_type)
+  shape_scope = scope.get_current_scope(nested_ok=True)
+
+  # Structural check: must be a valid shape.
+  if not array_type_meta.ShapeMeta.is_valid_shape(value):
+    raise errors.KTypeCheckError(
+        f"is not a valid shape (expected a Sequence of ints, got {value!r})",
+        scope=shape_scope,
+    )
+
+  # Shape spec check: match against the spec and update candidates.
+  if origin_type.shape_spec is not internal_typing.MISSING:
+    updated_candidates = origin_type.shape_matches(
+        value, shape_scope.candidates
+    )
+    if not updated_candidates:
+      shape_str = tuple(value)
+      raise errors.KTypeCheckError(
+          f"has shape {shape_str} which is not shape-compatible with"
+          f" '{origin_type.shape_spec}'",
+          scope=shape_scope,
+      )
+    shape_scope.candidates = updated_candidates
+
+
 # MARK: Union checker
 def _array_type_union_checker(
     value: Any,
@@ -525,6 +559,10 @@ def _array_types_checker_lookup(
   if array_type_meta.is_array_type(origin_type):
     return _array_type_checker
 
+  # If origin_type is a ktyping Shape type, return the `_shape_type_checker`.
+  if array_type_meta.is_shape_type(origin_type):
+    return _shape_type_checker
+
   # If origin_type is the ktyping PyTree type, then return the `_pytree_checker`
   if pytree.is_pytree_type(origin_type):
     return _pytree_checker
@@ -552,6 +590,8 @@ def _contains_any_array_type(hint: Any) -> bool:
     return True
   elif pytree.is_pytree_type(hint):
     return _contains_any_array_type(hint.leaf_type)
+  elif array_type_meta.is_shape_type(hint):
+    return hint.shape_spec is not internal_typing.MISSING
   elif typing.is_typeddict(hint):
     annot = utils.get_type_hints(hint)
     return any(_contains_any_array_type(a) for a in annot.values())

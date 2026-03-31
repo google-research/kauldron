@@ -284,34 +284,94 @@ class ArrayTypeMeta(type):
 
 # MARK: ShapeMeta
 class ShapeMeta(type):
-  """Metaclass for creating shape types."""
+  """Metaclass for creating shape types.
 
-  def __new__(mcs, name: str):
-    cls_attrs = {}
+  Supports parameterized annotations: ``Shape["*b t"]`` creates a new type
+  that checks the value is a valid shape tuple AND matches the given shape
+  spec. When used under ``@kt.typechecked``, dim bindings propagate into the
+  active scope just like array annotations.
+  """
+
+  shape_spec: str | Missing
+
+  def __new__(mcs, name: str, *, shape_spec: str | Missing = MISSING):
+    cls_attrs = {"shape_spec": shape_spec}
     return super().__new__(mcs, name, (), cls_attrs)
 
   def __init__(cls, *args, **kwargs):
     del args, kwargs  # unused
     super().__init__(cls)
 
+  def __getitem__(cls, spec_str: str) -> "ShapeMeta":
+    """Create a Shape type annotated with a shape spec.
+
+    Usage: ``Shape["*b t"]``
+
+    Args:
+      spec_str: A shape spec string in the ktyping mini-language.
+
+    Returns:
+      A new ShapeMeta instance with the given shape spec.
+
+    Raises:
+      TypeError: If spec_str is not a string, or if the shape spec is already
+        set (no double-parameterization).
+    """
+    if not isinstance(spec_str, str):
+      raise TypeError(
+          f"Shape[...] expects a string shape spec, got {type(spec_str)}"
+      )
+    if cls.shape_spec is not MISSING:
+      raise TypeError(
+          f"Trying to redefine shape spec of {cls.__name__} with {spec_str!r}."
+      )
+    return ShapeMeta(f"Shape[{spec_str!r}]", shape_spec=spec_str)
+
+  @staticmethod
+  def is_valid_shape(instance: Any) -> bool:
+    """Check if instance is a valid shape (Sequence of int/symbolic)."""
+    if not isinstance(instance, Sequence):
+      return False
+    return all(
+        isinstance(s, int) or internal_typing.is_symbolic_dim(s)
+        for s in instance
+    )
+
   def __instancecheck__(cls, instance: Any) -> bool:
     # TODO(klausg): support None?
     # TODO(klausg): check for positivity?
-    if not isinstance(instance, Sequence):
+    if not cls.is_valid_shape(instance):
       return False
-    if not all(
-        isinstance(s, int) or internal_typing.is_symbolic_dim(s)
-        for s in instance
-    ):
-      return False
-    return True
+    if cls.shape_spec is MISSING:
+      return True
+    # Match against the shape spec (side-effect-free, like ArrayTypeMeta).
+    if not scope.is_scope_stack_empty():
+      candidates = scope.get_current_scope(nested_ok=True).candidates
+    else:
+      candidates = frozenset([DimValues()])
+    return bool(cls.shape_matches(instance, candidates))
+
+  def shape_matches(
+      cls,
+      instance: Any,
+      candidates: internal_typing.CandidateDims = frozenset([DimValues()]),
+  ) -> internal_typing.CandidateDims:
+    """Match the shape tuple against the spec and return updated candidates."""
+    if cls.shape_spec is MISSING:
+      return candidates
+    spec = shape_spec_parser.parse(cls.shape_spec)
+    shape = tuple(instance)
+    return spec.match(
+        tuple(_normalize_dim(d) for d in shape), candidates=candidates
+    )
 
   def __call__(cls, *args, **kwargs):
     """Raises a RuntimeError to prevent accidental Shape("b n") syntax."""
     args_str = ", ".join(repr(a) for a in args)
     raise RuntimeError(
-        f"{cls.__name__} cannot be instantiated / called. If you are migrating"
-        f" from kauldron.typing please use shape({args_str}) instead."
+        f"{cls.__name__} cannot be instantiated / called. Did you mean to"
+        f" write Shape[{args_str}]? If you are migrating from kauldron.typing"
+        f" please use shape({args_str}) instead."
     )
 
   def __repr__(cls):
@@ -342,6 +402,10 @@ class _LazyArrayMeta(type):
 # MARK: Helpers
 def is_array_type(origin_type: Any) -> TypeGuard[ArrayTypeMeta]:
   return isinstance(origin_type, ArrayTypeMeta)
+
+
+def is_shape_type(origin_type: Any) -> TypeGuard[ShapeMeta]:
+  return isinstance(origin_type, ShapeMeta)
 
 
 def _is_scalar_like_type(obj: Any) -> bool:

@@ -227,6 +227,55 @@ def test_shape_call_raises():
     art.Shape("b n")
 
 
+def test_shape_getitem():
+  """Shape['*b t'] creates a new ShapeMeta with shape_spec."""
+  s = art.Shape["*b t"]
+  assert isinstance(s, atm.ShapeMeta)
+  assert s.shape_spec == "*b t"
+  assert s.__name__ == "Shape['*b t']"
+
+
+def test_shape_getitem_isinstance():
+  """isinstance works with parameterized Shape (no scope)."""
+  assert isinstance((3, 4, 5), art.Shape["*b t"])
+  assert isinstance((7,), art.Shape["*b t"])
+  assert isinstance((1, 2, 3, 4), art.Shape["*b t"])
+  # Non-shape values still fail.
+  assert not isinstance("hello", art.Shape["*b t"])
+  assert not isinstance([0.5, None], art.Shape["*b t"])
+
+
+def test_shape_getitem_isinstance_fixed():
+  """isinstance with fixed dims checks concrete values."""
+  assert isinstance((3, 4), art.Shape["3 4"])
+  assert not isinstance((3, 5), art.Shape["3 4"])
+  assert not isinstance((3,), art.Shape["3 4"])
+
+
+def test_shape_double_spec_raises():
+  """Shape['a']['b'] raises TypeError."""
+  with pytest.raises(TypeError, match="redefine shape spec"):
+    _ = art.Shape["a"]["b"]
+
+
+def test_shape_getitem_non_string_raises():
+  """Shape[123] raises TypeError."""
+  with pytest.raises(TypeError, match="expects a string"):
+    _ = art.Shape[123]
+
+
+def test_shape_getitem_repr():
+  s = art.Shape["*b t"]
+  assert repr(s) == "Shape['*b t']"
+
+
+def test_shape_unparameterized_still_works():
+  """Bare Shape still works as before (no shape_spec)."""
+  assert isinstance((1, 2, 3), art.Shape)
+  assert isinstance([5, 6], art.Shape)
+  assert not isinstance([None, 3], art.Shape)
+
+
 def test_xarray_accepts_any_dtype():
   for dtype in (np.float32, np.int32, np.bool_, np.complex64, np.uint8):
     assert art.XArray.dtype_matches(np.empty((), dtype=dtype))

@@ -127,6 +127,33 @@ total({"a": 1, "b": [2, 3]})  # ok
 WARNING: **All of the leaves** of a `PyTree[T]` are typechecked at runtime,
   which can potentially be slow for large pytrees.
 
+## Other Annotation Types
+
+* `Shape`: Roughly equivalent to `tuple[int, ...]` with a few important
+differences:
+  * Support for `jax.export.symbolic_shape` without raising `TypeCheckError`
+  * Can be parametrized: `Shape["*b n"]` just like array types.
+    NOTE: This is purely an annotation. Do not confuse this with
+    `kt.shape("*b n")` which is a function that returns a tuple of ints.
+
+* `DType`: Permissive dtype annotation that accepts:
+  * strings like 'float32', 'int32'
+  * types like np.float32, np.int32, float, int
+  * np.dtype objects like np.dtype('float32'), np.dtype('int32')
+  * jax dtypes like jnp.float32, jnp.int32
+
+* `ArraySpec`: Any object that has `shape` and `dtype` attributes
+  (but is not an array). E.g. `etils.enp.ArraySpec`, `tf.TensorSpec`,
+  `jax.ShapeDtypeStruct`, etc.
+
+* `ElementSpec = PyTree[ArraySpec]`
+* `PRNGKey` Single prng key (supports both new and old style jax keys)
+* `PRNGKeyArray` Multiple keys e.g. as returned by `jax.random.split`
+* `PRNGKeyLike` Permissive type for PRNG keys, integers, or sequences of
+  integers that can be used as sources of entropy for functions like
+  `np.random.default_rng`. Note that functions in `jax.random` do not support
+   sequences of integers for this while `numpy.random` typically does.
+
 ### Named Structures
 
 Use `PyTree[T, "$S"]` to bind the tree structure to a name. When the same
@@ -714,6 +741,9 @@ def fn(x: Float["b d"], y: Int["b"]) -> Float["b d"]:
   `s = Shape("*b n 1")`.
   In `ktyping`, `Shape` can still be used as an annotation, but the latter
   use-case is replaced by the (lowercase) function `s = kt.shape("*b n 1")`.
+  Additionally, `Shape` now supports parameterized specs: `s: Shape["*b n"]`
+  validates the shape and binds the named dims into the scope, just like
+  array annotations.
 * Replace `Dim()` function calls with access to `kt.dim`. E.g.
   `h = Dim("h")` becomes `h = kt.dim["h"]`
 * Replace `set_shape()` with either `kt.dim` assignment or `check_type`.
