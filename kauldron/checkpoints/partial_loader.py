@@ -23,6 +23,7 @@ import functools
 import typing
 from typing import Any, Iterable, Self, TypeVar
 
+from absl import logging
 from etils import epath
 from etils import epy
 import flax
@@ -158,6 +159,10 @@ class PartialKauldronLoader(epy.ContextManager, InitTransform):
     new_to_old: Mapping the pytree to copy to the new state from the original
       checkpoint. By default, copy all model `params` and `collections`
     step: Which step to load (default to last one)
+    ignore_model_keys: Glob patterns for keys not found in the checkpoint that
+      should be ignored.
+    ignore_restored_keys: Glob patterns for extra keys in restored checkpoint to
+      ignore.
   """
 
   workdir: epath.PathLike
@@ -167,6 +172,8 @@ class PartialKauldronLoader(epy.ContextManager, InitTransform):
           'collections': 'collections',
       })
   )
+  ignore_model_keys: tuple[str, ...] = ()
+  ignore_restored_keys: tuple[str, ...] = ()
   step: int = -1
 
   def transform(self, state: _T) -> _T:
@@ -191,7 +198,12 @@ class PartialKauldronLoader(epy.ContextManager, InitTransform):
     # This could potentially be extended to non-Kauldron checkpoints (like
     # `kd.ckpts.PartialOrbaxLoader`)
     return self._ckpt_mgr.restore(
-        _PartialRestoreCheckpointItem(state, new_to_old=new_to_old),
+        _PartialRestoreCheckpointItem(
+            state,
+            new_to_old=new_to_old,
+            ignore_model_keys=self.ignore_model_keys,
+            ignore_restored_keys=self.ignore_restored_keys,
+        ),
         step=self.step,
     )
 
@@ -221,6 +233,8 @@ class _PartialRestoreCheckpointItem(checkpoint_items.CheckpointItem):
   state: Any
   _: dataclasses.KW_ONLY
   new_to_old: _StrDict
+  ignore_model_keys: tuple[str, ...] = ()
+  ignore_restored_keys: tuple[str, ...] = ()
 
   def __kd_ocp_handlers__(self) -> ocp.CheckpointHandler:
     return standard_checkpoint_handler.StandardCheckpointHandler()
@@ -230,10 +244,9 @@ class _PartialRestoreCheckpointItem(checkpoint_items.CheckpointItem):
 
   def __kd_ocp_restore_args__(self) -> ocp.args.CheckpointArgs:
     # Extract the sub-tree from the new state
-    sub_state = {
-        new_path: kontext.get_by_path(self.state, new_path)
-        for new_path, _ in self.new_to_old.items()
-    }
+    sub_state = {}
+    for new_path, _ in self.new_to_old.items():
+      sub_state[new_path] = kontext.get_by_path(self.state, new_path)
     return standard_checkpoint_handler.StandardRestoreArgs(
         sub_state, transform_fn=self._transform_fn
     )
@@ -259,12 +272,112 @@ class _PartialRestoreCheckpointItem(checkpoint_items.CheckpointItem):
     return state
 
   def _transform_fn(self, restored):
-    # Extract the sub-tree from the old state
-    sub_state = {
-        new_path: kontext.get_by_path(restored, old_path)
-        for new_path, old_path in self.new_to_old.items()
-    }
+    sub_state = {}
+
+    for new_path, old_path in self.new_to_old.items():
+      # Reconcile structure: handle extra/missing keys within the sub-tree
+      sub_state[new_path] = _reconcile_sub_state(
+          target=kontext.get_by_path(self.state, new_path),
+          restored_val=kontext.get_by_path(restored, old_path),
+          new_path=new_path,
+          ignore_restored_keys=self.ignore_restored_keys,
+          ignore_model_keys=self.ignore_model_keys,
+      )
     return sub_state
+
+
+def _reconcile_sub_state(
+    *,
+    target: Any,
+    restored_val: Any,
+    new_path: str,
+    ignore_restored_keys: tuple[str, ...],
+    ignore_model_keys: tuple[str, ...],
+) -> Any:
+  """Reconcile structure differences between restored and target sub-trees.
+
+  Args:
+    target: The target sub-tree from `self.state`.
+    restored_val: The restored sub-tree from the checkpoint.
+    new_path: The path prefix for log messages and pattern matching.
+    ignore_restored_keys: Glob patterns for extra keys to ignore.
+    ignore_model_keys: Glob patterns for missing keys to fill from target.
+
+  Returns:
+    The reconciled sub-tree matching `target`'s structure.
+
+  Raises:
+    KeyError: If there are unmatched extra or missing keys.
+  """
+  if not ignore_restored_keys and not ignore_model_keys:
+    return restored_val
+
+  # copy target
+  target = ocp.utils.serialize_tree(target, keep_empty_nodes=True)
+
+  restored_flat = kontext.flatten_with_path(restored_val)
+
+  for k, v in restored_flat.items():
+    if any(_pattern_match(k, pattern) for pattern in ignore_restored_keys):
+      logging.info(
+          'Ignoring extra key in restored checkpoint: %s.%s', new_path, k
+      )
+      continue
+    try:
+      kontext.get_by_path(target, k)  # to check that the key exists
+      kontext.set_by_path(target, k, v)
+    except KeyError as e:
+      raise ValueError(
+          f"Unexpected key in restored checkpoint: {k}. If you don't want to"
+          ' load this key, please use a matching pattern in the'
+          ' `ignore_restored_keys` argument.'
+      ) from e
+
+  # now check that all keys that were not loaded are in ignore_model_keys
+  missing_keys = set(kontext.flatten_with_path(target).keys()) - set(
+      kontext.flatten_with_path(restored_val).keys()
+  )
+  for key in missing_keys:
+    if any(_pattern_match(key, pattern) for pattern in ignore_model_keys):
+      logging.info(
+          'Ignoring missing key in restored checkpoint: %s.%s', new_path, key
+      )
+    else:
+      raise ValueError(
+          f"Missing key in restored checkpoint: {key}. If you don't want to"
+          ' load this key, please use a matching pattern in the'
+          ' `ignore_model_keys` argument.'
+      )
+
+  return target
+
+
+def _pattern_match(key: str, pattern: str) -> bool:
+  """Check if `key` matches `pattern` using kontext glob semantics.
+
+  Delegates to `kontext.filter_by_path` so all kontext glob syntax is
+  supported: `**` matches zero or more segments, `*` matches exactly one.
+
+  Args:
+    key: A dot-separated leaf path (e.g. `'layer.bias'`).
+    pattern: A dot-separated glob pattern (e.g. `'**.bias'`).
+
+  Returns:
+    Whether `key` matches `pattern`.
+  """
+  # Build a single-leaf nested dict from the key path, then use
+  # kontext.filter_by_path to check if the pattern matches.
+  tree: dict[str, Any] = {}
+  d = tree
+  parts = key.split('.')
+  for part in parts[:-1]:
+    d[part] = {}
+    d = d[part]
+  d[parts[-1]] = True  # dummy leaf
+
+  filtered = kontext.filter_by_path(tree, pattern)
+  # filtered is a a dict if there is a match, otherwise it's object().
+  return isinstance(filtered, dict)
 
 
 def _split_new_to_old(new_to_old: _StrDict) -> tuple[_StrDict, _StrDict]:

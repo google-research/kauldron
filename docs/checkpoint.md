@@ -32,7 +32,7 @@ cfg.init_transform = kd.ckpts.PartialKauldronLoader(
         # target checkpoint, and can also be used to rename subtrees when
         # loading params from a different pretrained model.
         # '<new_path>':            '<source_path>'
-        'params.decoder.layers_0': 'params.endoder',
+        'params.decoder.layers_0': 'params.encoder',
     },
 )
 
@@ -43,6 +43,17 @@ init_state = trainer.init_state()
 
 # `init_state.params['decoder']['layers_0']` now contains the previous encoder
 # weights
+```
+
+To allow missing keys or extra keys in restored checkpoint, you can use global
+patterns as following:
+
+```python
+cfg.init_transform = kd.ckpts.PartialKauldronLoader(
+workdir=/path/to/old/workdir/,
+ignore_model_keys=('**.missing_keys_from_checkpoint',),
+ignore_restored_keys=('**.extra_keys_in_checkpoint',)
+)
 ```
 
 See `kd.ckpts.PartialLoader` for details.
