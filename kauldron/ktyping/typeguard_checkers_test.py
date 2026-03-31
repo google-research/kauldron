@@ -23,7 +23,7 @@ from kauldron.ktyping import frame_utils
 from kauldron.ktyping import pytree
 from kauldron.ktyping import scope as scope_mod
 from kauldron.ktyping import typeguard_checkers as tgc
-from kauldron.ktyping.array_types import Float, Int, Scalar, ScalarInt  # pylint: disable=g-multiple-import
+from kauldron.ktyping.array_types import Float, Int, Scalar, ScalarInt, Shape  # pylint: disable=g-multiple-import
 from kauldron.ktyping.decorator import typechecked  # pylint: disable=g-importing-member
 from kauldron.ktyping.typeguard_checkers import check_type  # pylint: disable=g-importing-member
 import numpy as np
@@ -378,3 +378,77 @@ def test_isinstance_pytree_with_registered_pytree_leaf():
     leaf = _LeafNode(x=1, y=2)
     assert tgc.isinstance_({"a": leaf}, pytree.PyTree[_LeafNode])
     assert not tgc.isinstance_({"a": "nope"}, pytree.PyTree[_LeafNode])
+
+
+# MARK: Shape spec typeguard integration
+
+
+def test_shape_spec_binds_dims():
+  """Shape['*b t'] binds dims so kt.dim and kt.shape can access them."""
+
+  @typechecked
+  def f(s: Shape["*b t"]):
+    return dim_view.dim["t"], dim_view.dim["*b"]
+
+  t, b = f((2, 3, 7))
+  assert t == 7
+  assert b == (2, 3)
+
+
+def test_shape_spec_mismatch_raises():
+  """Passing a tuple that doesn't match the spec raises KTypeCheckError."""
+
+  @typechecked
+  def f(s: Shape["3 4"]):
+    pass
+
+  f((3, 4))  # should work
+
+  with pytest.raises(errors.KTypeCheckError, match="not shape-compatible"):
+    f((3, 5))
+
+
+def test_shape_spec_inconsistent_with_array_raises():
+  """Shape and array dims must be consistent."""
+
+  @typechecked
+  def f(s: Shape["*b t"], x: Float["*b t d"]):
+    return x
+
+  # shape says *b=(2, 3), t=7, but array has different batch
+  x = np.zeros((4, 3, 7, 5), dtype=np.float32)
+  with pytest.raises(errors.KTypeCheckError, match="not shape-compatible"):
+    f((2, 3, 7), x)
+
+
+def test_shape_spec_in_union():
+  """Shape['*b t'] | None works correctly."""
+
+  @typechecked
+  def f(s: Shape["*b t"] | None):
+    pass
+
+  f((2, 3, 7))  # valid shape
+  f(None)  # None is fine
+
+
+def test_shape_spec_non_shape_value_raises():
+  """Non-shape values (e.g. str) raise errors with Shape spec."""
+
+  @typechecked
+  def f(s: Shape["*b t"]):
+    pass
+
+  with pytest.raises(errors.KTypeCheckError, match="not a valid shape"):
+    f("hello")
+
+
+def test_bare_shape_in_typechecked():
+  """Bare Shape (no spec) still works as structural check in typechecked."""
+
+  @typechecked
+  def f(s: Shape):
+    return s
+
+  assert f((2, 3)) == (2, 3)
+  assert f([5, 6]) == [5, 6]
