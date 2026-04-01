@@ -86,6 +86,7 @@ def _create_workdir(workdir: epath.PathLike):
     raise ValueError("--workdir must be set when running on XManager.")
 
   logging.info("Creating workdir: %s", workdir)
+
   workdir.mkdir(parents=True, exist_ok=True)
 
 
