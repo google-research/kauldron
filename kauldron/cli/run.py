@@ -23,7 +23,10 @@ from typing import Union
 import jax
 from kauldron.cli import cmd_utils as cu
 from kauldron.data import utils as data_utils
+from kauldron.inspect import inspect as inspect_lib
 import tensorflow_datasets as tfds
+
+# MARK: EvalShape
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -71,9 +74,11 @@ class EvalShape(cu.SubCommand):
     # TODO(klausg): could try to run the metrics computation too.
 
 
+# MARK: EstimateHBM
+
+# MARK: Run
+
 _SUBCOMMANDS = {
-    # Manually name the subcommand 'eval_shape' beacause simple-parsing
-    # would turn this into 'evalshape' instead.
     'eval_shape': EvalShape,
 }
 

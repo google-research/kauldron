@@ -23,6 +23,7 @@ from kauldron.cli import config
 from kauldron.cli import data
 from kauldron.cli import main as cli_main
 from kauldron.cli import patch_config
+from kauldron.cli import run
 import pytest
 
 
@@ -148,7 +149,6 @@ class TestUserOverridePrecedence:
 
   @mock.patch("jax.local_device_count", return_value=2)
   def test_user_override_wins_over_patch(self, _):
-
     cfg = konfig.ConfigDict({
         "stop_after_steps": 100,
         "train_ds": {"batch_size": 64, "shuffle_buffer_size": 1000},
