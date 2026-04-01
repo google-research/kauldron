@@ -105,3 +105,62 @@ def test_lazy_imports():
 
   # pytype: enable=import-error
   # pylint: enable=g-import-not-at-top,g-multiple-import,unused-import
+
+
+def test_proxy_union_and_generic():
+  proxy = konfig.fake_import_utils.ProxyObject.from_cache(name='proxy')
+  assert repr(proxy | None) == "ProxyObject('proxy') | None"
+  assert repr(None | proxy) == "None | ProxyObject('proxy')"
+  assert proxy[int] is proxy
+  assert proxy[int, str] is proxy
+
+  cfg_proxy = konfig.configdict_proxy.ConfigDictProxyObject.from_module_name(
+      'my_module'
+  )
+  assert repr(cfg_proxy | int) == (
+      "ConfigDictProxyObject(my_module) | <class 'int'>"
+  )
+  assert repr(cfg_proxy | proxy) == (
+      "ConfigDictProxyObject(my_module) | ProxyObject('proxy')"
+  )
+
+
+def test_resolve_union_proxy():
+  cfg = konfig.ConfigDict()
+
+  with konfig.imports():
+    import builtins  # pylint: disable=g-import-not-at-top
+
+  cfg.my_union = builtins.int | builtins.str
+  resolved_cfg = konfig.resolve(cfg)
+
+  # It should resolve to the types.UnionType if python >= 3.10
+  # At runtime builtins.int evaluates to the actual python int
+  assert resolved_cfg.my_union == int | str
+
+
+def test_config_dict_proxy_getitem():
+  cfg_proxy = konfig.configdict_proxy.ConfigDictProxyObject.from_module_name(
+      'my_module'
+  )
+  # Dictionary keys should work
+  assert cfg_proxy['__const__'] == 'my_module'
+
+  # Non-dictionary keys should fallback to the generic indexing
+  assert cfg_proxy[int] is cfg_proxy
+
+  # Missing string keys should raise KeyError to prevent silent typo bugs.
+  with pytest.raises(KeyError):
+    cfg_proxy['Type']
+
+
+def test_proxy_union_repr_and_resolution():
+  proxy1 = konfig.fake_import_utils.ProxyObject.from_cache(name='proxy1')
+  proxy2 = konfig.fake_import_utils.ProxyObject.from_cache(name='proxy2')
+
+  union_obj = proxy1 | proxy2
+  assert repr(union_obj) == "ProxyObject('proxy1') | ProxyObject('proxy2')"
+  assert (
+      repr(union_obj | int)
+      == "ProxyObject('proxy1') | ProxyObject('proxy2') | <class 'int'>"
+  )

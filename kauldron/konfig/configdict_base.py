@@ -28,6 +28,7 @@ from typing import Any, ClassVar, Generic, Self, TypeVar
 
 from etils import epy
 from kauldron.konfig import configdict_proxy
+from kauldron.konfig import fake_import_utils
 from kauldron.konfig import utils
 from kauldron.utils import immutabledict
 import ml_collections
@@ -558,7 +559,10 @@ def _normalize_config_only_value(value, name, *, id_to_dict) -> Any:
       return type(value)(
           normalize_fn(v, f'{name}[{i}]') for i, v in enumerate(value)
       )
-    case configdict_proxy.ConfigDictProxyObject():
+    case (
+        configdict_proxy.ConfigDictProxyObject()
+        | fake_import_utils.ProxyUnionObject()
+    ):
       # TODO(epot): Rather than inheriting from dict, `ConfigDictProxyObject`
       # could simply implement the `ConfigDictConvertible` protocol
       return value
