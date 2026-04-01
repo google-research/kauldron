@@ -97,6 +97,12 @@ class ConfigDictProxyObject(fake_import_utils.ProxyObject, dict):
         **kwargs,
     })
 
+  def __or__(self, other) -> fake_import_utils.ProxyUnionObject:  # pytype: disable=signature-mismatch
+    return super().__or__(other)
+
+  def __ror__(self, other) -> fake_import_utils.ProxyUnionObject:  # pytype: disable=signature-mismatch
+    return super().__ror__(other)
+
   # Overwritte `dict` methods
   def __bool__(self) -> bool:
     return True
@@ -166,6 +172,7 @@ class _ConfigDictVisitor:
         (dict, ml_collections.ConfigDict): self._resolve_dict,
         (list, tuple): self._resolve_sequence,
         ml_collections.FieldReference: self._resolve_reference,
+        fake_import_utils.ProxyUnionObject: self._resolve_union,
     }
 
   def _resolve_value(self, value):
@@ -198,6 +205,13 @@ class _ConfigDictVisitor:
 
   def _resolve_reference(self, value: ml_collections.FieldReference):
     return self._resolve_value(value.get())
+
+  def _resolve_union(self, value: fake_import_utils.ProxyUnionObject):
+    # Resolve left and right, then attempt to build a union.
+    # In modern Python, we can just use the `|` operator on types.
+    left = self._resolve_value(value.left)
+    right = self._resolve_value(value.right)
+    return left | right
 
   def _resolve_leaf(self, value):
     return value

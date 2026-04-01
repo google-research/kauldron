@@ -265,6 +265,23 @@ def _fake_import(
   return root
 
 
+@dataclasses.dataclass(frozen=True)
+class ProxyUnionObject:
+  """Represents a union of types involving a ProxyObject."""
+
+  left: Any
+  right: Any
+
+  def __or__(self, other) -> ProxyUnionObject:
+    return ProxyUnionObject(self, other)
+
+  def __ror__(self, other) -> ProxyUnionObject:
+    return ProxyUnionObject(other, self)
+
+  def __repr__(self) -> str:
+    return f'{self.left!r} | {self.right!r}'
+
+
 @dataclasses.dataclass(eq=False, kw_only=True)
 class ProxyObject:
   """Base class to represent a module, function,..."""
@@ -311,6 +328,12 @@ class ProxyObject:
         name=name,
         parent=self,
     )
+
+  def __or__(self, other) -> ProxyUnionObject:
+    return ProxyUnionObject(left=self, right=other)
+
+  def __ror__(self, other) -> ProxyUnionObject:
+    return ProxyUnionObject(left=other, right=self)
 
   def child_import(self, name: str) -> ProxyObject:
     """Returns the child import."""
