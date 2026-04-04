@@ -21,6 +21,7 @@ from kauldron import konfig
 from kauldron.cli import cmd_utils as cu
 from kauldron.cli import config
 from kauldron.cli import data
+from kauldron.cli import inspect_cli
 from kauldron.cli import main as cli_main
 from kauldron.cli import patch_config
 from kauldron.cli import run
@@ -43,6 +44,24 @@ class TestParseFlags:
     args = cli_main.flag_parser(["prog", "data", "element_spec"])
     assert isinstance(args.command, data.Data)
     assert isinstance(args.command.sub_command, data.ElementSpec)
+
+  def test_data_batch(self):
+    args = cli_main.flag_parser(["prog", "data", "batch"])
+    assert isinstance(args.command, data.Data)
+    assert isinstance(args.command.sub_command, data.Batch)
+
+  def test_inspect_model_overview(self):
+    args = cli_main.flag_parser(["prog", "inspect", "model_overview"])
+    assert isinstance(args.command, inspect_cli.Inspect)
+    assert isinstance(args.command.sub_command, inspect_cli.ModelOverview)
+
+  def test_show_patch_flag(self):
+    # This expects that we can pass a patch flag to a subcommand.
+    # By default, Show might use the default PatchConfig.
+    args = cli_main.flag_parser(["prog", "config", "show", "--batch_size=4"])
+    sub_cmd = args.command.sub_command
+    assert isinstance(sub_cmd, config.Show)
+    assert sub_cmd.patch.batch_size == 4  # type: ignore[attribute-error]
 
   def test_config_override(self, tmp_path):
     cfg_path = tmp_path / "dummy_cfg.py"
@@ -81,21 +100,24 @@ class TestParseFlags:
 class TestPatchFlags:
 
   def test_patch_stop_after_steps_via_cli(self):
-    """Passing --patch.stop_after_steps via CLI should not leak to absl."""
+    """Passing --stop_after_steps via CLI should not leak to absl."""
     args = cli_main.flag_parser([
         "prog",
         "config",
         "show",
-        "--patch.stop_after_steps=5",
+        "--stop_after_steps=5",
     ])
-    assert args.patch.stop_after_steps == 5
+    assert args.command.sub_command.patch.stop_after_steps == 5
 
   def test_default_patch_values(self):
     args = cli_main.flag_parser(["prog", "config", "show"])
-    assert args.patch.stop_after_steps == 1
-    assert args.patch.batch_size == patch_config.BATCH_SIZE_DEVICES
-    assert args.patch.skip_checkpointer
-    assert not args.patch.skip_eval
+    assert args.command.sub_command.patch.stop_after_steps == 1
+    assert (
+        args.command.sub_command.patch.batch_size
+        == patch_config.BATCH_SIZE_DEVICES
+    )
+    assert args.command.sub_command.patch.skip_checkpointer
+    assert not args.command.sub_command.patch.skip_eval
 
   def test_batch_size_devices_str(self):
     """Passing the raw string 'devices' is equivalent to BATCH_SIZE_DEVICES."""
