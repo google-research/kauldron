@@ -13,39 +13,9 @@ classifiers = [
 ]
 keywords = []
 
-# pip dependencies of the project
-dependencies = [
-    "absl-py",
-    "altair",
-    "chex",
-    "clu",
-    "einops",
-    "etils[edc,enp,epath,epy,etree]",
-    "flax",
-    "grain ; sys_platform != 'win32'",
-    "graphviz",
-    "immutabledict",
-    "jax",
-    "jaxtyping",
-    "lark",
-    "mediapy",
-    "ml_collections",
-    "numpy",
-    "opencv-python",  # speeds up pygrain image loading
-    "optax",
-    "orbax-checkpoint",
-    "pandas",
-    "scikit-image",
-    "scikit-learn",
-    "tabulate",  # used by pandas.DataFrame.to_markdown (for logging context)
-    "tensorboard",  # required by clu.metric_writers
-    "tensorflow",
-    "tensorflow_datasets>=4.9.7",
-    "tqdm",
-    "typeguard>=4.4.1",
-    "typing_extensions",
-    "xmanager",
-]
+# By default, install all dependencies (backward compatible).
+# For lightweight installs, use e.g. `pip install kauldron[konfig]`
+dependencies = []
 
 # This is set automatically by flit using `kauldron.__version__`
 dynamic = ["version"]
@@ -58,9 +28,59 @@ documentation = "https://kauldron.readthedocs.io"
 # Other: `documentation`, `changelog`
 
 [project.optional-dependencies]
+# Lightweight sub-module installs
+konfig = [
+    "absl-py",
+    "etils[edc,enp,epath,epy]",
+    "immutabledict",
+    "lark",
+    "ml_collections",
+]
+kontext = [
+    "etils[epy,etree-jax]",
+    "jax",
+    "ml_collections",
+    "typing_extensions",
+]
+ktyping = [
+    "etils[edc,enp,epath,epy]",
+    "immutabledict",
+    "jax",
+    "lark",
+    "numpy",
+    "typeguard>=4.4.1",
+]
+# Full install (all dependencies, equivalent to the previous default)
+# Installed through `pip install kauldron[all]`
+all = [
+    "kauldron[konfig,kontext,ktyping]",
+    "altair",
+    "chex",
+    "clu",
+    "einops",
+    "etils[edc,enp,epath,epy,etree]",
+    "flax",
+    "grain ; sys_platform != 'win32'",
+    "graphviz",
+    "jaxtyping",
+    "mediapy",
+    "opencv-python",  # speeds up pygrain image loading
+    "optax",
+    "orbax-checkpoint",
+    "pandas",
+    "scikit-image",
+    "scikit-learn",
+    "tabulate",  # used by pandas.DataFrame.to_markdown (for logging context)
+    "tensorboard",  # required by clu.metric_writers
+    "tensorflow",
+    "tensorflow_datasets>=4.9.7",
+    "tqdm",
+    "xmanager",
+]
 # Development deps (unittest, linting, formating,...)
 # Installed through `pip install .[dev]`
 dev = [
+    "kauldron[all]",
     "pytest",
     "pytest-xdist",
     "hypothesis==6.80.0",
