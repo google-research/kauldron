@@ -73,17 +73,20 @@ class GifVideoWriter(metric_writer.KDMetricWriter):
       step: int,
       videos: Mapping[str, UInt8["n t h w #3"]],
       img_format: str,
+      durations: Mapping[str, int] | None = None,
   ):
     """Write animated image summaries to TensorBoard."""
     if hasattr(self._tf_summary_writer, "_summary_writer"):
       with self._tf_summary_writer._summary_writer.as_default():  # pylint: disable=protected-access
         for key, value in videos.items():
+          duration = (durations or {}).get(key, 100)
           _animated_image(
               key,
               value,
               step=step,
               max_outputs=value.shape[0],
               img_format=img_format,
+              duration=duration,
           )
 
   def write_step_metrics(
@@ -117,6 +120,7 @@ class GifVideoWriter(metric_writer.KDMetricWriter):
           return
 
         save_format_dict = {"PNG": [], "GIF": [], "WEBP": []}
+        duration_dict = {}  # per-summary frame duration in ms
         for name in video_summaries:
           base_name = name.replace("summaries/", "")
           if aux.summary_states and base_name in aux.summary_states:
@@ -125,6 +129,8 @@ class GifVideoWriter(metric_writer.KDMetricWriter):
               fmt = parent.save_format
               if fmt in save_format_dict:
                 save_format_dict[fmt].append(name)
+                if hasattr(parent, "frame_duration_ms"):
+                  duration_dict[name] = parent.frame_duration_ms
                 continue
           save_format_dict["GIF"].append(name)
 
@@ -141,11 +147,18 @@ class GifVideoWriter(metric_writer.KDMetricWriter):
                 step=step,
                 videos=videos_for_format,
                 img_format=save_format,
+                durations=duration_dict,
             )
 
 
 def _animated_image(
-    name, data, step=None, max_outputs=3, description=None, img_format="GIF"
+    name,
+    data,
+    step=None,
+    max_outputs=3,
+    description=None,
+    img_format="GIF",
+    duration=100,
 ):
   """Write animated image summary to TensorBoard."""
 
@@ -158,7 +171,7 @@ def _animated_image(
           format=img_format,
           save_all=True,
           append_images=frames[1:],
-          duration=100,
+          duration=duration,
           loop=0,
           quality=80,
       )
