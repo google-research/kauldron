@@ -133,7 +133,10 @@ floating = NpDType(np.floating)
 float16 = NpDType(np.float16)
 float32 = NpDType(np.float32)
 float64 = NpDType(np.float64)
-float128 = NpDType(np.float128)
+# np.float128 is unavailable on platforms where C long double is 64-bit
+# (macOS ARM64, Windows). Fall back to np.longdouble which maps to the
+# platform's native long double type.
+float128 = NpDType(np.float128) if hasattr(np, 'float128') else NpDType(np.longdouble)
 integer = NpDType(np.integer)
 signedinteger = NpDType(np.signedinteger)
 int8 = NpDType(np.int8)
