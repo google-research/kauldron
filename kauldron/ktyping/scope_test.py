@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
 import threading
 import kauldron.ktyping as kt
 from kauldron.ktyping import errors
@@ -76,9 +75,10 @@ def test_dim_scope_basic_dim_access():
 
     assert scope.dim["a"] == 7
 
-    del scope.dim["a"]
-    with pytest.raises(KeyError):
-      _ = scope.dim["a"]
+    with pytest.raises(
+        TypeError, match="Deleting dimensions is not supported"
+    ):
+      del scope.dim["a"]
 
 
 def test_dim_scope_multi_dim_access():
@@ -104,22 +104,6 @@ def test_dim_scope_multi_dim_access():
     assert scope.dim["a"] == 5
     assert scope.dim["*c"] == (11,)  # can access a single-dim as a multi-dim
 
-    del scope.dim["a"]
-    del scope.dim["*b"]
-    del scope.dim["*c"]
-
-    with pytest.raises(KeyError):
-      _ = scope.dim["a"]
-
-    with pytest.raises(KeyError):
-      _ = scope.dim["b"]
-
-    with pytest.raises(KeyError):
-      _ = scope.dim["c"]
-
-    with pytest.raises(KeyError):
-      del scope.dim["non_existent"]
-
 
 def test_dim_scope_access_ambiguous_dim():
   candidate1 = {"a": (1,), "b": (2,)}
@@ -144,45 +128,21 @@ def test_dim_scope_set_ambiguous_dim():
     # cannot set unambiguous dim (no implicit overwriting)
     with pytest.raises(
         ValueError,
-        match=re.escape(
-            "Incompatible values for 'b' with current_values={(2,)}. Cannot be"
-            " assigned to (7,)."
-        ),
+        match="Dimension 'b' already exists",
     ):
       scope.dim["b"] = 7
 
-    # cannot set partial dim if value is incompatible
-    with pytest.raises(ValueError, match="Incompatible values for 'c'"):
+    # cannot set partial dim
+    with pytest.raises(ValueError, match="Dimension 'c' already exists"):
       scope.dim["c"] = 17
-
-    # CAN set partial dim if value is compatible
-    scope.dim["c"] = 8
-    assert all(alt["c"] == (8,) for alt in scope.candidates)
 
     # can set novel dim
     scope.dim["d"] = 13
     assert all(alt["d"] == (13,) for alt in scope.candidates)
 
     # cannot set ambiguous dim
-    with pytest.raises(ValueError, match="Incompatible values for 'a'"):
+    with pytest.raises(ValueError, match="Dimension 'a' already exists"):
       scope.dim["a"] = 4
-
-
-def test_dim_scope_delete_ambiguous_dim():
-  candidate1 = {"a": (1,), "b": (2,)}
-  candidate2 = {"a": (3,), "b": (2,), "c": (8,)}
-  with kt.ShapeScope(candidates=[candidate1, candidate2]) as scope:
-    # can delete unambiguous dim
-    del scope.dim["b"]
-    assert all("b" not in alt for alt in scope.candidates)
-
-    # can delete partial dim
-    del scope.dim["c"]
-    assert all("c" not in alt for alt in scope.candidates)
-
-    # can delete ambiguous dim
-    del scope.dim["a"]
-    assert all("a" not in alt for alt in scope.candidates)
 
 
 def test_can_still_access_attributes():

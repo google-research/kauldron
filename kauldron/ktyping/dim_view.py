@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import enum
 
-import immutabledict
 from kauldron.ktyping import errors
 from kauldron.ktyping import internal_typing
 from kauldron.ktyping import scope as kscope
@@ -45,8 +44,6 @@ class DimView:
 
   batch_shape = kt.dim["*b"]  # e.g. (8,)
 
-  del kt.dim["c"]  # removes the known values for dim "c"
-
   if "t" in kt.dim:  # checks if dim "t" has a known value in all candidates
     ...
   ```
@@ -56,8 +53,6 @@ class DimView:
   and allow setting dimensions values only if they are consistent across all
   candidates.
   It will raise errors if the requested dimension is not defined or ambiguous.
-  I does allow deletion of dimensions, which will remove them from all
-  candidates.
   """
 
   def __init__(self, scope: kscope.ShapeScope):
@@ -130,17 +125,13 @@ class DimView:
       value = (value,)
 
     current_values = {alt.get(name, MISSING) for alt in self._scope.candidates}
-    incompatible_values = current_values - {value, MISSING}
-
-    if incompatible_values:
+    if current_values != {MISSING}:
       raise ValueError(
-          f"Incompatible values for {name!r} with {current_values=}. Cannot be"
-          f" assigned to {value}."
+          f"Dimension {name!r} already exists in some candidates with values"
+          f" {current_values}. Cannot be changed."
       )
 
-    # This means all the known values are compatible with the new value.
-    # I.e. either they are all the same as the new value, or they are all
-    # missing.
+    # Dimension was missing in all candidates, so we add it.
     modified_candidates = [
         alt | {name: value} for alt in self._scope.candidates
     ]
@@ -149,22 +140,9 @@ class DimView:
 
   def __delitem__(self, name: str):
     __ktyping_ignore_frame__ = True  # pylint: disable=unused-variable
-
-    _, name = _get_dim_type(name)
-
-    new_candidates = []
-    deleted_at_least_one = False
-    for alt in self._scope.candidates:
-      assert isinstance(alt, immutabledict.immutabledict)
-      if name in alt:
-        alt = alt.delete(name)
-        deleted_at_least_one = True
-      new_candidates.append(alt)
-
-    if not deleted_at_least_one:
-      raise KeyError(name)
-
-    self._scope.candidates = new_candidates
+    raise TypeError(
+        f"Deleting dimensions is not supported. Tried to delete {name!r}"
+    )
 
   def __str__(self) -> str:
     __ktyping_ignore_frame__ = True  # pylint: disable=unused-variable
