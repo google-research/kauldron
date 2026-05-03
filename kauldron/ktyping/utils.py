@@ -18,6 +18,7 @@ from __future__ import annotations
 import collections.abc
 import dataclasses
 import inspect
+import re
 import sys
 import types
 import typing
@@ -29,6 +30,8 @@ from kauldron.ktyping import internal_typing
 import numpy as np
 
 TYPE_HINT_CACHING_KEY = "_ktyping_type_hint_cache"
+
+_GENERIC_TYPE_NAME_PATTERN = re.compile(r"^([^\[]+)(.*)$")
 
 
 # MARK: get_type_name
@@ -49,13 +52,19 @@ def get_type_name(type_: Any, full_path: bool = False) -> str:
     if name is None and not inspect.isclass(type_):
       name = type_.__class__.__name__
 
-  if "." in name:
-    # Sometimes the __name__ of a type is a fully qualified name.
-    # This happens e.g. for some versions of jax.Array where unfortunately
-    # __name__ = 'jaxlib._jax.Array' instead of 'Array'.
-    # Here we remove the prefix for readability and only add the path if the
-    # user explicitly requested it with `full_path=True`.
-    name = name.split(".")[-1]
+  # Sometimes the __name__ of a type is a fully qualified name (e.g. some
+  # versions of jax.Array have __name__ = 'jaxlib._jax.Array' instead of
+  # 'Array'). Here we remove the prefix for readability and only add the
+  # path if the user explicitly requested it with `full_path=True`.
+  # We safely separate the base name from any parameterized brackets `[...]`
+  # so we do not split on dots inside the brackets (like ellipsis `...`
+  # in shape specs or dots in `Literal['a.b']`).
+  match = _GENERIC_TYPE_NAME_PATTERN.match(name)
+  if match:
+    base_name, rest = match.groups()
+    if "." in base_name:
+      base_name = base_name.split(".")[-1]
+    name = base_name + rest
 
   args = typing.get_args(type_)
   if args:
