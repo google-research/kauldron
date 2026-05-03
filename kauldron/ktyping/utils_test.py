@@ -32,6 +32,13 @@ class Foo:
   pass
 
 
+class MockGeneric:
+  pass
+
+
+MockGeneric.__name__ = "some.module.MockGeneric['a.b...c']"
+
+
 @pytest.mark.parametrize(
     "obj, expected_name",
     [
@@ -45,6 +52,8 @@ class Foo:
         (jax.Array, "Array"),
         (Literal["foo"], "Literal['foo']"),
         (int | None, "int | None"),
+        (kt.Float["batch ... channels"], "Float['batch ... channels']"),
+        (MockGeneric, "MockGeneric['a.b...c']"),
     ],
 )
 def test_get_type_name(obj, expected_name):
