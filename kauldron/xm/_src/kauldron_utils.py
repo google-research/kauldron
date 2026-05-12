@@ -215,6 +215,10 @@ class KauldronJobs(jobs_info.JobsProvider):
       # Cannot use `dataclasses.replace` as it interact with the `merge_utils`
       run = type(run)(**init_kwargs)
 
+    eval_until_step = kontext.get_by_path(
+        self._cfg, "setup.eval_until_step", None
+    )
+
     if self._is_eval_only:  # Eval only, normalize run config.
       if isinstance(run, run_strategies.AlongTrain):
         run = run_strategies.StandaloneLastCheckpoint(
@@ -226,10 +230,16 @@ class KauldronJobs(jobs_info.JobsProvider):
         init_kwargs = dict(run._kxm_init_kwargs)  # pylint: disable=protected-access
         init_kwargs.pop("job_group", None)  # Avoid duplicated kwarg.
 
-        run = run_strategies.StandaloneLastCheckpoint(
-            job_group=run.job_group,
-            **init_kwargs,
-        )
+        if eval_until_step is not None:
+          run = run_strategies.StandaloneEveryCheckpoint(
+              job_group=run.job_group,
+              **init_kwargs,
+          )
+        else:
+          run = run_strategies.StandaloneLastCheckpoint(
+              job_group=run.job_group,
+              **init_kwargs,
+          )
       else:
         raise TypeError(
             f"Unexpected run strategy for {eval_name}. Got: {type(run)}."
