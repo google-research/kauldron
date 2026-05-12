@@ -50,6 +50,7 @@ class Setup:
       `Writer`, to ensure all dashboards are written to the same collection.
     eval_only: Whether the job is a eval-only job.
     preemptable_eval: If `True`, makes eval preemptible.
+    eval_until_step: If set, limits the evaluation to only evaluate checkpoints up to this step.
   """
   # pyformat: enable
 
@@ -60,6 +61,7 @@ class Setup:
   eval_only: bool = False
   # TODO(epot): Not the best place for this.
   preemptable_eval: bool = False
+  eval_until_step: int | None = None
 
   def __post_init__(self):
     # Normalize tags to a list.

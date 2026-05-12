@@ -176,8 +176,9 @@ def _preemptable_iter_new_checkpoints(
     state: train_step.TrainState,
 ) -> Iterator[train_step.TrainState]:
   """Yields the new checkpoints."""
-  # Skip the `iter_new_checkpoints` for eval-only jobs.
-  if trainer.setup.eval_only:
+  # Skip the `iter_new_checkpoints` for eval-only jobs ONLY IF
+  # eval_until_step is not set.
+  if trainer.setup.eval_only and trainer.setup.eval_until_step is None:
     return
 
   trainer_ckpt = trainer.checkpointer
@@ -196,6 +197,17 @@ def _preemptable_iter_new_checkpoints(
       # state might have been donated, we should not access it after this point.
       # Eval is done, remove the duplicated checkpoint
       eval_ckpt.delete(step)
+      # Exit if resumed step meets or exceeds limit
+      if (
+          trainer.setup.eval_until_step is not None
+          and step >= trainer.setup.eval_until_step
+      ):
+        logging.info(
+            f'Resumed step {step} reaches eval_until_step'
+            f' {trainer.setup.eval_until_step}. Exiting.'
+        )
+        return
+
     for step in trainer_ckpt.iter_new_checkpoints(
         min_interval_secs=10,
         timeout=10,
@@ -221,6 +233,17 @@ def _preemptable_iter_new_checkpoints(
       # Eval is done, remove the duplicated checkpoint
       if trainer.setup.preemptable_eval:
         eval_ckpt.delete(step)
+
+      # Exit the loop after evaluating the step limit (eval_until_step).
+      if (
+          trainer.setup.eval_until_step is not None
+          and step >= trainer.setup.eval_until_step
+      ):
+        logging.info(
+            f'Reached eval_until_step {trainer.setup.eval_until_step}.'
+            ' Stopping.'
+        )
+        break
 
 
 def _restore_checkpoint(
