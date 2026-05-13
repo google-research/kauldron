@@ -195,6 +195,8 @@ class Checkpointer(BaseCheckpointer):
       checkpoints to preserve. If not provided, these other options are used
       instead. Prefer to use this option over others.
     multiprocessing_options: See `ocp.MultiprocessingOptions`
+    never_save_step_zero: If True, a checkpoint will be never saved for step 0,
+      independently of any other parameter or setting.
     fast: (internal) Activate some optimizations
     create: (internal) Whether to create the checkpoint directory, this is set
       by kauldron automatically based on whether the job is a training job
@@ -217,6 +219,7 @@ class Checkpointer(BaseCheckpointer):
       dataclasses.field(default_factory=ocp.options.MultiprocessingOptions)
   )
 
+  never_save_step_zero: bool = False
   fast: bool = True
   create: bool = True
 
@@ -305,6 +308,8 @@ class Checkpointer(BaseCheckpointer):
     return state
 
   def should_save(self, step: int) -> bool:
+    if step == 0 and self.never_save_step_zero:
+      return False
     return self._ckpt_mgr.should_save(step)
 
   def delete(self, step: int) -> None:
