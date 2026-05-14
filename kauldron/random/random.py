@@ -231,11 +231,21 @@ def _hash(data: str) -> int:
 def _mock_jax():
   """Mock `jax.random` to support custom Key object."""
   from jax._src import random  # pylint: disable=g-import-not-at-top
+
+  from jax._src.random import core as random_core  # pylint: disable=g-import-not-at-top
   from flax.core import scope  # pylint: disable=g-import-not-at-top
 
-  random._check_prng_key = _normalize_jax_key(  # pylint: disable=protected-access
-      random._check_prng_key, key_arg_index=1  # pylint: disable=protected-access
-  )
+  if hasattr(random, '_check_prng_key'):
+    # JAX v0.10.0 or older
+    random._check_prng_key = _normalize_jax_key(  # pylint: disable=protected-access
+        random._check_prng_key, key_arg_index=1  # pylint: disable=protected-access
+    )
+  else:
+    # JAX v0.10.1 or newer
+    random_core._check_prng_key = _normalize_jax_key(  # pylint: disable=protected-access
+        random_core._check_prng_key, key_arg_index=1  # pylint: disable=protected-access
+    )
+
   scope._is_valid_rng = _normalize_jax_key(scope._is_valid_rng)  # pylint: disable=protected-access
 
 
