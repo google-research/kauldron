@@ -176,8 +176,11 @@ def _preemptable_iter_new_checkpoints(
     state: train_step.TrainState,
 ) -> Iterator[train_step.TrainState]:
   """Yields the new checkpoints."""
-  # Skip the `iter_new_checkpoints` for eval-only jobs.
-  if trainer.setup.eval_only:
+  # Skip the `iter_new_checkpoints` for eval-only jobs if they don't have a
+  # checkpointer.
+  if trainer.setup.eval_only and not isinstance(
+      trainer.checkpointer, checkpointer.Checkpointer
+  ):
     return
 
   trainer_ckpt = trainer.checkpointer
@@ -237,6 +240,11 @@ def _restore_checkpoint(
     with partial_loader.PartialKauldronLoader(
         workdir=trainer_ckpt.workdir,
         step=step,
+        new_to_old={
+            'step': 'step',
+            'params': 'params',
+            'collections': 'collections',
+        },
     ) as loader:
       return loader.transform(state)
   return trainer_ckpt.restore(state, step=step)
