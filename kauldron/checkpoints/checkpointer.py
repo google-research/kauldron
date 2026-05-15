@@ -197,6 +197,10 @@ class Checkpointer(BaseCheckpointer):
     multiprocessing_options: See `ocp.MultiprocessingOptions`
     never_save_step_zero: If True, a checkpoint will be never saved for step 0,
       independently of any other parameter or setting.
+    lightweight_initialize: If True, the checkpoint manager will skip
+      loading metadata which saves time when initializing but will cause
+      problems with time-based checkpoint saving and selecting the best metric
+      from the previous checkpoints. See orbax documentation for more details.
     fast: (internal) Activate some optimizations
     create: (internal) Whether to create the checkpoint directory, this is set
       by kauldron automatically based on whether the job is a training job
@@ -220,6 +224,7 @@ class Checkpointer(BaseCheckpointer):
   )
 
   never_save_step_zero: bool = False
+  lightweight_initialize: bool = False
   fast: bool = True
   create: bool = True
 
@@ -232,6 +237,7 @@ class Checkpointer(BaseCheckpointer):
 
     mgr_options = ocp.CheckpointManagerOptions(
         save_interval_steps=self.save_interval_steps,
+        lightweight_initialize=self.lightweight_initialize,
         max_to_keep=(
             self.max_to_keep if self.preservation_policy is None else None
         ),
