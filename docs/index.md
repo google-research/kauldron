@@ -23,7 +23,6 @@
     kontext
     data_py
     metrics
-    klinen
     nnx
     random
     ktyping
