@@ -31,7 +31,7 @@ from kauldron.data import iterators
 from kauldron.data import pipelines
 from kauldron.data.tf import grain_utils
 from kauldron.data.tf import transform_utils as tr_utils
-from kauldron.ktyping import PRNGKeyLike, PyTree  # pylint: disable=g-importing-member,g-multiple-import
+from kauldron.ktyping import PRNGKey, PRNGKeyLike, PyTree  # pylint: disable=g-importing-member,g-multiple-import
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
@@ -108,13 +108,13 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
       # Else, `checkpoint` is explicitly set to False, so nothing to do.
 
   @abc.abstractmethod
-  def ds_for_current_process(self, rng: random.PRNGKey) -> tf.data.Dataset:
+  def ds_for_current_process(self, rng: PRNGKey) -> tf.data.Dataset:
     """Returns the dataset for the current process.
 
     Args:
       rng: A PRNGKey used to sample the dataset. The `rng` is the same for all
         processes, so it's the users responsibility to call
-        `rng.fold_in(jax.process_index())` if required.
+        `jax.random.fold_in(rng, jax.process_index())` if required.
 
     Returns:
       The `tf.data.Dataset` for the current process. Each process should yield
@@ -123,7 +123,7 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
     raise NotImplementedError
 
   def transform_ds(
-      self, ds: tf.data.Dataset, *, rng: random.PRNGKey
+      self, ds: tf.data.Dataset, *, rng: PRNGKey
   ) -> tf.data.Dataset:
     """Eventually apply transforms to the dataset."""
     ds = grain_utils.maybe_add_grain_meta_features(
@@ -167,8 +167,8 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
     # host<>device here.
     # Instead could force the `PRNGKey` to stay in the CPU.
     with jax.transfer_guard("allow"):
-      rng = random.PRNGKey(self.seed)
-      rng = rng.fold_in("kmix")
+      rng = jax.random.PRNGKey(self.seed)
+      rng = random.fold_in_str(rng, "kmix")
       ds = self.ds_with_transforms(rng, _is_root=True)
 
     # Drop grain meta features
@@ -176,7 +176,7 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
     return ds
 
   def ds_with_transforms(
-      self, rng: random.PRNGKey, *, _is_root: bool = False
+      self, rng: PRNGKey, *, _is_root: bool = False
   ) -> tf.data.Dataset:
     """Create the `tf.data.Dataset` and apply all the transforms."""
     ds = self.ds_for_current_process(rng)

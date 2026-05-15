@@ -18,7 +18,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 import inspect
-import sys
 from typing import Any, Callable, Sequence, TypeGuard
 
 from etils.enp import lazy  # pylint: disable=g-importing-member
@@ -422,15 +421,6 @@ def _is_array_spec_like_type(obj: Any) -> bool:
   return has_shape and has_dtype and not lazy.is_array(obj)
 
 
-def _is_kd_random_prng_key(obj: Any) -> bool:
-  """Returns True if object is a kauldron.random.PRNGKey (without importing)."""
-  if "kauldron.random" in sys.modules:
-    kd_random = sys.modules["kauldron.random"]
-    return isinstance(obj, kd_random.PRNGKey)  # pytype: disable=attribute-error
-  else:
-    return False
-
-
 # pylint: disable=invalid-name   # Why are they treated as constants by pylint?
 NpArray = _LazyArrayMeta("NpArray", lazy_is_array_check=lazy.is_np)
 JaxArray = _LazyArrayMeta("JaxArray", lazy_is_array_check=lazy.is_jax)
@@ -442,7 +432,5 @@ ScalarLike = _LazyArrayMeta(
 ArraySpecLike = _LazyArrayMeta(
     "ArraySpecLike", lazy_is_array_check=_is_array_spec_like_type
 )
-KdPRNGKey = _LazyArrayMeta(
-    "KdPRNGKey", lazy_is_array_check=_is_kd_random_prng_key
-)
+
 # pylint: enable=invalid-name
