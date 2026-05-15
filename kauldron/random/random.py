@@ -230,7 +230,13 @@ def _hash(data: str) -> int:
 @functools.cache
 def _mock_jax():
   """Mock `jax.random` to support custom Key object."""
-  from jax._src import random  # pylint: disable=g-import-not-at-top
+  try:
+    # post-v0.10.0 JAX internal package structure
+    from jax._src.random import core as random  # pylint: disable=g-import-not-at-top
+    _ = random._check_prng_key  # pylint: disable=protected-access
+  except (ImportError, AttributeError):
+    # pre-v0.10.0 JAX internal package structure
+    from jax._src import random  # pylint: disable=g-import-not-at-top
   from flax.core import scope  # pylint: disable=g-import-not-at-top
 
   random._check_prng_key = _normalize_jax_key(  # pylint: disable=protected-access
