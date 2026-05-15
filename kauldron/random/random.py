@@ -233,8 +233,8 @@ def _mock_jax():
   from jax._src import random  # pylint: disable=g-import-not-at-top
   from flax.core import scope  # pylint: disable=g-import-not-at-top
 
-  random._check_prng_key = _normalize_jax_key(  # pylint: disable=protected-access
-      random._check_prng_key, key_arg_index=1  # pylint: disable=protected-access
+  random._check_prng_key = _normalize_jax_key(  # pylint: disable=protected-access; pytype: disable=module-attr
+      random._check_prng_key, key_arg_index=1  # pylint: disable=protected-access; pytype: disable=module-attr
   )
   scope._is_valid_rng = _normalize_jax_key(scope._is_valid_rng)  # pylint: disable=protected-access
 
