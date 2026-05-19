@@ -31,7 +31,6 @@ with _epy.lazy_api_imports(globals()):
   from kauldron import evals
   from kauldron import export
   from kauldron import inspect
-  from kauldron import klinen as knn
   from kauldron import konfig
   from kauldron import kontext
   from kauldron import losses

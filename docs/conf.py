@@ -36,7 +36,6 @@ apitree.make_project(
         'kauldron/konfig/docs/demo.ipynb': 'konfig.ipynb',
         'kauldron/kontext/README.md': 'kontext.md',
         'kauldron/data/py/README.md': 'data_py.md',
-        'kauldron/klinen/README.md': 'klinen.md',
         'kauldron/random/README.md': 'random.md',
     },
     globals=globals(),

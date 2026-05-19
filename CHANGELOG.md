@@ -8,6 +8,9 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 ## [Unreleased]
 
+* `kd.klinen`:
+  * [Removed] Remove `kauldron.klinen` module as it had no substantial usage.
+
 ## [1.4.1] - 2026-03-27
 
 * `kd.ktyping`:
