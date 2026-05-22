@@ -79,7 +79,7 @@ class Accuracy(base.Metric):
     if logits is not None:
       pred_labels = logits.argmax(axis=-1, keepdims=True)
     assert pred_labels is not None
-    correct = pred_labels == labels
+    correct = jnp.asarray(pred_labels == labels, dtype=jnp.float32)
     return self.State.from_values(values=correct, mask=mask)
 
 
