@@ -72,14 +72,18 @@ class Setup:
     # add this line.
     tf.config.set_visible_devices([], "GPU")
 
-    _create_workdir(trainer.workdir)
+    _create_workdir(
+        trainer.workdir,
+    )
     _maybe_remove_jax_logging_handlers()
 
   def log_status(self, msg: str) -> None:
     logging.info(msg)
 
 
-def _create_workdir(workdir: epath.PathLike):
+def _create_workdir(
+    workdir: epath.PathLike,
+):
   """Ensure workdir is set and exists."""
   workdir = epath.Path(workdir) if workdir else epath.Path()
   if workdir == epath.Path():
