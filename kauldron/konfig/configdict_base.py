@@ -98,6 +98,11 @@ class ConfigDict(ml_collections.ConfigDict):
     value = _normalize_config_only_value(value, key, id_to_dict={})
     return super().__setitem__(key, value)
 
+  def __or__(self, other: dict[str, Any] | ml_collections.ConfigDict):
+    new = copy.deepcopy(self)
+    new.update(other)
+    return new
+
   def __deepcopy__(self, memo: dict[int, Any]) -> Self:
     # First create an empty copy and add it to the memo to avoid infinite
     # recursion.
