@@ -20,16 +20,20 @@ from collections.abc import Mapping, Sequence
 import dataclasses
 import io
 import re
+import typing
 from typing import Any, Optional
 
 from absl import logging
 from etils import epath
+import flax
 from kauldron.train import auxiliaries
 from kauldron.train import metric_writer
 from kauldron.utils import chrono_utils
 from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
 import numpy as np
 import optax
+
+FrozenDict = dict if typing.TYPE_CHECKING else flax.core.FrozenDict
 
 
 @dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
@@ -60,6 +64,7 @@ class NpzWriter(metric_writer.KDMetricWriter):
   key_patterns: Sequence[str] | None = None
   save_scalars: bool = False
   output_dir: epath.Path | None = None
+  static_info: FrozenDict = FrozenDict({})
 
   def write_step_metrics(
       self,
@@ -94,7 +99,7 @@ class NpzWriter(metric_writer.KDMetricWriter):
       arrays_to_save |= _scalars_as_arrays(scalars)
 
     if arrays_to_save:
-      self._save_npz(step, arrays_to_save)
+      self._save_npz(step, arrays_to_save | dict(self.static_info))
 
   def _save_npz(self, step: int, arrays: dict[str, np.ndarray]) -> None:
     out_dir = self._get_output_dir()
