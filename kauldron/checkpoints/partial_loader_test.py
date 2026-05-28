@@ -287,3 +287,76 @@ class TestTransformFn:
 def _assert_not_all_close(*args):
   with pytest.raises(AssertionError):
     chex.assert_trees_all_close(*args)
+
+
+@pytest.fixture
+def matching_trainer(tmp_path: pathlib.Path) -> kd.train.Trainer:
+  cfg = mnist_autoencoder.get_config()
+  cfg.workdir = str(tmp_path / 'matching_workdir')
+
+  cfg.model = kd_cfg.nn.FlatAutoencoder(
+      inputs='batch.image',
+      encoder=nn.Dense(features=_NUM_FEATURES),
+      decoder=nn.Dense(features=28 * 28),
+  )
+
+  cfg.train_ds.batch_size = 1
+  cfg.seed = 2
+  cfg = kd.konfig.resolve(cfg)
+  with tfds.testing.mock_data():
+    _ = cfg.train_ds.element_spec
+  return cfg
+
+
+def test_simple_checkpoint_loader(
+    matching_trainer: kd.train.Trainer,
+    old_trainer: kd.train.Trainer,
+):  # pylint: disable=redefined-outer-name
+  # 1. Initialize old trainer, run 1 step to update params and opt_state,
+  # and save a checkpoint
+  with tfds.testing.mock_data():
+    old_state = old_trainer.init_state()
+    batch = next(iter(old_trainer.train_ds))
+    old_state, _ = old_trainer.trainstep.step(old_state, batch)
+
+  old_trainer.checkpointer.save(old_state, step=0)
+  old_trainer.checkpointer.wait_until_finished()
+
+  # 2. Initialize state from matching_trainer
+  init_state = matching_trainer.init_state()
+
+  # Make sure initial weights and opt_state are different
+  _assert_not_all_close(init_state.params, old_state.params)
+  _assert_not_all_close(init_state.opt_state, old_state.opt_state)
+
+  # 3. Apply transform with load_opt_state=False
+  loader = kd.ckpts.SimpleCheckpointLoader(
+      workdir=old_trainer.workdir,
+      load_opt_state=False,
+  )
+  new_state = loader.transform(init_state)
+
+  # params and collections should be successfully loaded and equal to old_state
+  chex.assert_trees_all_close(new_state.params, old_state.params)
+  chex.assert_trees_all_close(new_state.collections, old_state.collections)
+
+  # opt_state should remain untouched (equal to matching_trainer's init_state)
+  chex.assert_trees_all_close(new_state.opt_state, init_state.opt_state)
+  _assert_not_all_close(new_state.opt_state, old_state.opt_state)
+
+  # 4. Apply transform_after_optimizer with load_opt_state=True
+  loader_with_opt = kd.ckpts.SimpleCheckpointLoader(
+      workdir=old_trainer.workdir,
+      load_opt_state=True,
+  )
+  new_state_with_opt = loader_with_opt.transform_after_optimizer(new_state)
+
+  # opt_state should also be successfully loaded and equal to old_state's
+  # opt_state
+  chex.assert_trees_all_close(new_state_with_opt.opt_state, old_state.opt_state)
+  # Verify that params and collections remain correctly loaded after
+  # opt_state restoration
+  chex.assert_trees_all_close(new_state_with_opt.params, old_state.params)
+  chex.assert_trees_all_close(
+      new_state_with_opt.collections, old_state.collections
+  )

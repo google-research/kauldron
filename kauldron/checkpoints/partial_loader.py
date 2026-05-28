@@ -396,3 +396,84 @@ def _split_new_to_old(new_to_old: _StrDict) -> tuple[_StrDict, _StrDict]:
 # `kd.from_xid.get_workdir`
 def workdir_from_xid(xid: int, wid: int = 1) -> epath.Path:
   return from_xid.get_workdir(xid=xid, wid=wid)
+
+
+@dataclasses.dataclass(frozen=True)
+class _SimpleRestoreCheckpointItem(checkpoint_items.CheckpointItem):
+  """Helper item to restore specific components of TrainState with correct sharding."""
+
+  state: Any
+  restore_keys: tuple[str, ...]
+
+  def __kd_ocp_handlers__(self) -> ocp.CheckpointHandler:
+    return ocp.PyTreeCheckpointHandler()
+
+  def __kd_ocp_save_args__(self) -> ocp.args.CheckpointArgs:
+    raise ValueError('Simple checkpoint loader does not support save.')
+
+  def __kd_ocp_restore_args__(self) -> ocp.args.CheckpointArgs:
+    # Build restore arguments targeting the active subtrees.
+    # This maps the sharding and shape specs from the active state.
+    sub_state = {}
+    for key in self.restore_keys:
+      val = getattr(self.state, key, None)
+      if val is not None:
+        sub_state[key] = val
+    return ocp.args.PyTreeRestore(item=sub_state, partial_restore=True)
+
+  def __kd_ocp_restore_post__(self, restored_sub: Any) -> Any:
+    # Merge the restored subtrees back into the active training state.
+    updates = {}
+    for key in self.restore_keys:
+      if key in restored_sub:
+        updates[key] = restored_sub[key]
+    return self.state.replace(**updates)
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class SimpleCheckpointLoader(epy.ContextManager, InitTransform):
+  """Simple loader for Kauldron checkpoints.
+
+  Allows loading pre-trained `params` and `collections` (and optionally
+  `opt_state`) from another Kauldron checkpoint workdir as is, without path
+  transformations or model surgery.
+
+  Attributes:
+    workdir: The work directory from which the checkpoint should be loaded.
+    step: Which step to load (default to last one, -1).
+    load_opt_state: Whether to load the optimizer state (`opt_state`) as well.
+  """
+
+  workdir: epath.PathLike
+  step: int = -1
+  load_opt_state: bool = False
+
+  def transform(self, state: _T) -> _T:
+    # Before optimizer is initialized, only restore params and collections
+    return self._partial_restore(state, ('params', 'collections'))
+
+  def transform_after_optimizer(self, state: _T) -> _T:
+    # After optimizer is initialized, optionally restore opt_state
+    if not self.load_opt_state:
+      return state
+    return self._partial_restore(state, ('opt_state',))
+
+  def _partial_restore(self, state: _T, restore_keys: tuple[str, ...]) -> _T:
+    item = _SimpleRestoreCheckpointItem(state=state, restore_keys=restore_keys)
+    return self._ckpt_mgr.restore(item, step=self.step)
+
+  @functools.cached_property
+  def _ckpt_mgr(self) -> checkpointer.Checkpointer:
+    return checkpointer.Checkpointer(
+        workdir=self.workdir,
+        save_interval_steps=1,
+    )
+
+  def close(self) -> None:
+    self._ckpt_mgr.close()
+
+  def __contextmanager__(self) -> Iterable[Self]:
+    try:
+      yield self
+    finally:
+      self.close()
