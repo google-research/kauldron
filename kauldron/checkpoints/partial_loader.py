@@ -163,6 +163,10 @@ class PartialKauldronLoader(epy.ContextManager, InitTransform):
       should be ignored.
     ignore_restored_keys: Glob patterns for extra keys in restored checkpoint to
       ignore.
+    lightweight_initialize: If True, the checkpoint manager will skip
+      loading metadata which saves time when initializing but will cause
+      problems with time-based checkpoint saving and selecting the best metric
+      from the previous checkpoints. See orbax documentation for more details.
   """
 
   workdir: epath.PathLike
@@ -175,6 +179,7 @@ class PartialKauldronLoader(epy.ContextManager, InitTransform):
   ignore_model_keys: tuple[str, ...] = ()
   ignore_restored_keys: tuple[str, ...] = ()
   step: int = -1
+  lightweight_initialize: bool = False
 
   def transform(self, state: _T) -> _T:
     # Before the optimizer, restore everything except the `opt_state` (i.e.,
@@ -212,6 +217,7 @@ class PartialKauldronLoader(epy.ContextManager, InitTransform):
     return checkpointer.Checkpointer(
         workdir=self.workdir,
         save_interval_steps=1,
+        lightweight_initialize=self.lightweight_initialize,
     )
 
   def close(self) -> None:

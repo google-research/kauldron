@@ -169,6 +169,34 @@ class _ExceptionTracker:
       raise ExceptionGroup('One or more evaluators failed', self.exceptions)
 
 
+def _eval_standalone_last_checkpoint(
+    trainer: trainer_lib.Trainer,
+    eval_names: list[str],
+) -> bool:
+  """Returns True if this is an eval-only job with only last-checkpoint evals.
+
+  When True, no checkpoint polling is needed — the job runs a single evaluation
+  on the checkpoint restored by the ``init_transform``.
+
+  Args:
+    trainer: The trainer to check.
+    eval_names: Names of the evaluators being run.
+
+  Returns:
+    True if this is an eval-only job and none of the evaluators use
+    ``StandaloneEveryCheckpoint``.
+  """
+  if not trainer.setup.eval_only:
+    return False
+  return not any(
+      isinstance(
+          trainer.evals[name].run,
+          run_strategies.StandaloneEveryCheckpoint,
+      )
+      for name in eval_names
+  )
+
+
 def _preemptable_iter_new_checkpoints(
     *,
     trainer: trainer_lib.Trainer,
@@ -176,12 +204,17 @@ def _preemptable_iter_new_checkpoints(
     state: train_step.TrainState,
 ) -> Iterator[train_step.TrainState]:
   """Yields the new checkpoints."""
-  # Skip the `iter_new_checkpoints` for eval-only jobs.
-  if trainer.setup.eval_only:
+  if _eval_standalone_last_checkpoint(trainer, eval_names):
     return
 
-  trainer_ckpt = trainer.checkpointer
+  # For eval-only jobs with StandaloneEveryCheckpoint evaluators, construct a
+  # read-only checkpointer from the init_transform's workdir.
+  if trainer.setup.eval_only:
+    trainer_ckpt = _get_continuous_eval_ckpt(trainer)
+  else:
+    trainer_ckpt = trainer.checkpointer
   assert isinstance(trainer_ckpt, checkpointer.Checkpointer)
+
   with _get_eval_ckpt(trainer_ckpt, eval_names) as eval_ckpt:
     # If the eval checkpoint exists, there is an ongoing eval that was preempted
     # and we should resume the onging eval.
@@ -201,7 +234,7 @@ def _preemptable_iter_new_checkpoints(
         timeout=10,
         timeout_fn=lambda: (
             # Exit when train job has completed
-            epath.Path(trainer.workdir)
+            epath.Path(trainer_ckpt.workdir)
             .joinpath(TRAIN_COMPLETE_FILENAME)
             .exists()
         ),
@@ -223,6 +256,47 @@ def _preemptable_iter_new_checkpoints(
         eval_ckpt.delete(step)
 
 
+def _get_continuous_eval_ckpt(
+    trainer: trainer_lib.Trainer,
+) -> checkpointer.Checkpointer:
+  """Constructs a read-only checkpointer for continuous eval-only jobs.
+
+  Extracts the training workdir from the trainer's ``init_transform``
+  (a ``PartialKauldronLoader``) and creates a lightweight checkpointer that
+  polls for new checkpoints without loading full metadata.
+
+  This is called automatically when an eval-only job has evaluators using
+  ``StandaloneEveryCheckpoint``.
+
+  Args:
+    trainer: The eval-only trainer whose init_transform points to a training
+      workdir.
+
+  Returns:
+    A ``Checkpointer`` configured for read-only checkpoint polling.
+
+  Raises:
+    ValueError: If the init_transform is not a ``PartialKauldronLoader``.
+  """
+  init_transform = trainer.init_transform
+  if not isinstance(init_transform, partial_loader.PartialKauldronLoader):
+    raise ValueError(
+        'Continuous eval-only requires init_transform to be a'
+        f' PartialKauldronLoader, got {type(init_transform)}'
+    )
+  logging.info(
+      'Constructing continuous eval checkpointer from init_transform'
+      ' workdir: %s',
+      init_transform.workdir,
+  )
+  return checkpointer.Checkpointer(
+      workdir=init_transform.workdir,
+      save_interval_steps=1,
+      lightweight_initialize=True,
+      create=False,
+  )
+
+
 def _restore_checkpoint(
     *,
     trainer_ckpt: checkpointer.Checkpointer,
@@ -237,6 +311,12 @@ def _restore_checkpoint(
     with partial_loader.PartialKauldronLoader(
         workdir=trainer_ckpt.workdir,
         step=step,
+        lightweight_initialize=trainer_ckpt.lightweight_initialize,
+        new_to_old={
+            'step': 'step',
+            'params': 'params',
+            'collections': 'collections',
+        },
     ) as loader:
       return loader.transform(state)
   return trainer_ckpt.restore(state, step=step)
