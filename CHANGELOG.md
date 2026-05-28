@@ -8,8 +8,36 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-05-28
+
+* `kd.ckpts`:
+  * [New] `SimpleCheckpointLoader`: A new loader to load parameters and
+    collections directly as-is without path maps or non-OSS model surgery. Also
+    supports conditionally loading the optimizer state (`load_opt_state=True`).
+
+* `kd.konfig`:
+  * [New] Add support for the `|` (PEP 604) union operator on lazy config
+    object proxies (e.g. `MyClass | None`).
+  * [New] Add `__or__` (`|`) operator to `ConfigDict` to cleanly merge copies
+    of configurations.
+
 * `kd.klinen`:
-  * [Removed] Remove `kauldron.klinen` module as it had no substantial usage.
+  * [Removed] Remove the deprecated `kauldron.klinen` module.
+
+* `kd.data`:
+  * [Fix] Fix `ElementWiseRandomTransform` breaking deterministic randomness
+    in PyGrain pipelines by avoiding RNG pool spawning.
+
+* `kd.metrics`:
+  * [Fix] Cast boolean metric values to `float32` in `Accuracy` to prevent
+    array overflow in dense per-pixel tasks.
+
+* `kd.ktyping`:
+  * [Changed] Disable dimension deletion and restrict assignments
+    (`kt.dim["a"] = 7`) to only allow adding new dimensions.
+
+* `kd.cli`:
+  * [New] Add `run estimate_hbm` subcommand to estimate GPU memory usage.
 
 ## [1.4.1] - 2026-03-27
 
@@ -328,7 +356,9 @@ generator support
 
 <!-- mdlint off(LINK_UNUSED_ID) -->
 
-[Unreleased]: https://github.com/google-research/kauldron/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/google-research/kauldron/compare/v1.4.2...HEAD
+[1.4.2]: https://github.com/google-research/kauldron/compare/v1.4.1...v1.4.2
+[1.4.1]: https://github.com/google-research/kauldron/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/google-research/kauldron/releases/tag/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/google-research/kauldron/releases/tag/v1.2.2...v1.3.0
 [1.2.2]: https://github.com/google-research/kauldron/releases/tag/v1.2.1...v1.2.2
