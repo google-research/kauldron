@@ -164,6 +164,9 @@ def get_config():
   # processes can be profiled with `all_host=True`
   cfg.profiler = kd.inspect.Profiler(all_host=True)
 
+  # Add a custom note:
+  cfg.setup.note_template = "Seed: {cfg.seed}"
+
   return cfg
 
 

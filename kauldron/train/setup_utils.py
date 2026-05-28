@@ -22,6 +22,7 @@ import typing
 
 from absl import logging
 from etils import epath
+
 import jax
 import tensorflow as tf
 
@@ -43,6 +44,9 @@ class Setup:
 
   Attributes:
     tags: Custom XManager tags.
+    note_template: Template for a note that will be added to xmanager. E.g.
+    "lr={cfg.aux.lr}". The template should be a string and not a f-string, to
+    be resolved dynamically.
     tqdm_info: Customize the `tqdm` bar.
     add_flatboard: Whether to create the flatboard dashboards.
     flatboard_build_context: Shared info to build the flatboard dashboards. This
@@ -56,6 +60,7 @@ class Setup:
   # Could provide more options here to customize artifacts,...
 
   tags: str | list[str] = dataclasses.field(default_factory=list)
+  note_template: str = ""
   tqdm_info: TqdmInfo = dataclasses.field(default_factory=TqdmInfo)
   eval_only: bool = False
   # TODO(epot): Not the best place for this.
