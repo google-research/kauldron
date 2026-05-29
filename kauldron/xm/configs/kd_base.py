@@ -68,5 +68,5 @@ def get_config():
           ),
       ),
       # Activate tensorboard.corp
-      add_tensorboard_corp=True,
+      add_tensorboard_corp=False,
   )

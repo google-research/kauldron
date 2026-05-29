@@ -66,4 +66,4 @@ class ElementSpecDataset(base.TFDataPipeline):
         lambda spec: tf.zeros(shape=spec.shape, dtype=spec.dtype),
         element_spec,
     )
-    return tf.data.Dataset.from_tensors(batch)
+    return tf.data.Dataset.from_tensors(batch).repeat()
