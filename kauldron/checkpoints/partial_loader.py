@@ -21,7 +21,7 @@ from collections.abc import MutableMapping
 import dataclasses
 import functools
 import typing
-from typing import Any, Iterable, Self, TypeVar
+from typing import Any, Iterable, Optional, Self, TypeVar
 
 from absl import logging
 from etils import epath
@@ -31,10 +31,10 @@ from kauldron import kontext
 from kauldron.checkpoints import checkpoint_items
 from kauldron.checkpoints import checkpointer
 from kauldron.utils import from_xid
+
 import orbax.checkpoint as ocp
 
-with epy.lazy_imports():
-  from orbax.checkpoint.experimental.model_surgery import standard_checkpoint_handler  # pylint: disable=g-import-not-at-top
+# Experimental model surgery import removed to support OSS Orbax.
 
 _StrDict = MutableMapping[str, str]
 FrozenDict = dict if typing.TYPE_CHECKING else flax.core.FrozenDict
@@ -232,6 +232,138 @@ class PartialKauldronLoader(epy.ContextManager, InitTransform):
       self.close()
 
 
+def _set_nested_dict_value(d: dict[str, Any], path_str: str, value: Any):
+  parts = path_str.split('.')
+  curr = d
+  for part in parts[:-1]:
+    if part not in curr:
+      curr[part] = {}
+    curr = curr[part]
+  curr[parts[-1]] = value
+
+
+@dataclasses.dataclass
+class PartialStandardSaveArgs(ocp.args.StandardSave):
+  """Dummy save args for PartialStandardCheckpointHandler."""
+
+
+@dataclasses.dataclass
+class PartialStandardRestoreArgs(ocp.args.StandardRestore):
+  """Restore args for PartialStandardCheckpointHandler."""
+
+  new_to_old: _StrDict = dataclasses.field(default_factory=dict)
+  ignore_model_keys: tuple[str, ...] = ()
+  ignore_restored_keys: tuple[str, ...] = ()
+
+
+class PartialStandardCheckpointHandler(ocp.StandardCheckpointHandler):
+  """StandardCheckpointHandler that supports restoring a subset of parameters with renaming.
+
+  This is a fallback implementation that does not rely on the experimental
+  `orbax.checkpoint.experimental.model_surgery` module.
+  """
+
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    orig_impl_restore = self._impl.restore
+
+    def wrapped_impl_restore(directory, *args, **kwargs):
+      if 'args' in kwargs and kwargs['args'] is not None:
+        kwargs['args'] = dataclasses.replace(
+            kwargs['args'], partial_restore=True
+        )
+      return orig_impl_restore(directory, *args, **kwargs)
+
+    self._impl.restore = wrapped_impl_restore
+
+  def restore(
+      self,
+      directory: epath.Path,
+      args: Optional[PartialStandardRestoreArgs] = None,
+  ) -> Any:
+    if args is None or args.item is None:
+      return super().restore(directory, args)
+
+    sub_state_target = args.item
+    new_to_old = args.new_to_old
+    ignore_model_keys = args.ignore_model_keys
+    ignore_restored_keys = args.ignore_restored_keys
+
+    # 1. Get checkpoint structure to validate and filter
+    ckpt_metadata = self.metadata(directory)
+    ckpt_tree = ckpt_metadata.tree
+
+    # 2. Build checkpoint_restore_target (with `old_path` keys, and values
+    # from `sub_state_target`)
+    checkpoint_restore_target = {}
+    for new_path, old_path in new_to_old.items():
+      # Get target value from sub_state_target.
+      target_val = sub_state_target[new_path]
+
+      # Validate that old_path exists in checkpoint
+      try:
+        kontext.get_by_path(ckpt_tree, old_path)
+        has_old_path = True
+      except KeyError:
+        has_old_path = False
+
+      if not has_old_path:
+        if any(
+            _pattern_match(old_path, pattern) for pattern in ignore_model_keys
+        ):
+          logging.info(
+              'Ignoring missing key in restored checkpoint: %s', old_path
+          )
+          continue
+        else:
+          raise ValueError(f'Missing key in restored checkpoint: {old_path}')
+
+      _set_nested_dict_value(checkpoint_restore_target, old_path, target_val)
+
+    # 3. Restore the subset using standard restore
+    restore_args = ocp.args.StandardRestore(
+        item=checkpoint_restore_target,
+        strict=args.strict,
+        support_layout=args.support_layout,
+        fallback_sharding=args.fallback_sharding,
+    )
+    restored_ckpt_subset = super().restore(directory, args=restore_args)
+
+    # 4. Reconcile and map back to `new_path` keys
+    restored_sub_state = {}
+    for new_path, old_path in new_to_old.items():
+      try:
+        kontext.get_by_path(ckpt_tree, old_path)
+        has_old_path = True
+      except KeyError:
+        has_old_path = False
+
+      if not has_old_path:
+        # It was ignored, so we should fill it from target_val
+        restored_sub_state[new_path] = sub_state_target[new_path]
+        continue
+
+      restored_val = kontext.get_by_path(restored_ckpt_subset, old_path)
+
+      restored_sub_state[new_path] = _reconcile_sub_state(
+          target=sub_state_target[new_path],
+          restored_val=restored_val,
+          new_path=new_path,
+          ignore_restored_keys=ignore_restored_keys,
+          ignore_model_keys=ignore_model_keys,
+      )
+
+    return restored_sub_state
+
+
+ocp.args.register_with_handler(PartialStandardCheckpointHandler, for_save=True)(
+    PartialStandardSaveArgs
+)
+ocp.args.register_with_handler(
+    PartialStandardCheckpointHandler, for_restore=True
+)(PartialStandardRestoreArgs)
+
+
 @dataclasses.dataclass(frozen=True)
 class _PartialRestoreCheckpointItem(checkpoint_items.CheckpointItem):
   """Restore a partial checkpoint."""
@@ -243,7 +375,7 @@ class _PartialRestoreCheckpointItem(checkpoint_items.CheckpointItem):
   ignore_restored_keys: tuple[str, ...] = ()
 
   def __kd_ocp_handlers__(self) -> ocp.CheckpointHandler:
-    return standard_checkpoint_handler.StandardCheckpointHandler()
+    return PartialStandardCheckpointHandler()
 
   def __kd_ocp_save_args__(self) -> ocp.args.CheckpointArgs:
     raise ValueError('Partial checkpoint do not support save.')
@@ -253,8 +385,11 @@ class _PartialRestoreCheckpointItem(checkpoint_items.CheckpointItem):
     sub_state = {}
     for new_path, _ in self.new_to_old.items():
       sub_state[new_path] = kontext.get_by_path(self.state, new_path)
-    return standard_checkpoint_handler.StandardRestoreArgs(
-        sub_state, transform_fn=self._transform_fn
+    return PartialStandardRestoreArgs(
+        sub_state,
+        new_to_old=self.new_to_old,
+        ignore_model_keys=self.ignore_model_keys,
+        ignore_restored_keys=self.ignore_restored_keys,
     )
 
   def __kd_ocp_restore_post__(self, partial_restore: Any):
