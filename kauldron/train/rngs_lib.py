@@ -22,9 +22,10 @@ import functools
 
 import jax
 from kauldron import random as kd_random
+from kauldron.ktyping import PRNGKey
 from kauldron.utils import config_util
 
-Rngs = dict[str, kd_random.PRNGKey]
+Rngs = dict[str, PRNGKey]
 
 _jit_method = functools.partial(jax.jit, static_argnames=['self'])
 
@@ -55,11 +56,11 @@ class RngStream:
 
   def make(
       self,
-      rng: kd_random.PRNGKey,
+      rng: PRNGKey,
       *,
       step: int | None = None,
       key: str | None = None,
-  ) -> kd_random.PRNGKey:
+  ) -> PRNGKey:
     """Create the `rng` from the global root rng.
 
     Arguments:
@@ -70,12 +71,12 @@ class RngStream:
     Returns:
       The new rng
     """
-    rng = rng.fold_in(self.name)
+    rng = kd_random.fold_in_str(rng, self.name)
     if self.per_step:
       self._assert_is_not_none(step, 'step')
-      rng = rng.fold_in(step)
+      rng = jax.random.fold_in(rng, step)
     if key is not None:  # Additional key to fold (e.g. `train`, `eval`)
-      rng = rng.fold_in(key)
+      rng = kd_random.fold_in_str(rng, key)
     return rng
 
   def _assert_is_not_none(self, val, name: str) -> None:
@@ -140,13 +141,13 @@ class RngStreams(config_util.UpdateFromRootCfg):
   # in both `@jax.jit` and non-jit contexts.
   @property
   @_jit_method
-  def root_rng(self) -> kd_random.PRNGKey:
+  def root_rng(self) -> PRNGKey:
     """Base root rng from which others are derived."""
     self._assert_root_cfg_resolved()
 
     if self.seed is None:
       raise ValueError('RngStreams.seed should be set.')
-    return kd_random.PRNGKey(self.seed)
+    return jax.random.PRNGKey(self.seed)
 
   # Could try to unify and have a more flexible mode system (for custom
   # eval/train mode).

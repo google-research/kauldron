@@ -36,7 +36,7 @@ from kauldron.data import iterators
 from kauldron.data import pipelines
 from kauldron.data.py import transform_utils
 from kauldron.data.transforms import normalize as tr_normalize
-from kauldron.ktyping import PRNGKeyLike, PyTree  # pylint: disable=g-importing-member,g-multiple-import
+from kauldron.ktyping import PRNGKey, PRNGKeyLike, PyTree  # pylint: disable=g-importing-member,g-multiple-import
 import tensorflow as tf
 
 _ConsistentDatasetType = TypeVar(
@@ -121,10 +121,10 @@ class PyGrainPipeline(pipelines.Pipeline):
   # * `_root_map_ds`
   # * `_root_ds`
 
-  def ds_for_current_process(self, rng: random.PRNGKey) -> grain.MapDataset:
+  def ds_for_current_process(self, rng: PRNGKey) -> grain.MapDataset:
     raise NotImplementedError
 
-  def ds_with_transforms(self, rng: random.PRNGKey) -> grain.MapDataset:
+  def ds_with_transforms(self, rng: PRNGKey) -> grain.MapDataset:
     """Create the `tf.data.Dataset` and apply all the transforms."""
     ds = self.ds_for_current_process(rng)
     ds = transform_utils.apply_transforms(ds, self.transforms)
@@ -162,8 +162,8 @@ class PyGrainPipeline(pipelines.Pipeline):
     # host<>device here.
     # Instead could force the `PRNGKey` to stay in the CPU.
     with jax.transfer_guard("allow"):
-      rng = random.PRNGKey(self.seed)
-      rng = rng.fold_in("kmix")
+      rng = jax.random.PRNGKey(self.seed)
+      rng = random.fold_in_str(rng, "kmix")
       ds = self.ds_with_transforms(rng)
 
     # Apply repeat at the end
@@ -272,9 +272,9 @@ class DataSourceBase(PyGrainPipeline):
       repr=False,
   )
 
-  def ds_for_current_process(self, rng: random.PRNGKey) -> grain.MapDataset:
+  def ds_for_current_process(self, rng: PRNGKey) -> grain.MapDataset:
     ds = grain.MapDataset.source(self.data_source)
-    ds = ds.seed(rng.as_seed())
+    ds = ds.seed(random.random_seed(rng))
 
     # Shard the dataset
     if self.shard_by_process:
@@ -287,7 +287,9 @@ class DataSourceBase(PyGrainPipeline):
       # changes. Note that this might be the case anyway but I haven't looked
       # at grain's internal and how seed is derived to the individual
       # transformation.
-      ds = ds.shuffle(seed=rng.fold_in("shuffle").as_seed())
+      ds = ds.shuffle(
+          seed=random.random_seed(random.fold_in_str(rng, "shuffle"))
+      )
     return ds
 
 

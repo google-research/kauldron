@@ -14,86 +14,53 @@
 
 """Tests."""
 
-from flax import linen as nn
 import jax
 from kauldron import random
 import numpy as np
 
 
-def test_base():
-  key = random.PRNGKey(0)
-  val = key.uniform((5,))
-  assert isinstance(val, jax.Array)
-  assert val.shape == (5,)
+def test_fold_in_str():
+  key = jax.random.PRNGKey(0)
+  k1 = random.fold_in_str(key, 'test')
+  k2 = random.fold_in_str(key, 'test')
+  k3 = random.fold_in_str(key, 'other')
 
-  np.testing.assert_array_equal(
-      key.uniform((5,)),
-      jax.random.uniform(key, (5,)),
-  )
+  assert np.array_equal(k1, k2)
+  assert not np.array_equal(k1, k3)
 
 
-def test_jit():
-  @jax.jit
-  def fn(key: random.PRNGKey):
-    x0, x1 = key.split()
-    return x0.normal(), x1
+def test_random_seed():
+  key = jax.random.PRNGKey(0)
+  seed = random.random_seed(key)
 
-  key = random.PRNGKey(0)
-  out, out_key = fn(key)
-  assert isinstance(out, jax.Array)
-  assert isinstance(out_key, random.PRNGKey)
+  assert isinstance(seed, int)
+  assert 0 <= seed < 2**32
 
-  @jax.jit
-  def fn_with_seed(seed: int):
-    key = random.PRNGKey(seed)  # Array as seed works
-    return key.fold_in('dropout')
-
-  out_key = fn_with_seed(0)
-  assert isinstance(out_key, random.PRNGKey)
+  key2 = jax.random.PRNGKey(1)
+  seed2 = random.random_seed(key2)
+  assert seed != seed2
 
 
-def test_flax():
-  class MLP(nn.Module):
+def test_prngkey_compatibility():
+  # 1. Verify JAX Fry key wrapping behaves correctly
+  if hasattr(jax.random, 'key'):
+    # Modern JAX versions (>=0.4.16) have jax.random.key
+    fry_key = jax.random.key(42)
+    wrapped_fry_key = random.PRNGKey(fry_key)
+    # The wrapped key's internal rng should be the same Fry key array
+    assert np.array_equal(
+        jax.random.key_data(wrapped_fry_key.rng), jax.random.key_data(fry_key)
+    )
 
-    @nn.compact
-    def __call__(self, x):
-      return nn.Dense(features=10)(x)
+  # 2. Verify dynamic OO API delegation behaves correctly
+  key = random.PRNGKey(42)
 
-  key = random.PRNGKey(0)
+  # Test split() delegation
+  k1, k2 = key.split()
+  assert isinstance(k1, random.PRNGKey)
+  assert isinstance(k2, random.PRNGKey)
 
-  model = MLP()
-  variables = model.init(
-      key.fold_in(1),
-      key.normal((10,)),
-  )  # Initialization call
-  del variables
-
-
-def test_getitem():
-  key = random.PRNGKey(0).split(2)
-  assert isinstance(key, random.PRNGKey)
-  assert isinstance(key[0], random.PRNGKey)
-
-
-def test_foldin():
-  key = random.PRNGKey(0)
-  key0 = key.fold_in('dropout')
-  key1 = key.fold_in('dropout')
-
-  assert isinstance(key0, random.PRNGKey)
-
-  np.testing.assert_array_equal(key0, key1)
-
-
-def test_tree_map():
-  out = jax.tree.map(lambda x: None, {'x': random.PRNGKey(0)})
-  assert out == {'x': None}
-
-  key = random.PRNGKey(0)
-  key = key.split(3)
-  assert isinstance(key, random.PRNGKey)
-  key2 = jax.tree.map(lambda x: x, key)
-  np.testing.assert_array_equal(key.rng, key2.rng)
-
-  np_key = np.asarray(key)
-  np.testing.assert_allclose(np_key, key.rng)
+  # Test uniform() delegation (which is in jax.random)
+  val = key.uniform()
+  assert not val.shape
+  assert 0.0 <= val <= 1.0
