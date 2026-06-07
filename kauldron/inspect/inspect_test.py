@@ -14,7 +14,12 @@
 
 """Test."""
 
+import typing
+from etils import enp
+import flax.linen as nn
 from kauldron import inspect
+from kauldron import random as kd_random
+from kauldron.utils.sharding_utils import sharding
 import numpy as np
 
 
@@ -32,3 +37,44 @@ def test_batch():
   df = inspect.get_batch_stats(batch)
   assert len(df) == 4
   assert list(df['Name']) == ['batch.a', 'batch.b', 'batch.c.f', 'batch.c.g']
+
+
+def test_model_overview():
+
+  class SimpleModel(nn.Module):
+
+    @nn.compact
+    def __call__(self, batch):
+      x = batch['image']
+      return nn.Dense(features=2)(x)
+
+  model = SimpleModel()
+
+  class MockPipeline:
+
+    @property
+    def element_spec(self):
+      return {
+          'image': enp.ArraySpec(shape=(1, 4), dtype=np.float32),
+      }
+
+  ds = MockPipeline()
+  rngs = {'params': kd_random.PRNGKey(0)}
+
+  df = inspect.get_colab_model_overview(
+      model=model,
+      train_ds=typing.cast(typing.Any, ds),
+      ds_sharding=sharding.FIRST_DIM,
+      rngs=rngs,
+  )
+
+  assert df is not None
+  # StyledDataFrame wraps pd.DataFrame, so columns should be accessible
+  assert 'Path' in df.columns
+  assert 'Own Params' in df.columns
+
+  html = df._repr_html_()
+  assert 'max-width' in html
+  assert '400px' in html
+  assert 'word-wrap' in html
+  assert 'break-word' in html
