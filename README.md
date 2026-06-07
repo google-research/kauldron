@@ -27,6 +27,19 @@ Kauldron is a library for training machine learning models, optimized for
     post-mortem debugging on borg, runtime shape checking, and many others...).
 [Open an issue](https://github.com/google-research/kauldron/issues)..
 
+## Lightweight installation
+
+If you only need specific sub-modules, you can install them individually
+without pulling in the full dependency tree:
+
+```bash
+pip install kauldron[konfig]   # Config system only
+pip install kauldron[kontext]  # Tree manipulation / key system only
+pip install kauldron[ktyping]  # Array type checking only
+```
+
+A standard `pip install kauldron` still installs all dependencies.
+
 ## Citing Kauldron
 
 If Kauldron was helpful for a publication, please cite this repository:
