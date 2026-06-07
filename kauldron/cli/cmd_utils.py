@@ -29,7 +29,6 @@ import jax
 from kauldron import konfig
 from kauldron import kontext
 from kauldron.cli import patch_config
-from kauldron.utils import immutabledict
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -125,5 +124,4 @@ def print_spec(obj):
       else x,
       obj,
   )
-  obj_spec = immutabledict.unfreeze(obj_spec)
   epy.pprint(obj_spec)
