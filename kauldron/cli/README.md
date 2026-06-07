@@ -35,3 +35,8 @@ kd.cli.data.ElementSpec(cfg).execute()
 
 * `data`
   - `element_spec`: Display the element spec of the training data pipeline.
+  - `batch`: Display the stats (shapes, dtype, min, max, mean) of an actual fetched batch.
+
+* `inspect`
+  - `model_overview`: Display the model overview (parameters, inputs, shapes) similar to the one used in the colab environments.
+
