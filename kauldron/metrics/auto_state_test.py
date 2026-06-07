@@ -231,6 +231,25 @@ def test_merge_truncate_without_merge():
   assert result.arr.shape == (4, 2)
 
 
+def test_merge_truncate_none():
+
+  @flax.struct.dataclass(kw_only=True)
+  class TruncateNoneState(auto_state.AutoState):
+    num_b: int | None = None
+    b: Float = auto_state.truncate_field(num_field="num_b")
+
+  s1 = TruncateNoneState(b=np.ones((3, 2)))
+  s2 = TruncateNoneState(b=np.ones((3, 2)) * 2)
+
+  s = s1.merge(s2)
+  assert s.num_b is None
+
+  result = s.compute()
+  assert result.b.shape == (6, 2)
+  np.testing.assert_allclose(result.b[:3], 1.0)
+  np.testing.assert_allclose(result.b[3:], 2.0)
+
+
 def test_merge_sum_tree():
 
   @flax.struct.dataclass(kw_only=True)
