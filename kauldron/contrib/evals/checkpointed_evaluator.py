@@ -28,6 +28,7 @@ from kauldron import checkpoints
 # from kauldron import data
 from kauldron.evals import evaluators
 from kauldron.train import auxiliaries
+from kauldron.train import metric_writer
 from kauldron.train import train_step
 from kauldron.train import trainer_lib
 from kauldron.utils import utils
@@ -174,12 +175,11 @@ class CheckpointedEvaluator(evaluators.Evaluator):
           f"Dataset for eval {self.name!r} did not yield any elements."
       )
 
-    self.writer.write_step_metrics(
+    values = metric_writer.prepare_step_metrics(
         step=step,
         aux=merged_aux,
-        schedules={},
-        log_summaries=True,
     )
+    self.writer.write_step_metrics(step=step, values=values)
 
     # Wait for the last checkpoint to be saved before completing the evaluation.
     self.checkpointer.wait_until_finished()
