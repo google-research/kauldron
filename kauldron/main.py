@@ -25,6 +25,10 @@ from absl import flags
 from etils import epy
 from etils.epy import _multiprocess
 import jax
+
+# Force CUDA symbol resolution by jax before tensorflow gets initialized.
+jax.devices()
+
 import tensorflow as tf
 
 
@@ -65,10 +69,7 @@ _EVAL_NAMES = flags.DEFINE_list(
 
 @_catch_post_mortem
 def main(_):
-  # Force CUDA symbol resolution by jax before tensorflow gets initialized.
-  jax.devices()
-  # Hide GPUs from TensorFlow to prevent it from initializing CUDA, and
-  # allocating GPU memory.
+  # Hide GPUs from TensorFlow to prevent it from allocating GPU memory.
   tf.config.set_visible_devices([], "GPU")
   eval_names = _EVAL_NAMES.value
   cfg = _CONFIG.value

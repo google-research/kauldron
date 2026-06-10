@@ -8,6 +8,10 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 ## [Unreleased]
 
+## [1.4.4] - 2026-06-10
+
+* hotfix for cuda compatibility issue
+
 ## [1.4.3] - 2026-06-10
 
 * `dependencies`:
