@@ -2,7 +2,7 @@
 name = "kauldron"
 description = "Kauldron is a ML research library optimized for quick iteration and modularity."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = {file = "LICENSE"}
 authors = [{name = "kauldron authors", email="kauldron@google.com"}]
 classifiers = [
@@ -39,7 +39,7 @@ dependencies = [
     "scikit-learn",
     "tabulate",  # used by pandas.DataFrame.to_markdown (for logging context)
     "tensorboard",  # required by clu.metric_writers
-    "tensorflow",
+    "tensorflow-cpu",
     "tensorflow_datasets>=4.9.7",
     "tqdm",
     "typeguard>=4.4.1",

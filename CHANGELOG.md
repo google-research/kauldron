@@ -8,6 +8,17 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 ## [Unreleased]
 
+## [1.4.3] - 2026-06-10
+
+* `dependencies`:
+  * switched to lighter `tensorflow-cpu` dependency
+  * switched to python>=3.12
+
+* `kd.ckpts`:
+  * added `lightweight_initialize` option to `Checkpointer` and `PartialKauldronLoader`
+* `kd.evals`:
+  * support `StandaloneEveryCheckpoint` for `eval_only` trainers.
+
 ## [1.4.2] - 2026-05-28
 
 * `kd.ckpts`:
