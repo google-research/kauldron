@@ -17,6 +17,8 @@
 from __future__ import annotations
 
 import dataclasses
+import functools
+import inspect
 from typing import Any, Mapping, Optional
 
 from etils import epy
@@ -139,12 +141,16 @@ class AuxiliariesState(checkpoints.items.StandardCheckpointItem):
       return self
     return other.merge(self)
 
-  def compute(self, *, flatten: bool = True) -> AuxiliariesOutput:
+  def compute(
+      self, *, flatten: bool = True, batch_host: Any = None
+  ) -> AuxiliariesOutput:
     """Compute losses and metrics."""
     final = self.finalize()
+    compute_fn = functools.partial(_compute_metric, batch_host=batch_host)
+
     # losses
     loss_values = jax.tree.map_with_path(
-        _compute_metric, final.loss_states, is_leaf=kd_metrics.State.isinstance
+        compute_fn, final.loss_states, is_leaf=kd_metrics.State.isinstance
     )
 
     if not isinstance(loss_values, dict):
@@ -156,14 +162,14 @@ class AuxiliariesState(checkpoints.items.StandardCheckpointItem):
 
     # metrics
     metric_values = jax.tree.map_with_path(
-        _compute_metric,
+        compute_fn,
         final.metric_states,
         is_leaf=kd_metrics.State.isinstance,
     )
 
     # summaries
     summary_values = jax.tree.map_with_path(
-        _compute_metric,
+        compute_fn,
         final.summary_states,
         is_leaf=kd_metrics.State.isinstance,
     )
@@ -218,12 +224,16 @@ def _nested_mappings_to_dict(obj):
     return obj
 
 
-def _compute_metric(path, state: Any):
+def _compute_metric(path, state: Any, batch_host: Any = None):
   """Compute the value of a metric for a given state and return the result."""
   # Accept cross-process computation (some metrics cannot be jitted)
   with jax.transfer_guard("allow"):
     try:
-      result = state.compute()
+      sig = inspect.signature(state.compute)
+      if "batch_host" in sig.parameters:
+        result = state.compute(batch_host=batch_host)
+      else:
+        result = state.compute()
       # Convert all results from jax.Array to np.array.
       # We do this to ensure that the metric writers do not accidentally invoke
       # any jax operations. This is important because metric writers are often

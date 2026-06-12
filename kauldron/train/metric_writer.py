@@ -172,9 +172,10 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
       schedules: Mapping[str, optax.Schedule],
       log_summaries: bool,
       timer: Optional[chrono_utils.Chrono] = None,
+      batch_host: Any = None,
   ) -> None:
     """Logs scalar and image summaries."""
-    aux_result = aux.compute(flatten=True)
+    aux_result = aux.compute(flatten=True, batch_host=batch_host)
 
     if not status.is_lead_host:
       return
@@ -597,6 +598,7 @@ class NoopWriter(NoopMetadataWriter):
       schedules: Mapping[str, optax.Schedule],
       log_summaries: bool,
       timer: Optional[chrono_utils.Chrono] = None,
+      batch_host: Any = None,
   ) -> None:
     pass
 

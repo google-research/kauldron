@@ -61,14 +61,19 @@ def array_spec_to_jnp_empty(spec: ArraySpec, batch_dim: int = 17) -> jax.Array:
   Returns:
     An empty jnp array with the requested shape and dtype.
   """
-  # silently convert int64 -> int32 to avoid jax warning
-  dtype = jnp.int32 if spec.dtype in [jnp.int64, np.int64] else spec.dtype
+  # Ensure spec.dtype is JAX-compatible.
+  # Normalize strings (object dtype) to a safe dummy dtype (int32).
+  if spec.dtype == np.dtype('O'):
+    dtype = jnp.int32
+  else:
+    # silently convert int64 -> int32 to avoid jax warning
+    dtype = jnp.int32 if spec.dtype in [jnp.int64, np.int64] else spec.dtype
 
   # Ensure spec.shape is fully concrete by replacing None with 1. This is a
   # workaround for datasets that yield variable shapes, as JAX requires concrete
   # shapes for jnp.empty and JIT compilation. The mock batch created with these
   # placeholder dimensions might not accuratelyrepresent all variable data.
-  if spec.shape[0] is None:
+  if spec.shape and spec.shape[0] is None:
     # First dimension is dynamic (e.g. batch size), use batch_dim. Make sure the
     # rest of the dimensions are also concrete by replacing None with 1.
     remaining_dims = _make_concrete_shape(spec.shape[1:])
@@ -153,3 +158,48 @@ def get_model_inputs_from_batch(
 def _make_concrete_shape(shape: tuple[int | None, ...]) -> tuple[int, ...]:
   """Replaces any None in a shape with 1."""
   return tuple(d if d is not None else 1 for d in shape)
+
+
+def sanitize_batch_for_jax(
+    batch: PyTree[Any],
+) -> tuple[PyTree[Any], PyTree[Any]]:
+  """Splits a batch into JAX-compatible (numeric) and host-only (strings) parts.
+
+  To maintain an identical PyTree structure between initialization (mock batch)
+  and runtime, non-JAX elements are replaced with dummy int32 arrays in the
+  JAX-compatible batch.
+
+  Args:
+    batch: Raw batch structure yielded by data iterator.
+
+  Returns:
+    batch_jax: Batch with string/object arrays replaced by dummy int32 arrays.
+    batch_host: The unmodified raw batch.
+  """
+
+  def _sanitize(x):
+    if isinstance(x, np.ndarray) and (
+        x.dtype == np.dtype('O')
+        or np.issubdtype(x.dtype, np.str_)
+        or np.issubdtype(x.dtype, np.bytes_)
+    ):
+      return np.zeros(x.shape, np.int32)
+    elif isinstance(x, (str, bytes)):
+      return np.zeros((), np.int32)
+    return x
+
+  batch_jax = jax.tree.map(_sanitize, batch)
+  return batch_jax, batch
+
+
+def concat_host_batches(batches: list[PyTree[Any]]) -> PyTree[Any]:
+  """Concatenates a list of host batches along axis 0."""
+  if not batches:
+    return None
+  # Filter out None leaves if any, or just use jax.tree.map
+  return jax.tree.map(
+      lambda *leaves: np.concatenate(leaves, axis=0)
+      if isinstance(leaves[0], (np.ndarray, list))
+      else leaves[0],
+      *batches,
+  )

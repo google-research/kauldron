@@ -141,8 +141,9 @@ def train_impl(
       log_metrics = i % trainer.log_metrics_every == 0
       log_any = log_metrics or log_summaries
 
-      batch = next(ds_iter)  # Only mutate `ds_iter` after `ckpt.save`
-      batch = sharding_lib.device_put(batch, trainer.sharding.batch)
+      batch_raw = next(ds_iter)  # Only mutate `ds_iter` after `ckpt.save`
+      batch_jax, batch_host = data_utils.sanitize_batch_for_jax(batch_raw)
+      batch = sharding_lib.device_put(batch_jax, trainer.sharding.batch)
       state, aux = trainstep.step(
           state,
           batch,
@@ -168,6 +169,7 @@ def train_impl(
             schedules=trainer.schedules,
             timer=chrono,
             log_summaries=log_summaries,
+            batch_host=batch_host,
         )
 
   # Ensure all hosts exit together. See section in dm/jax-faqs.

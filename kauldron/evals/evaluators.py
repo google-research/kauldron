@@ -30,6 +30,7 @@ from kauldron import checkpoints
 from kauldron import data
 from kauldron import losses as losses_lib
 from kauldron import metrics as metrics_lib
+import kauldron.data.utils as data_utils
 from kauldron.evals import run_strategies
 from kauldron.train import auxiliaries
 from kauldron.train import context as context_lib
@@ -220,7 +221,7 @@ class Evaluator(EvaluatorBase):
       if self.num_batches is None:
         raise ValueError('Can only cache if num_batches is set.')
       ds_iter = ds_iter.cache()
-    return ds_iter.device_put(self.base_cfg.sharding.batch)
+    return ds_iter
 
   @functools.cached_property
   def aux(self) -> auxiliaries.Auxiliaries:
@@ -242,13 +243,17 @@ class Evaluator(EvaluatorBase):
     # metric computation time. Is there a better way ?
 
     merged_aux = None
-    for step_nr, batch in utils.enum_iter(self.ds_iter, desc=self.name):
+    host_batches = []
+    for step_nr, batch_raw in utils.enum_iter(self.ds_iter, desc=self.name):
+      batch_jax, batch_host = data_utils.sanitize_batch_for_jax(batch_raw)
+      batch = sharding_lib.device_put(batch_jax, self.base_cfg.sharding.batch)
       step_nr = sharding_lib.device_put(step_nr, sharding_lib.REPLICATED)
       aux_state = self.step(
           step_nr=step_nr,
           state=state,
           batch=batch,
       )
+      host_batches.append(batch_host)
 
       with jax.transfer_guard('allow'):
         # Raise any checkify errors that were encountered during step.
@@ -262,11 +267,13 @@ class Evaluator(EvaluatorBase):
           f'{epy.pretty_repr(self.ds)}'
       )
 
+    merged_batch_host = data_utils.concat_host_batches(host_batches)
     self.writer.write_step_metrics(
         step=step,
         aux=merged_aux,
         schedules={},
         log_summaries=True,
+        batch_host=merged_batch_host,
     )
     return merged_aux
 
