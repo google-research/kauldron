@@ -472,6 +472,9 @@ def _normalize_to_json(obj):
       return obj.tolist()
     else:  # scalar
       return obj.item()
+  elif isinstance(obj, np.number):
+    # required because these are not np.ndarrays.
+    return obj.item()
   elif isinstance(obj, Mapping):
     return {k: _normalize_to_json(v) for k, v in obj.items()}
   elif isinstance(obj, (list, tuple)):

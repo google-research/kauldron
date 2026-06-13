@@ -32,6 +32,7 @@ from kauldron.train import train_step
 from kauldron.train import trainer_lib
 from kauldron.utils import utils
 from kauldron.utils.sharding_utils import sharding as sharding_lib  # pylint: disable=g-importing-member
+from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
 
 _SelfT = TypeVar("_SelfT")
 
@@ -65,7 +66,7 @@ class EvalCheckpointerState(
 class CheckpointedEvaluator(evaluators.Evaluator):
   """An evaluator that can save and restore its progress."""
 
-  checkpointer: checkpoints.checkpointer.BaseCheckpointer
+  checkpointer: checkpoints.checkpointer.Checkpointer
 
   def __post_init__(self):
     super().__post_init__()
@@ -95,6 +96,17 @@ class CheckpointedEvaluator(evaluators.Evaluator):
     step_nr_jax = sharding_lib.device_put(0, sharding_lib.REPLICATED)
     return self.step(step_nr=step_nr_jax, state=state, batch=batch).finalize()
 
+  def _step_checkpointer(
+      self, step: int
+  ) -> checkpoints.checkpointer.Checkpointer:
+    """Create a checkpointer scoped to a specific training step.
+
+    This prevents checkpoint clashes when the evaluator is called at multiple
+    training steps (e.g. step 1000, step 2000).
+    """
+    step_workdir = epath.Path(self.checkpointer.workdir) / f"step_{step}"
+    return dataclasses.replace(self.checkpointer, workdir=step_workdir)
+
   def evaluate(
       self, state: train_step.TrainState, step: int
   ) -> auxiliaries.AuxiliariesState:
@@ -103,6 +115,10 @@ class CheckpointedEvaluator(evaluators.Evaluator):
     if self.discard_opt:
       state = state.replace(opt_state=None)
     state = self.init_transform.transform(state)
+
+    # Use a step-specific checkpointer so that eval runs at different training
+    # steps don't overwrite each other's checkpoints.
+    ckptr = self._step_checkpointer(step)
 
     # MARK: Load state
     step_nr = 0
@@ -114,7 +130,7 @@ class CheckpointedEvaluator(evaluators.Evaluator):
         ds_iter=ds_iter,
     )
 
-    (eval_state, ds_iter) = self.checkpointer.restore(
+    eval_state, ds_iter = ckptr.restore(
         initial_eval_state,
         noop_if_missing=True,
     )
@@ -156,7 +172,7 @@ class CheckpointedEvaluator(evaluators.Evaluator):
         merged_aux = merged_aux | aux_state
 
         # Save checkpoint.
-        if self.checkpointer.should_save(step_nr):
+        if ckptr.should_save(step_nr):
           state_to_save = EvalCheckpointerState(
               eval_state=EvalState(
                   merged_aux=merged_aux.finalize(),
@@ -164,7 +180,7 @@ class CheckpointedEvaluator(evaluators.Evaluator):
               ),
               ds_iter=ds_iter,
           )
-          self.checkpointer.save(
+          ckptr.save(
               state_to_save,
               step=step_nr,
           )
@@ -182,5 +198,11 @@ class CheckpointedEvaluator(evaluators.Evaluator):
     )
 
     # Wait for the last checkpoint to be saved before completing the evaluation.
-    self.checkpointer.wait_until_finished()
+    ckptr.wait_until_finished()
+    # Clean up step-specific checkpoints after successful evaluation, since
+    # they are only needed for crash recovery during the eval run.
+    if status.is_lead_host:
+      step_workdir = epath.Path(ckptr.workdir)
+      if step_workdir.exists():
+        step_workdir.rmtree()
     return merged_aux
