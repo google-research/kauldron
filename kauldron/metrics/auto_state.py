@@ -563,15 +563,17 @@ class _Truncate(_FieldMerger):
       return None
 
     assert isinstance(v1, Array) and isinstance(v2, Array)
-    if v1.shape[self.axis] < num:
+    if num is None or v1.shape[self.axis] < num:
       v1 = np.concatenate([v1, v2], axis=self.axis)
     return self._maybe_truncate(v1, num)
 
-  def _maybe_truncate(self, v: Array | Empty, num: int) -> Array | Empty:
+  def _maybe_truncate(self, v: Array | Empty, num: int | None) -> Array | Empty:
     """If v is not None, then truncate it to num elements along axis."""
     if v is EMPTY or v is None:
       return v
     assert isinstance(v, Array)
+    if num is None:
+      return np.asarray(v)
     axis = np.lib.array_utils.normalize_axis_index(self.axis, v.ndim)
     return np.asarray(v[(slice(None),) * axis + (slice(None, num),)])
 
