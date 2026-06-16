@@ -467,7 +467,7 @@ def _release_memory(x):
 
 def _normalize_to_json(obj):
   """Convert pytree of numpy arrays to json serializable objects."""
-  if isinstance(obj, np.ndarray):
+  if isinstance(obj, (np.ndarray, np.number)):
     if obj.shape:
       return obj.tolist()
     else:  # scalar
