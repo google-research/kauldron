@@ -194,9 +194,29 @@ The sub-modules will be recursively instantiated at init time.
 The wrapped module automatically calls `.train()` / `.eval()` on the NNX module
 based on the Kauldron training context (see https://kauldron.rtfd.io/en/latest/eval.html#train-eval-in-module).
 
-### Limitations
+### `kontext.Key` support
 
-`kontext.Key` annotations on the NNX module are **not** supported.
-`linen_from_nnx` wraps the NNX module inside a Linen shell, and `kontext`
-inspects the wrapper class — not the inner NNX class. The NNX module receives
-its inputs as regular positional arguments to `__call__`.
+`kontext.Key` annotations on NNX modules work through `linen_from_nnx`. The
+wrapper automatically forwards key annotations from the NNX class:
+
+```python
+class MyModel(nnx.Module):
+  image: kontext.Key = 'batch.image'
+  label: kontext.Key = 'batch.label'
+
+  def __init__(self, rngs: nnx.Rngs):
+    self.linear = nnx.Linear(3, 4, rngs=rngs)
+
+  def __call__(self, image, label):
+    return self.linear(image)
+```
+
+```python
+cfg.model = kd.contrib.nn.linen_from_nnx(MyModel)
+```
+
+Key paths can also be overridden via kwargs:
+
+```python
+cfg.model = kd.contrib.nn.linen_from_nnx(MyModel, image='batch.rgb')
+```

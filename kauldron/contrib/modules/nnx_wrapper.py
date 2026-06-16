@@ -26,6 +26,7 @@ from flax import linen as nn
 from flax import nnx
 import jax
 from kauldron import kd
+from kauldron.kontext import type_utils
 
 T = TypeVar('T')
 
@@ -61,6 +62,15 @@ class LinenFromNnxDef(nn.Module):
   kwargs: Mapping[str, Any] = flax.core.FrozenDict({})
 
   is_training = kd.nn.train_property()
+
+  def __kontext_keys__(self) -> dict[str, Any]:
+    key_fields = type_utils.get_annotated(self.nnx_class, kd.kontext.Key)
+    if not key_fields:
+      return {}
+    return {
+        k: self.kwargs.get(k, getattr(self.nnx_class, k, None))
+        for k in key_fields
+    }
 
   def instantiate_nnx_module(
       self, rngs: dict[str, Any] | None = None
