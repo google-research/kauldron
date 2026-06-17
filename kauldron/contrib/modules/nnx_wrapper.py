@@ -234,11 +234,6 @@ def _nnx_rngs_from_scope(scope: flax.core.scope.Scope) -> nnx.Rngs:
     return nnx.Rngs()
   if isinstance(next(iter(rng_keys.values())), flax.core.scope.LazyRng):
     rng_keys = {k: v.rng for k, v in rng_keys.items()}
-  # if there is a lazy rng wrapper, probably there is also a kauldron PRNGKey
-  # wrapper that we need to remove.
-  # so the following *if* should not be an *elif*.
-  if isinstance(next(iter(rng_keys.values())), kd.random.PRNGKey):
-    rng_keys = {k: v.rng for k, v in rng_keys.items()}
   return nnx.Rngs(**rng_keys)
 
 
