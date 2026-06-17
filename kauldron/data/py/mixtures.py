@@ -19,10 +19,8 @@ from __future__ import annotations
 import dataclasses
 
 import grain.python as grain
-import jax
 from kauldron import random
 from kauldron.data.py import base
-from kauldron.ktyping import PRNGKey
 
 
 @dataclasses.dataclass(frozen=True)
@@ -35,17 +33,17 @@ class Mix(base.PyGrainPipeline):
   weights: None | list[float | int] = None
   shuffle: bool = True
 
-  def ds_for_current_process(self, rng: PRNGKey) -> grain.MapDataset:
+  def ds_for_current_process(self, rng: random.PRNGKey) -> grain.MapDataset:
     # Ensure each nested dataset gets a different seed.
     datasets = [
-        ds.ds_with_transforms(jax.random.fold_in(rng, i))
+        ds.ds_with_transforms(rng.fold_in(i))
         for i, ds in enumerate(self.datasets)
     ]
 
     ds = grain.MapDataset.mix(datasets, weights=self.weights)
 
     if self.shuffle:
-      seed = random.random_seed(random.fold_in_str(rng, "shuffle"))
+      seed = rng.fold_in("shuffle").as_seed()
       ds = ds.shuffle(seed=seed)
     return ds
 
@@ -60,10 +58,10 @@ class SelectFromDatasets(base.PyGrainPipeline):
   selection_map: grain.DatasetSelectionMap
   shuffle: bool = True
 
-  def ds_for_current_process(self, rng: PRNGKey) -> grain.MapDataset:
+  def ds_for_current_process(self, rng: random.PRNGKey) -> grain.MapDataset:
     # Ensure each nested dataset gets a different seed.
     datasets = [
-        ds.ds_with_transforms(jax.random.fold_in(rng, i))
+        ds.ds_with_transforms(rng.fold_in(i))
         for i, ds in enumerate(self.datasets)
     ]
 
@@ -72,5 +70,5 @@ class SelectFromDatasets(base.PyGrainPipeline):
     )
 
     if self.shuffle:
-      ds = ds.shuffle(random.random_seed(random.fold_in_str(rng, "shuffle")))
+      ds = ds.shuffle(rng.fold_in("shuffle").as_seed())
     return ds

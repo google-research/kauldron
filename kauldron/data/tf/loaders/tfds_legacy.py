@@ -21,7 +21,6 @@ from etils import epath
 import jax
 from kauldron import kd
 from kauldron.data.tf.loaders import with_shuffle_buffer
-from kauldron.ktyping import PRNGKey
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
@@ -41,7 +40,7 @@ class TfdsLegacy(with_shuffle_buffer.WithShuffleBuffer):
   decoders: Optional[Mapping[str, Any]] = None
   read_config: Optional[tfds.ReadConfig] = None
 
-  def ds_for_current_process(self, rng: PRNGKey) -> tf.data.Dataset:
+  def ds_for_current_process(self, rng: kd.random.PRNGKey) -> tf.data.Dataset:
     builder = tfds.builder(self.name, data_dir=self.data_dir)
 
     read_config = self.read_config or tfds.ReadConfig()
@@ -53,7 +52,7 @@ class TfdsLegacy(with_shuffle_buffer.WithShuffleBuffer):
 
     if self.shuffle:
       # Each process has its own seed.
-      seed = kd.random.random_seed(jax.random.fold_in(rng, jax.process_index()))
+      seed = rng.fold_in(jax.process_index()).as_seed()
       read_config.shuffle_seed = seed
       # read_config.shuffle_reshuffle_each_iteration = True
       read_config.enable_ordering_guard = False

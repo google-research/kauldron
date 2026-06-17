@@ -19,105 +19,257 @@ from __future__ import annotations
 from collections.abc import Iterator
 import functools
 import hashlib
-from typing import Any
+import sys
+import typing
+from typing import Any, TypeVar
 
+from etils.epy import _internal
 import jax
 import jax.random
 import numpy as np
 
 
-@functools.lru_cache(maxsize=1_000)
-def _hash_str_to_int(s: str) -> int:
-  """Deterministically hash a string to a 32-bit integer."""
-  data = hashlib.sha1(s.encode('utf-8')).digest()
-  data = int.from_bytes(data[:4], byteorder='big')  # Truncate to uint32
-  return data
+_FnT = TypeVar('_FnT')
 
-
-def fold_in_str(key: jax.Array, data: str) -> jax.Array:
-  """Fold a string into a JAX random key."""
-  return jax.random.fold_in(key, _hash_str_to_int(data))
-
-
-def random_seed(key: jax.Array) -> int:
-  """Extract a 32-bit integer seed from a JAX random key."""
-  return int(jax.random.bits(key)) % (2**32)
+if typing.TYPE_CHECKING:
+  # For type checking, `PRNGKey` is a `jax.Array`
+  _Base = jax.Array
+else:
+  _Base = object
 
 
 @jax.tree_util.register_pytree_node_class
-class PRNGKey:
-  """Deprecated compatibility wrapper around jax.random.PRNGKey."""
+class PRNGKey(_Base):
+  """Small wrapper around `jax.random` key arrays to reduce boilerplate.
+
+  Benefits:
+
+  * Object oriented API (`jax.random.uniform(key)` -> `key.uniform()`)
+  * `fold_in` supports `str` (`key.fold_in('dropout')`)
+  * Additional `as_seed()` method to get a seed `int` from the rng (to pass
+    to third party APIs, like `grain`, `np.random`,...)
+
+  Usage:
+
+  ```python
+  key = kd.random.PRNGKey(0)
+  key0, key1 = key.split()
+  x = key0.uniform()
+
+  x = jax.random.uniform(key)  # Jax API still works
+  ```
+  """
 
   rng: jax.Array
 
-  def __init__(self, seed_or_rng: Any = 0, *, impl: str | None = None):
+  def __init__(
+      self,
+      seed_or_rng: int | jax.Array | PRNGKey = 0,
+      *,
+      impl: str | None = None,
+      _allow_seed_array: bool = True,  # Internal variable
+  ):
+    """Constructor."""
+
+    # TODO(epot): Check that key is only used once ? (except on Colab)
+    # Fold-in should also not be called on the same value twice.
+
     if isinstance(seed_or_rng, PRNGKey):
-      self.rng = seed_or_rng.rng
-    elif isinstance(seed_or_rng, int):
-      self.rng = jax.random.PRNGKey(seed_or_rng, impl=impl)
+      self.rng = seed_or_rng.rng  # type: ignore[annotation-type-mismatch]
     elif (
-        isinstance(seed_or_rng, jax.Array)
-        and seed_or_rng.ndim == 0
+        _allow_seed_array
+        and isinstance(seed_or_rng, jax.Array)
         and not jax.dtypes.issubdtype(seed_or_rng.dtype, jax.dtypes.prng_key)
+        and seed_or_rng.shape == ()  # pylint: disable=g-explicit-bool-comparison
     ):
+      # `kd_random.PRNGKey(jnp.asarray(0))` is a valid seed.
       self.rng = jax.random.PRNGKey(seed_or_rng, impl=impl)
-    else:
-      self.rng = seed_or_rng
-
-  def split(self, n: int = 2) -> PRNGKey:
-    return PRNGKey(jax.random.split(self.rng, n))
-
-  def fold_in(self, data: int | str) -> PRNGKey:
-    if isinstance(data, str):
-      data = _hash_str_to_int(data)
-    return PRNGKey(jax.random.fold_in(self.rng, data))
-
-  def as_seed(self) -> int:
-    return random_seed(self.rng)
-
-  def next(self) -> PRNGKey:
-    return self.split(1)[0]
+    elif isinstance(
+        seed_or_rng,
+        (
+            jax.Array,
+            # `jax.core.ShapedArray` is created by `flax.linen.scan`
+            jax.core.ShapedArray,
+        ),
+    ):
+      self.rng = seed_or_rng  # pytype: disable=annotation-type-mismatch
+    elif hasattr(jax.random, 'PRNGKeyArray') and isinstance(
+        seed_or_rng, jax.random.PRNGKeyArray
+    ):
+      # In jax versions before 0.4.16, typed PRNG keys have a special type.
+      # In newer versions, typed PRNG keys pass the Array instance check above.
+      self.rng = seed_or_rng  # type: ignore[assignment]
+    elif type(seed_or_rng) is object:  # pylint: disable=unidiomatic-typecheck
+      # Checking for `object` is a hack required for `@jax.vmap` compatibility:
+      # In `jax/_src/api_util.py` for `flatten_axes`, jax set all values to a
+      # dummy sentinel `object()` value.
+      self.rng = seed_or_rng  # type: ignore[assignment]
+    else:  # `int` or `np.ndarray`, normalize
+      self.rng = jax.random.PRNGKey(seed_or_rng, impl=impl)
 
   def __iter__(self) -> Iterator[PRNGKey]:
-    return (PRNGKey(k) for k in iter(self.rng))
+    return (self._new(k) for k in iter(self.rng))
 
   def __getitem__(self, slice_) -> PRNGKey:
-    return PRNGKey(self.rng[slice_])
+    return self._new(self.rng[slice_])
 
-  def __len__(self) -> int:
-    return len(self.rng)
+  def split(self, n: int = 2) -> PRNGKey:
+    """Returns the next rng key."""
+    return self._new(jax.random.split(self, n))
 
-  def tree_flatten(self) -> tuple[list[jax.Array], dict[str, Any]]:
-    return ([self.rng], {})
+  def fold_in(self, data: int | str) -> PRNGKey:
+    """Folds in delta into the random state."""
+    if isinstance(data, str):
+      data = _hash(data)
+    return self._new(jax.random.fold_in(self, data))
 
-  @classmethod
-  def tree_unflatten(
-      cls, metadata: dict[str, Any], array_field_values: list[jax.Array]
-  ) -> PRNGKey:
-    del metadata
-    (array_field_values,) = array_field_values
-    if array_field_values is None:
-      return None  # type: ignore
-    elif isinstance(array_field_values, np.ndarray):
-      return array_field_values  # type: ignore
-    else:
-      return cls(array_field_values)
+  def next(self) -> PRNGKey:
+    """Returns the next rng key (alias for `key.split(1)[0]`)."""
+    return self.split(1)[0]
 
-  def __array__(self, dtype=None, copy=None) -> np.ndarray:
-    assert dtype is None
-    assert copy is None
-    return np.asarray(self.rng)
+  def _new(self, key) -> PRNGKey:
+    return type(self)(key, _allow_seed_array=False)
 
   def __repr__(self):
     return f'{type(self).__name__}({self.rng!r})'
 
-  def __getattr__(self, name: str) -> Any:
-    if hasattr(jax.random, name):
-      method = getattr(jax.random, name)
-      if callable(method):
+  def tree_flatten(self) -> tuple[list[jax.Array], dict[str, Any]]:
+    """`jax.tree_utils` support."""
+    return ([self.rng], {})  # type: ignore[bad-return-type]
 
-        def wrapper(*args, **kwargs):
-          return method(self.rng, *args, **kwargs)
+  @classmethod
+  def tree_unflatten(
+      cls,
+      metadata: dict[str, Any],
+      array_field_values: list[jax.Array],
+  ) -> PRNGKey:
+    """`jax.tree_utils` support."""
+    del metadata
+    (array_field_values,) = array_field_values
+    # Support tree_map when the output is None or array normalization
+    # e.g.
+    # * `chex.assert_trees_all_close` normalize to `np.ndarray`
+    # * `jax.tree.map(np.testing.assert_allclose)`
+    if array_field_values is None:
+      return None
+    elif isinstance(array_field_values, np.ndarray):
+      return array_field_values
+    else:
+      rng = cls(array_field_values)
+      return rng
 
-        return wrapper
-    return getattr(self.rng, name)
+  def __array__(self, dtype=None, copy=None) -> np.ndarray:
+    """Support np.array conversion `np.asarray(key)`."""
+    assert dtype is None
+    assert copy is None
+    return np.asarray(self.rng)
+
+  def as_seed(self) -> int:
+    """Returns a `seed` integer (alias of `int(rng.bits())`).
+
+    Note this is non-reversible (the returned seed is not the one passed to
+    construct the rng).
+
+    Returns:
+      An integer seed that is guaranteed to be in the range [0, 2**32 - 1].
+    """
+
+    # Sometimes, the call to `bits()` returns a uint64. Some methods
+    # (e.g. `grain.MapDataset.shuffle`) require a uint32, so here we take the
+    # last 32 bits. This is consistent with the behavior of jax.random.key()
+    # when passed a value larger than max uint32.
+    return int(self.bits()) % (2**32)  # pytype: disable=missing-parameter
+
+  ball = jax.random.ball
+  bernoulli = jax.random.bernoulli
+  beta = jax.random.beta
+  bits = jax.random.bits
+  categorical = jax.random.categorical
+  cauchy = jax.random.cauchy
+  chisquare = jax.random.chisquare
+  choice = jax.random.choice
+  dirichlet = jax.random.dirichlet
+  double_sided_maxwell = jax.random.double_sided_maxwell
+  exponential = jax.random.exponential
+  f = jax.random.f
+  gamma = jax.random.gamma
+  generalized_normal = jax.random.generalized_normal
+  geometric = jax.random.geometric
+  gumbel = jax.random.gumbel
+  key_data = jax.random.key_data
+  laplace = jax.random.laplace
+  logistic = jax.random.logistic
+  loggamma = jax.random.loggamma
+  laplace = jax.random.laplace
+  logistic = jax.random.logistic
+  maxwell = jax.random.maxwell
+  multivariate_normal = jax.random.multivariate_normal
+  normal = jax.random.normal
+  orthogonal = jax.random.orthogonal
+  pareto = jax.random.pareto
+  permutation = jax.random.permutation
+  poisson = jax.random.poisson
+  rademacher = jax.random.rademacher
+  randint = jax.random.randint
+  rayleigh = jax.random.rayleigh
+  t = jax.random.t
+  truncated_normal = jax.random.truncated_normal
+  uniform = jax.random.uniform
+  wald = jax.random.wald
+  weibull_min = jax.random.weibull_min
+
+
+@functools.lru_cache(maxsize=1_000)
+def _hash(data: str) -> int:
+  """Deterministic hash."""
+  data = hashlib.sha1(data.encode('utf-8')).digest()
+  data = int.from_bytes(data[:4], byteorder='big')  # Truncate to uint32
+  return data
+
+
+@functools.cache
+def _mock_jax():
+  """Mock `jax.random` to support custom Key object."""
+  try:
+    # post-v0.10.0 JAX internal package structure
+    from jax._src.random import core as random  # pylint: disable=g-import-not-at-top
+    _ = random._check_prng_key  # pylint: disable=protected-access
+  except (ImportError, AttributeError):
+    # pre-v0.10.0 JAX internal package structure
+    from jax._src import random  # pylint: disable=g-import-not-at-top
+  from flax.core import scope  # pylint: disable=g-import-not-at-top
+
+  random._check_prng_key = _normalize_jax_key(  # pylint: disable=protected-access
+      random._check_prng_key, key_arg_index=1  # pylint: disable=protected-access,attribute-error  # pytype: disable=module-attr
+  )
+  scope._is_valid_rng = _normalize_jax_key(scope._is_valid_rng)  # pylint: disable=protected-access
+
+
+def _normalize_jax_key(fn: _FnT, *, key_arg_index: int = 0) -> _FnT:
+  """Mock `jax.random` to support custom Key object."""
+
+  fn = _internal.unwrap_on_reload(fn)  # pylint: disable=protected-access
+
+  # Support Colab reload
+
+  @_internal.wraps_with_reload(fn)
+  def new_fn(*args, **kwargs):
+    nonlocal key_arg_index
+    if len(args) == 1:  # Colab backward compatibility (old kernels)
+      key_arg_index = 0  # TODO(epot): Remove once all kernels are updated
+
+    key = args[key_arg_index]
+    scope = sys.modules.get('flax.core.scope')
+    if isinstance(key, PRNGKey):
+      key = key.rng
+    elif scope is not None and isinstance(key, scope.LazyRng):
+      key = key.as_jax_rng()
+    new_args = list(args)
+    new_args[key_arg_index] = key
+    return fn(*new_args, **kwargs)
+
+  return new_fn
+
+
+# We mock jax for compatibility
+_mock_jax()

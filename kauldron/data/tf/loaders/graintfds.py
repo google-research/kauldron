@@ -21,7 +21,6 @@ from etils import epath
 import grain.tensorflow as grain
 from kauldron import random
 from kauldron.data.tf import base
-from kauldron.ktyping import PRNGKey
 import tensorflow as tf
 
 
@@ -46,7 +45,7 @@ class Tfds(base.TFDataPipeline):
 
   _supports_symbolic_checkpoint: ClassVar[bool] = True
 
-  def ds_for_current_process(self, rng: PRNGKey) -> tf.data.Dataset:
+  def ds_for_current_process(self, rng: random.PRNGKey) -> tf.data.Dataset:
     source = grain.TfdsDataSource.from_name(
         self.name,
         split=self.split,
@@ -58,7 +57,7 @@ class Tfds(base.TFDataPipeline):
     sampler = grain.TfDefaultIndexSampler(
         num_records=len(source),
         shuffle=self.shuffle,
-        seed=random.random_seed(rng),
+        seed=rng.as_seed(),
         shard_options=grain.ShardByJaxProcess(
             drop_remainder=self.shard_drop_remainder
         ),

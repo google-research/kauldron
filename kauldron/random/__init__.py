@@ -15,8 +15,5 @@
 """Small wrapper around `jax.random` for OO API."""
 
 # pylint: disable=g-importing-member
-from kauldron.random.random import fold_in_str
 from kauldron.random.random import PRNGKey
-from kauldron.random.random import random_seed
-
 # pylint: enable=g-importing-member

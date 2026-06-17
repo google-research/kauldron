@@ -30,7 +30,7 @@ from flax.core.scope import (
     DenyList,
 )
 from flax.typing import FrozenVariableDict
-from kauldron.ktyping import PRNGKey
+from kauldron import kd
 
 if tp.TYPE_CHECKING:
   bases = (nn.Module, nnx.Module)
@@ -94,7 +94,11 @@ class KdNnxModule(*bases):
 
   def init(
       self,
-      rngs: flax.typing.PRNGKey | flax.typing.RNGSequences | dict[str, PRNGKey],
+      rngs: (
+          flax.typing.PRNGKey
+          | flax.typing.RNGSequences
+          | dict[str, kd.random.PRNGKey]
+      ),
       *args: Any,
       method: Callable[..., Any] | str | None = None,
       mutable: CollectionFilter = DenyList('intermediates'),
@@ -138,7 +142,7 @@ class KdNnxModule(*bases):
       rngs: (
           flax.typing.PRNGKey
           | flax.typing.RNGSequences
-          | dict[str, PRNGKey]
+          | dict[str, kd.random.PRNGKey]
           | None
       ) = None,
       method: Callable[..., Any] | str | None = None,
@@ -231,10 +235,14 @@ class LinenModuleFromNnxDef(KdNnxModule):
     return self.module(*args, **kwargs)
 
 
-def _nnx_rngs_from_kd(rngs: dict[str, PRNGKey] | None = None):
+def _nnx_rngs_from_kd(rngs: dict[str, kd.random.PRNGKey] | None = None):
   if rngs is None:
     return nnx.Rngs(0)
-  return nnx.Rngs(**rngs)
+  if isinstance(next(iter(rngs.values())), kd.random.PRNGKey):
+    rng_keys = {k: v.rng for k, v in rngs.items()}
+  else:
+    rng_keys = rngs
+  return nnx.Rngs(**rng_keys)
 
 
 T = tp.TypeVar('T')

@@ -17,11 +17,9 @@
 import dataclasses
 import functools
 
-import jax
 from kauldron import random
 from kauldron.data.tf import base
 from kauldron.data.tf import grain_utils
-from kauldron.ktyping import PRNGKey
 import tensorflow as tf
 
 
@@ -55,19 +53,17 @@ class SampleFromDatasets(base.TFDataPipeline):
           ' `TFDataPipeline`.'
       )
 
-  def ds_for_current_process(self, rng: PRNGKey) -> tf.data.Dataset:
+  def ds_for_current_process(self, rng: random.PRNGKey) -> tf.data.Dataset:
     # We make sure each nested dataset get a different seed
     datasets = [
-        ds.ds_with_transforms(jax.random.fold_in(rng, i))
+        ds.ds_with_transforms(rng.fold_in(i))
         for i, ds in enumerate(self.datasets)
     ]
 
     ds = tf.data.Dataset.sample_from_datasets(
         datasets,
         weights=self.weights,
-        seed=random.random_seed(
-            random.fold_in_str(rng, 'sample_from_datasets')
-        ),
+        seed=rng.fold_in('sample_from_datasets').as_seed(),
         stop_on_empty_dataset=self.stop_on_empty_dataset,
         rerandomize_each_iteration=self.rerandomize_each_iteration,
     )
@@ -97,9 +93,9 @@ class ZipDatasets(base.TFDataPipeline):
           'All datasets in `ZipDatasets` should inherit from `TFDataPipeline`.'
       )
 
-  def ds_for_current_process(self, rng: PRNGKey) -> tf.data.Dataset:
+  def ds_for_current_process(self, rng: random.PRNGKey) -> tf.data.Dataset:
     datasets = {
-        ds_name: ds.ds_with_transforms(jax.random.fold_in(rng, i))
+        ds_name: ds.ds_with_transforms(rng.fold_in(i))
         for i, (ds_name, ds) in enumerate(self.datasets.items())
     }
 

@@ -46,7 +46,7 @@ from flax import linen as nn
 import flax.struct
 import jax
 from kauldron import kd
-from kauldron.ktyping import PRNGKey, PyTree  # pylint: disable=g-multiple-import,g-importing-member
+from kauldron.ktyping import PyTree  # pylint: disable=g-multiple-import,g-importing-member
 import optax
 
 
@@ -72,7 +72,7 @@ def forward_with_loss(
     losses: dict[str, kd.losses.Loss],
     model: nn.Module,
     loss_name: Optional[str] = None,
-    rngs: dict[str, PRNGKey],
+    rngs: dict[str, kd.random.PRNGKey],
     is_training: bool,
     subgrad_fns: Any = None,
     **kwargs,

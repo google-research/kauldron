@@ -62,10 +62,9 @@ class GrainTfds(base.DataLoader):
 
     if seed is not None:
       with jax.transfer_guard("allow"):
-        rng = jax.random.PRNGKey(seed)
-        # Derive RNG for this host.
-        rng = jax.random.fold_in(rng, jax.process_index())
-        seed = random.random_seed(rng)
+        rng = random.PRNGKey(seed)
+        rng = rng.fold_in(jax.process_index())  # Derive RNG for this host.
+        seed = rng.as_seed()
     else:
       seed = None
 

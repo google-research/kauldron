@@ -18,8 +18,8 @@ import dataclasses
 from functools import partial  # pylint: disable=g-importing-member
 from flax import linen
 from flax import nnx
-import jax
 import jax.numpy as jnp
+from kauldron import kd
 from kauldron.contrib.modules import knnx
 
 
@@ -51,10 +51,10 @@ def test_knnx_module():
 
   # check the interface is the same
   linen_vars = linen_mod.init(
-      {'params': jax.random.PRNGKey(0)}, jnp.ones((1, 10))
+      {'params': kd.random.PRNGKey(0)}, jnp.ones((1, 10))
   )
   kd_nnx_vars = kd_nnx_mod.init(
-      {'params': jax.random.PRNGKey(0)}, jnp.ones((1, 10))
+      {'params': kd.random.PRNGKey(0)}, jnp.ones((1, 10))
   )
   output_linen, _ = linen_mod.apply(
       linen_vars, jnp.ones((1, 10)), mutable=True, rngs={}
@@ -87,7 +87,7 @@ def test_knnx_module_from_def():
   kd_mod = knnx.LinenModuleFromNnxDef(
       nnx_init=partial(MyNnxModule, input_dim=3, hdim=3),
   )
-  variables = kd_mod.init({'params': jax.random.PRNGKey(0)}, jnp.ones((1, 3)))
+  variables = kd_mod.init({'params': kd.random.PRNGKey(0)}, jnp.ones((1, 3)))
   out, _ = kd_mod.apply(variables, jnp.ones((1, 3)), mutable=True)
   assert out.shape == (1, 3)
 
@@ -108,7 +108,7 @@ def test_capture_intermediates():
       return h
 
   mod = ModuleWithIntermediates(input_dim=3, hdim=5)
-  variables = mod.init({'params': jax.random.PRNGKey(0)}, jnp.ones((1, 3)))
+  variables = mod.init({'params': kd.random.PRNGKey(0)}, jnp.ones((1, 3)))
   out, variables = mod.apply(
       variables,
       jnp.ones((1, 3)),
@@ -141,20 +141,20 @@ def test_rng_determinism():
       return x
 
   mod = ModuleWithDropout(input_dim=3, hdim=1000, output_dim=3)
-  rngs = {'params': jax.random.PRNGKey(0), 'dropout': jax.random.PRNGKey(42)}
+  rngs = {'params': kd.random.PRNGKey(0), 'dropout': kd.random.PRNGKey(42)}
   variables = mod.init(rngs, jnp.ones((1, 3)))
 
   x = jnp.ones((1, 3))
   out_a, _ = mod.apply(
-      variables, x, mutable=True, rngs={'dropout': jax.random.PRNGKey(1)}
+      variables, x, mutable=True, rngs={'dropout': kd.random.PRNGKey(1)}
   )
   out_b, _ = mod.apply(
-      variables, x, mutable=True, rngs={'dropout': jax.random.PRNGKey(1)}
+      variables, x, mutable=True, rngs={'dropout': kd.random.PRNGKey(1)}
   )
   assert jnp.allclose(out_a, out_b), 'Same RNG should yield the same output.'
 
   out_c, _ = mod.apply(
-      variables, x, mutable=True, rngs={'dropout': jax.random.PRNGKey(99)}
+      variables, x, mutable=True, rngs={'dropout': kd.random.PRNGKey(99)}
   )
   assert not jnp.allclose(
       out_a, out_c

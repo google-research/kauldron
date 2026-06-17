@@ -24,7 +24,6 @@ from etils import epy
 import jax
 from kauldron import random
 from kauldron.data.tf import base
-from kauldron.ktyping import PRNGKey
 import tensorflow as tf
 
 with epy.lazy_imports(
@@ -75,7 +74,7 @@ class SeqIOTask(_SeqIO):
   name: str
   shuffle_buffer_size: Optional[int] = None
 
-  def ds_for_current_process(self, rng: PRNGKey) -> tf.data.Dataset:
+  def ds_for_current_process(self, rng: random.PRNGKey) -> tf.data.Dataset:
     if self.name not in seqio.TaskRegistry.names():
       raise ValueError(f"Task {self.name!r} not found in seqio.TaskRegistry.")
 
@@ -84,7 +83,7 @@ class SeqIOTask(_SeqIO):
         split=self.split,
         shuffle=self.shuffle,
         shuffle_buffer_size=self.shuffle_buffer_size,
-        seed=random.random_seed(rng),
+        seed=rng.as_seed(),
         shard_info=self.shard_info,
         num_epochs=self.num_epochs,
     )
@@ -103,7 +102,7 @@ class SeqIOMixture(_SeqIO):
 
   sequence_length: Optional[Mapping[str, int]] = None
 
-  def ds_for_current_process(self, rng: PRNGKey) -> tf.data.Dataset:
+  def ds_for_current_process(self, rng: random.PRNGKey) -> tf.data.Dataset:
     if self.name not in seqio.MixtureRegistry.names():
       raise ValueError(f"Task {self.name} not found in seqio.MixtureRegistry.")
 
@@ -112,7 +111,7 @@ class SeqIOMixture(_SeqIO):
         sequence_length=self.sequence_length,
         split=self.split,
         shuffle=self.shuffle,
-        seed=random.random_seed(rng),
+        seed=rng.as_seed(),
         num_epochs=self.num_epochs,
         shard_info=self.shard_info,
     )

@@ -20,7 +20,6 @@ from typing import ClassVar, Optional
 import jax
 from kauldron import kd
 from kauldron.data.tf import base
-from kauldron.ktyping import PRNGKey
 import tensorflow as tf
 
 
@@ -49,7 +48,7 @@ class WithShuffleBuffer(base.TFDataPipeline):
 
   _supports_symbolic_checkpoint: ClassVar[bool] = False
 
-  def transform_ds(self, ds, *, rng: PRNGKey) -> tf.data.Dataset:
+  def transform_ds(self, ds, *, rng: kd.random.PRNGKey) -> tf.data.Dataset:
     if self.cache:
       ds = ds.cache()
 
@@ -59,11 +58,11 @@ class WithShuffleBuffer(base.TFDataPipeline):
             f'`{type(self).__name__}.shuffle_buffer_size` should be specified'
             ' when `shuffle=True`'
         )
-      rng = jax.random.fold_in(rng, jax.process_index())
-      rng = kd.random.fold_in_str(rng, 'shuffle_buffer')
+      rng = rng.fold_in(jax.process_index())
+      rng = rng.fold_in('shuffle_buffer')
       ds = ds.shuffle(
           self.shuffle_buffer_size,
-          seed=kd.random.random_seed(rng),
+          seed=rng.as_seed(),
           # reshuffle_each_iteration=True,
       )
 

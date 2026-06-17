@@ -21,7 +21,6 @@ from etils import epy
 from etils.etree import nest as etree  # pylint: disable=g-importing-member
 import grain.tensorflow as grain
 from kauldron import random
-from kauldron.ktyping import PRNGKey
 import tensorflow as tf
 
 
@@ -65,7 +64,7 @@ def merge_grain_meta_features(meta_features, ex_features):
 def maybe_add_grain_meta_features(
     ds,
     *,
-    rng: PRNGKey,
+    rng: random.PRNGKey,
 ) -> Any:
   """Add grain meta features."""
   # Dataset already has grain meta features.
@@ -76,7 +75,7 @@ def maybe_add_grain_meta_features(
   sampler = grain.TfDefaultIndexSampler(
       num_records=sys.maxsize,  # Infinite iterator
       shuffle=False,
-      seed=random.random_seed(random.fold_in_str(rng, "grain_metadata")),
+      seed=rng.fold_in("grain_metadata").as_seed(),
       shard_options=grain.ShardByJaxProcess(),
       num_epochs=None,
   )

@@ -31,9 +31,10 @@ import jax
 from kauldron import data
 from kauldron import konfig
 from kauldron import kontext
+from kauldron import random as kd_random
 from kauldron import train
 from kauldron.data import utils as data_utils
-from kauldron.ktyping import Float, Num, PRNGKey, UInt8  # pylint: disable=g-multiple-import
+from kauldron.ktyping import Float, Num, UInt8  # pylint: disable=g-multiple-import
 from kauldron.utils import pd_utils
 from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 import mediapy as media
@@ -303,7 +304,7 @@ def _get_summary_table(
     model: nn.Module,
     ds: data.Pipeline,
     ds_sharding: sharding.ShardingTree,
-    rngs: dict[str, PRNGKey],
+    rngs: dict[str, kd_random.PRNGKey],
 ) -> nn.summary.Table:
   """Return model overview as a `nn.summary.Table`."""
   batch = data_utils.mock_batch_from_elem_spec(ds.element_spec, ds_sharding)
@@ -366,7 +367,7 @@ def get_colab_model_overview(
     train_ds: data.Pipeline,
     ds_sharding: sharding.ShardingTree,
     model_config: konfig.ConfigDict | None = None,
-    rngs: dict[str, PRNGKey],
+    rngs: dict[str, kd_random.PRNGKey],
 ) -> pd.DataFrame:
   """Return `pd.DataFrame` for displaying the model params, inputs,..."""
   table = _get_summary_table(model, train_ds, ds_sharding, rngs)
