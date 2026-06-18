@@ -277,15 +277,28 @@ def _get_styled_df(
 
   df = pd_utils.StyledDataFrame(df_rows)
   df.current_style.set_properties(**{"text-align": "left"})
-  df.current_style.set_table_styles(
-      [dict(selector="th", props=[("text-align", "left")])]
-  )
-  df.current_style.format({
-      "Own Params": lambda x: f"{x:,}" if x else "",
-      "Total Params": lambda x: f"{x:,}" if x else "",
-  })
-  # Set alternating row backgrounds to semi-transparent grey
-  df.current_style.set_table_styles([
+
+  # Set table styles including max-width and wrapping for th/td to prevent
+  # horizontal overflow.
+  table_styles = [
+      {
+          "selector": "th",
+          "props": [
+              ("text-align", "left"),
+              ("max-width", "400px"),
+              ("white-space", "normal"),
+              ("word-wrap", "break-word"),
+          ],
+      },
+      {
+          "selector": "td",
+          "props": [
+              ("max-width", "400px"),
+              ("white-space", "normal"),
+              ("word-wrap", "break-word"),
+              ("vertical-align", "top"),
+          ],
+      },
       {
           "selector": "tbody tr:nth-child(even)",
           "props": [("background-color", "#8884")],
@@ -294,7 +307,13 @@ def _get_styled_df(
           "selector": "tbody tr:hover",
           "props": [("background-color", "#44f4")],
       },
-  ])
+  ]
+  df.current_style.set_table_styles(table_styles)
+
+  df.current_style.format({
+      "Own Params": lambda x: f"{x:,}" if x else "",
+      "Total Params": lambda x: f"{x:,}" if x else "",
+  })
 
   return df
 
