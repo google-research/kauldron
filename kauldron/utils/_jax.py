@@ -17,6 +17,7 @@
 from collections.abc import Callable
 from typing import ParamSpec, TypeVar
 import jax
+import numpy as np
 
 _T = TypeVar('_T')
 _P = ParamSpec('_P')
@@ -60,38 +61,57 @@ def local_to_global_shape(
     *,
     sharding: jax.sharding.Sharding,
 ) -> tuple[int, ...]:
-  """Convert a per-process shape to a global shape.
-
-  Contrary to the jax version, this function always scale the sharded dimension
-  by the number of processes.
-
-  Example:
-
-  * shape=(x, y), sharding=('a') -> (x * jax.process_count(), y)
-
-  Args:
-    shape: The local shape
-    sharding: The sharding to apply
-
-  Returns:
-    The global shape
-  """
+  """Convert a per-process shape to a global shape."""
   if not isinstance(sharding, jax.sharding.NamedSharding):
     raise ValueError(
         f'Only NamedSharding is supported for now. Got: {sharding!r}'
     )
 
-  # TODO(epot): We only support sharding on the first dimension for now. To
-  # supports arbitrary axes, the sharding would have to specify on which
-  # dimensions are split across hosts and which are simply sharded
-  match len(sharding.spec):
-    case 0:
-      return shape
-    case 1:
-      return (shape[0] * jax.process_count(),) + shape[1:]
-    case _:
-      # TODO(epot): Supports spec = `('batch', None)`
-      raise ValueError(
-          f'Data can only be sharded on the first dimension. Got: {sharding!r}.'
-          ' Please raise an issue if you need this.'
-      )
+  if not sharding.spec:
+    return shape
+
+  if any(x is not None for x in sharding.spec[1:]):
+    raise ValueError(
+        f'Data can only be sharded on the first dimension. Got: {sharding!r}.'
+    )
+
+  # Calculate total partitions for the first dimension
+  axis_names = sharding.spec[0]
+  if axis_names is None:
+    total_partitions = 1
+  elif isinstance(axis_names, str):
+    total_partitions = sharding.mesh.shape[axis_names]
+  else:
+    total_partitions = 1
+    for name in axis_names:
+      total_partitions *= sharding.mesh.shape[name]
+
+  # Calculate local partitions for the first dimension on the current process
+  process_index = jax.process_index()
+  local_devices = [
+      d for d in sharding.mesh.devices.flat if d.process_index == process_index
+  ]
+
+  if not local_devices:
+    local_partitions = 1
+  else:
+    mesh_devices = sharding.mesh.devices
+    axis_names_list = list(sharding.mesh.shape.keys())
+
+    unique_axis_values = set()
+    for device in local_devices:
+      indices = np.where(mesh_devices == device)
+      coord = {name: indices[i][0] for i, name in enumerate(axis_names_list)}
+
+      if axis_names is None:
+        val = 0
+      elif isinstance(axis_names, str):
+        val = coord[axis_names]
+      else:
+        val = tuple(coord[name] for name in axis_names)
+      unique_axis_values.add(val)
+    local_partitions = len(unique_axis_values)
+
+  scaling_factor = total_partitions // local_partitions
+
+  return (shape[0] * scaling_factor,) + shape[1:]
