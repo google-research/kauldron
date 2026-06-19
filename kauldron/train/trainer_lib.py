@@ -50,6 +50,7 @@ from kauldron.train import train_step
 from kauldron.utils import _jax
 from kauldron.utils import chrono_utils
 from kauldron.utils import config_util
+from kauldron.utils import immutabledict
 from kauldron.utils import kdash
 from kauldron.utils.sharding_utils import sharding as sharding_utils  # pylint: disable=g-importing-member
 import optax
@@ -252,15 +253,15 @@ class Trainer(config_util.BaseConfig):
   def __post_init__(self):
 
     # Freeze the mutable fields as they are passed to `jit` functions.
-    for name in (
-        'train_losses',
-        'train_metrics',
-        'train_summaries',
-        'schedules',
-    ):
-      value = getattr(self, name)
-      if isinstance(value, dict):
-        object.__setattr__(self, name, FrozenDict(value))
+    immutabledict.freeze_dict_attrs(
+        self,
+        (
+            'train_losses',
+            'train_metrics',
+            'train_summaries',
+            'schedules',
+        ),
+    )
 
     # It's convenient to set `cfg.evals = None`,... to disable evaluation
     for name, default_factory in {

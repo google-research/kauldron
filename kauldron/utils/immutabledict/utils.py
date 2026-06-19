@@ -21,12 +21,6 @@ from kauldron.utils.immutabledict import immutabledict_lib
 
 def freeze_dict_attrs(obj: Any, attrs: Iterable[str]) -> None:
   """Freezes the `dict` attributes of an object."""
-  import warnings  # pylint: disable=g-import-not-at-top
-  warnings.warn(
-      '`freeze_dict_attrs` is deprecated. Default behavior is no freeze.',
-      DeprecationWarning,
-      stacklevel=2,
-  )
   for key in attrs:
     value = getattr(obj, key)
     if isinstance(value, dict):

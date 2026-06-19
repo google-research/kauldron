@@ -19,17 +19,9 @@ from __future__ import annotations
 from collections.abc import Hashable
 import sys
 from typing import Any, ClassVar, cast
-import warnings
 
 from etils import epy
 import immutabledict as immutabledict_lib
-
-warnings.warn(
-    '`kauldron.utils.immutabledict` is deprecated and will be removed. '
-    'Please migrate to standard dict or `flax.core.FrozenDict`.',
-    DeprecationWarning,
-    stacklevel=2,
-)
 
 
 class ImmutableDict(immutabledict_lib.immutabledict):
