@@ -30,7 +30,6 @@ from etils import epy
 from kauldron.konfig import configdict_proxy
 from kauldron.konfig import fake_import_utils
 from kauldron.konfig import utils
-from kauldron.utils import immutabledict
 import ml_collections
 
 _T = TypeVar('_T')
@@ -521,7 +520,7 @@ def _normalize_config_only_value(value, name, *, id_to_dict) -> Any:
       _normalize_config_only_value, id_to_dict=id_to_dict
   )
   match value:
-    case dict() | ml_collections.ConfigDict() | immutabledict.ImmutableDict():
+    case dict() | ml_collections.ConfigDict():
       if (id_ := value.get('__id__')) is not None:  # Shared value:
         del value['__id__']  # ConfigDict do not have `.pop()`
         if id_ in id_to_dict:  # ConfigDict already constructed
@@ -622,11 +621,9 @@ def _shortn(x: Any, max_length: int) -> str:
 
 
 def _items_preserve_reference(
-    cfg: (
-        dict[str, Any] | ml_collections.ConfigDict | immutabledict.ImmutableDict
-    ),
+    cfg: dict[str, Any] | ml_collections.ConfigDict,
 ) -> Iterable[tuple[str, Any]]:
-  if isinstance(cfg, dict | immutabledict.ImmutableDict):
+  if isinstance(cfg, dict):
     return cfg.items()
   elif isinstance(cfg, ml_collections.ConfigDict):
     return cfg.items(preserve_field_references=True)

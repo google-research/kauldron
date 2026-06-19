@@ -103,7 +103,7 @@ def test_configdict_resolve_constructor():
   assert obj.x == 123
   assert obj.const is pathlib.Path
   assert obj.y == types.SimpleNamespace(
-      elems=(types.SimpleNamespace(), types.SimpleNamespace())
+      elems=[types.SimpleNamespace(), types.SimpleNamespace()]
   )
 
   obj = konfig.resolve(fake_pathlib.Path("a", "b"))  # pytype: disable=wrong-arg-types
@@ -224,10 +224,10 @@ def test_configdict_partial():
       "path": functools.partial(fake_pathlib.Path, "a", "b"),
   })
   cfg = konfig.resolve(cfg)
-  assert isinstance(cfg.ns, functools.partial)
-  assert isinstance(cfg.path, functools.partial)
-  assert cfg.ns() == types.SimpleNamespace(num_layers=4)
-  assert cfg.path() == pathlib.Path("a", "b")
+  assert isinstance(cfg["ns"], functools.partial)
+  assert isinstance(cfg["path"], functools.partial)
+  assert cfg["ns"]() == types.SimpleNamespace(num_layers=4)
+  assert cfg["path"]() == pathlib.Path("a", "b")
 
 
 def test_configdict_not_freeze():

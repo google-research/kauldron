@@ -20,7 +20,6 @@ import types
 import dill
 from etils import epy
 from kauldron import konfig
-from kauldron.utils import immutabledict
 import pytest
 
 
@@ -50,10 +49,8 @@ def test_ref_resolved():
   cfg = konfig.ConfigDict({'a': 1})
   cfg.b = (1, cfg.ref.a)
 
-  # Resolve should resolve the FieldReference
   out = konfig.resolve(cfg)
-  assert isinstance(out.b[-1], int)
-  assert hash(out)
+  assert isinstance(out['b'][-1], int)
 
 
 def test_deserialize():
@@ -64,7 +61,7 @@ def test_deserialize():
       ],
   })
   cfg = konfig.resolve(cfg)
-  assert cfg['paths'] == (pathlib.Path, pathlib.Path)
+  assert cfg['paths'] == [pathlib.Path, pathlib.Path]
 
 
 def test_json_path():
@@ -128,13 +125,6 @@ def test_indices():
   assert new_cfg['0'] == 'aaa'
   assert 1 not in new_cfg[0]
   assert '1' in new_cfg[0]
-
-
-def test_immutabledict():
-  cfg = konfig.ConfigDict()
-  cfg.a = immutabledict.ImmutableDict({'a': 1})
-
-  assert cfg == konfig.ConfigDict({'a': {'a': 1}})
 
 
 def test_module_configdict():
