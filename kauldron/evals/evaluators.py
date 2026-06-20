@@ -262,12 +262,11 @@ class Evaluator(EvaluatorBase):
           f'{epy.pretty_repr(self.ds)}'
       )
 
-    self.writer.write_step_metrics(
+    values = metric_writer.prepare_step_metrics(
         step=step,
         aux=merged_aux,
-        schedules={},
-        log_summaries=True,
     )
+    self.writer.write_step_metrics(step=step, values=values)
     return merged_aux
 
   @functools.partial(
