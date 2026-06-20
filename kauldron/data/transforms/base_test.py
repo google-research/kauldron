@@ -29,9 +29,41 @@ def test_elements_keep():
   assert after["no_copy"] == before["no"]
 
 
+def test_elements_keep_skip_missing():
+  el = kd.data.py.Elements(
+      keep={"yes", "definitely", "missing"},
+      rename={"old": "new", "old_missing": "new_missing"},
+      copy={"no": "no_copy", "missing": "missing_copy"},
+      skip_missing=True,
+  )
+  before = {"yes": 1, "definitely": 2, "old": 3, "no": 4, "drop": 5}
+  after = el.map(before)
+  assert set(after.keys()) == {"yes", "definitely", "new", "no_copy"}
+  assert after["yes"] == before["yes"]
+  assert after["definitely"] == before["definitely"]
+  assert after["new"] == before["old"]
+  assert after["no_copy"] == before["no"]
+
+
 def test_elements_drop():
   el = kd.data.py.Elements(
       drop={"no", "drop"}, rename={"old": "new"}, copy={"yes": "yes_copy"}
+  )
+  before = {"yes": 1, "definitely": 2, "old": 3, "no": 4, "drop": 5}
+  after = el.map(before)
+  assert set(after.keys()) == {"yes", "definitely", "new", "yes_copy"}
+  assert after["yes"] == before["yes"]
+  assert after["definitely"] == before["definitely"]
+  assert after["new"] == before["old"]
+  assert after["yes_copy"] == before["yes"]
+
+
+def test_elements_drop_skip_missing():
+  el = kd.data.py.Elements(
+      drop={"no", "drop", "missing"},
+      rename={"old": "new", "old_missing": "new_missing"},
+      copy={"yes": "yes_copy", "missing": "missing_copy"},
+      skip_missing=True,
   )
   before = {"yes": 1, "definitely": 2, "old": 3, "no": 4, "drop": 5}
   after = el.map(before)
@@ -60,6 +92,12 @@ def test_elements_rename_overwrite_raises():
   with pytest.raises(KeyError):
     el.map(before)
 
+  # Same as above but with skip_missing=True.
+  el = kd.data.py.Elements(rename={"old": "oops"}, skip_missing=True)
+  before = {"old": 1, "oops": 2}
+  with pytest.raises(KeyError):
+    el.map(before)
+
 
 def test_elements_copy_only():
   el = kd.data.py.Elements(copy={"yes": "no", "old": "new"})
@@ -84,3 +122,26 @@ def test_elements_copy_overwrite_raises():
   # copy two fields to the same target name
   with pytest.raises(ValueError):
     _ = kd.data.py.Elements(copy={"old": "oops", "yes": "oops"})
+
+
+def test_elements_copy_overwrite_raises_skip_missing():
+  # copy to an existing key
+  el = kd.data.py.Elements(
+      copy={"old": "oops", "missing": "missing_copy"}, skip_missing=True
+  )
+  before = {"old": 1, "oops": 2}
+  with pytest.raises(KeyError):
+    el.map(before)
+  # copy to a key that is also a rename target
+  with pytest.raises(KeyError):
+    _ = kd.data.py.Elements(
+        copy={"old": "oops"},
+        rename={"yes": "oops", "missing": "missing_remamed"},
+        skip_missing=True,
+    )
+  # copy two fields to the same target name
+  with pytest.raises(ValueError):
+    _ = kd.data.py.Elements(
+        copy={"old": "oops", "yes": "oops", "missing": "missing_copy"},
+        skip_missing=True,
+    )
