@@ -29,7 +29,6 @@ from kauldron import losses as kd_losses
 from kauldron import metrics as kd_metrics
 from kauldron.train import context as context_lib
 from kauldron.utils import config_util
-from kauldron.utils import immutabledict
 from kauldron.utils.kdash import dashboard_utils
 import numpy as np
 from orbax import checkpoint as ocp
@@ -46,9 +45,6 @@ class Auxiliaries(config_util.UpdateFromRootCfg):
   summaries: Mapping[str, kd_metrics.Metric] = (
       config_util.ROOT_CFG_REF.train_summaries
   )
-
-  def __post_init__(self):
-    immutabledict.freeze_dict_attrs(self, ["losses", "metrics", "summaries"])
 
   @jax.named_call
   def update_context(self, context: context_lib.Context) -> context_lib.Context:
