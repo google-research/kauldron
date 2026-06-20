@@ -618,4 +618,7 @@ def _get_markdown_param_table(params) -> str:
 def _compute_schedule(sched: optax.Schedule, step: int):
   """Evaluate schedule for step and return result."""
   with jax.transfer_guard("allow"):
-    return sched(step)
+    val = sched(step)
+    if isinstance(val, jax.Array):
+      return np.asarray(val)
+    return val
