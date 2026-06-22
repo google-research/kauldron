@@ -23,6 +23,8 @@ from kauldron import kd
 
 from etils import epy as _epy
 
+# klausg: this is a test.
+
 # Namespaces
 with _epy.lazy_api_imports(globals()):
   from kauldron import checkpoints as ckpts
