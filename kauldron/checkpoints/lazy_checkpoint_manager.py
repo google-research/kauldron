@@ -167,6 +167,7 @@ class LazyCheckpointManager:
       self,
       *,
       min_interval_secs: int = 0,
+      seconds_to_sleep: int = 1,
       timeout: Optional[int] = None,
       timeout_fn: Optional[Callable[[], bool]] = None,
   ) -> Iterator[int]:
@@ -180,6 +181,7 @@ class LazyCheckpointManager:
         step_prefix=mgr._options.step_prefix,  # pylint: disable=protected-access
         step_format_fixed_length=mgr._options.step_format_fixed_length,  # pylint: disable=protected-access
         min_interval_secs=min_interval_secs,
+        seconds_to_sleep=seconds_to_sleep,
         timeout=timeout,
         timeout_fn=timeout_fn,
         snapshot_dir=epath.Path(mgr.directory) / f"_SNAPSHOTS-{time.time_ns()}",

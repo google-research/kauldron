@@ -116,11 +116,12 @@ class BaseCheckpointer(
       self,
       *,
       min_interval_secs: int = 0,
+      seconds_to_sleep: int = 1,
       timeout: Optional[int] = None,
       timeout_fn: Optional[Callable[[], bool]] = None,
   ) -> Iterator[int]:
     """Wrapper around `ocp.checkpoint_utils.checkpoints_iterator`."""
-    del min_interval_secs, timeout, timeout_fn
+    del min_interval_secs, seconds_to_sleep, timeout, timeout_fn
     yield from []
 
   def close(self) -> None:
@@ -388,6 +389,7 @@ class Checkpointer(BaseCheckpointer):
       self,
       *,
       min_interval_secs: int = 0,
+      seconds_to_sleep: int = 1,
       timeout: Optional[int] = None,
       timeout_fn: Optional[Callable[[], bool]] = None,
   ) -> Iterator[int]:
@@ -397,6 +399,7 @@ class Checkpointer(BaseCheckpointer):
       try:
         for step in self._ckpt_mgr.iter_new_checkpoints(
             min_interval_secs=min_interval_secs,
+            seconds_to_sleep=seconds_to_sleep,
             timeout=timeout,
             timeout_fn=timeout_fn,
         ):

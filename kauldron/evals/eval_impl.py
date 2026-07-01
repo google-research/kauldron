@@ -215,6 +215,20 @@ def _preemptable_iter_new_checkpoints(
     trainer_ckpt = trainer.checkpointer
   assert isinstance(trainer_ckpt, checkpointer.Checkpointer)
 
+  # Use the minimum seconds_to_sleep across all StandaloneEveryCheckpoint evals
+  # in this job group, so that the polling interval honors user configuration.
+  seconds_to_sleep = min(
+      (
+          trainer.evals[name].run.seconds_to_sleep
+          for name in eval_names
+          if isinstance(
+              trainer.evals[name].run,
+              run_strategies.StandaloneEveryCheckpoint,
+          )
+      ),
+      default=1,
+  )
+
   with _get_eval_ckpt(trainer_ckpt, eval_names) as eval_ckpt:
     # If the eval checkpoint exists, there is an ongoing eval that was preempted
     # and we should resume the onging eval.
@@ -231,6 +245,7 @@ def _preemptable_iter_new_checkpoints(
       eval_ckpt.delete(step)
     for step in trainer_ckpt.iter_new_checkpoints(
         min_interval_secs=10,
+        seconds_to_sleep=seconds_to_sleep,
         timeout=10,
         timeout_fn=lambda: (
             # Exit when train job has completed

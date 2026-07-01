@@ -153,7 +153,13 @@ class StandaloneEveryCheckpoint(Standalone):
 
   If `job_group='group_name'`, all the evaluators sharing the same `job_group`
   will share the same XManager job (to save resources).
+
+  Attributes:
+    seconds_to_sleep: Number of seconds to sleep between polling attempts when
+      no new checkpoint is found. Defaults to 1.
   """
+
+  seconds_to_sleep: int = 1
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True)
