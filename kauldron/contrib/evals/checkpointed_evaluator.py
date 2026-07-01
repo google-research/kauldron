@@ -67,6 +67,7 @@ class CheckpointedEvaluator(evaluators.Evaluator):
   """An evaluator that can save and restore its progress."""
 
   checkpointer: checkpoints.checkpointer.Checkpointer
+  log_tqdm_xm: bool = False
 
   def __post_init__(self):
     super().__post_init__()
@@ -153,12 +154,19 @@ class CheckpointedEvaluator(evaluators.Evaluator):
     except TypeError:  # Unknown length.
       total_steps = None
 
+    if self.num_batches is not None:
+      if total_steps is None:
+        total_steps = self.num_batches + 1
+      else:
+        total_steps = min(total_steps, self.num_batches + 1)
+
     # MARK: Run evaluation.
     for step_nr, batch in utils.enum_iter(
         ds_iter,
         init_step=latest_eval_step + 1,
         total_steps=total_steps,
         desc=self.name,
+        log_xm=self.log_tqdm_xm,
     ):
       if self.num_batches is not None:
         if step_nr > self.num_batches:
