@@ -173,3 +173,29 @@ class StandaloneLastCheckpoint(Standalone):
   If `job_group='group_name'`, all the evaluators sharing the same `job_group`
   will share the same XManager job (to save resources).
   """
+
+
+@dataclasses.dataclass(kw_only=True, frozen=True)
+class Final(AlongTrain):
+  """Run eval once after all training has completed, in the train job.
+
+  Unlike ``StandaloneLastCheckpoint``, this strategy does **not** launch a
+  separate XManager job: the evaluation is executed in the same process as
+  training, immediately after the training loop finishes and the last
+  checkpoint has been written.
+
+  Example:
+
+  ```python
+  kd.evals.Evaluator(
+      run=kd.evals.Final(),
+      ...,
+  )
+  ```
+  """
+
+  free_memory: bool = True
+
+  def should_eval_in_train(self, step: int) -> bool:
+    """Never triggers inside the training loop; handled post-loop instead."""
+    return False

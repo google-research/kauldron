@@ -18,6 +18,8 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 import contextlib
+import dataclasses
+import gc
 import itertools
 from typing import Optional
 
@@ -26,6 +28,7 @@ import jax
 import jax.numpy as jnp
 from kauldron.data import utils as data_utils
 from kauldron.evals import eval_impl
+from kauldron.evals import run_strategies
 from kauldron.inspect import profile_utils
 from kauldron.train import auxiliaries
 from kauldron.train import checkpoint_state
@@ -170,6 +173,20 @@ def train_impl(
             log_summaries=log_summaries,
         )
 
+  # run last checkpoint evals if any
+  final_evals = [
+      evaluator
+      for evaluator in trainer.evals.values()
+      if isinstance(evaluator.run, run_strategies.Final)
+  ]
+  if all(evaluator.discard_opt for evaluator in final_evals):
+    state = _discard_opt(state)
+  for evaluator in final_evals:
+    # free memory
+    gc.collect()
+    jax.clear_caches()
+    evaluator.evaluate(state=state, step=trainer.num_train_steps)
+
   # Ensure all hosts exit together. See section in dm/jax-faqs.
   _sync()
   # Checkpoint saving must be finalized before notifying eval jobs that training
@@ -185,6 +202,17 @@ def train_impl(
 
   # Returning the final state is convenient for interactive training in colab
   return state, aux
+
+
+def _discard_opt(state: train_step.TrainState) -> train_step.TrainState:
+  """Discards the optimizer state from the training state."""
+  if state.opt_state is not None:
+    jax.tree.map(
+        lambda x: x.delete() if isinstance(x, jax.Array) else None,
+        state.opt_state,
+    )
+  state = dataclasses.replace(state, opt_state=None)
+  return state
 
 
 def _enum_steps_with_hooks(
