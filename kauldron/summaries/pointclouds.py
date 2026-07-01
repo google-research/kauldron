@@ -65,7 +65,7 @@ class ShowPointCloud(metrics.Metric):
   )
   num_points: Optional[int] = None
 
-  # TODO(klausg): use CollectFirstState after adding support for keep_first=None
+  # TODO(klausg): use truncate_field after adding support for num=None?
   @flax.struct.dataclass
   class State(metrics.AutoState["ShowPointCloud"]):
     """Collecting state that returns PointCloudsData."""
@@ -74,24 +74,22 @@ class ShowPointCloud(metrics.Metric):
     point_colors: Optional[Float["n 3"]] = metrics.concat_field()
 
     def compute(self) -> PointCloud:
-      results = super().compute()
+      check_type(self.point_clouds, Float["n 3"])
+      check_type(self.point_colors, Float["n 3"] | None)
 
-      check_type(results.point_clouds, Float["n 3"])
-      check_type(results.point_colors, Float["n 3"] | None)
-
-      if results.point_clouds.size == 0:
+      if self.point_clouds.size == 0:
         raise ValueError(
             f"Point cloud summary for {self.parent!r} is an empty array "
-            f"point_clouds={etree.spec_like(results.point_clouds)}."
+            f"point_clouds={etree.spec_like(self.point_clouds)}."
         )
 
       configs = self.parent.configs or _DEFAULT_CONFIGS
-      # To fix write/serialize error with immutable dict (self.configs)
+      # To fix write/serialize error with immutable dict (state.configs)
       configs = {k: dict(v) for k, v in configs.items()}
 
       return PointCloud(
-          point_clouds=results.point_clouds,
-          point_colors=results.point_colors,
+          point_clouds=self.point_clouds,
+          point_colors=self.point_colors,
           configs=configs,
       )
 

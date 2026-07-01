@@ -51,8 +51,8 @@ class Metric(abc.ABC):
      `kd.metrics.State` that collects and aggregates the required information.
      In most cases this will either be:
       - `kd.metrics.AverageState` (for simple averaging of a value),
-      - `kd.metrics.CollectingState` (for metrics that need to collect and
-         concatenate model outputs over many batches)
+      - `kd.metrics.AutoState` (using `concat_field`) (for metrics that need to
+         collect and concatenate model outputs over many batches)
   2) Define a set of `kd.kontext.Key` annotated fields that are used to set the
      paths for gathering information from the train/eval context.
   3) Override the `get_state(...)` method which should take arguments with the

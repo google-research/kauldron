@@ -168,6 +168,78 @@ class EmptyState(State[_MetricT]):
     return {}
 
 
+# TODO(epot): Could be unified with `AllReduceMean` in `kd.losses`
+@flax.struct.dataclass
+class AverageState(State[_MetricT]):
+  """Computes the average of a scalar or a batch of tensors.
+
+  Supports the following types of masks:
+
+  - A one-dimensional mask with the same leading dimension as the scalars, or,
+  - A multi-dimensional mask with the exact same dimensions as the scalars.
+    This allows the use of per-example masks for examples in a batch, as well as
+    per-target masks for targets for examples in a batch.
+
+  The result is always a scalar.
+  """
+
+  total: Float[""]
+  count: Float[""]
+
+  @classmethod
+  def from_values(
+      cls,
+      values: Float["b *any"],
+      *,
+      mask: Bool["b *#any"] | Float["b *#any"] | None = None,
+  ) -> AverageState:
+    """Factory to create the state from an array."""
+    if values.ndim == 0:
+      values = values[None]
+    if mask is None:
+      mask = jnp.ones_like(values)
+    # Leading dimensions of mask and values must match.
+    if mask.shape[0] != values.shape[0]:
+      raise ValueError(
+          "Argument `mask` must have the same leading dimension as `values`. "
+          f"Received mask of dimension {mask.shape} "
+          f"and values of dimension {values.shape}."
+      )
+    # Broadcast mask to the same number of dimensions as values.
+    if mask.ndim < values.ndim:
+      mask = jnp.expand_dims(
+          mask, axis=tuple(np.arange(mask.ndim, values.ndim))
+      )
+    return cls(
+        total=(values * mask).sum(),
+        count=jnp.broadcast_to(mask, values.shape).sum(dtype=jnp.float32),
+    )
+
+  @classmethod
+  def empty(cls) -> AverageState:
+    return cls(
+        total=jnp.array(0.0, jnp.float32),
+        count=jnp.array(0.0, jnp.float32),
+    )
+
+  def merge(self, other: AverageState) -> AverageState:
+    if self.total.shape != other.total.shape:
+      raise ValueError(
+          f"Expected same shape: {self.total.shape} != {other.total.shape}"
+      )
+    return type(self)(
+        total=self.total + other.total,
+        count=self.count + other.count,
+    )
+
+  def compute(self) -> Float[""]:
+    return jax.lax.cond(
+        self.count == 0,
+        lambda: self.total * 0.0,
+        lambda: self.total / self.count,
+    )
+
+
 @flax.struct.dataclass
 class CollectingState(State[_MetricT]):
   """Accumulate outputs across multiple steps (without reducing).
@@ -288,78 +360,6 @@ def _maybe_convert_to_numpy(v: tuple[Any, ...]) -> tuple[np.ndarray, ...]:
 # this class)
 class _CollectingStateOutput(types.SimpleNamespace):
   pass
-
-
-# TODO(epot): Could be unified with `AllReduceMean` in `kd.losses`
-@flax.struct.dataclass
-class AverageState(State[_MetricT]):
-  """Computes the average of a scalar or a batch of tensors.
-
-  Supports the following types of masks:
-
-  - A one-dimensional mask with the same leading dimension as the scalars, or,
-  - A multi-dimensional mask with the exact same dimensions as the scalars.
-    This allows the use of per-example masks for examples in a batch, as well as
-    per-target masks for targets for examples in a batch.
-
-  The result is always a scalar.
-  """
-
-  total: Float[""]
-  count: Float[""]
-
-  @classmethod
-  def from_values(
-      cls,
-      values: Float["b *any"],
-      *,
-      mask: Bool["b *#any"] | Float["b *#any"] | None = None,
-  ) -> AverageState:
-    """Factory to create the state from an array."""
-    if values.ndim == 0:
-      values = values[None]
-    if mask is None:
-      mask = jnp.ones_like(values)
-    # Leading dimensions of mask and values must match.
-    if mask.shape[0] != values.shape[0]:
-      raise ValueError(
-          "Argument `mask` must have the same leading dimension as `values`. "
-          f"Received mask of dimension {mask.shape} "
-          f"and values of dimension {values.shape}."
-      )
-    # Broadcast mask to the same number of dimensions as values.
-    if mask.ndim < values.ndim:
-      mask = jnp.expand_dims(
-          mask, axis=tuple(np.arange(mask.ndim, values.ndim))
-      )
-    return cls(
-        total=(values * mask).sum(),
-        count=jnp.broadcast_to(mask, values.shape).sum(dtype=jnp.float32),
-    )
-
-  @classmethod
-  def empty(cls) -> AverageState:
-    return cls(
-        total=jnp.array(0.0, jnp.float32),
-        count=jnp.array(0.0, jnp.float32),
-    )
-
-  def merge(self, other: AverageState) -> AverageState:
-    if self.total.shape != other.total.shape:
-      raise ValueError(
-          f"Expected same shape: {self.total.shape} != {other.total.shape}"
-      )
-    return type(self)(
-        total=self.total + other.total,
-        count=self.count + other.count,
-    )
-
-  def compute(self) -> Float[""]:
-    return jax.lax.cond(
-        self.count == 0,
-        lambda: self.total * 0.0,
-        lambda: self.total / self.count,
-    )
 
 
 @flax.struct.dataclass

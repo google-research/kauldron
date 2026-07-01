@@ -101,10 +101,10 @@ provided by default:
 
 *   `kd.metrics.AverageState`: for simple averaging of a value (e.g.
     `kd.metrics.Norm`).
-*   `kd.metrics.CollectingState` (deprecated): for metrics that need to collect
-    and concatenate model outputs over many batches (e.g. `kd.metrics.RocAuc`).
-*   `kd.metrics.AutoState`: A more flexible version of `CollectingState` which
-    supports arbitrary aggregation. See `Summary` section below.
+*   `kd.metrics.AutoState`: A flexible state class that supports arbitrary
+    declarative field aggregation, such as collection/concatenation (using
+    `kd.metrics.concat_field()`) and truncation (using
+    `kd.metrics.truncate_field()`).
 
 You can also implement your custom `State`. To choose whether the logic should
 go in `State` or `Metric`:

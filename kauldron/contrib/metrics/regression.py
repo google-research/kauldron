@@ -21,8 +21,8 @@ import dataclasses
 import flax.struct
 from jax import numpy as jnp
 from kauldron import kontext
+from kauldron import metrics
 from kauldron.metrics import base
-from kauldron.metrics import base_state
 from kauldron.typing import Float, Int, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
 
@@ -65,17 +65,16 @@ class RootMeanSquaredError(base.Metric):
   rmse_mode: str = "trad"
 
   @flax.struct.dataclass
-  class State(base_state.CollectingState["RootMeanSquaredError"]):
+  class State(metrics.AutoState["RootMeanSquaredError"]):
     """RootMeanSquaredError state."""
 
-    sum_squared_diffs: Float["b 1"]
-    number_summed_values: Int["b"]
+    sum_squared_diffs: Float["b"] = metrics.concat_field()
+    number_summed_values: Int["b"] = metrics.concat_field()
 
     @typechecked
     def compute(self) -> float:
-      out = super().compute()
-      sum_squared_diffs = out.sum_squared_diffs
-      number_summed_values = out.number_summed_values
+      sum_squared_diffs = self.sum_squared_diffs
+      number_summed_values = self.number_summed_values
 
       if self.parent.rmse_mode == "trad":
         error = jnp.sqrt(jnp.mean(sum_squared_diffs))

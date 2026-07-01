@@ -95,9 +95,10 @@ def test_collecting_merge():
   np.testing.assert_allclose(final_state_2.compute(), 0.833333333333333)
 
 
-@flax.struct.dataclass
-class FirstNImages(kd.metrics.CollectFirstState):
-  images: Float['N h w 3']
+@flax.struct.dataclass(kw_only=True)
+class FirstNImages(kd.metrics.AutoState):
+  keep_first: int = kd.metrics.static_field()
+  images: Float['N h w 3'] = kd.metrics.truncate_field(num_field='keep_first')
 
 
 def test_collecting_first_image():

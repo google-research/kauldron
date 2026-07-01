@@ -26,10 +26,10 @@ import jax
 from jax import numpy as jnp
 from kauldron import data
 from kauldron import kontext
+from kauldron import metrics
 from kauldron.evals import evaluators
 from kauldron.ktyping import Array, Float, Int, Scalar, check_type, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 from kauldron.metrics import base
-from kauldron.metrics import base_state
 from kauldron.train import auxiliaries
 from kauldron.train import train_step
 from kauldron.utils import config_util
@@ -226,12 +226,12 @@ class ComputeFeaturesMetric(base.Metric):
   features: kontext.Key
 
   @flax.struct.dataclass
-  class State(base_state.CollectingState):
-    features: Array['...']
+  class State(metrics.AutoState):
+    features: Array['...'] = metrics.concat_field()
 
     @typechecked
     def compute(self) -> Array['...']:
-      return np.array(super().compute().features)
+      return np.array(self.features)
 
   @typechecked
   def get_state(
