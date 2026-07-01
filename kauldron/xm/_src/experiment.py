@@ -78,6 +78,8 @@ class Experiment(job_params.JobParams):
     add_tensorboard_borg: Add TensorBoard
     add_tensorboard_corp: Add TensorBoard corp
     aux: A dict of arbitrary additional values.
+    xid: optional xid of experiment. If provided, Kauldron will add work units
+      to that experiment instead of creating a new one.
   """
 
   # Base experiment information
@@ -120,6 +122,9 @@ class Experiment(job_params.JobParams):
 
   # Additional arbitrary config values
   aux: Any = dataclasses.field(default_factory=dict)
+
+  # XID
+  xid: Optional[int] = None
 
   def __post_init__(self):
     super().__post_init__()
@@ -212,12 +217,21 @@ class Experiment(job_params.JobParams):
       os.environ["BUILD_WORKSPACE_DIRECTORY"] = os.fspath(citc_info.g3_path)
 
     # Set experiment-level options
-    with xm_abc.create_experiment(
-        experiment_title=name,
-        settings=self.execution_settings,
-        attribution_urls=self.attribution_urls,
-    ) as xp:
+    if self.xid is None:
+      ctx = xm_abc.create_experiment(
+          experiment_title=name,
+          settings=self.execution_settings,
+          attribution_urls=self.attribution_urls,
+      )
+    else:
+      ctx = xm_abc.get_experiment(self.xid)
+    with ctx as xp:
       xp = typing.cast(xm_abc.XManagerExperiment, xp)
+      if self.xid is not None:
+        # declare_external_work_unit_adder() sets _work_unit_generator_owned =
+        # False, which prevents _disable_work_unit_generator from being called
+        # on exit, so existing WIDs are left running.
+        xp.declare_external_work_unit_adder()
 
       xp.context.annotations.add_tags(*self.all_tags)
       xp.context.annotations.set_notes(self.note)

@@ -69,6 +69,9 @@ class SweepOrchestrator(Orchestrator):
   ) -> None:
     xp = xm_abc.get_current_experiment()
 
+    # Get existing work unit identities to prevent them from being erased.
+    num_existing_work_units = len(xp.work_units)
+
     # TODO(klausg): Add a confirmation dialogue before starting lots of workers?
     for i, sweep_item in enumerate(sweep_info):
       xp.add(
@@ -81,7 +84,7 @@ class SweepOrchestrator(Orchestrator):
           # Args passed here will surface on the UI
           #
           args=sweep_item.xm_ui_kwargs,
-          identity=f"sweep_{i}",
+          identity=f"sweep_{num_existing_work_units + i}",
       )
 
   async def _launch_work_unit(
