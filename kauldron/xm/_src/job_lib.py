@@ -184,7 +184,12 @@ class Job(job_params.JobParams):
 
     # Build up the args:
     args = dict(self.args)
-    args.update(sweep_args)
+    # Only apply sweep args for keys not already overridden by the user via
+    # CLI flags (which are already in self.args). CLI overrides should have
+    # the highest priority.
+    for k, v in sweep_args.items():
+      if k not in args:
+        args[k] = v
     args = {
         k: _resolve_and_normalize_arg(
             v, dir_builder=dir_builder, fileset=self.fileset
