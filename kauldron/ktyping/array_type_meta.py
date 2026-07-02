@@ -99,7 +99,7 @@ class ArrayTypeMeta(type):
           | tuple[_ArrayType, str, dtypes.DType]  # Array[np, "a b", np.float32]
           | tuple[tuple[_ArrayType, ...], str, dtypes.DType]
       ),
-  ) -> ArrayTypeMeta:
+  ) -> type[Any]:
     """Item access syntax is used to create new array types.
 
     Supports three different forms:
@@ -301,7 +301,7 @@ class ShapeMeta(type):
     del args, kwargs  # unused
     super().__init__(cls)
 
-  def __getitem__(cls, spec_str: str) -> "ShapeMeta":
+  def __getitem__(cls, spec_str: str) -> type[Any]:
     """Create a Shape type annotated with a shape spec.
 
     Usage: ``Shape["*b t"]``
