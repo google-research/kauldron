@@ -74,7 +74,7 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
   # TODO(epot): Need to duplicate `batch_size` because pytype fail to detect
   # the parent class
   if typing.TYPE_CHECKING:
-    batch_size: int | None = ...
+    batch_size: int | None = ...  # pyrefly: ignore[bad-assignment]
     seed: PRNGKeyLike | None = ...
 
   # TODO(epot): Users should also be able to specify drop_reminder or mask
@@ -90,7 +90,7 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
 
   def __post_init__(self):
     if hasattr(super(), "__post_init__"):
-      super().__post_init__()  # Future proof to run `__post_init__` in parents
+      super().__post_init__()  # Future proof to run `__post_init__` in parents  # pyrefly: ignore[missing-attribute]
 
     if not self._supports_symbolic_checkpoint:
       if self.checkpoint is None:
@@ -142,19 +142,19 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
     # auto-detect, however it might be better to explicitly raise an error
     # so user explicitly set their pipeline as non-checkpointable.
     if self._should_checkpoint:
-      return iterators.TFDataIterator(source=self, iter=iter(self._root_ds))
+      return iterators.TFDataIterator(source=self, iter=iter(self._root_ds))  # pyrefly: ignore[bad-argument-type]
     else:
       return iterators.NonCheckpointableIterator(
           source=self, iter=iter(tfds.as_numpy(self._root_ds))
       )
 
   @property
-  def element_spec(self) -> PyTree[enp.ArraySpec]:
+  def element_spec(self) -> PyTree[enp.ArraySpec]:  # pyrefly: ignore[not-a-type]
     """Returns the element specs of the dataset."""
     return etree.spec_like(self._root_ds.element_spec)
 
   def __len__(self) -> int:
-    return len(self._root_ds)
+    return len(self._root_ds)  # pyrefly: ignore[bad-argument-type]
 
   # ======================== Internals ========================
 

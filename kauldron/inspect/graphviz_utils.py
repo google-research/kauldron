@@ -75,7 +75,7 @@ def _extract_graph(trainer: trainer_lib.Trainer) -> list[_Node]:
       node = _Node(
           name=obj_name,
           group=group_name,
-          inputs={k: v for k, v in obj_inputs.items() if v is not None},
+          inputs={k: v for k, v in obj_inputs.items() if v is not None},  # pyrefly: ignore[bad-argument-type]
       )
       nodes.append(node)
 

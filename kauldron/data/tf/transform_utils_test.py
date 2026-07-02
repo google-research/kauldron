@@ -54,7 +54,7 @@ class _MyTransform(kd.data.MapTransform):
 
 @pytest.mark.parametrize('is_supervised', [True, False])
 def test_source(is_supervised: bool):
-  source = _MySource(is_supervised=is_supervised)
+  source = _MySource(is_supervised=is_supervised)  # pyrefly: ignore[bad-instantiation]
   sampler = grain.TfDefaultIndexSampler(
       num_records=len(source),
       shard_options=grain.NoSharding(),

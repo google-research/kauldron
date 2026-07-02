@@ -30,7 +30,7 @@ from kauldron.ktyping import Array  # pylint: disable=g-multiple-import,g-import
 class Histogram:
   """Output type for histogram summaries."""
 
-  tensor: Array["n"]
+  tensor: Array["n"]  # pyrefly: ignore[not-a-type, unknown-name]
   num_buckets: int
 
 
@@ -42,13 +42,13 @@ class HistogramSummary(metrics.Metric):
   num_buckets: int = 30
 
   @flax.struct.dataclass
-  class State(metrics.AutoState["HistogramSummary"]):
+  class State(metrics.AutoState["HistogramSummary"]):  # pyrefly: ignore[bad-override]
     """Collecting state that returns Histograms."""
 
-    tensor: Array["n"] = metrics.concat_field()
+    tensor: Array["n"] = metrics.concat_field()  # pyrefly: ignore[not-a-type, unknown-name]
 
     @kt.typechecked
-    def compute(self) -> Histogram:
+    def compute(self) -> Histogram:  # pyrefly: ignore[bad-override]
       """Returns the concatenated and flattened values as a `Histogram`."""
       tensor = super().compute().tensor.reshape((-1,))
       if tensor.size == 0:
@@ -62,5 +62,5 @@ class HistogramSummary(metrics.Metric):
       )
 
   @kt.typechecked
-  def get_state(self, tensor: Array["*any"]) -> HistogramSummary.State:
+  def get_state(self, tensor: Array["*any"]) -> HistogramSummary.State:  # pyrefly: ignore[bad-override, not-a-type]
     return self.State(tensor=tensor.reshape((-1,)))

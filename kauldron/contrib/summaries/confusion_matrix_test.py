@@ -52,7 +52,7 @@ def test_confusion_matrix_merge():
   state2_norm = cm_norm_true.get_state(logits=logits2, labels=labels2)
   cm_norm_true = state1_norm.merge(state2_norm).finalize().compute()
   expected_cm_norm_true = expected_cm / expected_cm.sum(axis=1, keepdims=True)
-  with np.printoptions(threshold=np.inf, precision=2):
+  with np.printoptions(threshold=np.inf, precision=2):  # pyrefly: ignore[bad-argument-type]
     assert cm_norm_true == repr(expected_cm_norm_true)
 
 

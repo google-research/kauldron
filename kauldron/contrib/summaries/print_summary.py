@@ -48,7 +48,7 @@ class Print(kd.metrics.Metric):
   first_n: int = 5
 
   @flax.struct.dataclass
-  class State(kd.metrics.State["Print"]):
+  class State(kd.metrics.State["Print"]):  # pyrefly: ignore[bad-override]
     """Collects the first num_texts texts."""
 
     value: XArray["*b"]
@@ -71,7 +71,7 @@ class Print(kd.metrics.Metric):
       else:
         return self
 
-  def get_state(
+  def get_state(  # pyrefly: ignore[bad-override]
       self,
       *,
       value: XArray["*b"],

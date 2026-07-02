@@ -102,21 +102,21 @@ def test_loader(new_trainer: kd.train.Trainer, old_trainer: kd.train.Trainer):  
   # New weights have been copied
   chex.assert_trees_all_close(
       new_state.params['decoder']['layers_1'],
-      old_state.params['encoder'],
+      old_state.params['encoder'],  # pyrefly: ignore[unsupported-operation]
   )
   # Make sure weight were different
   _assert_not_all_close(
-      init_state.params['decoder']['layers_1'],
+      init_state.params['decoder']['layers_1'],  # pyrefly: ignore[unsupported-operation]
       new_state.params['decoder']['layers_1'],
   )
   # Encoder is untouched, as well as layer 0
   chex.assert_trees_all_close(
       new_state.params['encoder'],
-      init_state.params['encoder'],
+      init_state.params['encoder'],  # pyrefly: ignore[unsupported-operation]
   )
   chex.assert_trees_all_close(
       new_state.params['decoder']['layers_0'],
-      init_state.params['decoder']['layers_0'],
+      init_state.params['decoder']['layers_0'],  # pyrefly: ignore[unsupported-operation]
   )
 
   loader = _make_loader(
@@ -128,7 +128,7 @@ def test_loader(new_trainer: kd.train.Trainer, old_trainer: kd.train.Trainer):  
   new_state = loader.transform(init_state)
   chex.assert_trees_all_close(
       new_state.params['encoder'],
-      old_state.params['encoder'],
+      old_state.params['encoder'],  # pyrefly: ignore[unsupported-operation]
   )
 
 

@@ -158,12 +158,12 @@ def test_subsample_and_flatten():
   transform = kd.contrib.data.SubsampleAndFlatten(
       key="video",
       drop_ratio=0.4,
-      sample_dims=[1, 2],
+      sample_dims=[1, 2],  # pyrefly: ignore[bad-argument-type]
       flatten_up_to=3,
   )
 
   # Check the transform returns the correct shaped outputs.
-  outputs = transform.random_map(inputs.copy(), rng=(0, 0))
+  outputs = transform.random_map(inputs.copy(), rng=(0, 0))  # pyrefly: ignore[bad-argument-type]
   expected_length = 18  # (9 - int(0.4 * 9)) * 3
   assert outputs["video"].shape == (expected_length, 1)
   assert outputs["video_indices"].shape == (expected_length,)
@@ -173,7 +173,7 @@ def test_subsample_and_flatten():
       preprocessing, "_shuffle_and_partition", autospec=True
   ) as mocked:
     mocked.side_effect = get_mocked_shuffle(tf.constant([6, 3]))
-    outputs = transform.random_map(inputs.copy(), rng=(0, 0))
+    outputs = transform.random_map(inputs.copy(), rng=(0, 0))  # pyrefly: ignore[bad-argument-type]
     with tf.compat.v1.Session() as sess:
       outputs = sess.run(outputs)
   # Values should be for all values of t i.e. 0, 1, 2. This means we get the
@@ -187,12 +187,12 @@ def test_subsample_and_flatten():
   transform = kd.contrib.data.SubsampleAndFlatten(
       key="video",
       drop_ratio=0.4,
-      sample_dims=[0, 1, 2],
+      sample_dims=[0, 1, 2],  # pyrefly: ignore[bad-argument-type]
       flatten_up_to=3,
   )
 
   # Check the transform returns the correct shaped outputs.
-  outputs = transform.random_map(inputs.copy(), rng=(0, 0))
+  outputs = transform.random_map(inputs.copy(), rng=(0, 0))  # pyrefly: ignore[bad-argument-type]
   expected_length = 17  # 27 - int(0.4 * 27)
   assert outputs["video"].shape == (expected_length, 1)
   assert outputs["video_indices"].shape == (expected_length,)
@@ -202,7 +202,7 @@ def test_subsample_and_flatten():
       preprocessing, "_shuffle_and_partition", autospec=True
   ) as mocked:
     mocked.side_effect = get_mocked_shuffle(tf.constant([6, 3]))
-    outputs = transform.random_map(inputs.copy(), rng=(0, 0))
+    outputs = transform.random_map(inputs.copy(), rng=(0, 0))  # pyrefly: ignore[bad-argument-type]
     with tf.compat.v1.Session() as sess:
       outputs = sess.run(outputs)
   # Because we set the inputs using range the indices are the same as the

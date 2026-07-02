@@ -116,7 +116,7 @@ class RandomCrop(ElementWiseRandomTransform):
     ref_key, ref_shape = next(iter(shapes.items())) if shapes else (None, None)
     # ensure dimensions match except where self.shape is None
     for key, shape in shapes.items():
-      for ref_dim, key_dim, target_dim in zip(ref_shape, shape, self.shape):
+      for ref_dim, key_dim, target_dim in zip(ref_shape, shape, self.shape):  # pyrefly: ignore[bad-argument-type]
         if ref_dim != key_dim and (target_dim is not None):
           raise ValueError(
               "Shapes of different keys for random crop have to be compatible,"

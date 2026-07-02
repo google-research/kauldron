@@ -170,7 +170,7 @@ class PartialKauldronLoader(epy.ContextManager, InitTransform):
   """
 
   workdir: epath.PathLike
-  new_to_old: _StrDict = dataclasses.field(
+  new_to_old: _StrDict = dataclasses.field(  # pyrefly: ignore[bad-assignment]
       default_factory=lambda: FrozenDict({
           'params': 'params',
           'collections': 'collections',
@@ -202,7 +202,7 @@ class PartialKauldronLoader(epy.ContextManager, InitTransform):
   ) -> _T:
     # This could potentially be extended to non-Kauldron checkpoints (like
     # `kd.ckpts.PartialOrbaxLoader`)
-    return self._ckpt_mgr.restore(
+    return self._ckpt_mgr.restore(  # pyrefly: ignore[bad-return]
         _PartialRestoreCheckpointItem(
             state,
             new_to_old=new_to_old,
@@ -466,7 +466,7 @@ class SimpleCheckpointLoader(epy.ContextManager, InitTransform):
 
   def _partial_restore(self, state: _T, restore_keys: tuple[str, ...]) -> _T:
     item = _SimpleRestoreCheckpointItem(state=state, restore_keys=restore_keys)
-    return self._ckpt_mgr.restore(item, step=self.step)
+    return self._ckpt_mgr.restore(item, step=self.step)  # pyrefly: ignore[bad-return]
 
   @functools.cached_property
   def _ckpt_mgr(self) -> checkpointer.Checkpointer:

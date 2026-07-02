@@ -141,7 +141,7 @@ def _make_ds(args: ConfigArgs, split: str = "train", training: bool = True):
       for dataset_name in args.dataset_names
   ]
   return kd.data.py.Mix(
-      datasets=datasets,
+      datasets=datasets,  # pyrefly: ignore[bad-argument-type]
       weights=list(args.dataset_weights),
       seed=0,
       batch_size=args.batch_size,

@@ -59,7 +59,7 @@ class ShowVideosAsGif(kd.metrics.Metric):
   save_format: str = "GIF"
 
   @flax.struct.dataclass
-  class State(kd.metrics.AutoState["ShowVideosAsGif"]):
+  class State(kd.metrics.AutoState["ShowVideosAsGif"]):  # pyrefly: ignore[bad-override]
     """Collects videos."""
 
     videos: UInt8["n t h w #3"] = kd.metrics.truncate_field(

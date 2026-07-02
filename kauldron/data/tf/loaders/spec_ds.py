@@ -47,7 +47,7 @@ class ElementSpecDataset(base.TFDataPipeline):
 
   spec: PyTree[enp.ArraySpec]
 
-  _supports_symbolic_checkpoint: ClassVar[bool] = False
+  _supports_symbolic_checkpoint: ClassVar[bool] = False  # pyrefly: ignore[bad-override]
 
   def __post_init__(self):
     super().__post_init__()

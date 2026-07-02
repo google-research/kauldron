@@ -54,13 +54,13 @@ class ConfusionMatrix(kd.metrics.Metric):
   precision: int = 2
 
   @flax.struct.dataclass
-  class State(kd.metrics.AutoState["ConfusionMatrix"]):
+  class State(kd.metrics.AutoState["ConfusionMatrix"]):  # pyrefly: ignore[bad-override]
     """ConfusionMatrix state."""
 
     num_classes: int = kd.metrics.static_field()
-    labels: Int["b"] = kd.metrics.concat_field()
-    preds: Int["b"] = kd.metrics.concat_field()
-    sample_weight: Float["b"] | None = kd.metrics.concat_field(default=None)
+    labels: Int["b"] = kd.metrics.concat_field()  # pyrefly: ignore[unknown-name]
+    preds: Int["b"] = kd.metrics.concat_field()  # pyrefly: ignore[unknown-name]
+    sample_weight: Float["b"] | None = kd.metrics.concat_field(default=None)  # pyrefly: ignore[unknown-name]
 
     @typechecked
     def compute(self) -> str:
@@ -75,7 +75,7 @@ class ConfusionMatrix(kd.metrics.Metric):
           labels=np.arange(self.num_classes),
           normalize=self.parent.normalize,
       )
-      with np.printoptions(threshold=np.inf, precision=self.parent.precision):
+      with np.printoptions(threshold=np.inf, precision=self.parent.precision):  # pyrefly: ignore[bad-argument-type]
         return repr(confusion_matrix)
 
   @typechecked

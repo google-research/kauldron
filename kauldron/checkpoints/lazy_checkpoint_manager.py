@@ -104,7 +104,7 @@ class LazyCheckpointManager:
       step: int,
       force: bool = False,
       metrics: Optional[Any] = None,
-  ) -> bool:
+  ) -> bool:  # pyrefly: ignore[bad-return]
     """Wrapper around `ocp.CheckpointManager.save`."""
     mgr = self._get_manager(state)
     mgr.save(
@@ -133,7 +133,7 @@ class LazyCheckpointManager:
     # TODO(epot): Could eventually support restoring metadata for all handlers.
     mgr = self._get_manager(state)
 
-    return mgr.item_metadata(step)
+    return mgr.item_metadata(step)  # pyrefly: ignore[bad-return]
 
   def should_save(self, step) -> bool:
     """Wrapper around `ocp.CheckpointManager.should_save`."""

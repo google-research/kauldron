@@ -130,15 +130,15 @@ class ReadoutWrapper(nn.Module, kw_only=True):  # pytype: disable=invalid-functi
   @property
   def _model_keypaths(self) -> dict[str, str | None]:
     if self.model_inputs is None:
-      return kontext.get_keypaths(self.model)
+      return kontext.get_keypaths(self.model)  # pyrefly: ignore[bad-return]
     else:
       return self.model_inputs
 
   def _get_readout_keypaths(self, head: str) -> dict[str, str | None]:
     if self.readout_inputs[head] is None:
-      return kontext.get_keypaths(self.readout_heads[head])
+      return kontext.get_keypaths(self.readout_heads[head])  # pyrefly: ignore[bad-return]
     else:
-      return self.readout_inputs[head]
+      return self.readout_inputs[head]  # pyrefly: ignore[bad-return]
 
   def _get_model_inputs(self, kwargs):
     # separate out the model kwargs
@@ -162,10 +162,10 @@ class ReadoutWrapper(nn.Module, kw_only=True):  # pytype: disable=invalid-functi
         if not self._is_external_keypath(v)
     }
     # resolve (non-batch) readout keys
-    interms = self.scope.root.variables()['intermediates']
+    interms = self.scope.root.variables()['intermediates']  # pyrefly: ignore[missing-attribute]
     ctx = {'preds': preds, 'interms': interms}
 
     readout_other_inputs = kontext.resolve_from_keypaths(
-        ctx, readout_other_keypaths
+        ctx, readout_other_keypaths  # pyrefly: ignore[bad-argument-type]
     )
     return readout_batch_inputs | readout_other_inputs

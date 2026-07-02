@@ -39,7 +39,7 @@ def test_knnx_module():
     input_dim: int = 10
     hdim: int = 10
 
-    def setup(self, rngs: nnx.Rngs = nnx.Rngs(0)):
+    def setup(self, rngs: nnx.Rngs = nnx.Rngs(0)):  # pyrefly: ignore[bad-override]
       self.lin = nnx.Linear(self.input_dim, self.hdim, rngs=rngs)
 
     def __call__(self, x):
@@ -99,7 +99,7 @@ def test_capture_intermediates():
     input_dim: int = 3
     hdim: int = 5
 
-    def setup(self, rngs: nnx.Rngs = nnx.Rngs(0)):
+    def setup(self, rngs: nnx.Rngs = nnx.Rngs(0)):  # pyrefly: ignore[bad-override]
       self.lin = nnx.Linear(self.input_dim, self.hdim, rngs=rngs)
 
     def __call__(self, x):
@@ -128,7 +128,7 @@ def test_rng_determinism():
     hdim: int = 1000
     output_dim: int = 3
 
-    def setup(self, rngs: nnx.Rngs = nnx.Rngs(0)):
+    def setup(self, rngs: nnx.Rngs = nnx.Rngs(0)):  # pyrefly: ignore[bad-override]
       self.lin = nnx.Linear(self.input_dim, self.hdim, rngs=rngs)
       self.proj = nnx.Linear(self.hdim, self.output_dim, rngs=rngs)
       self.dropout = nnx.Dropout(rate=0.5, rngs=rngs)

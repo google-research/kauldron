@@ -67,13 +67,13 @@ class ShowPointCloud(metrics.Metric):
 
   # TODO(klausg): use truncate_field after adding support for num=None?
   @flax.struct.dataclass
-  class State(metrics.AutoState["ShowPointCloud"]):
+  class State(metrics.AutoState["ShowPointCloud"]):  # pyrefly: ignore[bad-override]
     """Collecting state that returns PointCloudsData."""
 
     point_clouds: Float["n 3"] = metrics.concat_field()
     point_colors: Optional[Float["n 3"]] = metrics.concat_field()
 
-    def compute(self) -> PointCloud:
+    def compute(self) -> PointCloud:  # pyrefly: ignore[bad-override]
       check_type(self.point_clouds, Float["n 3"])
       check_type(self.point_colors, Float["n 3"] | None)
 
@@ -96,8 +96,8 @@ class ShowPointCloud(metrics.Metric):
   @typechecked
   def get_state(
       self,
-      point_clouds: Float,
-      point_colors: Optional[Float],
+      point_clouds: Float,  # pyrefly: ignore[not-a-type]
+      point_colors: Optional[Float],  # pyrefly: ignore[not-a-type]
   ) -> ShowPointCloud.State:
     if self.rearrange:
       point_clouds = einops.rearrange(

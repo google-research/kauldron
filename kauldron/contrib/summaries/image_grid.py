@@ -93,7 +93,7 @@ class ImageGrid(kd.metrics.Metric):
   font_color: ColorLike = "white"
 
   @flax.struct.dataclass
-  class State(kd.metrics.State["ImageGrid"]):
+  class State(kd.metrics.State["ImageGrid"]):  # pyrefly: ignore[bad-override]
     """Collect the states of the per-column submetrics."""
 
     show_image_states: Sequence[kd.metrics.State]
@@ -138,7 +138,7 @@ class ImageGrid(kd.metrics.Metric):
           font_color=font_color,
       )
 
-  def get_state(self, **kwargs) -> State:
+  def get_state(self, **kwargs) -> State:  # pyrefly: ignore[bad-override]
     """Returns the state of the metric."""
     substates = []
     for colname, col_summary in self.columns.items():
@@ -215,7 +215,7 @@ def _normalize_color(color: ColorLike) -> tuple[int, int, int]:
             "When passing color as a float tuple, its values must be in "
             f"[0, 1], but got {color=}."
         )
-      return tuple(int(c * 255) for c in (r, g, b))
+      return tuple(int(c * 255) for c in (r, g, b))  # pyrefly: ignore[bad-return]
     case _:
       raise ValueError(f"Unsupported color type: color ({type(color)})={color}")
 
@@ -242,7 +242,7 @@ def _render_image_grid(
 ) -> Float32["1 H W 3"]:
   """Renders a grid of images with column headers."""
   font = PIL.ImageFont.load_default(font_size)
-  n, h, w = Shape("n h w")
+  n, h, w = Shape("n h w")  # pyrefly: ignore[bad-argument-type]
   m = len(images)
   text_height = font.getbbox("".join(images.keys()))[3]
   b = border_width

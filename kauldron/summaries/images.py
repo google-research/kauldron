@@ -60,7 +60,7 @@ class ShowImages(metrics.Metric):
   rearrange_kwargs: Mapping[str, Any] | None = None
 
   @struct.dataclass
-  class State(metrics.AutoState["ShowImages"]):
+  class State(metrics.AutoState["ShowImages"]):  # pyrefly: ignore[bad-override]
     """Collects the first num_images images."""
 
     images: Float["n h w #3"] | UInt8["n h w #3"] = metrics.truncate_field(
@@ -68,7 +68,7 @@ class ShowImages(metrics.Metric):
     )
 
     @typechecked
-    def compute(self) -> Float["n h w #3"]:
+    def compute(self) -> Float["n h w #3"]:  # pyrefly: ignore[not-a-type]
       images = self.images
 
       # If cmap is set, apply the colormap.
@@ -94,9 +94,9 @@ class ShowImages(metrics.Metric):
       return np.clip(images, 0.0, 1.0)
 
   @typechecked
-  def get_state(
+  def get_state(  # pyrefly: ignore[bad-override]
       self,
-      images: Float["..."] | UInt8["..."],
+      images: Float["..."] | UInt8["..."],  # pyrefly: ignore[bad-index]
   ) -> ShowImages.State:
     # maybe rearrange and then check shape
     images = _maybe_rearrange(images, self.rearrange, self.rearrange_kwargs)
@@ -152,18 +152,18 @@ class ShowBoxes(metrics.Metric):
   rearrange_kwargs: Mapping[str, Any] | None = None
 
   @struct.dataclass
-  class State(metrics.AutoState["ShowBoxes"]):
+  class State(metrics.AutoState["ShowBoxes"]):  # pyrefly: ignore[bad-override]
     """Collects the first num_images images and boxes."""
 
-    images: Float["n h w #3"] = metrics.truncate_field(
+    images: Float["n h w #3"] = metrics.truncate_field(  # pyrefly: ignore[not-a-type]
         num_field="parent.num_images"
     )
-    boxes: Float["n k 4"] = metrics.truncate_field(
+    boxes: Float["n k 4"] = metrics.truncate_field(  # pyrefly: ignore[not-a-type]
         num_field="parent.num_images"
     )
 
     @typechecked
-    def compute(self) -> Float["n h w #3"]:
+    def compute(self) -> Float["n h w #3"]:  # pyrefly: ignore[not-a-type]
       images, boxes = self.images, self.boxes
 
       # flatten batch dimensions
@@ -188,10 +188,10 @@ class ShowBoxes(metrics.Metric):
       return np.clip(images, 0.0, 1.0)
 
   @typechecked
-  def get_state(
+  def get_state(  # pyrefly: ignore[bad-override]
       self,
-      images: Float["..."],
-      boxes: Float["*b k 4"],
+      images: Float["..."],  # pyrefly: ignore[bad-index, not-a-type]
+      boxes: Float["*b k 4"],  # pyrefly: ignore[not-a-type]
       boxes_mask: Bool["*b k 1"] | None = None,
   ) -> ShowBoxes.State:
     if boxes_mask is not None:
@@ -233,7 +233,7 @@ class ShowSegmentations(metrics.Metric):
   num_images: int = 5
   entropy: bool = False
   hard: bool = False
-  palette: Optional[Float["K 3"]] = None
+  palette: Optional[Float["K 3"]] = None  # pyrefly: ignore[not-a-type]
 
   rearrange: Optional[str] = None
   rearrange_kwargs: Mapping[str, Any] | None = None
@@ -243,7 +243,7 @@ class ShowSegmentations(metrics.Metric):
   image_contrast: float = 0.6
 
   @struct.dataclass
-  class State(metrics.AutoState["ShowSegmentations"]):
+  class State(metrics.AutoState["ShowSegmentations"]):  # pyrefly: ignore[bad-override]
     """Collects the first num_images segmentations."""
 
     segmentations: Integer["*b h w 1"] | Float["*b h w k"] = (
@@ -251,7 +251,7 @@ class ShowSegmentations(metrics.Metric):
     )
 
     @typechecked
-    def compute(self) -> Float["n h w #3"]:
+    def compute(self) -> Float["n h w #3"]:  # pyrefly: ignore[not-a-type]
       palette = np.asarray(self.parent.palette) if self.parent.palette else None
       segmentation_images = segplot.plot_segmentation(
           self.segmentations,
@@ -266,9 +266,9 @@ class ShowSegmentations(metrics.Metric):
       return np.clip(segmentation_images, 0.0, 1.0)
 
   @typechecked
-  def get_state(
+  def get_state(  # pyrefly: ignore[bad-override]
       self,
-      segmentations: Integer["..."] | Float["..."],
+      segmentations: Integer["..."] | Float["..."],  # pyrefly: ignore[bad-index]
   ) -> ShowSegmentations.State:
     # maybe rearrange and then check shape
     segmentations = _maybe_rearrange(
@@ -305,15 +305,15 @@ class ShowDifferenceImages(metrics.Metric):
   rearrange_kwargs: Mapping[str, Any] | None = None
 
   @struct.dataclass
-  class State(metrics.AutoState["ShowDifferenceImages"]):
+  class State(metrics.AutoState["ShowDifferenceImages"]):  # pyrefly: ignore[bad-override]
     """Collects the first num_images images."""
 
-    diff_images: Float["n h w 1"] = metrics.truncate_field(
+    diff_images: Float["n h w 1"] = metrics.truncate_field(  # pyrefly: ignore[not-a-type]
         num_field="parent.num_images"
     )
 
     @typechecked
-    def compute(self) -> Float["n h w #3"]:
+    def compute(self) -> Float["n h w #3"]:  # pyrefly: ignore[not-a-type]
 
       # Use the vrange bounds for the colormapping if available.
       if self.parent.vrange is not None:
@@ -335,10 +335,10 @@ class ShowDifferenceImages(metrics.Metric):
       return np.clip(images, 0.0, 1.0)
 
   @typechecked
-  def get_state(
+  def get_state(  # pyrefly: ignore[bad-override]
       self,
-      images1: Float["..."],
-      images2: Float["..."],
+      images1: Float["..."],  # pyrefly: ignore[bad-index, not-a-type]
+      images2: Float["..."],  # pyrefly: ignore[bad-index, not-a-type]
   ) -> ShowDifferenceImages.State:
     # maybe rearrange and then check shape
     images1 = _maybe_rearrange(images1, self.rearrange, self.rearrange_kwargs)
@@ -364,10 +364,10 @@ class ShowDifferenceImages(metrics.Metric):
 
 
 def _maybe_rearrange(
-    array: Array["..."] | None,
+    array: Array["..."] | None,  # pyrefly: ignore[bad-index]
     rearrange: Optional[str] = None,
     rearrange_kwargs: Mapping[str, Any] | None = None,
-) -> Array["..."] | None:
+) -> Array["..."] | None:  # pyrefly: ignore[bad-index]
   if array is None:
     return array
   if rearrange is None:  # Auto-flatten images.
@@ -377,7 +377,7 @@ def _maybe_rearrange(
   return einops.rearrange(array, rearrange, **rearrange_kwargs)
 
 
-def _get_uniform_colors(n_colors: int) -> Array:
+def _get_uniform_colors(n_colors: int) -> Array:  # pyrefly: ignore[not-a-type]
   """Get n_colors with uniformly spaced hues."""
   hues = np.linspace(0, 1, n_colors, endpoint=False)
   hsv_colors = np.concatenate(

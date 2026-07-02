@@ -30,13 +30,13 @@ class TfGrainMapAdapter(tr_normalize.TransformAdapter, grain.MapTransform):
   """Adapter for `kd.data.MapTransform` to tfgrain."""
 
   @property
-  def name(self):
+  def name(self):  # pyrefly: ignore[bad-override]
     """Forward the name of this transformation (if any), to aid in debugging."""
     # Used by tfgrain to name the operations in the tf graph.
     return getattr(self.transform, 'name', getattr(super(), 'name'))
 
   @property
-  def num_parallel_calls_hint(self):
+  def num_parallel_calls_hint(self):  # pyrefly: ignore[bad-override]
     """Forward the num_parallel_calls_hint of this transformation (if any)."""
     # Can be used to modify the default parallelization behavior of tfgrain.
     return getattr(
@@ -68,7 +68,7 @@ class TfGrainFilterAdapter(
   """Adapter from `kd.data.FilterTransform` to tfgrain."""
 
   @property
-  def name(self):
+  def name(self):  # pyrefly: ignore[bad-override]
     """Forward the name of this transformation (if any), to aid in debugging."""
     # Used by tfgrain to name the operations in the tf graph.
     return getattr(self.transform, 'name', getattr(super(), 'name'))
@@ -108,9 +108,9 @@ def apply_transformations(
 ) -> tf.data.Dataset:
   """Wrapper around grain to apply the transformations."""
   if isinstance(transforms, Mapping):
-    transforms = transforms.values()
+    transforms = transforms.values()  # pyrefly: ignore[bad-assignment]
   transforms = [_adapt_for_tfgrain(tr) for tr in transforms]
-  return grain_transforms.apply_transformations(ds, transforms, strict=True)
+  return grain_transforms.apply_transformations(ds, transforms, strict=True)  # pyrefly: ignore[bad-argument-type]
 
 
 # TODO(b/279722981): Pytype do not bind methods correctly when calling

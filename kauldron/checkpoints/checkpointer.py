@@ -234,7 +234,7 @@ class Checkpointer(BaseCheckpointer):
     """Returns checkpoint manager instance (initialized and cached)."""
 
     def _best_fn(metrics):
-      return kontext.get_by_path(metrics, self.best_metric_path)
+      return kontext.get_by_path(metrics, self.best_metric_path)  # pyrefly: ignore[bad-argument-type]
 
     mgr_options = ocp.CheckpointManagerOptions(
         save_interval_steps=self.save_interval_steps,
@@ -373,7 +373,7 @@ class Checkpointer(BaseCheckpointer):
 
   def _absolute_step(self, step: int) -> int:
     """Convert `-1` into the last step."""
-    step = self._ckpt_mgr.latest_step() if step == -1 else step
+    step = self._ckpt_mgr.latest_step() if step == -1 else step  # pyrefly: ignore[bad-assignment]
     # Do not check step as it can lead to race conditions.
     # if step not in self._ckpt_mgr.all_steps():
     #   raise ValueError(f"No checkpoint is available for step {step}")

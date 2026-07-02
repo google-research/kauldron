@@ -87,7 +87,7 @@ class LinenFromNnxDef(nn.Module):
     module_kwargs = dict(self.kwargs)
     module_args = self.args
     if rngs is None:
-      rngs = _nnx_rngs_from_scope(self.scope)
+      rngs = _nnx_rngs_from_scope(self.scope)  # pyrefly: ignore[bad-argument-type, bad-assignment]
 
     # nnx rngs are stateful so we can re-use them to instantiate sub-modules
     def _as_nnx(module: nnx.Module | LinenFromNnxDef) -> nnx.Module:
@@ -122,7 +122,7 @@ class LinenFromNnxDef(nn.Module):
 
     # get rng_vars and reseed them
     rng_vars = self.get_variable('nnx', 'rng_vars')
-    new_rngs = _nnx_rngs_from_scope(self.scope)
+    new_rngs = _nnx_rngs_from_scope(self.scope)  # pyrefly: ignore[bad-argument-type]
     if not new_rngs:
       jax.debug.print('No rngs found in scope.')
     else:
@@ -170,11 +170,11 @@ class LinenFromNnxDef(nn.Module):
     # Save the graph def and other variables.
     if self.is_mutable_collection('nnx'):
       self.put_variable('nnx', 'graphdef', gdef)
-      self.put_variable('nnx', 'rng_vars', rng_vars._mapping)
-      self.put_variable('nnx', 'attributes', attributes._mapping)
+      self.put_variable('nnx', 'rng_vars', rng_vars._mapping)  # pyrefly: ignore[missing-attribute]
+      self.put_variable('nnx', 'attributes', attributes._mapping)  # pyrefly: ignore[missing-attribute]
 
     if self.is_initializing():
-      for k, v in params._mapping.items():
+      for k, v in params._mapping.items():  # pyrefly: ignore[missing-attribute]
         self.put_variable('params', k, v)
 
     return outputs
@@ -233,8 +233,8 @@ def _nnx_rngs_from_scope(scope: flax.core.scope.Scope) -> nnx.Rngs:
   if not rng_keys:
     return nnx.Rngs()
   if isinstance(next(iter(rng_keys.values())), flax.core.scope.LazyRng):
-    rng_keys = {k: v.rng for k, v in rng_keys.items()}
-  return nnx.Rngs(**rng_keys)
+    rng_keys = {k: v.rng for k, v in rng_keys.items()}  # pyrefly: ignore[missing-attribute]
+  return nnx.Rngs(**rng_keys)  # pyrefly: ignore[bad-argument-type]
 
 
 def _reseed_rng_vars(rng_vars_state: T, rngs: nnx.Rngs) -> T:
@@ -256,5 +256,5 @@ def _reseed_rng_vars(rng_vars_state: T, rngs: nnx.Rngs) -> T:
     if isinstance(var, nnx.RngKey):
       assert len(path) >= 2, 'Incorrect structure for input rng_vars_state.'
       key_tag = path[-2]
-      var.value = rngs[key_tag]()
+      var.value = rngs[key_tag]()  # pyrefly: ignore[bad-index]
   return rng_vars_state

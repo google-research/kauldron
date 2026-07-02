@@ -118,7 +118,7 @@ class TopLevelCheckpointItem(CheckpointItem):
   def __kd_ocp_restore_post__(self, value: ocp.args.Composite) -> Self:
     init_kwargs = {
         k: obj.__kd_ocp_restore_post__(val)
-        for k, (obj, val) in epy.zip_dict(self._items_fields, value)
+        for k, (obj, val) in epy.zip_dict(self._items_fields, value)  # pyrefly: ignore[bad-argument-type]
     }
     if self.DEFAULT_ITEM is not None:
       init_kwargs[self.DEFAULT_ITEM] = init_kwargs.pop(

@@ -37,14 +37,14 @@ class Tfds(base.TFDataPipeline):
   split: str
   data_dir: epath.PathLike | None = None
   decoders: Optional[Mapping[str, Any]] = None
-  cache: bool = False
+  cache: bool = False  # pyrefly: ignore[bad-override]
 
   # Sampler parameters
   shuffle: bool = True
   shard_drop_remainder: bool = True
   num_epochs: Optional[int] = None
 
-  _supports_symbolic_checkpoint: ClassVar[bool] = True
+  _supports_symbolic_checkpoint: ClassVar[bool] = True  # pyrefly: ignore[bad-override]
 
   def ds_for_current_process(self, rng: PRNGKey) -> tf.data.Dataset:
     source = grain.TfdsDataSource.from_name(

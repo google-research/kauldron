@@ -54,7 +54,7 @@ class _SeqIO(base.TFDataPipeline):
   num_epochs: Optional[int] = None
   register: Optional[Any] = None
 
-  _supports_symbolic_checkpoint: ClassVar[bool] = False
+  _supports_symbolic_checkpoint: ClassVar[bool] = False  # pyrefly: ignore[bad-override]
 
   @property
   def shard_info(self) -> seqio.ShardInfo:

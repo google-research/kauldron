@@ -76,7 +76,7 @@ def show_trainer_info(
       with ecolab.collapse("Schedules"):
         fig = plotting.plot_schedules(
             trainer.schedules,
-            num_steps=trainer.num_train_steps,
+            num_steps=trainer.num_train_steps,  # pyrefly: ignore[bad-argument-type]
         )
         # TODO(b/299308317): Remove `IPython.display.HTML`
         ecolab.disp(IPython.display.HTML(fig.to_html()))

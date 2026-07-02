@@ -50,5 +50,5 @@ def named_chain(
     An optax.GradientTransformation that corresponds to applying the list of
     transformations in sequence.
   """
-  transforms = tuple((name, transf) for name, transf in transforms.items())
-  return optax.named_chain(*transforms)
+  transforms = tuple((name, transf) for name, transf in transforms.items())  # pyrefly: ignore[bad-assignment]
+  return optax.named_chain(*transforms)  # pyrefly: ignore[bad-argument-type]

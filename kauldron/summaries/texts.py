@@ -44,13 +44,13 @@ class ShowTexts(metrics.Metric):
   num_texts: int = 5
 
   @flax.struct.dataclass
-  class State(metrics.AutoState["ShowTexts"]):
+  class State(metrics.AutoState["ShowTexts"]):  # pyrefly: ignore[bad-override]
     """Collects the first num_texts texts."""
 
     texts: list[str] = metrics.truncate_field(num_field="parent.num_texts")
 
     @typechecked
-    def compute(self) -> XArray["num_texts"]:
+    def compute(self) -> XArray["num_texts"]:  # pyrefly: ignore[unknown-name]
       return self.texts
 
   @typechecked
@@ -62,4 +62,4 @@ class ShowTexts(metrics.Metric):
 
     # Numpy has poor support for string arrays, so uses `dtype=object`
     texts = np.asarray(texts, dtype=object).flatten()
-    return self.State(texts=texts)
+    return self.State(texts=texts)  # pyrefly: ignore[bad-argument-type]

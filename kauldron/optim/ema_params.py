@@ -93,7 +93,7 @@ def ema_params(
       debiased_decay = decay
 
     # The model weights after optimizer step.
-    new_params = optax.apply_updates(params, updates)
+    new_params = optax.apply_updates(params, updates)  # pyrefly: ignore[bad-argument-type]
     # `new_ema_params = (1 - decay) * new_params + decay * old_ema_params`.
     new_ema_params = optax.update_moment(
         new_params, state.ema_params, debiased_decay, order=1

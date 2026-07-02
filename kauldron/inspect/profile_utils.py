@@ -72,7 +72,7 @@ class Profiler(config_util.UpdateFromRootCfg):
       return _Profile(
           num_profile_steps=self.num_profile_steps,
           profile_duration_ms=self.profile_duration_ms,
-          first_profile=self.first_profile,
+          first_profile=self.first_profile,  # pyrefly: ignore[bad-argument-type]
           every_steps=self.every_steps,
           every_secs=self.every_secs,
           logdir=self.workdir,
@@ -81,7 +81,7 @@ class Profiler(config_util.UpdateFromRootCfg):
       return periodic_actions.ProfileAllHosts(
           logdir=os.fspath(self.workdir),
           profile_duration_ms=self.profile_duration_ms,
-          first_profile=self.first_profile,
+          first_profile=self.first_profile,  # pyrefly: ignore[bad-argument-type]
           every_steps=self.every_steps,
           every_secs=self.every_secs,
       )

@@ -68,5 +68,5 @@ def decay_to_init(
   # If mask is not `None`, apply mask to the gradient transformation.
   # E.g. it is common to skip weight decay on bias units and batch stats.
   if mask is not None:
-    return optax.masked(optax.GradientTransformation(init_fn, update_fn), mask)
-  return optax.GradientTransformation(init_fn, update_fn)
+    return optax.masked(optax.GradientTransformation(init_fn, update_fn), mask)  # pyrefly: ignore[bad-argument-type]
+  return optax.GradientTransformation(init_fn, update_fn)  # pyrefly: ignore[bad-argument-type]

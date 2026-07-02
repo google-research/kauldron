@@ -105,7 +105,7 @@ def get_config():
           init_value=0.0,
           peak_value=0.0003,
           warmup_steps=5_000,
-          decay_steps=cfg.ref.num_train_steps,
+          decay_steps=cfg.ref.num_train_steps,  # pyrefly: ignore[bad-argument-type]
       )
   }
 
@@ -165,7 +165,7 @@ def get_config():
   cfg.profiler = kd.inspect.Profiler(all_host=True)
 
   # Add a custom note:
-  cfg.setup.note_template = "Seed: {cfg.seed}"
+  cfg.setup.note_template = "Seed: {cfg.seed}"  # pyrefly: ignore[read-only]
 
   return cfg
 

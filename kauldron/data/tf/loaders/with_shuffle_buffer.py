@@ -42,12 +42,12 @@ class WithShuffleBuffer(base.TFDataPipeline):
 
   # TODO(epot): Could also add a `transform_before_cache` to allow
   # filter/resizing
-  cache: bool = False
+  cache: bool = False  # pyrefly: ignore[bad-override]
   shuffle: bool = True
   shuffle_buffer_size: Optional[int] = None
   num_epochs: Optional[int] = None
 
-  _supports_symbolic_checkpoint: ClassVar[bool] = False
+  _supports_symbolic_checkpoint: ClassVar[bool] = False  # pyrefly: ignore[bad-override]
 
   def transform_ds(self, ds, *, rng: PRNGKey) -> tf.data.Dataset:
     if self.cache:

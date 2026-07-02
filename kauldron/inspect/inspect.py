@@ -75,7 +75,7 @@ def _format_module_config(cfg: Optional[Any]) -> str:
     if isinstance(c, ml_collections.ConfigDict):
       qn = getattr(c, "__qualname__", None)
       if qn is not None:
-        return konfig.ConfigDict({"__qualname__": qn, 0: ...})
+        return konfig.ConfigDict({"__qualname__": qn, 0: ...})  # pyrefly: ignore[bad-argument-type]
       else:
         return c
     return c
@@ -225,11 +225,11 @@ def _get_num_params(module_variables) -> int:
 
 
 def _get_cumulative_params(path: tuple[str, ...], table) -> int:
-  path = ".".join(path)
+  path = ".".join(path)  # pyrefly: ignore[bad-assignment]
 
   def is_part_of_path(row_path) -> bool:
     str_path = ".".join(row_path)
-    return str_path == path or str_path.startswith(path + ".")
+    return str_path == path or str_path.startswith(path + ".")  # pyrefly: ignore[unsupported-operation]
 
   return sum(
       _get_num_params(row.module_variables)
@@ -321,7 +321,7 @@ def _get_styled_df(
 def _get_summary_table(
     model: nn.Module,
     ds: data.Pipeline,
-    ds_sharding: sharding.ShardingTree,
+    ds_sharding: sharding.ShardingTree,  # pyrefly: ignore[not-a-type]
     rngs: dict[str, PRNGKey],
 ) -> nn.summary.Table:
   """Return model overview as a `nn.summary.Table`."""
@@ -383,7 +383,7 @@ def get_colab_model_overview(
     *,
     model: nn.Module,
     train_ds: data.Pipeline,
-    ds_sharding: sharding.ShardingTree,
+    ds_sharding: sharding.ShardingTree,  # pyrefly: ignore[not-a-type]
     model_config: konfig.ConfigDict | None = None,
     rngs: dict[str, PRNGKey],
 ) -> pd.DataFrame:
@@ -504,7 +504,7 @@ def lower_trainstep(trainer: train.Trainer) -> str:
   )
   batch = sharding.with_sharding_constraint(batch, trainer.sharding.batch)
 
-  return trainer.trainstep.step.lower(
+  return trainer.trainstep.step.lower(  # pyrefly: ignore[bad-return]
       trainer.trainstep,
       state,
       batch,

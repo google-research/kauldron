@@ -165,7 +165,7 @@ class ExtractInitialFixedLengthClip(kd.data.ElementWiseTransform):
   num_frames: int
 
   @typechecked
-  def map_element(self, sequence: List[XArray]) -> XArray:
+  def map_element(self, sequence: List[XArray]) -> XArray:  # pyrefly: ignore[not-a-type]
 
     if self.num_frames <= 0:
       raise ValueError("Number of frames must be positive.")
@@ -220,14 +220,14 @@ class SliceVideosIntoFrames(grain.UnsafeTfDataTransform):
           grain_batch[key] = batch[key]
       if self.context_tensors_names:
         return tf.data.Dataset.zip(
-            tf.data.Dataset.from_tensor_slices(slicable_batch),
-            tf.data.Dataset.from_tensors(context_batch).repeat(num_slices),
-            tf.data.Dataset.from_tensors(grain_batch).repeat(num_slices),
+            tf.data.Dataset.from_tensor_slices(slicable_batch),  # pyrefly: ignore[bad-argument-type]
+            tf.data.Dataset.from_tensors(context_batch).repeat(num_slices),  # pyrefly: ignore[bad-argument-type]
+            tf.data.Dataset.from_tensors(grain_batch).repeat(num_slices),  # pyrefly: ignore[bad-argument-type]
         )
       else:
         return tf.data.Dataset.zip(
-            tf.data.Dataset.from_tensor_slices(slicable_batch),
-            tf.data.Dataset.from_tensors(grain_batch).repeat(num_slices),
+            tf.data.Dataset.from_tensor_slices(slicable_batch),  # pyrefly: ignore[bad-argument-type]
+            tf.data.Dataset.from_tensors(grain_batch).repeat(num_slices),  # pyrefly: ignore[bad-argument-type]
         )
 
     def to_dict(*arg):
@@ -427,7 +427,7 @@ class JaxImageResize(kd.data.ElementWiseTransform):
       "bilinear"
   )
 
-  def map_element(self, element: XArray) -> XArray:
+  def map_element(self, element: XArray) -> XArray:  # pyrefly: ignore[not-a-type]
     return jax.image.resize(element, shape=self.shape, method=self.method)
 
 
@@ -502,10 +502,10 @@ class Repeat(kd.data.ElementWiseTransform):
   """
 
   pattern: str
-  axes_lengths: dict[str, int] = dataclasses.field(default_factory=FrozenDict)
+  axes_lengths: dict[str, int] = dataclasses.field(default_factory=FrozenDict)  # pyrefly: ignore[bad-assignment]
 
   @typechecked
-  def map_element(self, element: Any) -> XArray:
+  def map_element(self, element: Any) -> XArray:  # pyrefly: ignore[not-a-type]
     # Ensure element is an array (and not a python builtin)
     # This is useful e.g. for pygrain pipelines because often "label" will be
     # int and not an array, yet one might want to reshape it.
@@ -539,8 +539,8 @@ class TemporalRandomWindow(kd.data.tf.ElementWiseRandomTransform):
 
   @typechecked
   def random_map_element(  # pylint: disable=arguments-renamed
-      self, tensor: TfArray["T *C"], seed
-  ) -> TfArray["t *C"]:
+      self, tensor: TfArray["T *C"], seed  # pyrefly: ignore[unknown-name]
+  ) -> TfArray["t *C"]:  # pyrefly: ignore[unknown-name]
     length = tf.minimum(self.length, tf.shape(tensor)[0])
 
     rank = len(tensor.shape)
@@ -599,8 +599,8 @@ class TemporalRandomWalk(kd.data.tf.ElementWiseRandomTransform):
 
   @typechecked
   def random_map_element(  # pylint: disable=arguments-renamed
-      self, tensor: TfArray["T *C"], seed
-  ) -> TfArray["t *C"]:
+      self, tensor: TfArray["T *C"], seed  # pyrefly: ignore[unknown-name]
+  ) -> TfArray["t *C"]:  # pyrefly: ignore[unknown-name]
     tensor = tf.concat([tensor, tf.reverse(tensor[1:-1], axis=[0])], axis=0)
     input_length = tf.shape(tensor)[0]
     start_step = tf.random.stateless_uniform(
@@ -632,8 +632,8 @@ class SliceWithStride(kd.data.ElementWiseTransform):
 
   @typechecked
   def map_element(  # pylint: disable=arguments-renamed
-      self, tensor: XArray["T *C"]
-  ) -> XArray["t *C"]:
+      self, tensor: XArray["T *C"]  # pyrefly: ignore[unknown-name]
+  ) -> XArray["t *C"]:  # pyrefly: ignore[unknown-name]
     tensor = tensor[:: self.stride]
     if self.num_elements is not None:
       tensor = tensor[: self.num_elements]
@@ -668,8 +668,8 @@ class TemporalRandomStridedWindow(kd.data.tf.ElementWiseRandomTransform):
 
   @typechecked
   def random_map_element(  # pylint: disable=arguments-renamed
-      self, tensor: TfArray["T *C"], seed
-  ) -> TfArray["t *C"]:
+      self, tensor: TfArray["T *C"], seed  # pyrefly: ignore[unknown-name]
+  ) -> TfArray["t *C"]:  # pyrefly: ignore[unknown-name]
     all_frames = tf.signal.frame(
         tensor,
         frame_length=self.length,
@@ -782,8 +782,8 @@ class Scale(kd.data.ElementWiseTransform):
 class Standardize(kd.data.ElementWiseTransform):
   """Standardizes an element by computing (x - mu) / std."""
 
-  mean: XArray["N"]
-  std: XArray["N"]
+  mean: XArray["N"]  # pyrefly: ignore[unknown-name]
+  std: XArray["N"]  # pyrefly: ignore[unknown-name]
 
   @typechecked
   def map_element(self, element: XArray["*any"]) -> XArray["*any"]:
@@ -1099,7 +1099,7 @@ class FetchElementZero(kd.data.ElementWiseTransform):
   """Fetches an element: x[key][0, ...]."""
 
   @typechecked
-  def map_element(self, element: XArray["B *stuff"]) -> XArray["*stuff"]:
+  def map_element(self, element: XArray["B *stuff"]) -> XArray["*stuff"]:  # pyrefly: ignore[unknown-name]
     return element[0]
 
 
@@ -1461,7 +1461,7 @@ class SubsampleAndFlatten(grain.RandomMapTransform):
     num_tokens = np.prod(tuple(feats.shape[si] for si in self.sample_dims))
     masked_size = int(num_tokens * self.drop_ratio)
     random_indices = _shuffle_and_partition(
-        n_tokens=num_tokens,
+        n_tokens=num_tokens,  # pyrefly: ignore[bad-argument-type]
         n_masked=masked_size,
         shuffle_tokens=self.shuffle_tokens,
         seed=rng,
@@ -1661,7 +1661,7 @@ class TreeUnflattenForKey(kd.data.MapTransform):
   def _prefix(self) -> str:
     return self.key + self.separator
 
-  def map(self, element: dict[str, Any]) -> dict[str, Any]:
+  def map(self, element: dict[str, Any]) -> dict[str, Any]:  # pyrefly: ignore[bad-override]
     element = dict(element)  # Ensure the element is mutable
     flat_subtree = {}
     keys_to_remove = []

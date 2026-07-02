@@ -48,7 +48,7 @@ class SimpleKdNnxModule(knnx.KdNnxModule):
 
   image: kontext.Key = "batch.image"
 
-  def setup(self, rngs: nnx.Rngs = nnx.Rngs(0)):
+  def setup(self, rngs: nnx.Rngs = nnx.Rngs(0)):  # pyrefly: ignore[bad-override]
     self.backbone = MyNnxModule(
         input_dim=self.input_dim, hdim=self.hdim, rngs=rngs
     )

@@ -74,7 +74,7 @@ def test_model_overview():
   assert 'Own Params' in df.columns
 
   html = df._repr_html_()
-  assert 'max-width' in html
-  assert '400px' in html
-  assert 'word-wrap' in html
-  assert 'break-word' in html
+  assert 'max-width' in html  # pyrefly: ignore[not-iterable]
+  assert '400px' in html  # pyrefly: ignore[not-iterable]
+  assert 'word-wrap' in html  # pyrefly: ignore[not-iterable]
+  assert 'break-word' in html  # pyrefly: ignore[not-iterable]

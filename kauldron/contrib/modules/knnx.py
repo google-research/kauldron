@@ -39,7 +39,7 @@ else:
 
 
 @dataclasses.dataclass(kw_only=True)
-class KdNnxModule(*bases):
+class KdNnxModule(*bases):  # pyrefly: ignore[invalid-inheritance]
   """A wrapper for torch modules to be used in kauldron.
 
   Inherits from nn.Module for typing purposes in kauldron.
@@ -83,11 +83,11 @@ class KdNnxModule(*bases):
         self, nnx.Param, nnx.Any(nnx.RngCount, nnx.RngKey), ...
     )
     return {
-        'params': params._mapping,  # pylint: disable=protected-access
+        'params': params._mapping,  # pylint: disable=protected-access  # pyrefly: ignore[missing-attribute]
         'nnx': {
             'graphdef': gdef,
-            'rng_vars': rng_vars._mapping,  # pylint: disable=protected-access
-            'attributes': attributes._mapping,  # pylint: disable=protected-access
+            'rng_vars': rng_vars._mapping,  # pylint: disable=protected-access  # pyrefly: ignore[missing-attribute]
+            'attributes': attributes._mapping,  # pylint: disable=protected-access  # pyrefly: ignore[missing-attribute]
         },
         'intermediates': intermediates,
     }
@@ -122,7 +122,7 @@ class KdNnxModule(*bases):
 
     self_copy = copy.deepcopy(self)
     if 'rngs' in inspect.signature(self_copy.setup).parameters:
-      self_copy.setup(rngs=_nnx_rngs_from_kd(rngs))
+      self_copy.setup(rngs=_nnx_rngs_from_kd(rngs))  # pyrefly: ignore[bad-argument-type]
     else:
       warnings.warn(
           'rngs are not used in setup method. If your module requires rngs, '
@@ -169,7 +169,7 @@ class KdNnxModule(*bases):
     # reseed rngs
     rng_vars = variables['nnx']['rng_vars']
     if rngs:
-      new_rngs = _nnx_rngs_from_kd(rngs)
+      new_rngs = _nnx_rngs_from_kd(rngs)  # pyrefly: ignore[bad-argument-type]
       rng_vars = _reseed_rng_vars(rng_vars, new_rngs)
 
     # re-create module from variables
@@ -202,7 +202,7 @@ class KdNnxModule(*bases):
     elif mutable:
       # mutate variables in place
       variables = {k: v for k, v in variables.items()}
-      variables['nnx']['rng_vars'] = rng_vars
+      variables['nnx']['rng_vars'] = rng_vars  # pyrefly: ignore[unsupported-operation]
       variables['intermediates'] = nnx.pop(module, nnx.Intermediate)._mapping  # pylint: disable=protected-access
       return out, variables
     else:

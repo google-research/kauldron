@@ -134,11 +134,11 @@ def _jax_key_entry_to_str(
 ) -> str:
   """Convert a JaxKeyEntry into a valid `kontext.Path` element."""
   match jax_key_entry:
-    case jax.tree_util.DictKey(key):
+    case jax.tree_util.DictKey(key):  # pyrefly: ignore[bad-match]
       return str(key)
-    case jax.tree_util.SequenceKey(idx):
+    case jax.tree_util.SequenceKey(idx):  # pyrefly: ignore[bad-match]
       return str(idx)
-    case jax.tree_util.GetAttrKey(name):
+    case jax.tree_util.GetAttrKey(name):  # pyrefly: ignore[bad-match]
       return str(name)
     case _:
       raise TypeError(
