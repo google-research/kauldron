@@ -74,4 +74,4 @@ class TfGrainIterator(iterators.Iterator):
       self, value: grain.TfGrainDatasetIterator
   ) -> Self:
     assert isinstance(value, grain.TfGrainDatasetIterator)
-    return TfGrainIterator(source=self.source, iter=value)
+    return TfGrainIterator(source=self.source, iter=value)  # pyrefly: ignore[bad-return]

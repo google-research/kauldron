@@ -147,8 +147,8 @@ class TrainEvaluator(kd.evals.EvaluatorBase):
       # Override the metric writer with the one of the parent trainer.
       sub_evaluator = dataclasses.replace(
           sub_evaluator,
-          writer=self.writer,
-          name=self._global_collection_name(sub_evaluator.name),
+          writer=self.writer,  # pyrefly: ignore[unexpected-keyword]
+          name=self._global_collection_name(sub_evaluator.name),  # pyrefly: ignore[unexpected-keyword]
       )
       # Do not compute losses when possible to avoid cluttering the main
       # flatboard
@@ -179,12 +179,12 @@ class TrainEvaluator(kd.evals.EvaluatorBase):
     # Explicitly disable some options (deleting the field will
     # use the default values)
     readout_cfg.xm_job = None
-    readout_cfg.profiler = None
-    readout_cfg.writer = None
+    readout_cfg.profiler = None  # pyrefly: ignore[bad-assignment]
+    readout_cfg.writer = None  # pyrefly: ignore[bad-assignment]
     # TODO(klausg) retain other init transforms?
     # TODO(epot): Dangerous to remove init_transform. Instead should raise
     # an explicit error.
-    readout_cfg.init_transform = None
+    readout_cfg.init_transform = None  # pyrefly: ignore[bad-assignment]
 
     build_ctx = self.base_cfg.setup.flatboard_build_context
     with kd.konfig.mock_modules():
@@ -237,7 +237,7 @@ class TrainEvaluator(kd.evals.EvaluatorBase):
     # Reuse trainer checkpointer, but add the name and step-suffix to the
     # workdir.
     if isinstance(checkpointer, checkpointer_lib.Checkpointer):
-      workdir = checkpointer.workdir / f"_{self.name}_{step}"
+      workdir = checkpointer.workdir / f"_{self.name}_{step}"  # pyrefly: ignore[unsupported-operation]
       (workdir / checkpointer_lib.CHECKPOINT_FOLDER_NAME).mkdir(
           parents=True, exist_ok=True
       )
@@ -263,22 +263,22 @@ class TrainEvaluator(kd.evals.EvaluatorBase):
       raise ValueError(f"Unsupported checkpointer type: {type(checkpointer)}")
     return dataclasses.replace(
         self.readout_trainer_base,
-        workdir=workdir,
+        workdir=workdir,  # pyrefly: ignore[unexpected-keyword]
         # Initialize the model with the params from the parent trainer.
-        init_transform=_OverwriteParams(
+        init_transform=_OverwriteParams(  # pyrefly: ignore[unexpected-keyword]
             copy_params=self._copy_params_when_overwriting,
             subparams_to_swap_path=subparams_to_swap_path,
             state_from_training=state,
         ),
-        checkpointer=checkpointer,
+        checkpointer=checkpointer,  # pyrefly: ignore[unexpected-keyword]
         # Write the metrics in a separate `{collection}.{step}`
-        writer=_EvalWriter(  # pylint: disable=protected-access
+        writer=_EvalWriter(  # pylint: disable=protected-access  # pyrefly: ignore[unexpected-keyword]
             add_artifacts=False,
             curr_step=step,
             train_eval_name=self.name,
         ),
-        stop_after_steps=self.stop_after_steps_schedule_fn(
-            step, self.readout_trainer_base.num_train_steps
+        stop_after_steps=self.stop_after_steps_schedule_fn(  # pyrefly: ignore[unexpected-keyword]
+            step, self.readout_trainer_base.num_train_steps  # pyrefly: ignore[bad-argument-type]
         ),
     )
 
@@ -430,9 +430,9 @@ class _OverwriteParams(kd.ckpts.InitTransform):
       compare=False, hash=False
   )
 
-  def transform(self, state: kd.train.TrainState) -> kd.train.TrainState:
+  def transform(self, state: kd.train.TrainState) -> kd.train.TrainState:  # pyrefly: ignore[bad-override]
     params_key = ".".join(self.subparams_to_swap_path.split(".")[1:])
-    params = dict(state.params)
+    params = dict(state.params)  # pyrefly: ignore[no-matching-overload]
     assert self.state_from_training is not None
     state_params = self.state_from_training.params
     if self.copy_params:

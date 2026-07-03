@@ -65,4 +65,4 @@ class PyGrainIterator(iterators.Iterator):
     assert isinstance(value, grain.DatasetIterator)
     # Note that like TF, the `self.iter` is mutated in-place, so could return
     # `self` here.
-    return PyGrainIterator(source=self.source, iter=value)
+    return PyGrainIterator(source=self.source, iter=value)  # pyrefly: ignore[bad-return]

@@ -74,10 +74,10 @@ class Rearrange(base.ElementWiseTransform):
   """
 
   pattern: str
-  axes_lengths: dict[str, int] = dataclasses.field(default_factory=_FrozenDict)
+  axes_lengths: dict[str, int] = dataclasses.field(default_factory=_FrozenDict)  # pyrefly: ignore[bad-assignment]
 
   @typechecked
-  def map_element(self, element: Any) -> XArray:
+  def map_element(self, element: Any) -> XArray:  # pyrefly: ignore[not-a-type]
     # Ensure element is an array (and not a python builtin)
     # This is useful e.g. for pygrain pipelines because often "label" will be
     # int and not an array, yet one might want to reshape it.
@@ -121,7 +121,7 @@ class Gather(base.ElementWiseTransform):
   indices: tuple[int, ...]
 
   @typechecked
-  def map_element(self, element: XArray) -> XArray:
+  def map_element(self, element: XArray) -> XArray:  # pyrefly: ignore[not-a-type]
     xnp = enp.lazy.get_xnp(element)
     return xnp.take(element, self.indices, axis=self.axis)
 
@@ -167,7 +167,7 @@ class Resize(base.ElementWiseTransform):
     else:
       method = self.method
 
-    new_size = self._get_resize_shape(*Shape("h w"))
+    new_size = self._get_resize_shape(*Shape("h w"))  # pyrefly: ignore[bad-argument-type]
     if enp.lazy.is_tf(element):
       # Flatten the batch dimensions
       batch = tf.shape(element)[:-3]
@@ -198,7 +198,7 @@ class Resize(base.ElementWiseTransform):
       return jax.image.resize(
           element,
           size,
-          method=method,
+          method=method,  # pyrefly: ignore[bad-argument-type]
           antialias=self.antialias,
       )
     else:
@@ -258,7 +258,7 @@ class CenterCrop(base.ElementWiseTransform):
       return tf.ensure_shape(crop, target_shape)
     elif enp.lazy.is_np(element) or enp.lazy.is_jax(element):
       end = np.add(start, target_shape)
-      return jax.lax.slice(element, start, end)
+      return jax.lax.slice(element, start, end)  # pyrefly: ignore[bad-argument-type]
     else:
       raise ValueError(f"Unsupported type: {type(element)}")
 

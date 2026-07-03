@@ -70,7 +70,7 @@ class MLFlowMetricWriter(metric_writer.KDMetricWriter):
   def write_summaries(
       self,
       step: int,
-      values: Mapping[str, Array],
+      values: Mapping[str, Array],  # pyrefly: ignore[not-a-type]
       metadata: Mapping[str, Any] | None = None,
   ) -> None:
     mlflow.log_text(f"{values}\n{metadata}", "summary.txt")

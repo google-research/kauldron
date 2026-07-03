@@ -58,7 +58,7 @@ class Tfds(base.DataSourceBase):
   decoders: Optional[Mapping[str, Any]] = None
 
   @functools.cached_property
-  def data_source(self) -> grain.RandomAccessDataSource:
+  def data_source(self) -> grain.RandomAccessDataSource:  # pyrefly: ignore[bad-override]
     # TFDS does not support ImmutableDict, so we convert to a dict.
     decoders = dict(self.decoders) if self.decoders else None
     return tfds.data_source(
@@ -81,7 +81,7 @@ class HuggingFace(base.DataSourceBase):
   cache_dir: epath.PathLike | None = None
 
   @functools.cached_property
-  def data_source(self) -> grain.RandomAccessDataSource:
+  def data_source(self) -> grain.RandomAccessDataSource:  # pyrefly: ignore[bad-override]
     return datasets.load_dataset(
         self.path,
         name=self.config,
@@ -126,5 +126,5 @@ class Json(base.DataSourceBase):
   path: str
 
   @functools.cached_property
-  def data_source(self) -> grain.RandomAccessDataSource:
+  def data_source(self) -> grain.RandomAccessDataSource:  # pyrefly: ignore[bad-override]
     return JsonDataSource(path=self.path)

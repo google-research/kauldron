@@ -34,15 +34,15 @@ class IntAverage(base.Metric):
     return ['average', 'twice_average']
 
   @flax.struct.dataclass
-  class State(base_state.AverageState):
+  class State(base_state.AverageState):  # pyrefly: ignore[bad-override]
 
     def compute(self):
       return int(super().compute())
 
-  def get_state(self, x=None) -> IntAverage.State:
-    return dict(
+  def get_state(self, x=None) -> IntAverage.State:  # pyrefly: ignore[bad-override]
+    return dict(  # pyrefly: ignore[bad-return]
         average=IntAverage.State.from_values(values=x),
-        twice_average=IntAverage.State.from_values(values=2*x)
+        twice_average=IntAverage.State.from_values(values=2*x)  # pyrefly: ignore[unsupported-operation]
     )
 
 

@@ -67,7 +67,7 @@ class PartialCLULoader(partial_loader.InitTransform):
   """
 
   ckpt_dir: epath.PathLike
-  new_to_old: MutableMapping[str, str] = dataclasses.field(
+  new_to_old: MutableMapping[str, str] = dataclasses.field(  # pyrefly: ignore[bad-assignment]
       default_factory=lambda: FrozenDict({
           'params': 'params',
           'collections': 'collections',

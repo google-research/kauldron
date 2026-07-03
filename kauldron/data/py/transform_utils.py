@@ -98,7 +98,7 @@ def _adapt_for_pygrain(
   tf_grain = sys.modules.get("grain.tensorflow")
 
   if isinstance(transform, (grain.Transformation, SliceDataset)):
-    return transform
+    return transform  # pyrefly: ignore[bad-return]
   elif tf_grain and isinstance(transform, tf_grain.Transformation):
     raise ValueError(
         f"Mixing TFGrain transform inside PyGrain pipeline: {transform}"
@@ -112,7 +112,7 @@ def apply_transforms(
 ) -> grain.MapDataset:
   """Apply the transformations to the dataset."""
   if isinstance(transforms, Mapping):
-    transforms = transforms.values()
+    transforms = transforms.values()  # pyrefly: ignore[bad-assignment]
   for tr in transforms:
     tr = _adapt_for_pygrain(tr)
     ds = _apply_transform(ds, tr)

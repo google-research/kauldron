@@ -36,5 +36,5 @@ def test_orbax(tmp_path: pathlib.Path):
   mgr = ocp.CheckpointManager(tmp_path)
   restored_iter = mgr.restore(args=tfdata_handler.TFDataArg(iter(ds)), step=0)
 
-  assert next(restored_iter).numpy() == 100
-  assert next(restored_iter).numpy() == 110
+  assert next(restored_iter).numpy() == 100  # pyrefly: ignore[bad-argument-type]
+  assert next(restored_iter).numpy() == 110  # pyrefly: ignore[bad-argument-type]

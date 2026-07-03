@@ -64,7 +64,7 @@ class NpzWriter(metric_writer.KDMetricWriter):
   key_patterns: Sequence[str] | None = None
   save_scalars: bool = False
   output_dir: epath.Path | None = None
-  static_info: FrozenDict = FrozenDict({})
+  static_info: FrozenDict = FrozenDict({})  # pyrefly: ignore[invalid-annotation]
 
   def write_step_metrics(
       self,
@@ -106,7 +106,7 @@ class NpzWriter(metric_writer.KDMetricWriter):
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / f"{step:09d}.npz"
     buf = io.BytesIO()
-    np.savez(buf, **arrays)
+    np.savez(buf, **arrays)  # pyrefly: ignore[bad-argument-type]
     path.write_bytes(buf.getvalue())
     logging.info("NpzWriter: saved %d arrays to %s", len(arrays), path)
 

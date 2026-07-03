@@ -43,7 +43,7 @@ class ImmutableDict(immutabledict_lib.immutabledict):
       for type_ in list(flax.serialization._STATE_DICT_REGISTRY):  # pylint: disable=undefined-variable
         match type_:
           case object(
-              __name__='ImmutableDict',
+              __name__='ImmutableDict',  # pyrefly: ignore[missing-attribute]
               __module__='kauldron.konfig.immutabledict_lib',
           ):
             del flax.serialization._STATE_DICT_REGISTRY[type_]  # pylint: disable=undefined-variable
@@ -113,7 +113,7 @@ class ImmutableDict(immutabledict_lib.immutabledict):
     return self._dict
 
   def __setstate__(self, state):
-    self.__init__(state)  # pylint: disable=too-many-function-args
+    self.__init__(state)  # pylint: disable=too-many-function-args  # pyrefly: ignore[bad-argument-count]
 
 
 def unfreeze(obj: Any):

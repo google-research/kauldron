@@ -68,7 +68,7 @@ class TFData(base.DataLoader):
       # Following should be jax.random.bits(rngs.pop()) but this will change the
       # resulting seed.
       ds = ds.shuffle(
-          self.shuffle_buffer_size, seed=jax.random.key_data(rngs.pop())[0]
+          self.shuffle_buffer_size, seed=jax.random.key_data(rngs.pop())[0]  # pyrefly: ignore[bad-argument-type]
       )
     ds = ds.repeat(self.num_epochs)
 

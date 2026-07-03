@@ -48,7 +48,7 @@ class BatchSize:
     return self.total // jax.process_count()
 
 
-def array_spec_to_jnp_empty(spec: ArraySpec, batch_dim: int = 17) -> jax.Array:
+def array_spec_to_jnp_empty(spec: ArraySpec, batch_dim: int = 17) -> jax.Array:  # pyrefly: ignore[not-a-type]
   """Convert a tf.data.TensorSpec element_spec to a jnp.empty array.
 
   Used for initializing a model.
@@ -88,8 +88,8 @@ def array_spec_to_jnp_empty(spec: ArraySpec, batch_dim: int = 17) -> jax.Array:
 
 
 def mock_batch_from_elem_spec(
-    elem_spec: ElementSpec, elem_sharding: sharding_utils.ShardingTree
-) -> PyTree[jax.Array]:
+    elem_spec: ElementSpec, elem_sharding: sharding_utils.ShardingTree  # pyrefly: ignore[not-a-type]
+) -> PyTree[jax.Array]:  # pyrefly: ignore[not-a-type]
   """Create a mock batch from the element_spec of a data iterator."""
   elem_spec = get_global_elem_spec(elem_spec, elem_sharding)
 
@@ -107,8 +107,8 @@ def mock_batch_from_elem_spec(
 
 
 def get_global_elem_spec(
-    per_host_elem_spec: ElementSpec, elem_sharding: sharding_utils.ShardingTree
-) -> ElementSpec:
+    per_host_elem_spec: ElementSpec, elem_sharding: sharding_utils.ShardingTree  # pyrefly: ignore[not-a-type]
+) -> ElementSpec:  # pyrefly: ignore[not-a-type]
   """Converts the per-host element spec to a global element spec."""
 
   def _get_global_shape(spec):
@@ -120,7 +120,7 @@ def get_global_elem_spec(
   return jax.tree.map(_get_global_shape, per_host_elem_spec)
 
 
-Args = tuple[PyTree[jax.Array], ...]
+Args = tuple[PyTree[jax.Array], ...]  # pyrefly: ignore[not-a-type]
 Kwargs = dict[str, jax.Array]
 
 
@@ -138,7 +138,7 @@ def get_model_inputs(
 
 def get_model_inputs_from_batch(
     model: nn.Module,
-    batch: ElementSpec,
+    batch: ElementSpec,  # pyrefly: ignore[not-a-type]
 ) -> tuple[tuple[Any, ...], dict[str, Any]]:
   """Returns dummy (args, kwargs) to pass to the model input.
 

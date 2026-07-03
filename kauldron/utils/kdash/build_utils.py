@@ -48,7 +48,7 @@ def build_and_upload(
 
   ctx = ctx or plot_utils.BuildContext()
 
-  dashboards = dashboards.normalize().build(ctx)
+  dashboards = dashboards.normalize().build(ctx)  # pyrefly: ignore[bad-assignment]
   if epy.is_test():  # Inside tests, do not actually create the dashboards.
     return
   urls = {
@@ -57,7 +57,7 @@ def build_and_upload(
       k: db.save_url(
           reader_permissions=fb.FlatboardDashboardPermissions.EVERYONE
       ).split('/revisions/')[0]
-      for k, db in dashboards.items()
+      for k, db in dashboards.items()  # pyrefly: ignore[missing-attribute]
   }
   status.log('Dashboards:')
   for k, url in urls.items():

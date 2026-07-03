@@ -61,14 +61,14 @@ class Pipeline(data_utils.IterableDataset, config_util.UpdateFromRootCfg):
   seed: Optional[PRNGKeyLike] = config_util.ROOT_CFG_REF.seed
 
   @functools.cached_property
-  def element_spec(self) -> PyTree[enp.ArraySpec]:
+  def element_spec(self) -> PyTree[enp.ArraySpec]:  # pyrefly: ignore[not-a-type]
     """Returns the element specs of a single batch."""
     first_elem = next(iter(self))
     return etree.spec_like(first_elem)
 
   @functools.cached_property
   def host_batch_size(self) -> int:
-    return utils.BatchSize(self.batch_size).per_process
+    return utils.BatchSize(self.batch_size).per_process  # pyrefly: ignore[bad-argument-type]
 
   # Overwrite the base class as the signature change.
   @abc.abstractmethod

@@ -121,7 +121,7 @@ class TFDataPipeline(pipelines.Pipeline):
     )
 
   @property
-  def element_spec(self) -> PyTree[enp.ArraySpec]:
+  def element_spec(self) -> PyTree[enp.ArraySpec]:  # pyrefly: ignore[not-a-type]
     """Returns the element specs of the dataset."""
     return self._ds_iter.element_spec
 

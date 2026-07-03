@@ -92,7 +92,7 @@ class EvaluatorBase(config_util.BaseConfig, config_util.UpdateFromRootCfg):
 
   def __post_init__(self) -> None:
     if hasattr(super(), '__post_init__'):
-      super().__post_init__()  # Future proof to run `__post_init__` in parents  # pylint: disable=attribute-error
+      super().__post_init__()  # Future proof to run `__post_init__` in parents  # pylint: disable=attribute-error  # pyrefly: ignore[missing-attribute]
     if not self.name.replace('.', '_').replace('-', '_').isidentifier():
       raise ValueError(
           'Evaluator name should be a valid Python identifier. Got:'
@@ -181,20 +181,20 @@ class Evaluator(EvaluatorBase):
 
   num_batches: Optional[int] = None
   cache: bool = False
-  ds: data.Pipeline = config_util.ROOT_CFG_REF.eval_ds
-  losses: dict[str, losses_lib.Loss] = config_util.ROOT_CFG_REF.train_losses
+  ds: data.Pipeline = config_util.ROOT_CFG_REF.eval_ds  # pyrefly: ignore[bad-assignment]
+  losses: dict[str, losses_lib.Loss] = config_util.ROOT_CFG_REF.train_losses  # pyrefly: ignore[bad-assignment]
   metrics: dict[str, metrics_lib.Metric] = (
-      config_util.ROOT_CFG_REF.train_metrics
+      config_util.ROOT_CFG_REF.train_metrics  # pyrefly: ignore[bad-assignment]
   )
   summaries: dict[str, metrics_lib.Metric] = (
-      config_util.ROOT_CFG_REF.train_summaries
+      config_util.ROOT_CFG_REF.train_summaries  # pyrefly: ignore[bad-assignment]
   )
   model: nn.Module = config_util.ROOT_CFG_REF.model
   model_method: Optional[str] = None
   init_transform: checkpoints.InitTransform = dataclasses.field(
       default_factory=lambda: checkpoints.NoopTransform(),  # pylint: disable=unnecessary-lambda
   )
-  checkify_error_categories: frozenset[CheckifyErrorCategory] = (
+  checkify_error_categories: frozenset[CheckifyErrorCategory] = (  # pyrefly: ignore[invalid-annotation]
       config_util.ROOT_CFG_REF.checkify_error_categories
   )
 
@@ -344,8 +344,8 @@ class Evaluator(EvaluatorBase):
   def __dashboards__(self) -> kdash.DashboardsBase:
     return kdash.MetricDashboards(
         collection=self.name,
-        losses=self.losses,
-        metrics=self.metrics,
+        losses=self.losses,  # pyrefly: ignore[bad-argument-type]
+        metrics=self.metrics,  # pyrefly: ignore[bad-argument-type]
     )
 
   def __hash__(self) -> int:
@@ -421,7 +421,7 @@ def _replace_name(evaluator: EvaluatorBase, name: str) -> EvaluatorBase:
         ' metrics.'
     )
   elif evaluator.name == _DEFAULT_EVAL_NAME:  # Default name, overwrite
-    return dataclasses.replace(evaluator, name=name)
+    return dataclasses.replace(evaluator, name=name)  # pyrefly: ignore[unexpected-keyword]
   elif evaluator.name == name:
     return evaluator
   else:

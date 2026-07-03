@@ -200,8 +200,8 @@ class ElementWise:
     is_noop = True
     for k, v in features.items():
       if k in self.key:
-        yield self.key[k], v, True
-        if k != self.key[k]:  # if renaming then keep original key
+        yield self.key[k], v, True  # pyrefly: ignore[bad-index]
+        if k != self.key[k]:  # if renaming then keep original key  # pyrefly: ignore[bad-index]
           yield k, v, False
         is_noop = False
       else:

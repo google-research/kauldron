@@ -40,7 +40,7 @@ class NoopTrainStep(kd.train.TrainStep):
   )
   def _init_model(self, elem_spec, **kwargs):
     state = kd.train.TrainState(  # pytype: disable=wrong-arg-types
-        step=jnp.asarray(0),
+        step=jnp.asarray(0),  # pyrefly: ignore[bad-argument-type]
         params=flax.core.FrozenDict(),
         opt_state=flax.core.FrozenDict(),
         collections=flax.core.FrozenDict(),

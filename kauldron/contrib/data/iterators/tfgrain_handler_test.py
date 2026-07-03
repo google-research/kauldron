@@ -54,5 +54,5 @@ def test_tfgrain(tmp_path: pathlib.Path):
       args=tfgrain_handler.TfGrainArg(iter(_make_data_loader())), step=0
   )
 
-  assert next(restored_iter)['_record'] == 100
-  assert next(restored_iter)['_record'] == 110
+  assert next(restored_iter)['_record'] == 100  # pyrefly: ignore[bad-argument-type]
+  assert next(restored_iter)['_record'] == 110  # pyrefly: ignore[bad-argument-type]

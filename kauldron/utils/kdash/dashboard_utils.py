@@ -165,7 +165,7 @@ class MetricDashboards(DashboardsBase):
         SingleDashboard.from_y_keys(
             name='losses',
             title='{xid}: Losses',
-            y_keys=_get_key(losses, prefix='losses'),
+            y_keys=_get_key(losses, prefix='losses'),  # pyrefly: ignore[bad-argument-type]
             collections=[self.collection],
         ),
         SingleDashboard.from_y_keys(

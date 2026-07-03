@@ -70,7 +70,7 @@ def main(_) -> None:
   # additional modules
   with epy.binary_adhoc():
     try:
-      xp: kxm.Experiment = konfig.resolve(xp_config)
+      xp: kxm.Experiment = konfig.resolve(xp_config)  # pyrefly: ignore[bad-assignment]
     except TypeError as e:
       epy.reraise(e, suffix="See all flags at")
 
@@ -80,7 +80,7 @@ def main(_) -> None:
         epy.binary_adhoc(),
         konfig.set_lazy_imported_modules(),
     ):
-      cfg_provider = kxm.ConfigProvider.from_flag(_CONFIG)
+      cfg_provider = kxm.ConfigProvider.from_flag(_CONFIG)  # pyrefly: ignore[bad-argument-type]
     # Merge the `XManager` with the config flag provider
     xp = xp.replace(cfg_provider=cfg_provider)
 

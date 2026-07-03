@@ -73,7 +73,7 @@ def main(_):
   tf.config.set_visible_devices([], "GPU")
   eval_names = _EVAL_NAMES.value
   cfg = _CONFIG.value
-  trainer: kd.train.Trainer = kd.konfig.resolve(cfg)
+  trainer: kd.train.Trainer = kd.konfig.resolve(cfg)  # pyrefly: ignore[bad-assignment]
   if eval_names is None:
     trainer.train()
   else:

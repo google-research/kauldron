@@ -53,7 +53,7 @@ class TFDataIterator(iterators.Iterator):
   def __kd_ocp_restore_post__(self, value: tf.data.Iterator) -> Self:
     assert isinstance(value, tf.data.Iterator)
     # In theory, `self.iter is value`, so could return `self` directly
-    return TFDataIterator(source=self.source, iter=value)
+    return TFDataIterator(source=self.source, iter=value)  # pyrefly: ignore[bad-return]
 
 
 # TODO(epot): `TFDataHandler` should go inside orbax/contrib/ or similar.

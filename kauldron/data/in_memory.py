@@ -84,7 +84,7 @@ class InMemoryPipeline(pipelines.Pipeline):
   @property
   def sampler(self) -> BatchedIndexSampler:
     return BatchedIndexSampler(
-        batch_size=utils.BatchSize(self.batch_size),
+        batch_size=utils.BatchSize(self.batch_size),  # pyrefly: ignore[bad-argument-type]
         num_records=self.num_examples,
         num_epochs=self.num_epochs,
         seed=self.seed,

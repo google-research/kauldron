@@ -175,14 +175,14 @@ class Path(AbstractPath):
 
     *parts, target = self.parts
     for part in parts:
-      root = root[part]
+      root = root[part]  # pyrefly: ignore[bad-index]
       if not isinstance(root, (list, dict, ml_collections.ConfigDict)):
         raise TypeError(
             f"Cannot overwrite value {self}: {part} is unsuported type"
             f" {type(root)}. Please open an issue if this should be fixed."
         )
 
-    root[target] = value
+    root[target] = value  # pyrefly: ignore[unsupported-operation]
     return [str(self)]
 
 
@@ -256,7 +256,7 @@ def flatten_with_path(
   flat_tree_items, _ = jax.tree_util.tree_flatten_with_path(
       pytree, is_leaf=is_leaf
   )
-  prefix = (jax.tree_util.GetAttrKey(prefix),) if prefix else ()
+  prefix = (jax.tree_util.GetAttrKey(prefix),) if prefix else ()  # pyrefly: ignore[bad-assignment]
 
   def _format_path(jax_path):
     path = Path.from_jax_path(prefix + jax_path)

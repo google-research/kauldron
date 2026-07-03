@@ -66,7 +66,7 @@ def test_train_eval(tmp_path: epath.Path):
     # not trigger new `jit` compilations).
     overwrite_transform = readout_trainer.init_transform
     old_hash = hash(readout_trainer.init_transform)
-    overwrite_transform = dataclasses.replace(
+    overwrite_transform = dataclasses.replace(  # pyrefly: ignore[bad-specialization]
         overwrite_transform,
         state_from_training=jax.tree.map(
             lambda x: jnp.ones(x.shape, x.dtype), state_specs

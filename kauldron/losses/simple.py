@@ -35,7 +35,7 @@ class Value(base.Loss):
   values: kontext.Key = kontext.REQUIRED
 
   @typechecked
-  def get_values(self, values: Float["*a"]) -> Float["*a"]:
+  def get_values(self, values: Float["*a"]) -> Float["*a"]:  # pyrefly: ignore[not-a-type]
     return values
 
 
@@ -46,7 +46,7 @@ class AbsoluteValue(base.Loss):
   values: kontext.Key = kontext.REQUIRED
 
   @typechecked
-  def get_values(self, values: Float["*a"]) -> Float["*a"]:
+  def get_values(self, values: Float["*a"]) -> Float["*a"]:  # pyrefly: ignore[not-a-type]
     return jnp.abs(values)
 
 
@@ -61,7 +61,7 @@ class L1(base.Loss):
   targets: kontext.Key = kontext.REQUIRED
 
   @typechecked
-  def get_values(self, preds: Float["*a"], targets: Float["*a"]) -> Float["*a"]:
+  def get_values(self, preds: Float["*a"], targets: Float["*a"]) -> Float["*a"]:  # pyrefly: ignore[not-a-type]
     return jnp.abs(preds - targets)
 
 
@@ -73,7 +73,7 @@ class L2(base.Loss):
   targets: kontext.Key = kontext.REQUIRED
 
   @typechecked
-  def get_values(self, preds: Float["*a"], targets: Float["*a"]) -> Float["*a"]:
+  def get_values(self, preds: Float["*a"], targets: Float["*a"]) -> Float["*a"]:  # pyrefly: ignore[not-a-type]
     return jnp.square(preds - targets)
 
 
@@ -87,7 +87,7 @@ class Huber(base.Loss):
   targets: kontext.Key = kontext.REQUIRED
 
   @typechecked
-  def get_values(self, preds: Float["*a"], targets: Float["*a"]) -> Float["*a"]:
+  def get_values(self, preds: Float["*a"], targets: Float["*a"]) -> Float["*a"]:  # pyrefly: ignore[not-a-type]
     l2_term = 0.5 * jnp.square(preds - targets)
     l1_term = self.delta * (jnp.abs(preds - targets) - 0.5 * self.delta)
     return jnp.where(jnp.abs(preds - targets) < self.delta, l2_term, l1_term)
@@ -107,9 +107,9 @@ class NegativeCosineSimilarity(base.Loss):
   @typechecked
   def get_values(
       self,
-      preds: Float["*a c"],
-      targets: Float["*a c"],
-  ) -> Float["*a 1"]:
+      preds: Float["*a c"],  # pyrefly: ignore[not-a-type]
+      targets: Float["*a c"],  # pyrefly: ignore[not-a-type]
+  ) -> Float["*a 1"]:  # pyrefly: ignore[not-a-type]
     preds = self._safe_normalize(preds)
     targets = self._safe_normalize(targets)
 
@@ -129,8 +129,8 @@ class SoftmaxCrossEntropy(base.Loss):
 
   @typechecked
   def get_values(
-      self, logits: Float["*a n"], labels: Float["*a n"]
-  ) -> Float["*a 1"]:
+      self, logits: Float["*a n"], labels: Float["*a n"]  # pyrefly: ignore[not-a-type]
+  ) -> Float["*a 1"]:  # pyrefly: ignore[not-a-type]
     return optax.softmax_cross_entropy(logits, labels)[..., None]
 
 
@@ -143,8 +143,8 @@ class SoftmaxCrossEntropyWithIntLabels(base.Loss):
 
   @typechecked
   def get_values(
-      self, logits: Float["*a n"], labels: Int["*a 1"]
-  ) -> Float["*a 1"]:
+      self, logits: Float["*a n"], labels: Int["*a 1"]  # pyrefly: ignore[not-a-type]
+  ) -> Float["*a 1"]:  # pyrefly: ignore[not-a-type]
     return optax.softmax_cross_entropy_with_integer_labels(
         logits=logits, labels=labels.squeeze(-1)
     )[..., None]
@@ -159,6 +159,6 @@ class SigmoidBinaryCrossEntropy(base.Loss):
 
   @typechecked
   def get_values(
-      self, logits: Float["*a n"], labels: Array["*a n"]
-  ) -> Float["*a n"]:
+      self, logits: Float["*a n"], labels: Array["*a n"]  # pyrefly: ignore[not-a-type]
+  ) -> Float["*a n"]:  # pyrefly: ignore[not-a-type]
     return optax.sigmoid_binary_cross_entropy(logits, labels)

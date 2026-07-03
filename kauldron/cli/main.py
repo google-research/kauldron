@@ -129,10 +129,10 @@ def main(args: Args) -> None:
 
   # Workdir management
   with tempfile.TemporaryDirectory(prefix="kauldron_") as workdir:
-    if cfg.workdir is None:
-      overrides |= cu.tracked_update(cfg, "workdir", workdir)
+    if cfg.workdir is None:  # pyrefly: ignore[missing-attribute]
+      overrides |= cu.tracked_update(cfg, "workdir", workdir)  # pyrefly: ignore[bad-argument-type]
 
-    patched_config, patches = patcher(cfg)
+    patched_config, patches = patcher(cfg)  # pyrefly: ignore[bad-argument-type]
 
     conflicts = set(overrides) & set(patches)
     for key in conflicts:

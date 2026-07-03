@@ -75,7 +75,7 @@ class AllReduceMean(base_state.State):
         count=self.count + other.count,
     )
 
-  def compute(self) -> Float[""]:
+  def compute(self) -> Float[""]:  # pyrefly: ignore[not-a-type]
     return self.value / jnp.clip(self.count, min=1e-8)
 
 
@@ -127,12 +127,12 @@ class Loss(metrics.Metric, abc.ABC):
   weight: int | float | Schedule = 1.0
   normalize_by: Literal["mask", "values"] = "mask"
 
-  State: ClassVar[type[AllReduceMean]] = (  # pylint: disable=invalid-name
+  State: ClassVar[type[AllReduceMean]] = (  # pylint: disable=invalid-name  # pyrefly: ignore[bad-override]
       AllReduceMean
   )
 
   @abc.abstractmethod
-  def get_values(self, *args, **kwargs) -> Array["..."]:
+  def get_values(self, *args, **kwargs) -> Array["..."]:  # pyrefly: ignore[bad-index, not-a-type]
     """Compute the loss values (before masking, averaging and weighting).
 
     Subclasses need to implement this method.
@@ -145,10 +145,10 @@ class Loss(metrics.Metric, abc.ABC):
     """
     ...
 
-  def get_state(
+  def get_state(  # pyrefly: ignore[bad-override]
       self,
       *args,
-      mask: Optional[Array["..."]] = None,
+      mask: Optional[Array["..."]] = None,  # pyrefly: ignore[bad-index, not-a-type]
       step: Optional[int] = None,
       **kwargs,
   ) -> Loss.State:
@@ -182,7 +182,7 @@ class Loss(metrics.Metric, abc.ABC):
         values=values, mask=mask, weight=weight, normalize_by=self.normalize_by
     )
 
-  def get_state_from_context(self, context: Any) -> Loss.State:
+  def get_state_from_context(self, context: Any) -> Loss.State:  # pyrefly: ignore[bad-override]
     """Compute the loss-state by auto-filling args from given context.
 
     This is a wrapper around `get_state` that gathers the required arguments
@@ -209,7 +209,7 @@ class Loss(metrics.Metric, abc.ABC):
         values=values, mask=mask, weight=weight, normalize_by=self.normalize_by
     )
 
-  def get_weight(self, step: Optional[int] = None) -> Float[""]:
+  def get_weight(self, step: Optional[int] = None) -> Float[""]:  # pyrefly: ignore[not-a-type]
     """Return the weight of this loss at the given step number.
 
     Args:
@@ -231,7 +231,7 @@ class Loss(metrics.Metric, abc.ABC):
       *,
       context: Optional[Any] = None,
       **kwargs,
-  ) -> Float[""]:
+  ) -> Float[""]:  # pyrefly: ignore[not-a-type]
     """Shorthand to evaluate the loss either from context or kwargs.
 
     Is equivalent to first calling `get_state` (or `get_state_from_context`) and
@@ -260,8 +260,8 @@ class Loss(metrics.Metric, abc.ABC):
 
 @jax.named_call
 def compute_losses(
-    losses: PyTree[Loss], context: kontext.Context
-) -> tuple[Float[""], PyTree[Float[""]]]:
+    losses: PyTree[Loss], context: kontext.Context  # pyrefly: ignore[not-a-type]
+) -> tuple[Float[""], PyTree[Float[""]]]:  # pyrefly: ignore[not-a-type]
   """Compute all losses based on given context."""
 
   loss_states = jax.tree.map(

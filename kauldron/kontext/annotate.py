@@ -89,18 +89,18 @@ def resolve_from_keyed_obj(
     # function argument default value).
     key_paths = {k: v for k, v in key_paths.items() if v is not None}
 
-    _assert_no_required_keys(key_paths)
+    _assert_no_required_keys(key_paths)  # pyrefly: ignore[bad-argument-type]
     if func is not None:
-      _assert_signature_match(key_paths, func)
+      _assert_signature_match(key_paths, func)  # pyrefly: ignore[bad-argument-type]
 
-    return resolve_from_keypaths(context, key_paths)
+    return resolve_from_keypaths(context, key_paths)  # pyrefly: ignore[bad-argument-type]
   except Exception as e:  # pylint: disable=broad-exception-caught
     epy.reraise(e, f"Error for {type(keyed_obj).__qualname__}: ")
 
 
 def resolve_from_keypaths(
     context: Any,
-    key_paths: Tree[str],
+    key_paths: Tree[str],  # pyrefly: ignore[bad-specialization]
 ) -> dict[str, Any]:
   """Get values for key_paths from context with useful errors when failing."""
   # There should not be any None values in the context.
@@ -115,7 +115,7 @@ def resolve_from_keypaths(
   return key_values
 
 
-def get_keypaths(keyed_obj: Any) -> dict[str, Tree[str] | None]:
+def get_keypaths(keyed_obj: Any) -> dict[str, Tree[str] | None]:  # pyrefly: ignore[bad-specialization]
   """Return a dictionary mapping Key-annotated fieldnames to their paths."""
   if hasattr(type(keyed_obj), _GET_KEY_PROTOCOL):
     return getattr(keyed_obj, _GET_KEY_PROTOCOL)()
@@ -133,7 +133,7 @@ def is_key_annotated(cls_or_obj: type[Any] | Any) -> bool:
   )
 
 
-def _assert_no_required_keys(key_paths: Tree[str]) -> None:
+def _assert_no_required_keys(key_paths: Tree[str]) -> None:  # pyrefly: ignore[bad-specialization]
   """Raise an error if any of the key is `REQUIRED`."""
   missing_keys = [
       k for k, v in paths.flatten_with_path(key_paths).items() if v == REQUIRED
@@ -145,7 +145,7 @@ def _assert_no_required_keys(key_paths: Tree[str]) -> None:
     )
 
 
-def _assert_no_none_keys(key_paths: Tree[str]) -> None:
+def _assert_no_none_keys(key_paths: Tree[str]) -> None:  # pyrefly: ignore[bad-specialization]
   """Raise an error if any of the key is `REQUIRED`."""
   none_keys = [
       k for k, v in paths.flatten_with_path(key_paths).items() if v is None
@@ -158,15 +158,16 @@ def _assert_no_none_keys(key_paths: Tree[str]) -> None:
 
 
 def _assert_signature_match(
-    key_paths: Tree[str],
+    key_paths: Tree[str],  # pyrefly: ignore[bad-specialization]
     func: Callable[..., Any],
 ) -> None:
   """Validate that the signature of the function matches the key_paths."""
   sig = inspect.signature(func)
   try:
-    sig.bind(**key_paths)  # Validate that the keys match the signature
+    sig.bind(**key_paths)  # Validate that the keys match the signature  # pyrefly: ignore[bad-unpacking]
   except TypeError as e:
     raise TypeError(
+        # pyrefly: ignore[bad-argument-type]
         f"Function {func.__qualname__} signature does not match the Key"
         " annotations of the object:\n"
         f" * Error: {e}\n"

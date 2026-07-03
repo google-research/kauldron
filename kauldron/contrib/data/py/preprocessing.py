@@ -141,7 +141,7 @@ class PadImage(ElementWiseTransformWithPredicate):
         (self.pad, self.pad),
         (0, 0),
     )
-    return np.pad(element, padding, mode=self.mode)
+    return np.pad(element, padding, mode=self.mode)  # pyrefly: ignore[no-matching-overload]
 
   @classmethod
   def matching_keys(

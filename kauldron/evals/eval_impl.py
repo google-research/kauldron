@@ -366,7 +366,7 @@ def _get_eval_ckpt(
     raise ValueError(f'Unsupported checkpointer type: {type(trainer_ckpt)}')
 
 
-def _get_element_spec(trainer: trainer_lib.Trainer) -> PyTree[enp.ArraySpec]:
+def _get_element_spec(trainer: trainer_lib.Trainer) -> PyTree[enp.ArraySpec]:  # pyrefly: ignore[not-a-type]
   """Loads the element spec from disk, or from train_ds for eval-only jobs."""
 
   # Load from training

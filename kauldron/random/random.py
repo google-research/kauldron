@@ -95,7 +95,7 @@ class PRNGKey:
       cls, metadata: dict[str, Any], array_field_values: list[jax.Array]
   ) -> PRNGKey:
     del metadata
-    (array_field_values,) = array_field_values
+    (array_field_values,) = array_field_values  # pyrefly: ignore[bad-assignment]
     if array_field_values is None:
       return None  # type: ignore
     elif isinstance(array_field_values, np.ndarray):

@@ -91,7 +91,7 @@ def forward_with_loss(
         k: subgrad_fn(context, rngs=rngs, is_training=is_training)[0].params
         for k, subgrad_fn in subgrad_fns.items()
     }
-  context = MultiContext.from_context(context, subgrads)
+  context = MultiContext.from_context(context, subgrads)  # pyrefly: ignore[bad-argument-type]
   args, kwargs = kd.data.utils.get_model_inputs(model, context)
   preds, collections = model.apply(
       {"params": context.params} | context.collections,
@@ -100,12 +100,12 @@ def forward_with_loss(
       mutable=True,
       capture_intermediates=True,
       is_training_property=is_training,
-      **kwargs,
+      **kwargs,  # pyrefly: ignore[bad-argument-type]
   )
   # Note the params can be mutable if the model call the same sub-model
   # internally but with different params. However, the updates are never
   # propagated
-  collections.pop("params", None)
+  collections.pop("params", None)  # pyrefly: ignore[bad-argument-count]
   interms = collections.pop("intermediates")
   context = context.replace(
       preds=preds, interms=interms, collections=collections
@@ -127,7 +127,7 @@ class MultiTrainStep(kd.train.TrainStep):
   def _step(
       self,
       state: kd.train.TrainState,
-      batch: PyTree[Any],
+      batch: PyTree[Any],  # pyrefly: ignore[not-a-type]
   ) -> tuple[kd.train.TrainState, kd.train.Context]:
     """Training step: forward, losses, gradients, update, and metrics."""
 
@@ -168,7 +168,7 @@ class MultiTrainStep(kd.train.TrainStep):
           grad_fn, name=f"grad_fn_{loss_name}"
       )(context, rngs=rngs, is_training=True)
       subgrad = context_subgrad.params
-      opt_state = state.opt_state[loss_name]
+      opt_state = state.opt_state[loss_name]  # pyrefly: ignore[unsupported-operation]
       updates, new_opt_state = jax.named_call(optimizer.update)(
           subgrad, opt_state, state.params
       )
@@ -190,11 +190,11 @@ class MultiTrainStep(kd.train.TrainStep):
         step=state.step + 1,
         params=new_params,
         opt_state=all_opt_states,
-        collections=context.collections,
+        collections=context.collections,  # pyrefly: ignore[missing-attribute]
     )
 
     # add the gradients, computed updates, and *old* optimizer state to context
-    context = context.replace(
+    context = context.replace(  # pyrefly: ignore[missing-attribute]
         subgrads=subgrads,
         subupdates=all_updates,
         grads=grads,

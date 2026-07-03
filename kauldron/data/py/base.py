@@ -87,7 +87,7 @@ class PyGrainPipeline(pipelines.Pipeline):
   # TODO(epot): Need to duplicate `batch_size` because pytype fail to detect
   # the parent class
   if typing.TYPE_CHECKING:
-    batch_size: int | None = ...
+    batch_size: int | None = ...  # pyrefly: ignore[bad-assignment]
     seed: PRNGKeyLike | None = ...
 
   transforms: tr_normalize.Transformations = dataclasses.field(
@@ -107,7 +107,7 @@ class PyGrainPipeline(pipelines.Pipeline):
 
   def __post_init__(self):
     if hasattr(super(), "__post_init__"):
-      super().__post_init__()  # Future proof to run `__post_init__` in parents  # pylint: disable=attribute-error
+      super().__post_init__()  # Future proof to run `__post_init__` in parents  # pylint: disable=attribute-error  # pyrefly: ignore[missing-attribute]
 
     object.__setattr__(
         self,
@@ -150,7 +150,7 @@ class PyGrainPipeline(pipelines.Pipeline):
         # Unreachable, but leaving it here to protect against future additions
         # to the enum.
         raise ValueError("Invalid batch_drop_remainder: {batch_drop_remainder}")
-    return ds.batch(
+    return ds.batch(  # pyrefly: ignore[bad-return]
         self.host_batch_size, batch_fn=batch_fn, drop_remainder=drop_remainder
     )
 
@@ -219,7 +219,7 @@ class PyGrainPipeline(pipelines.Pipeline):
     return self._make_root_ds(num_workers=num_workers)
 
   @functools.cached_property
-  def element_spec(self) -> PyTree[enp.ArraySpec]:
+  def element_spec(self) -> PyTree[enp.ArraySpec]:  # pyrefly: ignore[not-a-type]
     """Returns the element specs of a single batch."""
     # To avoid the memory overhead of multiprocessing when `num_workers` is
     # large, explicitly turn off multiprocessing here since we only require

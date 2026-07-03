@@ -60,7 +60,7 @@ def path_builder_from(prefix: str, cls: type[_T]) -> _T:
   """
   del cls  # Only used for type annotations
   # Maybe could use a `AnnotatedPathBuilder` when known ?
-  return DynamicPathBuilder(_PathBuilderState(part=_Root(prefix)))
+  return DynamicPathBuilder(_PathBuilderState(part=_Root(prefix)))  # pyrefly: ignore[bad-return]
 
 
 @dataclasses.dataclass(kw_only=True)
@@ -180,7 +180,7 @@ class AnnotatedPathBuilder(_PathBuilder):
 
   def __dir__(self) -> list[str]:
     """Available attributes (for Colab auto-complete)."""
-    return list(self._state.hints)
+    return list(self._state.hints)  # pyrefly: ignore[missing-attribute]
 
 
 @dataclasses.dataclass

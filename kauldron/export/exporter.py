@@ -118,7 +118,7 @@ class JaxModelExporter(ModelExporter):
 
   path_template: str = '{workdir}/{name}.jax_exported'
 
-  ds_sharding: sharding.ShardingTree = config_util.ROOT_CFG_REF.sharding.batch
+  ds_sharding: sharding.ShardingTree = config_util.ROOT_CFG_REF.sharding.batch  # pyrefly: ignore[not-a-type]
 
   def export(
       self,
@@ -205,7 +205,7 @@ def _create_dynamic_forward_fn(
       for name in kwarg_names
   ]
   new_signature = inspect.Signature(parameters)
-  _forward.__signature__ = new_signature
+  _forward.__signature__ = new_signature  # pyrefly: ignore[missing-attribute]
 
   # Set the name of the function
   _forward.__name__ = method or '__call__'
