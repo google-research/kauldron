@@ -113,7 +113,7 @@ class Metric(abc.ABC):
     kwargs = self._resolve_kwargs(context)
     return self.get_state(**kwargs)
 
-  def __call__(self, *, context: Any = None, **kwargs) -> PyTree[Float[""]]:
+  def __call__(self, *, context: Any = None, **kwargs) -> PyTree[Float[""]]:  # pyrefly: ignore[not-a-type]
     if context is not None:
       if kwargs:
         raise TypeError(
@@ -132,9 +132,9 @@ def _link_metric_to_state(fn: _FnT) -> _FnT:
   if hasattr(fn, "_has_link_metric"):  # Function decorated already
     return fn
 
-  @functools.wraps(fn)
+  @functools.wraps(fn)  # pyrefly: ignore[bad-argument-type]
   def new_get_state(self, *args, **kwargs):
-    state = fn(self, *args, **kwargs)
+    state = fn(self, *args, **kwargs)  # pyrefly: ignore[not-callable]
     if state.parent is base_state.EMPTY:  # pylint: disable=protected-access
       # preserve the parent if it is already set
       # this is important for wrapper metrics like `kd.metrics.TreeReduce`
@@ -142,8 +142,8 @@ def _link_metric_to_state(fn: _FnT) -> _FnT:
       state = dataclasses.replace(state, parent=self)
     return state
 
-  new_get_state._has_link_metric = True  # pylint: disable=protected-access
-  return new_get_state
+  new_get_state._has_link_metric = True  # pylint: disable=protected-access  # pyrefly: ignore[missing-attribute]
+  return new_get_state  # pyrefly: ignore[bad-return]
 
 
 def _is_flax_dataclass(cls) -> bool:
@@ -158,19 +158,19 @@ class NoopMetric(Metric):
   """Metric that does nothing. Can be used in sweeps to remove a metric."""
 
   @flax.struct.dataclass
-  class State(base_state.EmptyState):
+  class State(base_state.EmptyState):  # pyrefly: ignore[bad-override]
     pass
 
-  def get_state(self, **kwargs: Any) -> NoopMetric.State:
+  def get_state(self, **kwargs: Any) -> NoopMetric.State:  # pyrefly: ignore[bad-override]
     del kwargs
-    return self.State.empty()
+    return self.State.empty()  # pyrefly: ignore[bad-return]
 
 
 @flax.struct.dataclass
 class TreeState(base_state.State):
   """Holds a pytree of metric states."""
 
-  tree: Mapping["str", PyTree[base_state.State]] = flax.core.FrozenDict()
+  tree: Mapping["str", PyTree[base_state.State]] = flax.core.FrozenDict()  # pyrefly: ignore[not-a-type]
 
   @classmethod
   def empty(cls) -> TreeState:
@@ -223,7 +223,7 @@ class _TreeMetric(Metric):
         context, self, func=self.metric.get_state
     )
 
-  def _get_tree_state(self, **kwargs) -> PyTree[jax.Array]:
+  def _get_tree_state(self, **kwargs) -> PyTree[jax.Array]:  # pyrefly: ignore[not-a-type]
     """Extract the tree of metric states."""
     # Filter `None` keys as they are not passed as `kwargs`.
     # Match filtering in `kontext.resolve_from_keyed_obj`
@@ -284,7 +284,7 @@ class TreeMap(_TreeMetric):
   """
 
   @flax.struct.dataclass
-  class State(TreeState):
+  class State(TreeState):  # pyrefly: ignore[bad-override]
     pass
 
   def get_state(self, **kwargs):
@@ -299,7 +299,7 @@ class TreeReduce(_TreeMetric):
   The given metric defines the aggregation method.
   """
 
-  def get_state(self, **kwargs) -> base_state.State:
+  def get_state(self, **kwargs) -> base_state.State:  # pyrefly: ignore[bad-override]
     state_tree = self._get_tree_state(**kwargs)
     reduced_state = jax.tree.reduce(
         lambda x, y: x.merge(y),
@@ -309,7 +309,7 @@ class TreeReduce(_TreeMetric):
     )
     return reduced_state
 
-  def empty(self) -> base_state.State:
+  def empty(self) -> base_state.State:  # pyrefly: ignore[bad-override]
     return self.metric.empty()
 
 
@@ -354,7 +354,7 @@ class SkipIfMissing(Metric):
   metric: Metric
 
   @flax.struct.dataclass
-  class State(base_state.State):
+  class State(base_state.State):  # pyrefly: ignore[bad-override]
     """State for SkipIfMissing."""
 
     state: base_state.State | None = None
@@ -380,7 +380,7 @@ class SkipIfMissing(Metric):
         return self
       return dataclasses.replace(self, state=self.state.finalize())
 
-    def compute(self) -> PyTree[Any]:
+    def compute(self) -> PyTree[Any]:  # pyrefly: ignore[not-a-type]
       return self.state.compute() if self.state is not None else {}
 
   def _resolve_kwargs(self, context: Any) -> dict[kontext.Key, Any]:
@@ -390,14 +390,14 @@ class SkipIfMissing(Metric):
     )
 
   def get_state(self, **kwargs) -> Metric.State:
-    return self.State(state=self.metric.get_state(**kwargs))
+    return self.State(state=self.metric.get_state(**kwargs))  # pyrefly: ignore[bad-return]
 
   def get_state_from_context(self, context: Any) -> Metric.State:
     try:
       kwargs = self._resolve_kwargs(context)
       # TODO(klausg): move the get_state out of the try block
       # (after finding another way to make it compatible with TreeReduce)
-      return self.State(state=self.metric.get_state(**kwargs))
+      return self.State(state=self.metric.get_state(**kwargs))  # pyrefly: ignore[bad-return]
     except KeyError:
       return self.empty()
 

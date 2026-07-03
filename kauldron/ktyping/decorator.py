@@ -46,10 +46,10 @@ class _TypeCheckedPartial(epy.ContextManager):
     # The decorator case.
     # Dataclasses
     if dataclasses.is_dataclass(obj):
-      return _wrap_dataclass_with_typechecks(obj, new_scope=self.new_scope)
+      return _wrap_dataclass_with_typechecks(obj, new_scope=self.new_scope)  # pyrefly: ignore[bad-argument-type, bad-return]
     # Classmethods
     elif isinstance(obj, classmethod):
-      return classmethod(
+      return classmethod(  # pyrefly: ignore[bad-return]
           _wrap_fn_with_typechecks(
               obj.__func__,
               new_scope=self.new_scope,
@@ -58,7 +58,7 @@ class _TypeCheckedPartial(epy.ContextManager):
       )
     # Staticmethods
     elif isinstance(obj, staticmethod):
-      return staticmethod(
+      return staticmethod(  # pyrefly: ignore[bad-return]
           _wrap_fn_with_typechecks(
               obj.__func__,
               new_scope=self.new_scope,
@@ -66,11 +66,11 @@ class _TypeCheckedPartial(epy.ContextManager):
           )
       )
     elif isinstance(obj, property):
-      return _wrap_property_with_typechecks(obj, new_scope=self.new_scope)
+      return _wrap_property_with_typechecks(obj, new_scope=self.new_scope)  # pyrefly: ignore[bad-return]
     # Generator functions
     # TODO(klausg): support classmethod / staticmethod generator functions
     elif inspect.isgeneratorfunction(obj):
-      return _wrap_generator_with_typechecks(
+      return _wrap_generator_with_typechecks(  # pyrefly: ignore[bad-return]
           obj, new_scope=self.new_scope, source=source
       )
     # Functions and regular methods
@@ -143,9 +143,9 @@ def _wrap_fn_with_typechecks(
     fn: _WrappableT, new_scope: bool, source: utils.CodeLocation | None = None
 ) -> _WrappableT:
   """Wraps the given function with typechecking logic."""
-  sig = inspect.signature(fn)
+  sig = inspect.signature(fn)  # pyrefly: ignore[bad-argument-type]
 
-  @functools.wraps(fn)
+  @functools.wraps(fn)  # pyrefly: ignore[bad-argument-type]
   def _typechecked_wrapper(*args, **kwargs):
     # Hide the function from the traceback. Supported by Pytest and IPython
     __tracebackhide__ = True  # pylint: disable=unused-variable,invalid-name
@@ -154,13 +154,13 @@ def _wrap_fn_with_typechecks(
 
     if not config.get_config(source).typechecking_enabled:
       # typchecking disabled globally or locally -> just return fn(...)
-      return fn(*args, **kwargs)
+      return fn(*args, **kwargs)  # pyrefly: ignore[not-callable]
 
     bound_args = sig.bind(*args, **kwargs)
     non_default_args = {k for k in bound_args.arguments}
     bound_args.apply_defaults()
     bound_args = bound_args.arguments
-    annotations = utils.get_type_hints(fn)
+    annotations = utils.get_type_hints(fn)  # pyrefly: ignore[bad-argument-type]
     annotated_args = {
         k: (v, annotations[k])
         for k, v in bound_args.items()
@@ -169,7 +169,7 @@ def _wrap_fn_with_typechecks(
     default_args = [k for k in bound_args if k not in non_default_args]
 
     with scope.create_scope_for(
-        obj=fn,
+        obj=fn,  # pyrefly: ignore[bad-argument-type]
         fstring_locals=bound_args,
         arguments=bound_args,
         annotations=annotations,
@@ -193,7 +193,7 @@ def _wrap_fn_with_typechecks(
           )
 
       # call the decorated function
-      value = fn(*args, **kwargs)
+      value = fn(*args, **kwargs)  # pyrefly: ignore[not-callable]
 
       # check return type against annotations
       annot = annotations.get("return", Any)
@@ -213,7 +213,7 @@ def _wrap_fn_with_typechecks(
       # Finally return the return value.
       return value
 
-  return _typechecked_wrapper
+  return _typechecked_wrapper  # pyrefly: ignore[bad-return]
 
 
 # MARK: wrap generator
@@ -295,7 +295,7 @@ def _wrap_generator_with_typechecks(
         )
       return result
 
-  return _typechecked_generator_wrapper
+  return _typechecked_generator_wrapper  # pyrefly: ignore[bad-return]
 
 
 # MARK: wrap property

@@ -50,7 +50,7 @@ def test_array_type_check():
   )
 
   @typechecked
-  def f(x: NpFloat["*b h w"], y: Float["*b"]) -> Float["*b"]:
+  def f(x: NpFloat["*b h w"], y: Float["*b"]) -> Float["*b"]:  # pyrefly: ignore[not-a-type]
     return np.sum(x, axis=(-1, -2)) + y
 
   x = np.zeros((2, 3, 5, 7), dtype=np.float32)
@@ -73,7 +73,7 @@ def test_array_type_check():
 
 def test_array_type_check_with_regular_types():
   @typechecked
-  def f(x: Float["*b h w"], y: int, z: str) -> Float["*b"]:
+  def f(x: Float["*b h w"], y: int, z: str) -> Float["*b"]:  # pyrefly: ignore[not-a-type]
     return np.sum(x, axis=(-1, -2)) + len(z) + y
 
   x = np.zeros((2, 3, 5, 7), dtype=np.float32)
@@ -89,8 +89,8 @@ def test_array_type_check_with_regular_types():
 def test_array_type_check_with_containers():
   @typechecked
   def f(
-      x: list[Float["a b"]], y: dict[str, Int[""]]
-  ) -> tuple[Float["a b"], int]:
+      x: list[Float["a b"]], y: dict[str, Int[""]]  # pyrefly: ignore[not-a-type]
+  ) -> tuple[Float["a b"], int]:  # pyrefly: ignore[not-a-type]
     return x[0], int(y["a"])
 
   x = [np.zeros((2, 3), dtype=np.float32)]
@@ -108,7 +108,7 @@ def test_array_type_check_with_containers():
 
 def test_simple_array_type_union_check():
   @typechecked
-  def f(x: Float["*b h w"] | Float["*b"], y: Float["*b"]) -> Float["*b"]:
+  def f(x: Float["*b h w"] | Float["*b"], y: Float["*b"]) -> Float["*b"]:  # pyrefly: ignore[not-a-type]
     del x
     return y
 
@@ -125,7 +125,7 @@ def test_simple_array_type_union_check():
 
 def test_non_greedy_array_type_union_check():
   @typechecked
-  def f(x: Float["a"] | Float["b"], y: Float["a"]):
+  def f(x: Float["a"] | Float["b"], y: Float["a"]):  # pyrefly: ignore[not-a-type, unknown-name]
     del x, y
     return dim_view.dim["b"]
 
@@ -137,7 +137,7 @@ def test_non_greedy_array_type_union_check():
 
 def test_compound_array_type_union_check():
   @typechecked
-  def f(x: Float["3"] | Int["1"]) -> Float["*b"]:
+  def f(x: Float["3"] | Int["1"]) -> Float["*b"]:  # pyrefly: ignore[bad-index, not-a-type]
     return x
 
   with pytest.raises(errors.KTypeCheckError, match="is not an instance of"):
@@ -162,7 +162,7 @@ def test_compound_array_type_union_check():
 
 def test_fstring_interpolation():
   @typechecked
-  def f(x: Float["{batch_size} h {len(text)*5}"], batch_size: int, text: str):
+  def f(x: Float["{batch_size} h {len(text)*5}"], batch_size: int, text: str):  # pyrefly: ignore[not-a-type]
     del x, batch_size, text
     return
 
@@ -184,11 +184,11 @@ def test_fstring_interpolation():
 def test_typeddict_check():
   class Custom(TypedDict):
     a: int
-    b: Float["*b c"]
-    c: Float["c"]
+    b: Float["*b c"]  # pyrefly: ignore[not-a-type]
+    c: Float["c"]  # pyrefly: ignore[not-a-type, unknown-name]
 
   @typechecked
-  def f(x: Custom, y: Int["*b"]) -> int:
+  def f(x: Custom, y: Int["*b"]) -> int:  # pyrefly: ignore[not-a-type]
     return x["a"] + y.ndim
 
   x = {"a": 7, "b": np.zeros((2, 3)), "c": np.zeros((3,))}
@@ -258,7 +258,7 @@ def test_typechecked_dataclass_init():
   @dataclasses.dataclass
   class Foo:
     x: int
-    y: Float["*b"]
+    y: Float["*b"]  # pyrefly: ignore[not-a-type]
     z: str = "abc"
 
     def __post_init__(self):
@@ -279,7 +279,7 @@ def test_typechecked_dataclass_init_with_subclass():
   @typechecked
   @dataclasses.dataclass(frozen=True)
   class Bar(Foo):
-    x: float
+    x: float  # pyrefly: ignore[bad-override]
 
     def __init__(self, x):  # pylint: disable=useless-parent-delegation
       super().__init__(x)  # pytype: disable=wrong-arg-types
@@ -291,13 +291,13 @@ def test_typechecked_dataclass_arguments():
   @dataclasses.dataclass
   class Unchecked:
     a: int
-    b: Float["*b"]
+    b: Float["*b"]  # pyrefly: ignore[not-a-type]
 
   @typechecked
   @dataclasses.dataclass
   class Checked:
     a: int
-    b: Float["*b"]
+    b: Float["*b"]  # pyrefly: ignore[not-a-type]
 
   @typechecked
   def f(x: Unchecked, y: Checked):
@@ -362,7 +362,7 @@ def test_typechecked_property_success():
     @typechecked
     @bar.setter
     def bar(self, value: int):
-      self._bar = value
+      self._bar = value  # pyrefly: ignore[missing-attribute]
 
     @typechecked
     @bar.deleter
@@ -385,7 +385,7 @@ def test_typechecked_property_fail():
     @typechecked
     @bar.setter
     def bar(self, value: int):
-      self._bar = value
+      self._bar = value  # pyrefly: ignore[missing-attribute]
 
     @typechecked
     @bar.deleter
@@ -396,7 +396,7 @@ def test_typechecked_property_fail():
     _ = Foo().bar
 
   with pytest.raises(errors.KTypeCheckError, match="property 'bar'"):
-    Foo().bar = "None"
+    Foo().bar = "None"  # pyrefly: ignore[bad-argument-type]
 
   with pytest.raises(errors.KTypeCheckError, match="property 'bar'"):
     del Foo().bar

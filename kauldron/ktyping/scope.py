@@ -143,7 +143,7 @@ class ShapeScope(epy.ContextManager):
             "Mixing of ktyping and jaxtyping detected: Found jaxtyping"
             f" annotation in ktyping scope at {self.source.to_str()} for"
             f" {name}: {utils.get_type_name(annot)}",
-            policy=reporting_policy,
+            policy=reporting_policy,  # pyrefly: ignore[bad-argument-type]
         )
 
 

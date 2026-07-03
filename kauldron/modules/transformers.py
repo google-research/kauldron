@@ -35,7 +35,7 @@ class TransformerMLP(nn.Module):
   bias_init: Initializer = nn.initializers.zeros
 
   @nn.compact
-  def __call__(self, inputs: Float['*b d']) -> Float['*b d']:
+  def __call__(self, inputs: Float['*b d']) -> Float['*b d']:  # pyrefly: ignore[not-a-type]
     d = inputs.shape[-1]
     hidden_size = 4 * d if self.hidden_size is None else self.hidden_size
     h = nn.Dense(
@@ -72,9 +72,9 @@ class PreNormBlock(nn.Module):
   @nn.compact
   def __call__(
       self,
-      tokens: Float['*b n d'],
+      tokens: Float['*b n d'],  # pyrefly: ignore[not-a-type]
       attention_mask: Bool['*b 1 n n'] | None = None,
-  ) -> Float['*b n d']:
+  ) -> Float['*b n d']:  # pyrefly: ignore[not-a-type]
     norm_tokens = self.attention_norm(tokens).astype(tokens.dtype)  # pylint: disable=not-callable
     tokens += self.attention(
         inputs_q=norm_tokens,
@@ -128,9 +128,9 @@ class PostNormBlock(nn.Module):
   @nn.compact
   def __call__(
       self,
-      tokens: Float['*b n d'],
+      tokens: Float['*b n d'],  # pyrefly: ignore[not-a-type]
       attention_mask: Bool['*b 1 n n'] | None = None,
-  ) -> Float['*b n d']:
+  ) -> Float['*b n d']:  # pyrefly: ignore[not-a-type]
     tokens += self.attention(
         inputs_q=tokens, inputs_k=tokens, inputs_v=tokens, mask=attention_mask
     )
@@ -180,7 +180,7 @@ class ParallelAttentionBlock(nn.Module):
 
   @typechecked
   @nn.compact
-  def __call__(self, tokens: Float['*b n d']) -> Float['*b n d']:
+  def __call__(self, tokens: Float['*b n d']) -> Float['*b n d']:  # pyrefly: ignore[not-a-type]
     norm_tokens = self.attention_norm(tokens)
     post_att = self.attention(
         inputs_q=norm_tokens, inputs_k=norm_tokens, inputs_v=norm_tokens

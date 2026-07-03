@@ -44,8 +44,8 @@ class VggBlock(nn.Module):
   @kt.typechecked
   @nn.compact
   def __call__(
-      self, x: Float["*b h w _c"]
-  ) -> Float["*b h w {self.num_features}"]:
+      self, x: Float["*b h w _c"]  # pyrefly: ignore[not-a-type]
+  ) -> Float["*b h w {self.num_features}"]:  # pyrefly: ignore[not-a-type]
     for _ in range(self.num_layers):
       x = nn.Conv(
           features=self.num_features, kernel_size=(3, 3), padding="SAME"
@@ -60,12 +60,12 @@ class VggNet(nn.Module):
 
   @kt.typechecked
   @nn.compact
-  def __call__(self, x: Float["*b h w c"]) -> tuple[
-      Float["*b h w 64"],
-      Float["*b h//2 w//2 128"],
-      Float["*b h//4 w//4 256"],
-      Float["*b h//8 w//8 512"],
-      Float["*b h//16 w//16 512"],
+  def __call__(self, x: Float["*b h w c"]) -> tuple[  # pyrefly: ignore[not-a-type]
+      Float["*b h w 64"],  # pyrefly: ignore[not-a-type]
+      Float["*b h//2 w//2 128"],  # pyrefly: ignore[not-a-type]
+      Float["*b h//4 w//4 256"],  # pyrefly: ignore[not-a-type]
+      Float["*b h//8 w//8 512"],  # pyrefly: ignore[not-a-type]
+      Float["*b h//16 w//16 512"],  # pyrefly: ignore[not-a-type]
   ]:
     assert x.shape[-2] >= 16, str(x.shape)
     assert x.shape[-3] >= 16, str(x.shape)
@@ -99,10 +99,10 @@ class _LpipsVgg(nn.Module):
   @nn.compact
   def __call__(
       self,
-      images_1: Float["*b h w c"],
-      images_2: Float["*b h w c"],
+      images_1: Float["*b h w c"],  # pyrefly: ignore[not-a-type]
+      images_2: Float["*b h w c"],  # pyrefly: ignore[not-a-type]
       epsilon: float = 1e-5,
-  ) -> Float["*b 1"]:
+  ) -> Float["*b 1"]:  # pyrefly: ignore[not-a-type]
     """Compute the loss between inputs[0] and inputs[1].
 
     Both images must have height & width of at least 16 pixels.
@@ -152,7 +152,7 @@ class _LpipsVgg(nn.Module):
       )(squared_diff)
       # The mean over all pixels is set to float32 to avoid precision issues.
       out += jnp.mean(res, axis=(-3, -2, -1), dtype=jnp.float32)
-    return out[..., jnp.newaxis]
+    return out[..., jnp.newaxis]  # pyrefly: ignore[bad-index]
 
 
 @functools.cache
@@ -172,14 +172,14 @@ class LpipsVgg(base.Metric):
   in_vrange: tuple[float, float] = (0.0, 1.0)
 
   @flax.struct.dataclass
-  class State(base_state.AverageState):
+  class State(base_state.AverageState):  # pyrefly: ignore[bad-override]
     pass
 
   @kt.typechecked
-  def get_state(
+  def get_state(  # pyrefly: ignore[bad-override]
       self,
-      pred: Float["*b h w c"],
-      target: Float["*b h w c"],
+      pred: Float["*b h w c"],  # pyrefly: ignore[not-a-type]
+      target: Float["*b h w c"],  # pyrefly: ignore[not-a-type]
       mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> LpipsVgg.State:
     vgg_model = _get_vgg_model()
@@ -190,4 +190,4 @@ class LpipsVgg(base.Metric):
     )
     rescale = lambda x: image_metrics.rescale_image(x, self.in_vrange)
     values = vgg_model.apply(vgg_params, rescale(pred), rescale(target))
-    return self.State.from_values(values=values, mask=mask)
+    return self.State.from_values(values=values, mask=mask)  # pyrefly: ignore[bad-return]

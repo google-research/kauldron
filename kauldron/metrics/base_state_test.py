@@ -24,14 +24,14 @@ import sklearn.metrics
 
 @flax.struct.dataclass
 class AveragePrecision(kd.metrics.AutoState):
-  labels: Float['n_samples'] | Float['n_samples n_classes'] = (
+  labels: Float['n_samples'] | Float['n_samples n_classes'] = (  # pyrefly: ignore[unknown-name]
       kd.metrics.concat_field()
   )
-  logits: Float['n_samples'] | Float['n_samples n_classes'] = (
+  logits: Float['n_samples'] | Float['n_samples n_classes'] = (  # pyrefly: ignore[unknown-name]
       kd.metrics.concat_field()
   )
 
-  def compute(self) -> Float['']:
+  def compute(self) -> Float['']:  # pyrefly: ignore[not-a-type]
     return sklearn.metrics.average_precision_score(
         self.labels,
         self.logits,
@@ -98,7 +98,7 @@ def test_collecting_merge():
 @flax.struct.dataclass(kw_only=True)
 class FirstNImages(kd.metrics.AutoState):
   keep_first: int = kd.metrics.static_field()
-  images: Float['N h w 3'] = kd.metrics.truncate_field(num_field='keep_first')
+  images: Float['N h w 3'] = kd.metrics.truncate_field(num_field='keep_first')  # pyrefly: ignore[not-a-type]
 
 
 def test_collecting_first_image():

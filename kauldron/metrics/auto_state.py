@@ -36,7 +36,7 @@ _SelfT = TypeVar("_SelfT")
 Empty: TypeAlias = Literal[base_state._EMPTY_TYPE.EMPTY]  # pylint: disable=protected-access
 
 
-class AutoState(base_state.State[_MetricT]):
+class AutoState(base_state.State[_MetricT]):  # pyrefly: ignore[bad-specialization]
   """Flexible base class for conveniently defining custom states.
 
   Subclasses of AutoState have to use the @flax.struct.dataclass decorator and
@@ -101,15 +101,15 @@ class AutoState(base_state.State[_MetricT]):
     # first check static fields for equality and resolve any EMPTY fields
     # this is needed for truncate to work when merging with empty states
     static_fields = {}
-    for field in dataclasses.fields(self):
+    for field in dataclasses.fields(self):  # pyrefly: ignore[bad-argument-type]
       if _is_static_field(field):
         static_fields[field.name] = _assert_static_field_equal(
             getattr(self, field.name), getattr(other, field.name), field
         )
-    updated_self = dataclasses.replace(self, **static_fields)
+    updated_self = dataclasses.replace(self, **static_fields)  # pyrefly: ignore[bad-specialization]
 
     merged_fields = {}
-    for field in dataclasses.fields(self):
+    for field in dataclasses.fields(self):  # pyrefly: ignore[bad-argument-type]
       v1 = getattr(self, field.name)
       v2 = getattr(other, field.name)
       if not _is_static_field(field):
@@ -117,17 +117,17 @@ class AutoState(base_state.State[_MetricT]):
         merger = field.metadata["kd_field_merger"]
         merged_fields[field.name] = merger.merge(v1, v2, updated_self)
 
-    return dataclasses.replace(updated_self, **merged_fields)
+    return dataclasses.replace(updated_self, **merged_fields)  # pyrefly: ignore[bad-specialization]
 
   def finalize(self: _SelfT) -> _SelfT:
     """Finalizes the state (e.g. concatenate and converting to np.ndarrays)."""
     finalized_fields = {}
-    for field in dataclasses.fields(self):
+    for field in dataclasses.fields(self):  # pyrefly: ignore[bad-argument-type]
       if not _is_static_field(field):
         merger = field.metadata["kd_field_merger"]
         value = getattr(self, field.name)
         finalized_fields[field.name] = merger.finalize(value, self)
-    return dataclasses.replace(self, **finalized_fields)
+    return dataclasses.replace(self, **finalized_fields)  # pyrefly: ignore[bad-specialization]
 
   # Return `_SelfT` so auto-complete works
   def compute(self: _SelfT) -> _SelfT:
@@ -135,7 +135,7 @@ class AutoState(base_state.State[_MetricT]):
     # TODO(klausg): This call to finalize() should not be needed
     # (since it is called by AuxiliariesState.compute() anyways. But we leave it
     #  here for now to avoid breaking existing code.)
-    final = self.finalize()
+    final = self.finalize()  # pyrefly: ignore[missing-attribute]
     output = {}
     for f in dataclasses.fields(final):
       if not _is_static_field(f):
@@ -421,7 +421,7 @@ class _FieldMerger(abc.ABC):
 
   def finalize(
       self, v: Array | PyTree[Array] | Empty | None, state: base_state.State
-  ) -> np.ndarray | PyTree[np.ndarray] | None:
+  ) -> np.ndarray | PyTree[np.ndarray] | None:  # pyrefly: ignore[not-a-type]
     del state
     # by default convert to numpy array
     if v is EMPTY or v is None:
@@ -441,7 +441,7 @@ class _ReduceOp(_FieldMerger):
   on device until the final compute() is called.
   """
 
-  reduce_op: Callable[[Array, Array], Array]
+  reduce_op: Callable[[Array, Array], Array]  # pyrefly: ignore[not-a-type]
 
   def merge(
       self,
@@ -480,7 +480,7 @@ class _Concatenate(_FieldMerger):
       v1: Array | PyTree[Array] | Empty | None | _ConcatContainer,
       v2: Array | PyTree[Array] | Empty | None | _ConcatContainer,
       state: base_state.State,
-  ) -> PyTree[_ConcatContainer] | None:
+  ) -> PyTree[_ConcatContainer] | None:  # pyrefly: ignore[not-a-type]
     _assert_no_tracer(state, v1, v2)
     if v1 is None or v2 is None:
       if not (v1 is None and v2 is None):
@@ -574,7 +574,7 @@ class _Truncate(_FieldMerger):
     assert isinstance(v, Array)
     if num is None:
       return np.asarray(v)
-    axis = np.lib.array_utils.normalize_axis_index(self.axis, v.ndim)
+    axis = np.lib.array_utils.normalize_axis_index(self.axis, v.ndim)  # pyrefly: ignore[bad-argument-type]
     return np.asarray(v[(slice(None),) * axis + (slice(None, num),)])
 
   def finalize(

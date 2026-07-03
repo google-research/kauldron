@@ -22,7 +22,7 @@ import tensorflow as tf
 
 
 @typechecked
-def custom_function(x: Float["a b"], y: Int["b c"]) -> Float["b"]:
+def custom_function(x: Float["a b"], y: Int["b c"]) -> Float["b"]:  # pyrefly: ignore[not-a-type, unknown-name]
   del y
   return x[0]
 
@@ -88,9 +88,9 @@ def test_format_dim_assignment_with_unknown_dim():
 
 @typechecked
 def _broadcastable_fn(
-    x: Float["*#batch n"],
-    y: Int["*#batch m"],
-) -> Float["n"]:
+    x: Float["*#batch n"],  # pyrefly: ignore[not-a-type]
+    y: Int["*#batch m"],  # pyrefly: ignore[not-a-type]
+) -> Float["n"]:  # pyrefly: ignore[not-a-type, unknown-name]
   del y
   return x[..., :, 0]  # wrong return shape to trigger error
 

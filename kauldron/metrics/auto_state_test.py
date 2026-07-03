@@ -23,7 +23,7 @@ import pytest
 
 @flax.struct.dataclass(kw_only=True)
 class _StateFieldInnerState(auto_state.AutoState):
-  x: Float = auto_state.sum_field()
+  x: Float = auto_state.sum_field()  # pyrefly: ignore[not-a-type]
 
   def compute(self):
     return self.x * 2
@@ -32,7 +32,7 @@ class _StateFieldInnerState(auto_state.AutoState):
 @flax.struct.dataclass(kw_only=True)
 class _StateFieldOuterState(auto_state.AutoState):
   inner: _StateFieldInnerState = auto_state.state_field()
-  y: Float = auto_state.sum_field()
+  y: Float = auto_state.sum_field()  # pyrefly: ignore[not-a-type]
 
 
 def test_empty():
@@ -40,9 +40,9 @@ def test_empty():
   @flax.struct.dataclass(kw_only=True)
   class MyState(auto_state.AutoState):
     a: int = 3
-    b: Float = auto_state.sum_field()
-    c: Float = auto_state.concat_field()
-    d: Float = auto_state.truncate_field(num_field="a")
+    b: Float = auto_state.sum_field()  # pyrefly: ignore[not-a-type]
+    c: Float = auto_state.concat_field()  # pyrefly: ignore[not-a-type]
+    d: Float = auto_state.truncate_field(num_field="a")  # pyrefly: ignore[not-a-type]
 
   empty = MyState.empty()
   assert empty.a is base_state.EMPTY
@@ -72,7 +72,7 @@ def test_merge_sum():
   @flax.struct.dataclass(kw_only=True)
   class SumState(auto_state.AutoState):
     a: int = 3
-    b: Float = auto_state.sum_field()
+    b: Float = auto_state.sum_field()  # pyrefly: ignore[not-a-type]
     c: Float | None = auto_state.sum_field(default=None)
 
   s1 = SumState(a=3, b=np.ones((3, 2)))
@@ -100,8 +100,8 @@ def test_merge_concat():
   @flax.struct.dataclass(kw_only=True)
   class ConcatState(auto_state.AutoState):
     a: str = "irrelevant"
-    b: Float = auto_state.concat_field()
-    c: Float = auto_state.concat_field(axis=1)
+    b: Float = auto_state.concat_field()  # pyrefly: ignore[not-a-type]
+    c: Float = auto_state.concat_field(axis=1)  # pyrefly: ignore[not-a-type]
     d: Float | None = auto_state.concat_field(default=None)
 
   s1 = ConcatState(b=np.ones((3, 2)), c=np.ones((3, 2)))
@@ -135,8 +135,8 @@ def test_merge_pytree_concat():
   @flax.struct.dataclass(kw_only=True)
   class ConcatState(auto_state.AutoState):
     a: str = "irrelevant"
-    b: Float = auto_state.concat_field()
-    c: Float = auto_state.concat_field(axis=1)
+    b: Float = auto_state.concat_field()  # pyrefly: ignore[not-a-type]
+    c: Float = auto_state.concat_field(axis=1)  # pyrefly: ignore[not-a-type]
     d: Float | None = auto_state.concat_field(default=None)
 
   pytree1 = dict(key1=np.ones((3, 2)), key2=np.zeros((3, 2)))
@@ -189,8 +189,8 @@ def test_merge_truncate():
   class TruncateState(auto_state.AutoState):
     num_b: int = 4
     num_c: int = 3
-    b: Float = auto_state.truncate_field(num_field="num_b")
-    c: Float = auto_state.truncate_field(num_field="num_c", axis=1)
+    b: Float = auto_state.truncate_field(num_field="num_b")  # pyrefly: ignore[not-a-type]
+    c: Float = auto_state.truncate_field(num_field="num_c", axis=1)  # pyrefly: ignore[not-a-type]
     d: Float | None = auto_state.truncate_field(num_field="num_b", default=None)
 
   s1 = TruncateState(b=np.ones((3, 2)), c=np.ones((3, 2)))
@@ -222,7 +222,7 @@ def test_merge_truncate_without_merge():
   @flax.struct.dataclass(kw_only=True)
   class TruncateState(auto_state.AutoState):
     num: int = 4
-    arr: Float = auto_state.truncate_field(num_field="num")
+    arr: Float = auto_state.truncate_field(num_field="num")  # pyrefly: ignore[not-a-type]
 
   s = TruncateState(arr=np.ones((8, 2)))
 
@@ -236,7 +236,7 @@ def test_merge_truncate_none():
   @flax.struct.dataclass(kw_only=True)
   class TruncateNoneState(auto_state.AutoState):
     num_b: int | None = None
-    b: Float = auto_state.truncate_field(num_field="num_b")
+    b: Float = auto_state.truncate_field(num_field="num_b")  # pyrefly: ignore[not-a-type]
 
   s1 = TruncateNoneState(b=np.ones((3, 2)))
   s2 = TruncateNoneState(b=np.ones((3, 2)) * 2)
@@ -254,7 +254,7 @@ def test_merge_sum_tree():
 
   @flax.struct.dataclass(kw_only=True)
   class SumState(auto_state.AutoState):
-    my_tree: dict[str, Float] = auto_state.sum_field()
+    my_tree: dict[str, Float] = auto_state.sum_field()  # pyrefly: ignore[not-a-type]
 
   s1 = SumState(my_tree={"a": np.ones((3, 2)), "b": np.ones((5,)) * 5})
   s2 = SumState(my_tree={"a": np.ones((3, 2)) * 3, "b": np.ones((5,))})
@@ -271,7 +271,7 @@ def test_merge_min():
 
   @flax.struct.dataclass(kw_only=True)
   class MinState(auto_state.AutoState):
-    b: Float = auto_state.min_field()
+    b: Float = auto_state.min_field()  # pyrefly: ignore[not-a-type]
 
   s1 = MinState(b=np.ones((3, 2)))
   s2 = MinState(b=np.ones((3, 2)) * 5)
@@ -286,7 +286,7 @@ def test_merge_max():
 
   @flax.struct.dataclass(kw_only=True)
   class MaxState(auto_state.AutoState):
-    b: Float = auto_state.max_field()
+    b: Float = auto_state.max_field()  # pyrefly: ignore[not-a-type]
 
   s1 = MaxState(b=np.ones((3, 2)))
   s2 = MaxState(b=np.ones((3, 2)) * 5)
@@ -319,9 +319,9 @@ def test_finalize():
   @flax.struct.dataclass(kw_only=True)
   class MixedState(auto_state.AutoState):
     n: int = 3
-    c: Float = auto_state.concat_field()
-    t: Float = auto_state.truncate_field(num_field="n")
-    s: Float = auto_state.sum_field()
+    c: Float = auto_state.concat_field()  # pyrefly: ignore[not-a-type]
+    t: Float = auto_state.truncate_field(num_field="n")  # pyrefly: ignore[not-a-type]
+    s: Float = auto_state.sum_field()  # pyrefly: ignore[not-a-type]
 
   s1 = MixedState(c=jnp.ones((2, 3)), t=jnp.ones((2, 5)), s=jnp.ones((2, 7)))
   s2 = MixedState(c=jnp.ones((2, 3)), t=jnp.ones((2, 5)), s=jnp.ones((2, 7)))

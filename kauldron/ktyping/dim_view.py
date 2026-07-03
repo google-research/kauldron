@@ -68,7 +68,7 @@ class DimView:
     if values == {MISSING}:
       raise KeyError(f"Unknown dimension: {name}")
     if len(values) > 1:
-      raise errors.AmbiguousDimensionError(name, values)
+      raise errors.AmbiguousDimensionError(name, values)  # pyrefly: ignore[bad-argument-type]
     val = values.pop()
 
     assert not isinstance(val, internal_typing.Missing)
@@ -78,7 +78,7 @@ class DimView:
         raise ValueError(
             f"Regular (non */+) dims ({name!r}) must have length 1. Got: {val}"
         )
-      return val[0]
+      return val[0]  # pyrefly: ignore[bad-return]
     if dim_type == _DimType.MULTI:
       # TODO(klausg): Should we do something about Unknown dims? Error? None?
       return val
@@ -248,7 +248,7 @@ class _CurrentDimView(DimView):
     pass
 
   @property
-  def _scope(self) -> kscope.ShapeScope:
+  def _scope(self) -> kscope.ShapeScope:  # pyrefly: ignore[bad-override]
     __ktyping_ignore_frame__ = True  # pylint: disable=unused-variable
     return kscope.get_current_scope(nested_ok=False)
 

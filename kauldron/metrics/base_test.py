@@ -33,13 +33,13 @@ class IntAverage(base.Metric):
   mask: kontext.Key = None
 
   @flax.struct.dataclass
-  class State(base_state.AverageState):
+  class State(base_state.AverageState):  # pyrefly: ignore[bad-override]
 
     def compute(self):
       return int(super().compute())
 
-  def get_state(self, x=None) -> IntAverage.State:
-    return IntAverage.State.from_values(values=x)
+  def get_state(self, x=None) -> IntAverage.State:  # pyrefly: ignore[bad-override]
+    return IntAverage.State.from_values(values=x)  # pyrefly: ignore[bad-return]
 
 
 def test_noop_metric():
@@ -59,7 +59,7 @@ def test_avgerage_x_metric():
 
   # with merging
   e = m.empty()
-  y1 = e.merge(s1).compute()
+  y1 = e.merge(s1).compute()  # pyrefly: ignore[bad-argument-type]
   assert y1 == 5
 
   # interface 2
@@ -167,12 +167,12 @@ def test_error_if_state_is_not_flax_dataclass():
   class ValidMetric(base.Metric):  # pylint: disable=unused-variable
 
     @flax.struct.dataclass
-    class State(base_state.State):
+    class State(base_state.State):  # pyrefly: ignore[bad-override]
       a: int = 3
 
   with pytest.raises(TypeError, match="@flax.struct.dataclass"):
 
     class InvalidMetric(base.Metric):  # pylint: disable=unused-variable
 
-      class State(base_state.State):
+      class State(base_state.State):  # pyrefly: ignore[bad-override]
         a: int = 3

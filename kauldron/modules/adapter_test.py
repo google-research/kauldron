@@ -48,7 +48,7 @@ def test_external():
       is_training_property=False,
   )
 
-  assert not np.array_equal(out_train, inputs)
+  assert not np.array_equal(out_train, inputs)  # pyrefly: ignore[bad-argument-type]
   np.testing.assert_array_equal(out_eval, inputs)
 
 

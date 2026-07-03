@@ -123,7 +123,7 @@ def check_type_internal(
     return value
 
   if type(expected_type) is tuple:  # pylint: disable=unidiomatic-typecheck
-    expected_type = Union[expected_type]
+    expected_type = Union[expected_type]  # pyrefly: ignore[not-a-type]
 
   if memo is None:
     frame = sys._getframe(1)  # pylint: disable=protected-access
@@ -229,7 +229,7 @@ class MatchResult:
     spec = self.spec  # assign to local variable to avoid pytype error
     if array_type_meta.is_array_type(spec):
       # TODO(klausg): partially evaluate the acceptable shapes and list them.
-      return {spec.shape_spec}
+      return {spec.shape_spec}  # pyrefly: ignore[bad-return]
     else:
       return set()
 
@@ -308,7 +308,7 @@ def _array_type_checker(
         scope=shape_scope,
     )
 
-  shape_scope.candidates = match_result.updated_candidates
+  shape_scope.candidates = match_result.updated_candidates  # pyrefly: ignore[bad-argument-type]
 
 
 # MARK: ShapeType chk
@@ -342,7 +342,7 @@ def _shape_type_checker(
           f" '{origin_type.shape_spec}'",
           scope=shape_scope,
       )
-    shape_scope.candidates = updated_candidates
+    shape_scope.candidates = updated_candidates  # pyrefly: ignore[bad-argument-type]
 
 
 # MARK: Union checker
@@ -368,7 +368,7 @@ def _array_type_union_checker(
   if any(individual_matches):
     # There is at least one correct match -> no error
     # Update the candidates and return.
-    sscope.candidates = functools.reduce(
+    sscope.candidates = functools.reduce(  # pyrefly: ignore[bad-argument-type]
         frozenset.union, [m.updated_candidates for m in individual_matches if m]
     )
     return

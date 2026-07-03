@@ -45,7 +45,7 @@ def test_pytree_structure_spec_strip():
 
 def test_pytree_structure_spec_validation_not_string():
   with pytest.raises(TypeError, match="must be a string"):
-    pytree.PyTree[int, 42]  # pylint: disable=pointless-statement
+    pytree.PyTree[int, 42]  # pylint: disable=pointless-statement  # pyrefly: ignore[bad-index]
 
 
 def test_pytree_structure_spec_validation_no_prefix():

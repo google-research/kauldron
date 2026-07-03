@@ -54,14 +54,14 @@ def test_contains_any_array_type():
   assert tgc._contains_any_array_type(Float["*b"])
   assert tgc._contains_any_array_type(Float | int)
   assert tgc._contains_any_array_type(int | Int["*b"])
-  assert tgc._contains_any_array_type(Union[int | Int["*b"] | str])
+  assert tgc._contains_any_array_type(Union[int | Int["*b"] | str])  # pyrefly: ignore[not-a-type]
 
-  assert tgc._contains_any_array_type(list[Float["*b"]])
-  assert tgc._contains_any_array_type(tuple[str, Float["*b"], int])
-  assert tgc._contains_any_array_type(dict[str, Float["*b"]])
-  assert tgc._contains_any_array_type(Annotated[Float["*b"], "a b c"])
+  assert tgc._contains_any_array_type(list[Float["*b"]])  # pyrefly: ignore[not-a-type]
+  assert tgc._contains_any_array_type(tuple[str, Float["*b"], int])  # pyrefly: ignore[not-a-type]
+  assert tgc._contains_any_array_type(dict[str, Float["*b"]])  # pyrefly: ignore[not-a-type]
+  assert tgc._contains_any_array_type(Annotated[Float["*b"], "a b c"])  # pyrefly: ignore[not-a-type]
 
-  assert tgc._contains_any_array_type(tuple[list[dict[str, Float]], ...])
+  assert tgc._contains_any_array_type(tuple[list[dict[str, Float]], ...])  # pyrefly: ignore[not-a-type]
 
   assert not tgc._contains_any_array_type(int)
   assert not tgc._contains_any_array_type(Union[int, str])
@@ -73,7 +73,7 @@ def test_contains_any_array_type():
 
 def test_contains_any_array_type_typeddict():
   class TypedDict(typing.TypedDict):
-    x: Float["*b"]
+    x: Float["*b"]  # pyrefly: ignore[not-a-type]
     y: int
 
   class TypedDict2(typing.TypedDict):
@@ -87,7 +87,7 @@ def test_contains_any_array_type_typeddict():
 def test_contains_any_array_type_dataclass():
   @dataclasses.dataclass
   class CustomDataclass1:
-    x: tuple[Float["*b"], float]
+    x: tuple[Float["*b"], float]  # pyrefly: ignore[not-a-type]
     y: int
 
   @dataclasses.dataclass
@@ -105,13 +105,13 @@ def test_asssert_not_noreturn():
 
   tgc.assert_not_noreturn(f, typing.get_type_hints(f)["return"])
 
-  def g() -> NoReturn:
+  def g() -> NoReturn:  # pyrefly: ignore[bad-return]
     pass  # pytype: disable=bad-return-type
 
   with pytest.raises(typeguard.TypeCheckError):
     tgc.assert_not_noreturn(g, typing.get_type_hints(g)["return"])
 
-  def h() -> Never:
+  def h() -> Never:  # pyrefly: ignore[bad-return]
     pass  # pytype: disable=bad-return-type
 
   with pytest.raises(typeguard.TypeCheckError):
@@ -139,13 +139,13 @@ def test_union_with_non_array_types():
     # check that no errors are raised for correct types
     check_type(12, Float["*b"] | int)
     check_type(array, Float["*b"] | int)
-    check_type(None, Optional[Float["*b"]])
-    check_type(array, Optional[Float["*b"]])
+    check_type(None, Optional[Float["*b"]])  # pyrefly: ignore[not-a-type]
+    check_type(array, Optional[Float["*b"]])  # pyrefly: ignore[not-a-type]
 
     with pytest.raises(errors.KTypeCheckError, match="is not an instance of"):
       check_type(12, Float["*b"] | str)
     with pytest.raises(errors.KTypeCheckError, match="is not dtype-compatible"):
-      check_type(array, Optional[Int["*b"]])
+      check_type(array, Optional[Int["*b"]])  # pyrefly: ignore[not-a-type]
 
 
 def test_scalar_types():
@@ -173,7 +173,7 @@ def test_pytree_type_checker():
 
 def test_check_type_in_typechecked_function():
   @typechecked
-  def f(x: Float["a"]):
+  def f(x: Float["a"]):  # pyrefly: ignore[not-a-type, unknown-name]
     check_type(x, Float["a"])
 
   x = np.zeros((7,))
@@ -220,8 +220,8 @@ def test_mixed_array_and_simple_types_with_scope():
     assert tgc.isinstance_(x, Float["2 3"] | int)
     assert tgc.isinstance_(12, Float["2 3"] | int)
     assert not tgc.isinstance_("a", Float["2 3"] | int)
-    assert tgc.isinstance_([x], list[Float["2 3"]])
-    assert not tgc.isinstance_([12], list[Float["2 3"]])
+    assert tgc.isinstance_([x], list[Float["2 3"]])  # pyrefly: ignore[not-a-type]
+    assert not tgc.isinstance_([12], list[Float["2 3"]])  # pyrefly: ignore[not-a-type]
 
 
 def test_mixed_array_and_simple_types_no_scope_fails():
@@ -253,7 +253,7 @@ def test_check_type_fails_without_scope():
     check_type(x, Float["a"])
 
   @typechecked
-  def scoped_fn(x: Float["a"]):
+  def scoped_fn(x: Float["a"]):  # pyrefly: ignore[not-a-type, unknown-name]
     unscoped(x)
 
   x = np.zeros((7,))
@@ -274,7 +274,7 @@ def test_shape_checking_with_structure_in_scope():
   with typechecked():
     check_type(x, Float["a b"])
     s = scope_mod.get_current_scope(nested_ok=True)
-    s.candidates = [dict(c) | {"$S": "fake_treedef"} for c in s.candidates]
+    s.candidates = [dict(c) | {"$S": "fake_treedef"} for c in s.candidates]  # pyrefly: ignore[bad-argument-type]
     y = np.ones((2, 3), dtype=np.float32)
     check_type(y, Float["a b"])
 
@@ -284,7 +284,7 @@ def test_dim_view_str_ignores_structures():
   with typechecked():
     check_type(x, Float["a b"])
     s = scope_mod.get_current_scope(nested_ok=True)
-    s.candidates = [dict(c) | {"$S": "fake_treedef"} for c in s.candidates]
+    s.candidates = [dict(c) | {"$S": "fake_treedef"} for c in s.candidates]  # pyrefly: ignore[bad-argument-type]
     dv = dim_view.DimView(s)
     dims_str = str(dv)
     assert "$S" not in dims_str
@@ -296,7 +296,7 @@ def test_error_display_with_structures_does_not_crash():
   with typechecked():
     check_type(x, Float["a b"])
     s = scope_mod.get_current_scope(nested_ok=True)
-    s.candidates = [dict(c) | {"$T": "fake_treedef"} for c in s.candidates]
+    s.candidates = [dict(c) | {"$T": "fake_treedef"} for c in s.candidates]  # pyrefly: ignore[bad-argument-type]
     with pytest.raises(errors.KTypeCheckError) as exc_info:
       check_type(np.ones((5,), dtype=np.int32), Float["a b"])
     error_str = str(exc_info.value)
@@ -341,7 +341,7 @@ def test_pytree_structure_with_arrays():
 
 def test_pytree_structure_in_typechecked_fn():
   @typechecked
-  def f(x: pytree.PyTree[int, "$S"]) -> pytree.PyTree[int, "$S"]:
+  def f(x: pytree.PyTree[int, "$S"]) -> pytree.PyTree[int, "$S"]:  # pyrefly: ignore[not-a-type]
     return x
 
   assert f({"a": 1, "b": 2}) is not None
@@ -349,8 +349,8 @@ def test_pytree_structure_in_typechecked_fn():
 
   @typechecked
   def g(
-      x: pytree.PyTree[int, "$S"],
-  ) -> pytree.PyTree[int, "$S"]:
+      x: pytree.PyTree[int, "$S"],  # pyrefly: ignore[not-a-type]
+  ) -> pytree.PyTree[int, "$S"]:  # pyrefly: ignore[not-a-type]
     del x
     return [1, 2, 3]
 
@@ -387,7 +387,7 @@ def test_shape_spec_binds_dims():
   """Shape['*b t'] binds dims so kt.dim and kt.shape can access them."""
 
   @typechecked
-  def f(s: Shape["*b t"]):
+  def f(s: Shape["*b t"]):  # pyrefly: ignore[not-a-type]
     del s  # unused
     return dim_view.dim["t"], dim_view.dim["*b"]
 
@@ -400,7 +400,7 @@ def test_shape_spec_mismatch_raises():
   """Passing a tuple that doesn't match the spec raises KTypeCheckError."""
 
   @typechecked
-  def f(s: Shape["3 4"]):
+  def f(s: Shape["3 4"]):  # pyrefly: ignore[not-a-type]
     del s  # unused
 
   f((3, 4))  # should work
@@ -413,7 +413,7 @@ def test_shape_spec_inconsistent_with_array_raises():
   """Shape and array dims must be consistent."""
 
   @typechecked
-  def f(s: Shape["*b t"], x: Float["*b t d"]):
+  def f(s: Shape["*b t"], x: Float["*b t d"]):  # pyrefly: ignore[not-a-type]
     del s  # unused
     return x
 
@@ -427,7 +427,7 @@ def test_shape_spec_in_union():
   """Shape['*b t'] | None works correctly."""
 
   @typechecked
-  def f(s: Shape["*b t"] | None):
+  def f(s: Shape["*b t"] | None):  # pyrefly: ignore[not-a-type]
     del s  # unused
     pass
 
@@ -439,7 +439,7 @@ def test_shape_spec_non_shape_value_raises():
   """Non-shape values (e.g. str) raise errors with Shape spec."""
 
   @typechecked
-  def f(s: Shape["*b t"]):
+  def f(s: Shape["*b t"]):  # pyrefly: ignore[not-a-type]
     del s  # unused
 
   with pytest.raises(errors.KTypeCheckError, match="not a valid shape"):
@@ -450,7 +450,7 @@ def test_bare_shape_in_typechecked():
   """Bare Shape (no spec) still works as structural check in typechecked."""
 
   @typechecked
-  def f(s: Shape):
+  def f(s: Shape):  # pyrefly: ignore[not-a-type]
     return s
 
   assert f((2, 3)) == (2, 3)

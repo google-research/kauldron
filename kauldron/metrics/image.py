@@ -32,8 +32,8 @@ from kauldron.metrics import base_state
 
 
 def rescale_image(
-    x: Float["*b h w c"], in_vrange: tuple[float, float]
-) -> Float["*b h w c"]:
+    x: Float["*b h w c"], in_vrange: tuple[float, float]  # pyrefly: ignore[not-a-type]
+) -> Float["*b h w c"]:  # pyrefly: ignore[not-a-type]
   """Rescale an image from in_vrange to (0, 1)."""
   vmin, vmax = in_vrange
   return (x - vmin) / (vmax - vmin)
@@ -41,11 +41,11 @@ def rescale_image(
 
 @kt.typechecked
 def psnr(
-    a: Float["*b h w c"],
-    b: Float["*b h w c"],
+    a: Float["*b h w c"],  # pyrefly: ignore[not-a-type]
+    b: Float["*b h w c"],  # pyrefly: ignore[not-a-type]
     mask: Optional[Bool["*b h w c"] | Float["*b h w c"]] = None,
     dynamic_range: float = 1.0,
-) -> Float["*b 1"]:
+) -> Float["*b 1"]:  # pyrefly: ignore[not-a-type]
   """Computes PSNR for an image pair."""
   if mask is not None:
     a = a * mask
@@ -53,9 +53,9 @@ def psnr(
     # If mask is all-zero, we want to avoid division.
     divisor = jnp.maximum(1, jnp.sum(mask, axis=(-3, -2, -1)))
   else:
-    divisor = kt.dim["h"] * kt.dim["w"] * kt.dim["c"]
+    divisor = kt.dim["h"] * kt.dim["w"] * kt.dim["c"]  # pyrefly: ignore[unsupported-operation]
   error = jnp.square(a - b).sum(axis=(-3, -2, -1))
-  mse = error / divisor
+  mse = error / divisor  # pyrefly: ignore[unsupported-operation]
   return 20.0 * jnp.log10(dynamic_range) - 10.0 * jnp.log10(mse[..., None])
 
 
@@ -71,34 +71,34 @@ class Psnr(base.Metric):
   clip: float | None = None
 
   @flax.struct.dataclass
-  class State(base_state.AverageState):
+  class State(base_state.AverageState):  # pyrefly: ignore[bad-override]
     pass
 
   @kt.typechecked
-  def get_state(
+  def get_state(  # pyrefly: ignore[bad-override]
       self,
-      pred: Float["*b h w c"],
-      target: Float["*b h w c"],
+      pred: Float["*b h w c"],  # pyrefly: ignore[not-a-type]
+      target: Float["*b h w c"],  # pyrefly: ignore[not-a-type]
       mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> Psnr.State:
     dynamic_range = self.in_vrange[1] - self.in_vrange[0]
     values = psnr(a=pred, b=target, dynamic_range=dynamic_range)
     if self.clip is not None:
       values = jnp.minimum(values, self.clip)
-    return self.State.from_values(values=values, mask=mask)
+    return self.State.from_values(values=values, mask=mask)  # pyrefly: ignore[bad-return]
 
 
 # https://github.com/google-research/google-research/blob/abe03104c849ca228af386d785027809d7976a8c/jaxnerf/nerf/utils.py#L278
 @kt.typechecked
 def ssim(
-    img0: Float["*b h w c"],
-    img1: Float["*b h w c"],
+    img0: Float["*b h w c"],  # pyrefly: ignore[not-a-type]
+    img1: Float["*b h w c"],  # pyrefly: ignore[not-a-type]
     max_val: float,
     filter_size: int,
     filter_sigma: float,
     k1: float,
     k2: float,
-) -> Float["*b 1"]:
+) -> Float["*b 1"]:  # pyrefly: ignore[not-a-type]
   """Computes SSIM from two images.
 
   This function was modeled after tf.image.ssim, and should produce comparable
@@ -176,14 +176,14 @@ class Ssim(base.Metric):
   k2: float = 0.03
 
   @flax.struct.dataclass
-  class State(base_state.AverageState):
+  class State(base_state.AverageState):  # pyrefly: ignore[bad-override]
     pass
 
   @kt.typechecked
-  def get_state(
+  def get_state(  # pyrefly: ignore[bad-override]
       self,
-      pred: Float["*b h w c"],
-      target: Float["*b h w c"],
+      pred: Float["*b h w c"],  # pyrefly: ignore[not-a-type]
+      target: Float["*b h w c"],  # pyrefly: ignore[not-a-type]
       mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> Ssim.State:
     rescale = lambda x: rescale_image(x, self.in_vrange)
@@ -196,4 +196,4 @@ class Ssim(base.Metric):
         k1=self.k1,
         k2=self.k2,
     )
-    return self.State.from_values(values=values, mask=mask)
+    return self.State.from_values(values=values, mask=mask)  # pyrefly: ignore[bad-return]

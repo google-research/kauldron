@@ -168,31 +168,31 @@ XComplex128 = _create_x_type("XComplex128", dtypes.complex128)
 # These are either python builtin scalars or np/jnp/tf/torch scalars
 Scalar = atm.ArrayTypeMeta(
     "Scalar",
-    array_types=atm.ScalarLike,
+    array_types=atm.ScalarLike,  # pyrefly: ignore[bad-argument-type]
     dtype=dtypes.scalar_like,
     shape_spec="",
 )
 ScalarBool = atm.ArrayTypeMeta(
     "ScalarBool",
-    array_types=atm.ScalarLike,
+    array_types=atm.ScalarLike,  # pyrefly: ignore[bad-argument-type]
     dtype=dtypes.bool_like,
     shape_spec="",
 )
 ScalarInt = atm.ArrayTypeMeta(
     "ScalarInt",
-    array_types=atm.ScalarLike,
+    array_types=atm.ScalarLike,  # pyrefly: ignore[bad-argument-type]
     dtype=dtypes.int_like,
     shape_spec="",
 )
 ScalarFloat = atm.ArrayTypeMeta(
     "ScalarFloat",
-    array_types=atm.ScalarLike,
+    array_types=atm.ScalarLike,  # pyrefly: ignore[bad-argument-type]
     dtype=dtypes.float_like,
     shape_spec="",
 )
 ScalarComplex = atm.ArrayTypeMeta(
     "ScalarComplex",
-    array_types=atm.ScalarLike,
+    array_types=atm.ScalarLike,  # pyrefly: ignore[bad-argument-type]
     dtype=dtypes.complex_like,
     shape_spec="",
 )

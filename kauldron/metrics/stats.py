@@ -43,14 +43,14 @@ class SingleDimension(base.Metric):
   index: int | None = 0
 
   @flax.struct.dataclass
-  class State(base_state.AverageState):
+  class State(base_state.AverageState):  # pyrefly: ignore[bad-override]
     pass
 
   @typechecked
-  def get_state(self, tensor: Float["*any"]) -> SingleDimension.State:
+  def get_state(self, tensor: Float["*any"]) -> SingleDimension.State:  # pyrefly: ignore[bad-override, not-a-type]
     if self.index is not None:
       tensor = tensor[..., self.index]
-    return self.State.from_values(values=tensor)
+    return self.State.from_values(values=tensor)  # pyrefly: ignore[bad-return]
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -89,7 +89,7 @@ class Norm(base.Metric):
   aggregation_type: Literal["average", "concat"] | None = None
 
   @flax.struct.dataclass
-  class State(base_state.AverageState["Norm"]):
+  class State(base_state.AverageState["Norm"]):  # pyrefly: ignore[bad-override]
     """Wrapper around AverageState for Norm."""
 
     def merge(self, other: base_state.AverageState) -> base_state.AverageState:
@@ -106,7 +106,7 @@ class Norm(base.Metric):
         )
       return super().merge(other)
 
-    def compute(self) -> Float[""]:
+    def compute(self) -> Float[""]:  # pyrefly: ignore[not-a-type]
       parent = self.parent
       aggregation_type = (
           parent.aggregation_type
@@ -124,9 +124,9 @@ class Norm(base.Metric):
       )
 
   @typechecked
-  def get_state(
+  def get_state(  # pyrefly: ignore[bad-override]
       self,
-      tensor: Float["*any"],
+      tensor: Float["*any"],  # pyrefly: ignore[not-a-type]
       mask: Optional[Bool["*#any"] | Float["*#any"]] = None,
   ) -> Norm.State:
     if self.ord is not None and self.axis is None:
@@ -153,7 +153,7 @@ class Norm(base.Metric):
     values_for_averaging = (
         norm if aggregation_type == "average" else norm ** (self.ord or 2)
     )
-    return self.State.from_values(
+    return self.State.from_values(  # pyrefly: ignore[bad-return]
         values=values_for_averaging,
         mask=mask,
     )
@@ -218,13 +218,13 @@ class Std(base.Metric):
   mask: Optional[kontext.Key] = None
 
   @flax.struct.dataclass
-  class State(StdState):
+  class State(StdState):  # pyrefly: ignore[bad-override]
     pass
 
   @typechecked
-  def get_state(
+  def get_state(  # pyrefly: ignore[bad-override]
       self,
-      values: Float["*b n"],
+      values: Float["*b n"],  # pyrefly: ignore[not-a-type]
       mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> Std.State:
-    return self.State.from_values(values=values, mask=mask)
+    return self.State.from_values(values=values, mask=mask)  # pyrefly: ignore[bad-return]

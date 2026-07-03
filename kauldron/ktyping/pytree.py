@@ -86,9 +86,9 @@ class _PyTreeMeta(type):
     )
 
   def __instancecheck__(cls, instance: Any) -> bool:
-    is_leaf = lambda x: isinstance(x, cls.leaf_type)
+    is_leaf = lambda x: isinstance(x, cls.leaf_type)  # pyrefly: ignore[invalid-argument]
     return jax.tree.reduce(
-        lambda prev, x: prev and isinstance(x, cls.leaf_type),
+        lambda prev, x: prev and isinstance(x, cls.leaf_type),  # pyrefly: ignore[invalid-argument]
         instance,
         True,
         is_leaf=is_leaf,

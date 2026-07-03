@@ -59,7 +59,7 @@ def get_type_name(type_: Any, full_path: bool = False) -> str:
   # We safely separate the base name from any parameterized brackets `[...]`
   # so we do not split on dots inside the brackets (like ellipsis `...`
   # in shape specs or dots in `Literal['a.b']`).
-  match = _GENERIC_TYPE_NAME_PATTERN.match(name)
+  match = _GENERIC_TYPE_NAME_PATTERN.match(name)  # pyrefly: ignore[no-matching-overload]
   if match:
     base_name, rest = match.groups()
     if "." in base_name:
@@ -75,7 +75,7 @@ def get_type_name(type_: Any, full_path: bool = False) -> str:
     else:
       formatted_args = ", ".join(get_type_name(arg) for arg in args)
 
-    name += f"[{formatted_args}]"
+    name += f"[{formatted_args}]"  # pyrefly: ignore[unsupported-operation]
 
   if full_path:
     if not isinstance(type_, type):
@@ -84,7 +84,7 @@ def get_type_name(type_: Any, full_path: bool = False) -> str:
     if module not in (None, "typing", "typing_extensions", "builtins"):
       name = module + "." + name
 
-  return name
+  return name  # pyrefly: ignore[bad-return]
 
 
 # MARK: format_value
@@ -103,10 +103,10 @@ def format_value(val: Any, truncate: int | None = 40):
 
   # Otherwise show a (possibly truncated) repr.
   r = repr(val)
-  if len(r) > truncate:
+  if len(r) > truncate:  # pyrefly: ignore[unsupported-operation]
     # Keep the first 36 and the last 1 character of the repr.
     # (This keeps the closing quotes, parenthesis, etc.)
-    r = r[: truncate - 4] + "..." + r[-1:]
+    r = r[: truncate - 4] + "..." + r[-1:]  # pyrefly: ignore[unsupported-operation]
   return r
 
 
@@ -197,7 +197,7 @@ class CodeLocation:
       elif isinstance(obj, staticmethod):
         description = f"staticmethod '{obj.__name__}'"
       elif isinstance(obj, property):
-        description = f"property '{obj.fget.__name__}'"
+        description = f"property '{obj.fget.__name__}'"  # pyrefly: ignore[missing-attribute]
       elif typing.is_typeddict(obj):
         description = f"TypedDict '{obj.__name__}'"
       elif dataclasses.is_dataclass(obj):

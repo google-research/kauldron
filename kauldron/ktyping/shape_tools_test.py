@@ -74,7 +74,7 @@ def test_eval_shape_ambiguous_alternatives():
 
 def test_shape_works_in_typechecked_func():
   @typechecked
-  def f(x: Float["a b"]):
+  def f(x: Float["a b"]):  # pyrefly: ignore[not-a-type]
     del x
     return shape_tools.shape("b a")
 

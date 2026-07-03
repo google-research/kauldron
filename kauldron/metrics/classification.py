@@ -55,7 +55,7 @@ class Accuracy(base.Metric):
   mask: Optional[kontext.Key] = None
 
   @flax.struct.dataclass
-  class State(base_state.AverageState):
+  class State(base_state.AverageState):  # pyrefly: ignore[bad-override]
     pass
 
   def __post_init__(self):
@@ -68,10 +68,10 @@ class Accuracy(base.Metric):
       )
 
   @kt.typechecked
-  def get_state(
+  def get_state(  # pyrefly: ignore[bad-override]
       self,
       *,
-      labels: Int["*b 1"],
+      labels: Int["*b 1"],  # pyrefly: ignore[not-a-type]
       logits: Float["*b n"] | None = None,
       pred_labels: Int["*b 1"] | None = None,
       mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
@@ -80,7 +80,7 @@ class Accuracy(base.Metric):
       pred_labels = logits.argmax(axis=-1, keepdims=True)
     assert pred_labels is not None
     correct = jnp.asarray(pred_labels == labels, dtype=jnp.float32)
-    return self.State.from_values(values=correct, mask=mask)
+    return self.State.from_values(values=correct, mask=mask)  # pyrefly: ignore[bad-return]
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -92,19 +92,19 @@ class Precision1(base.Metric):
   mask: Optional[kontext.Key] = None
 
   @flax.struct.dataclass
-  class State(base_state.AverageState):
+  class State(base_state.AverageState):  # pyrefly: ignore[bad-override]
     pass
 
   @kt.typechecked
-  def get_state(
+  def get_state(  # pyrefly: ignore[bad-override]
       self,
-      logits: Float["*b n"],
-      labels: Float["*b n"],
+      logits: Float["*b n"],  # pyrefly: ignore[not-a-type]
+      labels: Float["*b n"],  # pyrefly: ignore[not-a-type]
       mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> Precision1.State:
     pred_argmax = logits.argmax(axis=-1, keepdims=True)
     correct = jnp.take_along_axis(labels, pred_argmax, -1)
-    return self.State.from_values(values=correct, mask=mask)
+    return self.State.from_values(values=correct, mask=mask)  # pyrefly: ignore[bad-return]
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -115,14 +115,14 @@ class BinaryAccuracy(base.Metric):
   labels: kontext.Key = kontext.REQUIRED  # e.g. "batch.label"
 
   @flax.struct.dataclass
-  class State(base_state.AverageState):
+  class State(base_state.AverageState):  # pyrefly: ignore[bad-override]
     pass
 
   @kt.typechecked
-  def get_state(
+  def get_state(  # pyrefly: ignore[bad-override]
       self,
-      logits: Float["*any"],
-      labels: Int["*any"],
+      logits: Float["*any"],  # pyrefly: ignore[not-a-type]
+      labels: Int["*any"],  # pyrefly: ignore[not-a-type]
       mask: Optional[Bool["*#any"] | Float["*#any"]] = None,
   ):
     correct = (logits > 0) == labels
@@ -152,15 +152,15 @@ class RocAuc(base.Metric):
   multi_class_mode: str = "ovr"  # One-vs-Rest ("ovr") or One-vs-One ("ovo")
 
   @flax.struct.dataclass
-  class State(metrics.AutoState["RocAuc"]):
+  class State(metrics.AutoState["RocAuc"]):  # pyrefly: ignore[bad-override]
     """RocAuc state."""
 
-    labels: Int["*b 1"] = metrics.concat_field()
-    probs: Float["*b n"] = metrics.concat_field()
+    labels: Int["*b 1"] = metrics.concat_field()  # pyrefly: ignore[not-a-type]
+    probs: Float["*b n"] = metrics.concat_field()  # pyrefly: ignore[not-a-type]
     mask: Bool["*b 1"] | Float["*b 1"] = metrics.concat_field()
 
     @kt.typechecked
-    def compute(self) -> float:
+    def compute(self) -> float:  # pyrefly: ignore[bad-override]
       labels = self.labels[..., 0]
       kt.check_type(labels, Int["b"])
       # roc_auc_score is very picky so we first filter out all the classes
@@ -201,10 +201,10 @@ class RocAuc(base.Metric):
         return 0.0
 
   @kt.typechecked
-  def get_state(
+  def get_state(  # pyrefly: ignore[bad-override]
       self,
-      logits: Float["*b n"],
-      labels: Int["*b 1"],
+      logits: Float["*b n"],  # pyrefly: ignore[not-a-type]
+      labels: Int["*b 1"],  # pyrefly: ignore[not-a-type]
       mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> RocAuc.State:
     # simply collect the given values

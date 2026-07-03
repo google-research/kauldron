@@ -33,13 +33,13 @@ def test_roc():
   s0 = metric.get_state(logits=logits, labels=labels)
   s1 = metrics.RocAuc().empty()
 
-  x = s0.merge(s1).finalize().compute()
-  y = s1.merge(s0).finalize().compute()
+  x = s0.merge(s1).finalize().compute()  # pyrefly: ignore[bad-argument-type]
+  y = s1.merge(s0).finalize().compute()  # pyrefly: ignore[bad-argument-type]
   np.testing.assert_allclose(x, y)
 
   # Parent is correctly forwarded
   assert s0.parent == s1.parent
-  assert s0.merge(s1).parent == s0.parent
+  assert s0.merge(s1).parent == s0.parent  # pyrefly: ignore[bad-argument-type]
 
   metric = metrics.RocAuc(multi_class_mode='ovo')
   s3 = metric.get_state(logits=logits, labels=labels)

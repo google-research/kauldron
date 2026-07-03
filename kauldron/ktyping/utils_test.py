@@ -213,7 +213,7 @@ def test_code_location_from_any_builtins_exec():
         kdt.Float[""],
         kdt.UInt8["a b"],
         # composite kd.typing types
-        Union[float, kdt.Float32["n"]],
+        Union[float, kdt.Float32["n"]],  # pyrefly: ignore[unknown-name]
         Optional[kdt.Int[""]],
         int | kdt.Integer[""],
         tuple[int, bool, kdt.Bool[""]],
@@ -239,11 +239,11 @@ def test_contains_jaxtyping_type_true_for_jaxtyping_types(annot):
         kt.Float[""],
         kt.UInt8["a b"],
         # composite ktyping types
-        Union[float, kt.Float32["n"]],
-        Optional[kt.Int[""]],
+        Union[float, kt.Float32["n"]],  # pyrefly: ignore[not-a-type, unknown-name]
+        Optional[kt.Int[""]],  # pyrefly: ignore[not-a-type]
         int | kt.Int[""],
-        tuple[int, bool, kt.Bool[""]],
-        dict[str, kt.Complex64[""]],
+        tuple[int, bool, kt.Bool[""]],  # pyrefly: ignore[not-a-type]
+        dict[str, kt.Complex64[""]],  # pyrefly: ignore[not-a-type]
     ],
 )
 def test_contains_jaxtyping_type_false_otherwise(annot):

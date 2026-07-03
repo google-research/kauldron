@@ -56,7 +56,7 @@ class VitEncoder(nn.Module):
 
   @typechecked
   @nn.compact
-  def __call__(self, images: Float['*b h w c']) -> Float['*b n d']:
+  def __call__(self, images: Float['*b h w c']) -> Float['*b n d']:  # pyrefly: ignore[not-a-type]
     warnings.warn(
         'Deprecated! Use kd.modules.vit.VitEncoder instead.',
         category=DeprecationWarning,
@@ -134,8 +134,8 @@ class Vit(nn.Module):
   @typechecked
   @nn.compact
   def __call__(
-      self, image: Float['*b h w c']
-  ) -> dict[str, Float['*b num_classes']]:
+      self, image: Float['*b h w c']  # pyrefly: ignore[not-a-type]
+  ) -> dict[str, Float['*b num_classes']]:  # pyrefly: ignore[not-a-type]
     warnings.warn(
         'Deprecated! Use kd.modules.vit.Vit instead.',
         category=DeprecationWarning,
@@ -171,7 +171,7 @@ class ParallelSelfAttentionBlock(nn.Module):
 
   @typechecked
   @nn.compact
-  def __call__(self, tokens: Float['*b n d']) -> Float['*b n d']:
+  def __call__(self, tokens: Float['*b n d']) -> Float['*b n d']:  # pyrefly: ignore[not-a-type]
     warnings.warn(
         'Deprecated! Use kd.modules.transformers.ParallelAttentionBlock'
         ' instead.',
@@ -221,11 +221,11 @@ class ImprovedMHDPAttention(nn.Module):
   @nn.compact
   def __call__(
       self,
-      inputs_q: Float['*b q d1'],
-      inputs_kv: Float['*b k d2'],
-      bias: Optional[Float['*b #h #q #k']] = None,
-      mask: Optional[Bool['*b #h #q #k']] = None,
-  ) -> Float['*b q d1']:
+      inputs_q: Float['*b q d1'],  # pyrefly: ignore[not-a-type]
+      inputs_kv: Float['*b k d2'],  # pyrefly: ignore[not-a-type]
+      bias: Optional[Float['*b #h #q #k']] = None,  # pyrefly: ignore[not-a-type]
+      mask: Optional[Bool['*b #h #q #k']] = None,  # pyrefly: ignore[not-a-type]
+  ) -> Float['*b q d1']:  # pyrefly: ignore[not-a-type]
     """Applies multi-head dot product attention on the input data.
 
     Projects the inputs into multi-headed query, key, and value vectors,
@@ -306,12 +306,12 @@ class ImprovedMHDPAttention(nn.Module):
 
 @typechecked
 def dot_product_attention_weights(
-    query: Float['*b q h d'],
-    key: Float['*b k h d'],
+    query: Float['*b q h d'],  # pyrefly: ignore[not-a-type]
+    key: Float['*b k h d'],  # pyrefly: ignore[not-a-type]
     softmax_axes: Axes = -1,
-    bias: Optional[Float['*b #h #q #k']] = None,
-    mask: Optional[Bool['*b #h #q #k']] = None,
-) -> Float['*b h q k']:
+    bias: Optional[Float['*b #h #q #k']] = None,  # pyrefly: ignore[not-a-type]
+    mask: Optional[Bool['*b #h #q #k']] = None,  # pyrefly: ignore[not-a-type]
+) -> Float['*b h q k']:  # pyrefly: ignore[not-a-type]
   """Computes dot-product attention weights given query and key.
 
   q: number of queries, k: number of keys, h: number of heads

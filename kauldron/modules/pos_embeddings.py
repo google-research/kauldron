@@ -40,7 +40,7 @@ class AddEmbedding(nn.Module):
   emb: knn_types.PositionEmbedding
   axis: Axes
 
-  def __call__(self, inputs: Float['*any']) -> Float['*any']:
+  def __call__(self, inputs: Float['*any']) -> Float['*any']:  # pyrefly: ignore[not-a-type]
     return inputs + self.emb(inputs.shape, axis=self.axis)
 
 
@@ -60,7 +60,7 @@ class FourierEmbedding(nn.Module):
 
   @typechecked
   @nn.compact
-  def __call__(self, shape: Shape, *, axis: Axes) -> Float['...']:
+  def __call__(self, shape: Shape, *, axis: Axes) -> Float['...']:  # pyrefly: ignore[bad-index, not-a-type]
     emb_shape = _get_embedding_shape_from_axes(shape, axis)
     coord_shape = emb_shape[:-1]  # skip feature axis
 
@@ -90,7 +90,7 @@ class LearnedEmbedding(nn.Module):
 
   @typechecked
   @nn.compact
-  def __call__(self, shape: Shape, *, axis: Axes) -> Float['...']:
+  def __call__(self, shape: Shape, *, axis: Axes) -> Float['...']:  # pyrefly: ignore[bad-index, not-a-type]
     """Return learned positional embeddings broadcast to shape.
 
     Args:
@@ -115,7 +115,7 @@ class ZeroEmbedding(nn.Module):
 
   @typechecked
   @nn.compact
-  def __call__(self, shape: Shape, *, axis: Axes = ()) -> Float['...']:
+  def __call__(self, shape: Shape, *, axis: Axes = ()) -> Float['...']:  # pyrefly: ignore[bad-index, not-a-type]
     del axis
     return jnp.zeros(shape=shape, dtype=self.dtype)
 
@@ -140,7 +140,7 @@ class AddLearnedEmbedding(nn.Module):
 
   @typechecked
   @nn.compact
-  def __call__(self, inputs: Float['*b n d']) -> Float['*b n d']:
+  def __call__(self, inputs: Float['*b n d']) -> Float['*b n d']:  # pyrefly: ignore[not-a-type]
     warnings.warn(
         f'{self.__class__.__name__} is deprecated in favor of LearnedEmbedding',
         DeprecationWarning,
@@ -156,7 +156,7 @@ class AddLearnedEmbedding(nn.Module):
     return inputs + pe
 
 
-def _get_embedding_shape_from_axes(full_shape: Shape, axis: Axes) -> Shape:
+def _get_embedding_shape_from_axes(full_shape: Shape, axis: Axes) -> Shape:  # pyrefly: ignore[not-a-type]
   """Produces a broadcastable shape from given axes.
 
   Automatically includes the feature axis (-1)
@@ -182,7 +182,7 @@ def _get_embedding_shape_from_axes(full_shape: Shape, axis: Axes) -> Shape:
         'Do not explicitly include feature axis (-1), as it is implicitly'
         f' included. Provided {axis=}.'
     )
-  axis = axis + (-1,)
+  axis = axis + (-1,)  # pyrefly: ignore[unsupported-operation]
 
   shape = [1] * len(full_shape)
   for ax in axis:
@@ -195,7 +195,7 @@ def _get_embedding_shape_from_axes(full_shape: Shape, axis: Axes) -> Shape:
   return tuple(shape)
 
 
-def _lsqueeze_shape(shape: Shape) -> Shape:
+def _lsqueeze_shape(shape: Shape) -> Shape:  # pyrefly: ignore[not-a-type]
   """Removes all leading 1-dimensions from given shape. DEPRECATED."""
   shape = list(shape)
   while shape and shape[0] == 1:
@@ -203,7 +203,7 @@ def _lsqueeze_shape(shape: Shape) -> Shape:
   return tuple(shape)
 
 
-def _get_shape_from_axes(full_shape: Shape, axes: Axes) -> Shape:
+def _get_shape_from_axes(full_shape: Shape, axes: Axes) -> Shape:  # pyrefly: ignore[not-a-type]
   """Produces a broadcastable shape from given axes. DEPRECATED."""
   if isinstance(axes, int):
     axes = [axes]
@@ -217,7 +217,7 @@ def _get_shape_from_axes(full_shape: Shape, axes: Axes) -> Shape:
 def _create_gradient_grid(
     samples_per_dim: tuple[int, ...],
     value_range: tuple[float, float] = (-1.0, 1.0),
-) -> Float['...']:
+) -> Float['...']:  # pyrefly: ignore[bad-index, not-a-type]
   """Creates a tensor with equidistant entries from -1 to +1 in each dim.
 
   Args:
@@ -236,10 +236,10 @@ def _create_gradient_grid(
 
 @typechecked
 def convert_to_fourier_features(
-    inputs: Float['... D'],
+    inputs: Float['... D'],  # pyrefly: ignore[not-a-type]
     basis_degree: int,
     precision: Optional[jax.lax.PrecisionLike] = jax.lax.Precision.HIGHEST,
-) -> Float['... d']:
+) -> Float['... d']:  # pyrefly: ignore[not-a-type]
   """Convert inputs to Fourier features, e.g. for positional encoding."""
 
   # inputs.shape = (..., n_dims).

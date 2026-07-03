@@ -77,7 +77,7 @@ class WrapperModule(nn.Module):
     #     input='batch.input',  # keys propagated to the `WrapperModule`
     #   ),
     # )
-    return kontext.get_keypaths(self.model)
+    return kontext.get_keypaths(self.model)  # pyrefly: ignore[bad-return]
 
 
 class ExternalModule(WrapperModule):

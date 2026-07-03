@@ -56,14 +56,14 @@ class Ari(base.Metric):
   mask: Optional[kontext.Key] = None
 
   @flax.struct.dataclass
-  class State(base_state.AverageState):
+  class State(base_state.AverageState):  # pyrefly: ignore[bad-override]
     pass
 
   @typechecked
-  def get_state(
+  def get_state(  # pyrefly: ignore[bad-override]
       self,
-      predictions: Int["*b t h w 1"],
-      labels: Int["*b t h w 1"],
+      predictions: Int["*b t h w 1"],  # pyrefly: ignore[not-a-type]
+      labels: Int["*b t h w 1"],  # pyrefly: ignore[not-a-type]
       mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> Ari.State:
     # TODO(svansteenkiste): support non video inputs.
@@ -75,4 +75,4 @@ class Ari(base.Metric):
         num_instances_pred=self.num_instances_pred,
         ignored_ids=self.ignored_ids,
     )
-    return self.State.from_values(values=values, mask=mask)
+    return self.State.from_values(values=values, mask=mask)  # pyrefly: ignore[bad-return]

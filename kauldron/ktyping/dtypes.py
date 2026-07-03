@@ -31,7 +31,7 @@ class DType(abc.ABC):
   def matches(self, obj: Any) -> bool:
     """Returns True if the object (array or scalar) matches this dtype."""
 
-  def __or__(self, other: Any) -> CompoundDType | NotImplemented:
+  def __or__(self, other: Any) -> CompoundDType | NotImplemented:  # pyrefly: ignore[not-a-type]
     if not isinstance(other, DType):
       return NotImplemented
     return CompoundDType(subtypes=(self, other))

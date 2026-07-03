@@ -164,7 +164,7 @@ def test_long_form_array_types():
     _ = art.Scalar[np.ndarray, "a"]
 
   with pytest.raises(TypeError):
-    _ = art.Float32["a", np.ndarray]
+    _ = art.Float32["a", np.ndarray]  # pyrefly: ignore[bad-index]
 
   with pytest.raises(TypeError):
     NpFloat32 = atm.ArrayTypeMeta(  # pylint: disable=invalid-name
@@ -261,7 +261,7 @@ def test_shape_double_spec_raises():
 def test_shape_getitem_non_string_raises():
   """Shape[123] raises TypeError."""
   with pytest.raises(TypeError, match="expects a string"):
-    _ = art.Shape[123]
+    _ = art.Shape[123]  # pyrefly: ignore[bad-index]
 
 
 def test_shape_getitem_repr():

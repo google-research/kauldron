@@ -67,7 +67,7 @@ def _eval_shape(spec_str: str, candidates: CandidateDims) -> Shape:
   shape_candidates = []
   errors = []
   if not candidates:
-    candidates = [{}]  # try without dim values to support fixed shapes
+    candidates = [{}]  # try without dim values to support fixed shapes  # pyrefly: ignore[bad-assignment]
 
   for dim_values in candidates:
     try:

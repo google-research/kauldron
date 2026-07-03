@@ -104,7 +104,7 @@ class FlatAutoencoder(nn.Module):
 
   @typechecked
   @nn.compact
-  def __call__(self, inputs: Float['b *inner']) -> dict[str, Float['b *inner']]:
+  def __call__(self, inputs: Float['b *inner']) -> dict[str, Float['b *inner']]:  # pyrefly: ignore[not-a-type, unknown-name]
     flat_inputs = einops.rearrange(inputs, 'b ... -> b (...)')
 
     h = self.encoder(flat_inputs)

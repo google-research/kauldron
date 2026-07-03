@@ -188,7 +188,7 @@ class TestShapeTools:
     sym_b = _make_symbolic_dim("B")
 
     @typechecked
-    def f(x: ArraySpec["B T"]):
+    def f(x: ArraySpec["B T"]):  # pyrefly: ignore[not-a-type]
       del x
       return shape_tools.shape("T B")
 
@@ -210,7 +210,7 @@ class TestIntegration:
 
   def test_jax_export_with_typechecked(self):
     @typechecked
-    def my_fn(x: Float["B T D"]) -> Float["B T D"]:
+    def my_fn(x: Float["B T D"]) -> Float["B T D"]:  # pyrefly: ignore[not-a-type]
       s = shape_tools.shape("B T D")
       b = dim_view.dim["B"]
       del s, b
@@ -226,8 +226,8 @@ class TestIntegration:
 
     @typechecked
     def flatten(
-        tokens: ArraySpec["... d"],
-    ) -> tuple[ArraySpec["... d"], Shape, Shape]:
+        tokens: ArraySpec["... d"],  # pyrefly: ignore[not-a-type]
+    ) -> tuple[ArraySpec["... d"], Shape, Shape]:  # pyrefly: ignore[not-a-type]
       original_shape = tuple(tokens.shape)
       return tokens, original_shape, original_shape
 

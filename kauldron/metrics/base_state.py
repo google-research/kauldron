@@ -131,7 +131,7 @@ class State(abc.ABC, Generic[_MetricT]):
 def _propagate_parent_in_merge(old_merge: _FnT) -> _FnT:
   """Propagate the parent."""
 
-  @functools.wraps(old_merge)
+  @functools.wraps(old_merge)  # pyrefly: ignore[bad-argument-type]
   def new_merge(self, other):
     # TODO(epot): Comparison should ignore the `key: kontext.Key` (valid to
     # merge metrics from 2 differents origins)
@@ -146,11 +146,11 @@ def _propagate_parent_in_merge(old_merge: _FnT) -> _FnT:
           "open an issue."
       )
     parent = self.parent if self.parent is not EMPTY else other.parent
-    new_self = old_merge(self, other)
+    new_self = old_merge(self, other)  # pyrefly: ignore[not-callable]
     new_self = dataclasses.replace(new_self, parent=parent)
     return new_self
 
-  return new_merge
+  return new_merge  # pyrefly: ignore[bad-return]
 
 
 @flax.struct.dataclass
@@ -300,7 +300,7 @@ class CollectingState(State[_MetricT]):
         object.__setattr__(self, k, (val,))
 
   @property
-  def _accumulated_fields(self) -> dict[str, Array]:
+  def _accumulated_fields(self) -> dict[str, Array]:  # pyrefly: ignore[not-a-type]
     return {
         f.name: getattr(self, f.name)
         for f in dataclasses.fields(self)
@@ -311,17 +311,17 @@ class CollectingState(State[_MetricT]):
   def empty(cls: type[_SelfT]) -> _SelfT:
     # Only empty tuples
     return cls(
-        **{f.name: () for f in dataclasses.fields(cls) if f.name != "parent"}
+        **{f.name: () for f in dataclasses.fields(cls) if f.name != "parent"}  # pyrefly: ignore[bad-argument-type]
     )
 
   def merge(self: _SelfT, other: _SelfT) -> _SelfT:
     merged_fields = {
         k: _merge_normalize_tuple(v1, v2)
         for k, (v1, v2) in epy.zip_dict(
-            self._accumulated_fields, other._accumulated_fields  # pylint: disable=protected-access,attribute-error
+            self._accumulated_fields, other._accumulated_fields  # pylint: disable=protected-access,attribute-error  # pyrefly: ignore[missing-attribute]
         )
     }
-    return dataclasses.replace(self, **merged_fields)
+    return dataclasses.replace(self, **merged_fields)  # pyrefly: ignore[bad-specialization]
 
   # Return `_SelfT` so auto-complete works
   def compute(self: _SelfT) -> _SelfT:
@@ -329,7 +329,7 @@ class CollectingState(State[_MetricT]):
     # TODO(klausg): move this to finalize() like in the AutoState
     #   Note: That would require changing the __post_init__ logic as well.
     return _CollectingStateOutput(  # pytype: disable=bad-return-type
-        **{k: np.concatenate(v) for k, v in self._accumulated_fields.items()}  # pylint: disable=protected-access
+        **{k: np.concatenate(v) for k, v in self._accumulated_fields.items()}  # pylint: disable=protected-access  # pyrefly: ignore[missing-attribute]
     )
 
 
@@ -394,12 +394,12 @@ class CollectFirstState(State[_MetricT]):
   def empty(cls: type[_SelfT]) -> _SelfT:
     return cls(**{
         f.name: None
-        for f in dataclasses.fields(cls)
-        if f.name not in cls._INTERNAL_FIELDS
+        for f in dataclasses.fields(cls)  # pyrefly: ignore[bad-argument-type]
+        if f.name not in cls._INTERNAL_FIELDS  # pyrefly: ignore[missing-attribute]
     })
 
   @property
-  def _accumulated_fields(self) -> dict[str, Array]:
+  def _accumulated_fields(self) -> dict[str, Array]:  # pyrefly: ignore[not-a-type]
     return {
         f.name: _maybe_truncate(getattr(self, f.name), self.keep_first)
         for f in dataclasses.fields(self)
@@ -408,17 +408,17 @@ class CollectFirstState(State[_MetricT]):
 
   def merge(self: _SelfT, other: _SelfT) -> _SelfT:
     assert hasattr(other, "keep_first")
-    if self.keep_first != other.keep_first:
+    if self.keep_first != other.keep_first:  # pyrefly: ignore[missing-attribute]
       raise ValueError(
           f"Expected same keep_first: {self.keep_first} != {other.keep_first}"
       )
     merged_fields = {
-        k: _concat_truncate(v1, v2, self.keep_first)  # merge & truncate
+        k: _concat_truncate(v1, v2, self.keep_first)  # merge & truncate  # pyrefly: ignore[bad-argument-type]
         for k, (v1, v2) in epy.zip_dict(
-            self._accumulated_fields, other._accumulated_fields  # pylint: disable=protected-access,attribute-error
+            self._accumulated_fields, other._accumulated_fields  # pylint: disable=protected-access,attribute-error  # pyrefly: ignore[missing-attribute]
         )
     }
-    return dataclasses.replace(self, **merged_fields)
+    return dataclasses.replace(self, **merged_fields)  # pyrefly: ignore[bad-specialization]
 
   # Return `_SelfT` so auto-complete works
   def compute(self: _SelfT) -> _SelfT:
@@ -426,7 +426,7 @@ class CollectFirstState(State[_MetricT]):
     return _CollectingStateOutput(**self._accumulated_fields)  # pytype: disable=bad-return-type
 
 
-def _maybe_truncate(v: Array["b *any"] | None, num: int):
+def _maybe_truncate(v: Array["b *any"] | None, num: int):  # pyrefly: ignore[unknown-name]
   if v is None:
     return None
   return np.asarray(v[:num])
