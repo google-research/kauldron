@@ -103,24 +103,24 @@ def test_sweep_overwrite():
     flag_values(argv)
 
   cfg = sweep_flag.value
-  assert cfg.seed == 12
-  assert cfg.train_ds.transforms[0].keep == ['other_image']
-  assert cfg.train_ds.name == 'imagenet'
-  assert cfg.model == nn.Dense(12)
-  assert cfg.schedules.none_1 is None
-  assert cfg.schedules.none_2 is None
-  assert cfg.schedules.none_3 == 'None'
-  assert cfg.schedules.value_1 == kd.konfig.ConfigDict({
+  assert cfg.seed == 12  # pyrefly: ignore[missing-attribute]
+  assert cfg.train_ds.transforms[0].keep == ['other_image']  # pyrefly: ignore[missing-attribute]
+  assert cfg.train_ds.name == 'imagenet'  # pyrefly: ignore[missing-attribute]
+  assert cfg.model == nn.Dense(12)  # pyrefly: ignore[missing-attribute]
+  assert cfg.schedules.none_1 is None  # pyrefly: ignore[missing-attribute]
+  assert cfg.schedules.none_2 is None  # pyrefly: ignore[missing-attribute]
+  assert cfg.schedules.none_3 == 'None'  # pyrefly: ignore[missing-attribute]
+  assert cfg.schedules.value_1 == kd.konfig.ConfigDict({  # pyrefly: ignore[missing-attribute]
       'null': None,
       'false': False,
       '1': 1,
   })
-  assert cfg.schedules.value_2 == kd.konfig.ConfigDict({
+  assert cfg.schedules.value_2 == kd.konfig.ConfigDict({  # pyrefly: ignore[missing-attribute]
       'None': None,
       'false': False,
       '1': 1,
   })
-  assert cfg.evals.eval.ds.transforms == [
+  assert cfg.evals.eval.ds.transforms == [  # pyrefly: ignore[missing-attribute]
       kd_data.ValueRange(key='image', vrange=(0, 1))
   ]
   assert isinstance(cfg.model, kd.konfig.ConfigDict)

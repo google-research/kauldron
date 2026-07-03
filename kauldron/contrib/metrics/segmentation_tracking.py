@@ -184,7 +184,7 @@ class SegmentationJaccard(metrics.Metric):
   resolution: tuple[int, int] = (480, 880)
 
   @flax.struct.dataclass
-  class State(metrics.base_state.AverageState):
+  class State(metrics.base_state.AverageState):  # pyrefly: ignore[bad-override]
     pass
 
   @typechecked
@@ -236,4 +236,4 @@ class SegmentationJaccard(metrics.Metric):
     j_metrics = jnp.nanmean(j_metrics_res, axis=-1)
     n_class = jnp.max(gt_segmentations)
     mask = (jnp.arange(self.n_max_class) < n_class).astype(jnp.float32)
-    return self.State.from_values(values=j_metrics, mask=mask)
+    return self.State.from_values(values=j_metrics, mask=mask)  # pyrefly: ignore[bad-return]

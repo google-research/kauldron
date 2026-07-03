@@ -131,7 +131,7 @@ class BaseConfig(konfig.WithRef):
     return ecolab.highlight_html(repr(self))
 
   def replace(self: _SelfT, **changes: Any) -> _SelfT:
-    return dataclasses.replace(self, **changes)  # pylint: disable=protected-access
+    return dataclasses.replace(self, **changes)  # pylint: disable=protected-access  # pyrefly: ignore[bad-specialization]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -253,15 +253,15 @@ class UpdateFromRootCfg:
   ) -> _SelfT:
     """Returns a copy of `self`, potentially with updated values."""
     # Check all fields which are `field: Any = ROOT_CFG_REF.xxx`
-    fields_to_replace, fake_refs = self._base_fields(root_cfg)
+    fields_to_replace, fake_refs = self._base_fields(root_cfg)  # pyrefly: ignore[missing-attribute]
     # Apply `.update_from_root_cfg()` recursively on fields defined in
     # `__root_cfg_fields_to_recurse__`
-    fields_to_replace = self._recurse_fields(root_cfg, fields_to_replace)
+    fields_to_replace = self._recurse_fields(root_cfg, fields_to_replace)  # pyrefly: ignore[missing-attribute]
 
     if not fields_to_replace:
       return self
     else:
-      return dataclasses.replace(
+      return dataclasses.replace(  # pyrefly: ignore[bad-specialization]
           self, **fields_to_replace, _fake_refs=fake_refs  # pytype: disable=wrong-keyword-args
       )
 

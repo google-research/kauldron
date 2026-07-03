@@ -143,7 +143,7 @@ class Experiment(job_params.JobParams):
     # Propagate the `--cfg` flags values to the job provider
     jobs_provider = dataclasses.replace(
         self.jobs_provider,
-        cfg_provider=self.cfg_provider,
+        cfg_provider=self.cfg_provider,  # pyrefly: ignore[bad-argument-type]
     )
     object.__setattr__(self, "jobs_provider", jobs_provider)
 
@@ -332,7 +332,7 @@ class Experiment(job_params.JobParams):
     tags.extend(
         make_tag_fn(
             priority=main_job.priority,
-            platform=main_job.platform,
+            platform=main_job.platform,  # pyrefly: ignore[bad-argument-type]
             cell=main_job.cell,
         )
     )

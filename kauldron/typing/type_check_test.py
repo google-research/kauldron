@@ -28,7 +28,7 @@ enable_kd_type_checking()
 
 def test_decorator():
   @typechecked
-  def _foo(_: Float["a"]) -> Float["a"]:
+  def _foo(_: Float["a"]) -> Float["a"]:  # pyrefly: ignore[unknown-name]
     return np.zeros((1,))
 
   _foo(np.zeros((1,)))
@@ -153,22 +153,22 @@ def test_union_type():
 @typechecked
 def test_shape_fails_without_set_shape():
   with pytest.raises(shape_spec.ShapeError):
-    Shape("B")
+    Shape("B")  # pyrefly: ignore[bad-argument-type]
 
 
 @typechecked
 def test_set_shape_with_int():
   type_check.set_shape("B", 4)
-  assert Shape("B") == (4,)
+  assert Shape("B") == (4,)  # pyrefly: ignore[bad-argument-type]
 
 
 @typechecked
 def test_set_shape_with_sequence_single():
   type_check.set_shape("B", [4])
-  assert Shape("B") == (4,)
+  assert Shape("B") == (4,)  # pyrefly: ignore[bad-argument-type]
 
 
 @typechecked
 def test_set_shape_with_sequence_multiple():
   type_check.set_shape("H W", [224, 224])
-  assert Shape("H W") == (224, 224)
+  assert Shape("H W") == (224, 224)  # pyrefly: ignore[bad-argument-type]

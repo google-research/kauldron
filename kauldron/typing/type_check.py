@@ -114,8 +114,8 @@ class TypeCheckError(typeguard.TypeCheckError):
     else:
       if frame is not None:
         frame = inspect.stack()[2]
-      self.fn_name = frame.function
-      self.file = f"{frame.filename}:{frame.lineno}"
+      self.fn_name = frame.function  # pyrefly: ignore[missing-attribute]
+      self.file = f"{frame.filename}:{frame.lineno}"  # pyrefly: ignore[missing-attribute]
 
   def __str__(self) -> str:
     msg = super().__str__()
@@ -546,7 +546,7 @@ def _custom_dataclass_checker(
     )
   # Convert dataclass values and annotations into a TypedDict.
   fields = dataclasses.fields(origin_type)
-  dataclass_as_typed_dict = TypedDict(
+  dataclass_as_typed_dict = TypedDict(  # pyrefly: ignore[invalid-argument]
       "dataclass_as_typed_dict",
       {f.name: f.type for f in fields},
   )  # pytype: disable=wrong-arg-types

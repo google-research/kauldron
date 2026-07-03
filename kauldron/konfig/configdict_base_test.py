@@ -121,7 +121,7 @@ def test_indices():
       'b': 2,
       -4: 'a',
   }
-  cfg = konfig.ConfigDict(data)
+  cfg = konfig.ConfigDict(data)  # pyrefly: ignore[bad-argument-type]
   new_cfg = konfig.ConfigDict(json.loads(cfg.to_json()))
   assert cfg == new_cfg
   assert new_cfg[0]['1'] == 1

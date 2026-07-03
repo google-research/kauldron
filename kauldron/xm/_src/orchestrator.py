@@ -73,7 +73,7 @@ class SweepOrchestrator(Orchestrator):
     num_existing_work_units = len(xp.work_units)
 
     # TODO(klausg): Add a confirmation dialogue before starting lots of workers?
-    for i, sweep_item in enumerate(sweep_info):
+    for i, sweep_item in enumerate(sweep_info):  # pyrefly: ignore[bad-argument-type]
       xp.add(
           functools.partial(
               self._launch_work_unit,
@@ -106,7 +106,7 @@ class SweepOrchestrator(Orchestrator):
         sweep_item=sweep_item,
     )
 
-    xm_jobs = xm.JobGroup(**{
+    xm_jobs = xm.JobGroup(**{  # pyrefly: ignore[bad-argument-type]
         k: job.make_xm_job(
             sweep_args=sweep_item.job_kwargs, dir_builder=dir_builder
         )

@@ -37,7 +37,7 @@ class MultilabelAveragePrecision(base.Metric):
   labels: kontext.Key = kontext.REQUIRED  # e.g. "batch.label"
 
   @flax.struct.dataclass
-  class State(metrics.AutoState):
+  class State(metrics.AutoState):  # pyrefly: ignore[bad-override]
     """MultiLabelAveragePrecision state."""
 
     scores: Float["b n"] = metrics.concat_field()

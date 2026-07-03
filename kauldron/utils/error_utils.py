@@ -36,12 +36,12 @@ _FnT = TypeVar("_FnT")
 def catch_post_mortem(fn: _FnT) -> _FnT:
   """Decorator to report errors to XManager."""
 
-  @functools.wraps(fn)
+  @functools.wraps(fn)  # pyrefly: ignore[bad-argument-type]
   def wrapper(*args, **kwargs):
     with _wu_error_handling(post_mortem=_POST_MORTEM.value):
-      return fn(*args, **kwargs)
+      return fn(*args, **kwargs)  # pyrefly: ignore[not-callable]
 
-  return wrapper
+  return wrapper  # pyrefly: ignore[bad-return]
 
 
 @contextlib.contextmanager

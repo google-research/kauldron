@@ -298,9 +298,9 @@ class VariadicDim(DimSpec):
     if self.anonymous:
       return "..."
     if self.broadcastable:
-      return "*#" + self.name
+      return "*#" + self.name  # pyrefly: ignore[unsupported-operation]
     else:
-      return "*" + self.name
+      return "*" + self.name  # pyrefly: ignore[unsupported-operation]
 
 
 BinOp = Callable[[Any, Any], Any]
@@ -346,7 +346,7 @@ class Memo:
 
   def __repr__(self) -> str:
     out = {k: v for k, v in self.single.items()}
-    out.update({f"*{k}": v for k, v in self.variadic.items()})
+    out.update({f"*{k}": v for k, v in self.variadic.items()})  # pyrefly: ignore[no-matching-overload]
     return repr(out)
 
 

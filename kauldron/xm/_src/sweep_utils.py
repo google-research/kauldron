@@ -136,7 +136,7 @@ class SimpleSweep(SweepInfo):
     object.__setattr__(self, "items", list(items))  # Allow to re-iterate
 
   def __iter__(self) -> Iterable[SweepItem]:
-    for item in self.items:
+    for item in self.items:  # pyrefly: ignore[not-iterable]
       yield SweepItem(item)
 
 

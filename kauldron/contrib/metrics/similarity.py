@@ -37,7 +37,7 @@ class CosineSimilarity(base.Metric):
   eps: float = 1e-6
 
   @flax.struct.dataclass
-  class State(base_state.AverageState):
+  class State(base_state.AverageState):  # pyrefly: ignore[bad-override]
     pass
 
   @typechecked
@@ -50,4 +50,4 @@ class CosineSimilarity(base.Metric):
     norm = lambda x: jnp.linalg.norm(x, axis=-1, keepdims=True)
     dot_product = jnp.sum(pred * target, axis=-1, keepdims=True)
     values = dot_product / (norm(pred) * norm(target) + self.eps)
-    return self.State.from_values(values=values, mask=mask)
+    return self.State.from_values(values=values, mask=mask)  # pyrefly: ignore[bad-return]

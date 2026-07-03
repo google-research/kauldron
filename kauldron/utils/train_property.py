@@ -126,7 +126,7 @@ def _add_is_training_kwargs(fn: _FnT) -> _FnT:
   """Add the `is_training=` kwargs to `fn`."""
   fn = _internal.unwrap_on_reload(fn)  # pylint: disable=protected-access
 
-  @_internal.wraps_with_reload(fn)
+  @_internal.wraps_with_reload(fn)  # pyrefly: ignore[bad-argument-type]
   def decorated(*args, is_training_property: bool | None = None, **kwargs):  # pylint: disable=redefined-outer-name
     # Hide the function from the traceback. Supported by Pytest and IPython
     __tracebackhide__ = True  # pylint: disable=unused-variable,invalid-name
@@ -136,9 +136,9 @@ def _add_is_training_kwargs(fn: _FnT) -> _FnT:
     else:
       cm = contextlib.nullcontext()
     with cm:
-      return fn(*args, **kwargs)
+      return fn(*args, **kwargs)  # pyrefly: ignore[not-callable]
 
-  return decorated
+  return decorated  # pyrefly: ignore[bad-return]
 
 
 _mock_flax_to_add_is_training_kwargs()

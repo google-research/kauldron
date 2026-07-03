@@ -48,7 +48,7 @@ if typing.TYPE_CHECKING:
 
 
 _Params = PyTree[Float["..."]]
-_Collections = Mapping[str, PyTree[Float["..."]]]
+_Collections = Mapping[str, PyTree[Float["..."]]]  # pyrefly: ignore[bad-index, not-a-type]
 
 # Backward compatible alias as users direct import this file
 AuxiliariesState = auxiliaries.AuxiliariesState
@@ -71,9 +71,9 @@ class TrainState(checkpoint_items.StandardCheckpointItem):
 
   step: int
 
-  params: Optional[_Params]
+  params: Optional[_Params]  # pyrefly: ignore[not-a-type]
   collections: Optional[_Collections]
-  opt_state: Optional[PyTree[Float["..."]]]
+  opt_state: Optional[PyTree[Float["..."]]]  # pyrefly: ignore[bad-index, not-a-type]
 
   def replace(self, **changes: Any) -> TrainState:
     return dataclasses.replace(self, **changes)
@@ -104,7 +104,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
   # MARK: .init()
   def init(
       self,
-      elem_spec: ElementSpec,
+      elem_spec: ElementSpec,  # pyrefly: ignore[not-a-type]
       *,
       model_method: Optional[str] = None,
       skip_transforms: bool = False,
@@ -150,7 +150,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
   )
   def _init_model(
       self,
-      elem_spec: ElementSpec,
+      elem_spec: ElementSpec,  # pyrefly: ignore[not-a-type]
       *,
       model_method: Optional[str] = None,
   ) -> TrainState:
@@ -171,7 +171,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
     collections.pop("intermediates", None)  # Remove intermediates
 
     state = TrainState(  # pytype: disable=wrong-arg-types
-        step=jnp.asarray(0),
+        step=jnp.asarray(0),  # pyrefly: ignore[bad-argument-type]
         params=params,
         opt_state=None,
         collections=collections,
@@ -203,7 +203,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
       state: TrainState,
   ) -> TrainState:
     """Initialize the model and return the initial TrainState."""
-    opt_state = self.optimizer.init(state.params)
+    opt_state = self.optimizer.init(state.params)  # pyrefly: ignore[bad-argument-type]
     state = state.replace(opt_state=opt_state)
     return sharding_lib.with_sharding_constraint(state, self.sharding.state)
 
@@ -223,7 +223,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
   def step(
       self,
       state: TrainState,
-      batch: PyTree[Any],
+      batch: PyTree[Any],  # pyrefly: ignore[not-a-type]
       *,
       return_losses: bool = False,
       return_metrics: bool = False,
@@ -284,7 +284,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
   def _step(
       self,
       state: TrainState,
-      batch: PyTree[Any],
+      batch: PyTree[Any],  # pyrefly: ignore[not-a-type]
   ) -> tuple[TrainState, context_lib.Context]:
     """Training step to be wrapped by checkify and called by `step`."""
     # NOTE: ensure that evaluation metrics are computed from the OLD model state
@@ -369,7 +369,7 @@ def forward(
   # Note the params can be mutable if the model call the same sub-model
   # internally but with different params. However, the updates are never
   # propagated
-  collections.pop("params", None)
+  collections.pop("params", None)  # pyrefly: ignore[bad-argument-count]
   interms = collections.pop("intermediates")
   context = context.replace(
       preds=preds,

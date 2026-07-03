@@ -103,7 +103,7 @@ class ConfigProvider(ConfigProviderBase):
     elif not isinstance(module, types.ModuleType):
       raise TypeError(f"Expected module. Got: {type(module)}")
 
-    config = konfig.get_config_from_module(module, cli_str_arg=config_parameter)
+    config = konfig.get_config_from_module(module, cli_str_arg=config_parameter)  # pyrefly: ignore[bad-argument-type]
 
     return cls(
         module=module,
@@ -175,8 +175,8 @@ class ConfigProvider(ConfigProviderBase):
   @functools.cached_property
   def config_path(self) -> pathlib.Path:
     """Config path."""
-    config_path = pathlib.Path(self.module.__file__)
-    return config_path
+    config_path = pathlib.Path(self.module.__file__)  # pyrefly: ignore[bad-argument-type]
+    return config_path  # pyrefly: ignore[bad-return]
 
   def maybe_add_cfg_flags(self, job: job_lib.Job) -> job_lib.Job:
     """Maybe replace `CFG_FLAG_VALUES` by the actual config flags."""

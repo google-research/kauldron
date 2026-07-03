@@ -41,11 +41,11 @@ def test_fake_imports():
     # pytype: enable=import-error
     # pylint: enable=g-import-not-at-top,g-multiple-import
 
-  assert_module(a0, 'a0')
-  assert_module(a1.b.c, 'a1.b.c')
+  assert_module(a0, 'a0')  # pyrefly: ignore[bad-argument-type]
+  assert_module(a1.b.c, 'a1.b.c')  # pyrefly: ignore[bad-argument-type]
   assert_module(a1.non_module.c, 'a1:non_module.c')
-  assert_module(c00, 'a2.b.c')
-  assert_module(c01, 'a2.b.c')
+  assert_module(c00, 'a2.b.c')  # pyrefly: ignore[bad-argument-type]
+  assert_module(c01, 'a2.b.c')  # pyrefly: ignore[bad-argument-type]
   assert_module(c02, 'a2.b.c')
   assert_module(c02.non_module.c, 'a2.b.c:non_module.c')
   assert_module(c2, 'a3.c2')

@@ -65,13 +65,13 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
   collection: str = COLLECTION_NOT_SET  # Will be set by the evaluator / trainer
 
   @abc.abstractmethod
-  def write_scalars(self, step: int, scalars: Mapping[str, Scalar]) -> None:
+  def write_scalars(self, step: int, scalars: Mapping[str, Scalar]) -> None:  # pyrefly: ignore[not-a-type]
     """Write scalar values for the step."""
 
   def write_summaries(
       self,
       step: int,
-      values: Mapping[str, Array],
+      values: Mapping[str, Array],  # pyrefly: ignore[not-a-type]
       *,
       metadata: Mapping[str, Any] | None = None,
   ) -> None:
@@ -82,7 +82,7 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
   def write_images(
       self,
       step: int,
-      images: Mapping[str, Array["n h w c"]],
+      images: Mapping[str, Array["n h w c"]],  # pyrefly: ignore[not-a-type]
   ) -> None:
     """Write images for the step."""
 
@@ -90,7 +90,7 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
   def write_histograms(
       self,
       step: int,
-      arrays: Mapping[str, Array],
+      arrays: Mapping[str, Array],  # pyrefly: ignore[not-a-type]
       *,
       num_buckets: Mapping[str, int] | None = None,
   ) -> None:
@@ -100,9 +100,9 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
   def write_pointcloud(
       self,
       step: int,
-      point_clouds: Mapping[str, Array],
+      point_clouds: Mapping[str, Array],  # pyrefly: ignore[not-a-type]
       *,
-      point_colors: Optional[Array] = None,
+      point_colors: Optional[Array] = None,  # pyrefly: ignore[not-a-type]
       configs: Optional[Mapping[str, Any]] = None,
   ) -> None:
     """Write point cloud summaries for the step."""
@@ -111,7 +111,7 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
   def write_videos(
       self,
       step: int,
-      videos: Mapping[str, Array["n t h w c"]],
+      videos: Mapping[str, Array["n t h w c"]],  # pyrefly: ignore[not-a-type]
   ) -> None:
     """Write videos for the step."""
     raise NotImplementedError()
@@ -120,7 +120,7 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
   def write_audios(
       self,
       step: int,
-      audios: Mapping[str, Float["n t c"]],
+      audios: Mapping[str, Float["n t c"]],  # pyrefly: ignore[not-a-type]
       *,
       sample_rate: int,
   ) -> None:
@@ -303,7 +303,7 @@ class MetadataWriter(WriterBase):
 
     if status.is_lead_host:
       # Save the raw config (for easy re-loading)
-      config_path = self.workdir / constants.CONFIG_FILENAME
+      config_path = self.workdir / constants.CONFIG_FILENAME  # pyrefly: ignore[unsupported-operation]
       config_path.write_text(config.to_json())
 
     texts = {"config": f"```python\n{config!r}\n```"}
@@ -323,12 +323,12 @@ class MetadataWriter(WriterBase):
 
     if status.is_lead_host:
       # Save the raw config (for easy re-loading)
-      spec_path = self.workdir / f"{constants.ELEMENT_SPEC_FILENAME}.tmp"
+      spec_path = self.workdir / f"{constants.ELEMENT_SPEC_FILENAME}.tmp"  # pyrefly: ignore[unsupported-operation]
       element_spec = konfig.export(element_spec)
       element_spec = json.dumps(element_spec, indent=2)
       spec_path.write_text(element_spec)
       # Move the file to the final location atomically to avoid race conditions.
-      spec_path.replace(self.workdir / constants.ELEMENT_SPEC_FILENAME)
+      spec_path.replace(self.workdir / constants.ELEMENT_SPEC_FILENAME)  # pyrefly: ignore[unsupported-operation]
 
     texts = {"element_spec": f"```python\n{element_spec!s}\n```"}
     self.write_texts(step, texts)
@@ -403,7 +403,7 @@ class KDMetricWriter(MetadataWriter):
     if status.is_lead_host:
       self._assert_collection_is_set()
       return metric_writers.SummaryWriter(
-          logdir=str(self.workdir / self.collection)
+          logdir=str(self.workdir / self.collection)  # pyrefly: ignore[unsupported-operation]
       )
     else:
       return self._noop
@@ -430,19 +430,19 @@ class KDMetricWriter(MetadataWriter):
   def write_summaries(
       self,
       step: int,
-      values: Mapping[str, Array],
+      values: Mapping[str, Array],  # pyrefly: ignore[not-a-type]
       metadata: Mapping[str, Any] | None = None,
   ) -> None:
     self._array_writer.write_summaries(step, values, metadata)
     self._tf_summary_writer.write_summaries(step, values, metadata)
 
-  def write_scalars(self, step: int, scalars: Mapping[str, Scalar]) -> None:
+  def write_scalars(self, step: int, scalars: Mapping[str, Scalar]) -> None:  # pyrefly: ignore[not-a-type]
     self._log_writer.write_scalars(step, scalars)
     self._scalar_writer.write_scalars(step, scalars)
     self._tf_summary_writer.write_scalars(step, scalars)
 
   def write_images(
-      self, step: int, images: Mapping[str, Array["n h w c"]]
+      self, step: int, images: Mapping[str, Array["n h w c"]]  # pyrefly: ignore[not-a-type]
   ) -> None:
     images_uint8 = {}
     for key, image in images.items():
@@ -457,20 +457,20 @@ class KDMetricWriter(MetadataWriter):
   def write_histograms(
       self,
       step: int,
-      arrays: Mapping[str, Array],
+      arrays: Mapping[str, Array],  # pyrefly: ignore[not-a-type]
       num_buckets: Mapping[str, int] | None = None,
   ) -> None:
     self._tf_summary_writer.write_histograms(step, arrays, num_buckets)
 
   def write_videos(
-      self, step: int, videos: Mapping[str, Array["n t h w c"]]
+      self, step: int, videos: Mapping[str, Array["n t h w c"]]  # pyrefly: ignore[not-a-type]
   ) -> None:
     self._tf_summary_writer.write_videos(step, videos)
 
   def write_audios(
       self,
       step: int,
-      audios: Mapping[str, Float["n t c"]],
+      audios: Mapping[str, Float["n t c"]],  # pyrefly: ignore[not-a-type]
       *,
       sample_rate: int,
   ) -> None:
@@ -488,9 +488,9 @@ class KDMetricWriter(MetadataWriter):
   def write_pointcloud(
       self,
       step: int,
-      point_clouds: Mapping[str, Array["n 3"]],
+      point_clouds: Mapping[str, Array["n 3"]],  # pyrefly: ignore[not-a-type]
       *,
-      point_colors: Mapping[str, Array["n 3"]] | None = None,
+      point_colors: Mapping[str, Array["n 3"]] | None = None,  # pyrefly: ignore[not-a-type]
       configs: Mapping[str, str | float | bool | None] | None = None,
   ) -> None:
     if not point_clouds:
@@ -510,8 +510,8 @@ class KDMetricWriter(MetadataWriter):
     # create a flat spec for the context
     context_spec = kontext.flatten_with_path(context)
     context_spec = etree.spec_like(context_spec)
-    context_spec["grads"] = "<<same structure as params>>"
-    context_spec["updates"] = "<<same structure as params>>"
+    context_spec["grads"] = "<<same structure as params>>"  # pyrefly: ignore[unsupported-operation]
+    context_spec["updates"] = "<<same structure as params>>"  # pyrefly: ignore[unsupported-operation]
 
     # convert flat spec into a pandas dataframe
     ctx_df = pd.DataFrame(
@@ -521,7 +521,7 @@ class KDMetricWriter(MetadataWriter):
     )
     # export pandas dataframe as markdown text
     markdown_table = ctx_df.to_markdown(index=False, tablefmt="github")
-    self.write_texts(step, {"context_spec": markdown_table})
+    self.write_texts(step, {"context_spec": markdown_table})  # pyrefly: ignore[bad-argument-type]
 
   def flush(self) -> None:
     self._scalar_writer.flush()
@@ -538,26 +538,26 @@ class KDMetricWriter(MetadataWriter):
 class NoopWriter(NoopMetadataWriter):
   """Writer that writes nothing. Useful for deactivating the writer."""
 
-  def write_scalars(self, step: int, scalars: Mapping[str, Scalar]) -> None:
+  def write_scalars(self, step: int, scalars: Mapping[str, Scalar]) -> None:  # pyrefly: ignore[not-a-type]
     pass
 
   def write_summaries(
       self,
       step: int,
-      values: Mapping[str, Array],
+      values: Mapping[str, Array],  # pyrefly: ignore[not-a-type]
       metadata: Mapping[str, Any] | None = None,
   ) -> None:
     pass
 
   def write_images(
-      self, step: int, images: Mapping[str, Array["n h w c"]]
+      self, step: int, images: Mapping[str, Array["n h w c"]]  # pyrefly: ignore[not-a-type]
   ) -> None:
     pass
 
   def write_histograms(
       self,
       step: int,
-      arrays: Mapping[str, Array],
+      arrays: Mapping[str, Array],  # pyrefly: ignore[not-a-type]
       num_buckets: Mapping[str, int] | None = None,
   ) -> None:
     pass
@@ -565,7 +565,7 @@ class NoopWriter(NoopMetadataWriter):
   def write_pointcloud(
       self,
       step: int,
-      point_clouds: Array["n 3"],
+      point_clouds: Array["n 3"],  # pyrefly: ignore[not-a-type]
       *,
       point_colors: Array["n 3"] | None = None,
       configs: Mapping[str, str | float | bool | None] | None = None,
@@ -573,14 +573,14 @@ class NoopWriter(NoopMetadataWriter):
     pass
 
   def write_videos(
-      self, step: int, videos: Mapping[str, Array["n t h w c"]]
+      self, step: int, videos: Mapping[str, Array["n t h w c"]]  # pyrefly: ignore[not-a-type]
   ) -> None:
     pass
 
   def write_audios(
       self,
       step: int,
-      audios: Mapping[str, Float["n t c"]],
+      audios: Mapping[str, Float["n t c"]],  # pyrefly: ignore[not-a-type]
       *,
       sample_rate: int,
   ) -> None:

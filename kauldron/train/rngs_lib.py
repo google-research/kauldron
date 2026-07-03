@@ -74,7 +74,7 @@ class RngStream:
     rng = kd_random.fold_in_str(rng, self.name)
     if self.per_step:
       self._assert_is_not_none(step, 'step')
-      rng = jax.random.fold_in(rng, step)
+      rng = jax.random.fold_in(rng, step)  # pyrefly: ignore[bad-argument-type]
     if key is not None:  # Additional key to fold (e.g. `train`, `eval`)
       rng = kd_random.fold_in_str(rng, key)
     return rng

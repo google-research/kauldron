@@ -124,7 +124,7 @@ def export(obj: Any) -> epy.typing.Json:
         '__qualname__': export_qualname(obj),
     }
     for i, t in enumerate(obj):
-      fields[str(i)] = export(t)
+      fields[str(i)] = export(t)  # pyrefly: ignore[bad-assignment]
   elif isinstance(obj, tuple):
     fields = {'__qualname__': 'builtins.tuple', '0': [export(t) for t in obj]}
   elif isinstance(obj, int | float | type(None) | str | bool):
@@ -142,4 +142,4 @@ def export(obj: Any) -> epy.typing.Json:
         f' custom __konfig_export__ method in {obj.__class__}.'
     )
 
-  return fields
+  return fields  # pyrefly: ignore[bad-return]

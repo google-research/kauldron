@@ -362,7 +362,7 @@ def ref_copy(cfg: _T) -> _T:
       case _:
         value = cfg.get_oneway_ref(key)
     cfg_copy[key] = value
-  return cfg_copy
+  return cfg_copy  # pyrefly: ignore[bad-return]
 
 
 def _deepcopy(self, memo: dict[int, Any]):

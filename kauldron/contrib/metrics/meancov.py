@@ -72,7 +72,7 @@ class MeanCov(kd.metrics.State):
       https://ds.ifi.uni-heidelberg.de/files/Team/eschubert/publications/SSDBM18-covariance-authorcopy.pdf
   """
 
-  total: Float["n"] | None = None
+  total: Float["n"] | None = None  # pyrefly: ignore[unknown-name]
   squares: Float["n n"] | None = None
   weight: Float[""] | None = None
   ddof: int = 0
@@ -86,7 +86,7 @@ class MeanCov(kd.metrics.State):
   def from_samples(
       cls,
       samples: Float["b n"],
-      fweights: Int["b"] | None = None,
+      fweights: Int["b"] | None = None,  # pyrefly: ignore[unknown-name]
       # TODO(klausg): add support for aweights
       ddof: int = 0,
   ) -> "MeanCov":
@@ -153,7 +153,7 @@ class MeanCov(kd.metrics.State):
         weight=np.array(self.weight, dtype=np.float32),
     )
 
-  def compute(self) -> tuple[Float["n"] | None, Float["n n"] | None]:
+  def compute(self) -> tuple[Float["n"] | None, Float["n n"] | None]:  # pyrefly: ignore[unknown-name]
     if self.total is None:
       return None, None
     mean = self.total / self.weight

@@ -111,7 +111,7 @@ class ConfigDictProxyObject(fake_import_utils.ProxyObject, dict):
     return f'ConfigDictProxyObject({self.qualname})'
 
   __eq__ = object.__eq__
-  __hash__ = object.__hash__
+  __hash__ = object.__hash__  # pyrefly: ignore[bad-assignment]
 
 
 @typing.overload
@@ -149,7 +149,7 @@ def resolve(cfg, *, freeze=True):
     return _ConstructorResolver(freeze=freeze)._resolve_value(cfg)  # pylint: disable=protected-access
   except Exception as e:  # pylint: disable=broad-exception-caught
     logging.info(f'Full config (failing): {cfg}')  # pylint: disable=logging-fstring-interpolation
-    utils.filter_traceback(e.__traceback__)
+    utils.filter_traceback(e.__traceback__)  # pyrefly: ignore[bad-argument-type]
     epy.reraise(e, 'Error resolving the config:\n')
 
 
@@ -179,7 +179,7 @@ class _ConfigDictVisitor:
     """Apply the visitor/transformation to the config dict."""
     for cls, resolver_fn in self._types_to_resolver.items():
       if isinstance(value, cls):
-        return resolver_fn(value)
+        return resolver_fn(value)  # pyrefly: ignore[bad-argument-type]
     return self._resolve_leaf(value)  # Leaf value
 
   def _resolve_sequence(self, value):
@@ -345,7 +345,7 @@ def _wrap_cfg_error(
     e = epy.reraise_utils.wrap_error(e, prefix=msg)
 
   while e.__cause__ is not None:
-    e = e.__cause__
+    e = e.__cause__  # pyrefly: ignore[bad-assignment]
   e.__cause__ = cause
   return e
 
@@ -358,12 +358,12 @@ def _as_dict(values: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _reraise_with_info(fn: _FnT, info: str | int) -> _FnT:
-  @functools.wraps(fn)
+  @functools.wraps(fn)  # pyrefly: ignore[bad-argument-type]
   def decorated(*args, **kwargs):
     try:
-      return fn(*args, **kwargs)
+      return fn(*args, **kwargs)  # pyrefly: ignore[not-callable]
     except Exception as e:  # pylint: disable=broad-exception-caught
       info_ = f'[{info}]' if isinstance(info, int) else repr(info)
       epy.reraise(e, prefix=f'In {info_}:\n')
 
-  return decorated
+  return decorated  # pyrefly: ignore[bad-return]

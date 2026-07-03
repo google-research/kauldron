@@ -145,7 +145,7 @@ class ModuleConfigDict(AutoNestedConfigDict):
 
     return config
 
-  def to_json(self):
+  def to_json(self):  # pyrefly: ignore[bad-override]
     """Build config before serializing to json."""
     return self.read_and_build().to_json()
 

@@ -56,7 +56,7 @@ PRNGKeyLike = Union[int, Sequence[int], np.ndarray, PRNGKey]
 
 DType = jax.typing.DTypeLike
 
-Initializer = Callable[[PRNGKey, Shape, DType], Array]
+Initializer = Callable[[PRNGKey, Shape, DType], Array]  # pyrefly: ignore[not-a-type]
 Axes = int | tuple[int, ...]
 AxisName = Hashable
 Schedule = Callable[[int], float | Float[""]]

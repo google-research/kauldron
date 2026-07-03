@@ -150,9 +150,9 @@ class Job(job_params.JobParams):
     constraints.append(rs.Borg())  # Currently, only Borg supported
     reqs_kwargs = {"priority": self.priority}
     if self.cell is not None:
-      reqs_kwargs["location"] = self.cell
+      reqs_kwargs["location"] = self.cell  # pyrefly: ignore[bad-assignment]
     if self.platform is not None:
-      reqs_kwargs.update(xmreq.parse_requirements_spec(self.platform))
+      reqs_kwargs.update(xmreq.parse_requirements_spec(self.platform))  # pyrefly: ignore[no-matching-overload]
     # TODO(epot): Should have `xm.JobRequirements` everywhere, rather than
     # my custom implementation. Send a cl to `xm` to have default args being
     # missing ?
@@ -162,7 +162,7 @@ class Job(job_params.JobParams):
     )
     return rs.Job(
         constraints=constraints,
-        requirements=job_requirements,
+        requirements=job_requirements,  # pyrefly: ignore[bad-argument-type]
     )
 
   def make_xm_job(
@@ -199,12 +199,12 @@ class Job(job_params.JobParams):
 
     # Add common args for all jobs.
     if self.debug.catch_post_mortem:
-      args["catch_post_mortem"] = True
+      args["catch_post_mortem"] = True  # pyrefly: ignore[unsupported-operation]
 
     # Add optional jax and debug flags.
     if self.add_jax_flags:
       args.update(xm_jax.JaxFlags().flags())
-      args["jax_log_compiles"] = self.debug.jax_log_compiles
+      args["jax_log_compiles"] = self.debug.jax_log_compiles  # pyrefly: ignore[unsupported-operation]
 
     if self.debug.xprof_port:
       args["xprof_port"] = "%port_xprof%"
@@ -273,8 +273,8 @@ def _resolve_and_normalize_arg(
       # In this case we need to replace the `__xm_file__` prefix with the
       # actual file path, and then add the arguments back.
       for before, after in replaces_startswith.items():
-        if leaf.startswith(before):
-          suffix = leaf.removeprefix(before)
+        if leaf.startswith(before):  # pyrefly: ignore[missing-attribute]
+          suffix = leaf.removeprefix(before)  # pyrefly: ignore[missing-attribute]
           if isinstance(after, str):
             leaf = after + suffix
           elif isinstance(after, xm.ShellSafeArg):
@@ -286,7 +286,7 @@ def _resolve_and_normalize_arg(
 
     return leaf
 
-  arg = etree.map(sanitize_leaf, arg)
+  arg = etree.map(sanitize_leaf, arg)  # pyrefly: ignore[bad-assignment]
 
   # Encode tuples, dict,... in string so that they are correctly passed as
   # commandline arguments.

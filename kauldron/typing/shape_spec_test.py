@@ -91,13 +91,13 @@ def test_shape_eval():
 
   @typechecked
   def _foo1():
-    return Shape("2 5*6+2 8//2 5-4+1 12/3*2")
+    return Shape("2 5*6+2 8//2 5-4+1 12/3*2")  # pyrefly: ignore[bad-argument-type]
 
   assert _foo1() == (2, 32, 4, 2, 8)
 
   @typechecked
   def _foo(_: Float["*b h w c"]):
-    return Shape("sum(*b,h) h//2 min(w,4) c+1")
+    return Shape("sum(*b,h) h//2 min(w,4) c+1")  # pyrefly: ignore[bad-argument-type]
 
   assert _foo(np.zeros((1, 2, 3, 4))) == (3, 1, 3, 5)
 
@@ -118,7 +118,7 @@ def test_shape_eval_with_batch_dim():
 
 def test_shape_eval_error_outside_typechecked():
   with pytest.raises(AssertionError):
-    Shape("1 2 3")
+    Shape("1 2 3")  # pyrefly: ignore[bad-argument-type]
 
   def _foo():
     return Dim("1")

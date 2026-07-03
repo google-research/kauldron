@@ -113,8 +113,8 @@ class _IntermsAccessor:
       while path.startswith('.'):
         # parent
         path = path[1:]
-        scope = scope.parent
+        scope = scope.parent  # pyrefly: ignore[missing-attribute]
     else:
       # global
-      scope = self.module.scope.root
-    return kontext.get_by_path(scope.variables()['intermediates'], path)
+      scope = self.module.scope.root  # pyrefly: ignore[missing-attribute]
+    return kontext.get_by_path(scope.variables()['intermediates'], path)  # pyrefly: ignore[missing-attribute]

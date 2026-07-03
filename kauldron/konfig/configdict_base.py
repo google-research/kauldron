@@ -79,7 +79,7 @@ class ConfigDict(ml_collections.ConfigDict):
     if not _normalized:
       init_dict = _normalize_config_only_value(init_dict, '', id_to_dict={})  # pytype: disable=name-error
     super().__init__(
-        initial_dictionary=init_dict,
+        initial_dictionary=init_dict,  # pyrefly: ignore[bad-argument-type]
         type_safe=True,
         # `ConfigDict` already normalize everything to `dict`, so disable
         # it here as it creates issues with `FieldReference` (accessed before
@@ -91,7 +91,7 @@ class ConfigDict(ml_collections.ConfigDict):
 
   def __getitem__(self, key: str | int) -> Any:
     key = self._normalize_arg_key(key)
-    return super().__getitem__(key)
+    return super().__getitem__(key)  # pyrefly: ignore[bad-argument-type]
 
   def __setitem__(self, key: str | int, value: Any) -> None:
     key = self._normalize_arg_key(key, can_append=True)
@@ -137,7 +137,7 @@ class ConfigDict(ml_collections.ConfigDict):
     key = utils.maybe_decode_json_key(key)
 
     if isinstance(key, int) and configdict_proxy.QUALNAME_KEY in self:
-      num_args = configdict_proxy.num_args(self)
+      num_args = configdict_proxy.num_args(self)  # pyrefly: ignore[bad-argument-type]
       if key < 0:
         key = num_args + key
       if not (0 <= key < num_args + can_append):
@@ -183,7 +183,7 @@ def _maybe_update_init_dict(init_dict: Mapping[str, Any]) -> Mapping[str, Any]:
   default_values = _QUALNAME_TO_DEFAULT_VALUES[qualname]
   default_values = copy.deepcopy(default_values)
   default_values.update(init_dict)
-  return default_values
+  return default_values  # pyrefly: ignore[bad-return]
 
 
 @dataclasses.dataclass
@@ -196,7 +196,7 @@ class _Visitor(Generic[_T]):
     recurse: Function to recurse leaves
   """
 
-  CLS: ClassVar[type[_T]]
+  CLS: ClassVar[type[_T]]  # pyrefly: ignore[invalid-annotation]
 
   tracker: _VisitedTracker
   recurse: Callable[[Any], str]
@@ -204,7 +204,7 @@ class _Visitor(Generic[_T]):
   @classmethod
   def match(cls, obj: Any) -> bool:
     """Returns True if the object should be processed by the visitor."""
-    return isinstance(obj, cls.CLS)
+    return isinstance(obj, cls.CLS)  # pyrefly: ignore[missing-attribute]
 
   def watch(self, obj: _T) -> Any:
     """Track whether the object was already visited or not."""
@@ -233,7 +233,7 @@ class _Visitor(Generic[_T]):
 class _DictVisitor(_Visitor):
   """Recurse into dict."""
 
-  CLS = (dict, ml_collections.ConfigDict)
+  CLS = (dict, ml_collections.ConfigDict)  # pyrefly: ignore[bad-assignment]
 
   def _recurse(self, obj: ml_collections.ConfigDict) -> Any:
     return {
@@ -315,7 +315,7 @@ class _FieldReferenceVisitor(_Visitor):
 class _ListVisitor(_Visitor):
   """Recurse into list, tuple."""
 
-  CLS = (list, tuple)
+  CLS = (list, tuple)  # pyrefly: ignore[bad-assignment]
 
   def _recurse(self, obj: list[Any] | tuple[Any, ...]) -> Any:
     return [_Repr(self.recurse(v)) for v in obj]
@@ -523,7 +523,7 @@ def _normalize_config_only_value(value, name, *, id_to_dict) -> Any:
   match value:
     case dict() | ml_collections.ConfigDict() | immutabledict.ImmutableDict():
       if (id_ := value.get('__id__')) is not None:  # Shared value:
-        del value['__id__']  # ConfigDict do not have `.pop()`
+        del value['__id__']  # ConfigDict do not have `.pop()`  # pyrefly: ignore[unsupported-operation]
         if id_ in id_to_dict:  # ConfigDict already constructed
           return id_to_dict[id_]  # Reuse same instance
 

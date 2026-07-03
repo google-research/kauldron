@@ -37,7 +37,7 @@ if typing.TYPE_CHECKING:
 # * jax.sharding.Sharding: Use this sharding for all sub-tree
 # * Callable: Lazily compute the sharding from the array sub-tree
 ShardingTree = PyTree[
-    None | jax.sharding.Sharding | Callable[[PyTree[jax.Array]], 'ShardingTree']
+    None | jax.sharding.Sharding | Callable[[PyTree[jax.Array]], 'ShardingTree']  # pyrefly: ignore[not-a-type]
 ]
 _T = TypeVar('_T')
 
@@ -61,19 +61,19 @@ class ShardingStrategy:
   * Callable: Lazily compute the sharding from the array sub-tree
   """
 
-  batch: ShardingTree = dataclasses.field(
+  batch: ShardingTree = dataclasses.field(  # pyrefly: ignore[not-a-type]
       default_factory=lambda: sharding.FIRST_DIM  # pytype: disable=name-error
   )
 
-  params: ShardingTree = dataclasses.field(
+  params: ShardingTree = dataclasses.field(  # pyrefly: ignore[not-a-type]
       default_factory=lambda: sharding.REPLICATED  # pytype: disable=name-error
   )
-  collections: ShardingTree = None
+  collections: ShardingTree = None  # pyrefly: ignore[not-a-type]
   # Use `None` to auto-propagate the sharding from model sharding
-  opt_state: ShardingTree = None
+  opt_state: ShardingTree = None  # pyrefly: ignore[not-a-type]
   # TODO(epot): Should auto-propagate sharding for auxiliaries, but currently
   # image summaries propagate the wrong sharding, like: xid/97663348
-  aux: ShardingTree = dataclasses.field(
+  aux: ShardingTree = dataclasses.field(  # pyrefly: ignore[not-a-type]
       default_factory=lambda: sharding.REPLICATED  # pytype: disable=name-error
   )
 
@@ -83,7 +83,7 @@ class ShardingStrategy:
     from kauldron.train import train_step  # pylint: disable=g-import-not-at-top
 
     return train_step.TrainState(  # pytype: disable=wrong-arg-types
-        step=sharding.REPLICATED,
+        step=sharding.REPLICATED,  # pyrefly: ignore[bad-argument-type]
         params=self.params,
         collections=self.collections,
         opt_state=self.opt_state,
@@ -131,7 +131,7 @@ class FSDPSharding:
 
   min_size_to_shard_mb: int = 4
 
-  def __call__(self, tree: PyTree[jax.Array]) -> ShardingTree:
+  def __call__(self, tree: PyTree[jax.Array]) -> ShardingTree:  # pyrefly: ignore[not-a-type]
     """Apply the sharding rule to the given tree."""
     # Implementation inspired from the big_vision codebase:
     # http://https://github.com/google-research/big_vision/tree/HEAD/big_vision/sharding.py;l=91;rcl=651681534
@@ -148,7 +148,7 @@ class FSDPSharding:
       spec = [None] * x.ndim
       for i in idx:
         if x.shape[i] % jax.device_count() == 0:
-          spec[i] = 'devices'
+          spec[i] = 'devices'  # pyrefly: ignore[unsupported-operation]
           return jax.sharding.NamedSharding(
               sharding.DEVICES_MESH,  # pylint: disable=protected-access
               jax.sharding.PartitionSpec(*spec),
@@ -230,7 +230,7 @@ class _ShardingAPI:
   def with_sharding_constraint(
       self,
       x: _T,
-      shardings: ShardingTree,
+      shardings: ShardingTree,  # pyrefly: ignore[not-a-type]
   ) -> _T:
     """Wrapper around `jax.lax.with_sharding_constraint`.
 

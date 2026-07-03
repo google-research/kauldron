@@ -38,7 +38,7 @@ class MeanAbsoluteRelativeError(kd.metrics.Metric):
   epsilon: float = 1e-6
 
   @flax.struct.dataclass
-  class State(base_state.AverageState):
+  class State(base_state.AverageState):  # pyrefly: ignore[bad-override]
     pass
 
   @typechecked
@@ -53,7 +53,7 @@ class MeanAbsoluteRelativeError(kd.metrics.Metric):
     values = jnp.abs(preds - targets) / (targets + self.epsilon)
 
     # Averages across all dims.
-    return self.State.from_values(values=values, mask=mask)
+    return self.State.from_values(values=values, mask=mask)  # pyrefly: ignore[bad-return]
 
 
 @typechecked
@@ -94,7 +94,7 @@ class RGBMeanAbsoluteRelativeError(kd.metrics.Metric):
   epsilon: float = 1e-6
 
   @flax.struct.dataclass
-  class State(base_state.AverageState):
+  class State(base_state.AverageState):  # pyrefly: ignore[bad-override]
     pass
 
   @typechecked
@@ -119,7 +119,7 @@ class RGBMeanAbsoluteRelativeError(kd.metrics.Metric):
 
     abs_rel = jnp.abs(preds - targets) / (targets + self.epsilon)
 
-    return self.State.from_values(values=abs_rel, mask=mask)
+    return self.State.from_values(values=abs_rel, mask=mask)  # pyrefly: ignore[bad-return]
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -140,7 +140,7 @@ class Delta1(kd.metrics.Metric):
   depth_std: float = 1.0
 
   @flax.struct.dataclass
-  class State(base_state.AverageState):
+  class State(base_state.AverageState):  # pyrefly: ignore[bad-override]
     pass
 
   @typechecked
@@ -173,4 +173,4 @@ class Delta1(kd.metrics.Metric):
     # Check if the ratio is within the threshold.
     values = ratio < self.threshold
     # Averages across all dims.
-    return self.State.from_values(values=values.astype(jnp.float32), mask=mask)
+    return self.State.from_values(values=values.astype(jnp.float32), mask=mask)  # pyrefly: ignore[bad-return]

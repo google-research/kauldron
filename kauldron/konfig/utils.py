@@ -235,4 +235,4 @@ def filter_traceback(tb: types.TracebackType) -> None:
   while tb:
     if '/kauldron/konfig/' in tb.tb_frame.f_code.co_filename:
       tb.tb_frame.f_locals['__tracebackhide__'] = True
-    tb = tb.tb_next
+    tb = tb.tb_next  # pyrefly: ignore[bad-assignment]

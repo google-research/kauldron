@@ -62,7 +62,7 @@ class TapOcclusionAccuracy(metrics.Metric):
   axis_order: Literal["BQTC", "BTQC"] = "BQTC"
 
   @flax.struct.dataclass
-  class State(metrics.AutoState):
+  class State(metrics.AutoState):  # pyrefly: ignore[bad-override]
     values: Float["*"] | tuple[Float["*"], ...] = metrics.concat_field()
 
     def compute(self):
@@ -117,13 +117,13 @@ class TapOcclusionAccuracy(metrics.Metric):
 
     if self.axis_order == "BTQC":
       if query_frame is None:  # Assume query from first frame if not provided
-        query_frame = jnp.zeros(Shape("*B N"))
+        query_frame = jnp.zeros(Shape("*B N"))  # pyrefly: ignore[bad-argument-type]
 
       pred_visible = einops.rearrange(pred_visible, "... M N -> ... N M")
       gt_visible = einops.rearrange(gt_visible, "... M N -> ... N M")
       if evaluation_mask is None:
         evaluation_frames = get_evaluation_frames(
-            query_frame, Shape("M")[0], self.query_mode
+            query_frame, Shape("M")[0], self.query_mode  # pyrefly: ignore[bad-argument-type]
         )
       else:
         evaluation_frames = einops.rearrange(
@@ -131,10 +131,10 @@ class TapOcclusionAccuracy(metrics.Metric):
         )
     else:
       if query_frame is None:  # Assume query from first frame if not provided
-        query_frame = jnp.zeros(Shape("*B M"))
+        query_frame = jnp.zeros(Shape("*B M"))  # pyrefly: ignore[bad-argument-type]
       if evaluation_mask is None:
         evaluation_frames = get_evaluation_frames(
-            query_frame, Shape("N")[0], self.query_mode
+            query_frame, Shape("N")[0], self.query_mode  # pyrefly: ignore[bad-argument-type]
         )
       else:
         evaluation_frames = evaluation_mask.astype(bool)
@@ -168,7 +168,7 @@ class TapPositionAccuracy(metrics.Metric):
   thresholds: Sequence[float] = (1 / 256, 2 / 256, 4 / 256, 8 / 256, 16 / 256)
 
   @flax.struct.dataclass
-  class State(metrics.AutoState):
+  class State(metrics.AutoState):  # pyrefly: ignore[bad-override]
     values: Float["*"] | tuple[Float["*"], ...] = metrics.concat_field()
 
     def compute(self):
@@ -228,14 +228,14 @@ class TapPositionAccuracy(metrics.Metric):
 
     if self.axis_order == "BTQC":
       if query_frame is None:  # Assume query from first frame if not provided
-        query_frame = jnp.zeros(Shape("*B N"))
+        query_frame = jnp.zeros(Shape("*B N"))  # pyrefly: ignore[bad-argument-type]
 
       pred_tracks = einops.rearrange(pred_tracks, "... M N C -> ... N M C")
       gt_tracks = einops.rearrange(gt_tracks, "... M N C -> ... N M C")
       gt_visible = einops.rearrange(gt_visible, "... M N -> ... N M")
       if evaluation_mask is None:
         evaluation_frames = get_evaluation_frames(
-            query_frame, Shape("M")[0], self.query_mode
+            query_frame, Shape("M")[0], self.query_mode  # pyrefly: ignore[bad-argument-type]
         )
       else:
         evaluation_frames = einops.rearrange(
@@ -243,10 +243,10 @@ class TapPositionAccuracy(metrics.Metric):
         )
     else:
       if query_frame is None:  # Assume query from first frame if not provided
-        query_frame = jnp.zeros(Shape("*B M"))
+        query_frame = jnp.zeros(Shape("*B M"))  # pyrefly: ignore[bad-argument-type]
       if evaluation_mask is None:
         evaluation_frames = get_evaluation_frames(
-            query_frame, Shape("N")[0], self.query_mode
+            query_frame, Shape("N")[0], self.query_mode  # pyrefly: ignore[bad-argument-type]
         )
       else:
         evaluation_frames = evaluation_mask.astype(bool)
@@ -296,7 +296,7 @@ class TapAverageJaccard(metrics.Metric):
   thresholds: Sequence[float] = (1 / 256, 2 / 256, 4 / 256, 8 / 256, 16 / 256)
 
   @flax.struct.dataclass
-  class State(metrics.AutoState):
+  class State(metrics.AutoState):  # pyrefly: ignore[bad-override]
     values: Float["*"] | tuple[Float["*"], ...] = metrics.concat_field()
 
     def compute(self):
@@ -358,7 +358,7 @@ class TapAverageJaccard(metrics.Metric):
 
     if self.axis_order == "BTQC":
       if query_frame is None:  # Assume query from first frame if not provided
-        query_frame = jnp.zeros(Shape("*B N"))
+        query_frame = jnp.zeros(Shape("*B N"))  # pyrefly: ignore[bad-argument-type]
 
       pred_tracks = einops.rearrange(pred_tracks, "... M N C -> ... N M C")
       pred_visible = einops.rearrange(pred_visible, "... M N -> ... N M")
@@ -366,7 +366,7 @@ class TapAverageJaccard(metrics.Metric):
       gt_visible = einops.rearrange(gt_visible, "... M N -> ... N M")
       if evaluation_mask is None:
         evaluation_frames = get_evaluation_frames(
-            query_frame, Shape("M")[0], self.query_mode
+            query_frame, Shape("M")[0], self.query_mode  # pyrefly: ignore[bad-argument-type]
         )
       else:
         evaluation_frames = einops.rearrange(
@@ -374,10 +374,10 @@ class TapAverageJaccard(metrics.Metric):
         )
     else:
       if query_frame is None:  # Assume query from first frame if not provided
-        query_frame = jnp.zeros(Shape("*B M"))
+        query_frame = jnp.zeros(Shape("*B M"))  # pyrefly: ignore[bad-argument-type]
       if evaluation_mask is None:
         evaluation_frames = get_evaluation_frames(
-            query_frame, Shape("N")[0], self.query_mode
+            query_frame, Shape("N")[0], self.query_mode  # pyrefly: ignore[bad-argument-type]
         )
       else:
         evaluation_frames = evaluation_mask.astype(bool)

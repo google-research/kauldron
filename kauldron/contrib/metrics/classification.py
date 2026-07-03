@@ -37,7 +37,7 @@ class JointAccuracy(base.Metric):
   mask: Optional[kontext.Key] = None
 
   @flax.struct.dataclass
-  class State(base_state.AverageState):
+  class State(base_state.AverageState):  # pyrefly: ignore[bad-override]
     pass
 
   @typechecked
@@ -52,4 +52,4 @@ class JointAccuracy(base.Metric):
     correct_a = logits_a.argmax(axis=-1, keepdims=True) == labels_a
     correct_b = logits_b.argmax(axis=-1, keepdims=True) == labels_b
     correct = correct_a & correct_b
-    return self.State.from_values(values=correct, mask=mask)
+    return self.State.from_values(values=correct, mask=mask)  # pyrefly: ignore[bad-return]

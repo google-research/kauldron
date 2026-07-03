@@ -65,11 +65,11 @@ class RootMeanSquaredError(base.Metric):
   rmse_mode: str = "trad"
 
   @flax.struct.dataclass
-  class State(metrics.AutoState["RootMeanSquaredError"]):
+  class State(metrics.AutoState["RootMeanSquaredError"]):  # pyrefly: ignore[bad-override]
     """RootMeanSquaredError state."""
 
-    sum_squared_diffs: Float["b"] = metrics.concat_field()
-    number_summed_values: Int["b"] = metrics.concat_field()
+    sum_squared_diffs: Float["b"] = metrics.concat_field()  # pyrefly: ignore[unknown-name]
+    number_summed_values: Int["b"] = metrics.concat_field()  # pyrefly: ignore[unknown-name]
 
     @typechecked
     def compute(self) -> float:
@@ -95,8 +95,8 @@ class RootMeanSquaredError(base.Metric):
   @typechecked
   def get_state(
       self,
-      preds: Float["b *d"],
-      targets: Float["b *d"],
+      preds: Float["b *d"],  # pyrefly: ignore[unknown-name]
+      targets: Float["b *d"],  # pyrefly: ignore[unknown-name]
   ) -> RootMeanSquaredError.State:
     num_samples = targets.shape[0]
     square_diffs = jnp.square(preds - targets).reshape(num_samples, -1)

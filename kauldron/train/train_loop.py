@@ -81,7 +81,7 @@ def train_impl(
     # element_spec). While the first one is optional (could be skipped with
     # `NoopWriter`, the second one is mandatory in order to re-load the model
     # for evals/inference.
-    writer.write_config(trainer.raw_cfg)
+    writer.write_config(trainer.raw_cfg)  # pyrefly: ignore[bad-argument-type]
     writer.write_param_overview(initial_step, state.params)
     global_elem_spec = data_utils.get_global_elem_spec(
         ds_iter.element_spec, trainer.sharding.batch
@@ -129,7 +129,7 @@ def train_impl(
       if ckpt.should_save(i):
         # Add the train metrics to the metrics used for checkpointing.
         if log_metrics:
-          eval_metrics["train"] = aux.compute(flatten=False).metric_values
+          eval_metrics["train"] = aux.compute(flatten=False).metric_values  # pyrefly: ignore[missing-attribute]
         # Take the time after executing the last training step so
         # that the times logged and stored with the checkpoint match.
         # TODO(epot): Should check `i` and `state.step` match

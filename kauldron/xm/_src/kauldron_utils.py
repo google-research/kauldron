@@ -113,7 +113,7 @@ class KauldronJobs(jobs_info.JobsProvider):
             ),
         )
         for eval_name, (run, eval_names) in epy.zip_dict(
-            final_runs, run_to_eval_names
+            final_runs, run_to_eval_names  # pyrefly: ignore[bad-argument-type]
         )
     }
 
@@ -211,7 +211,7 @@ class KauldronJobs(jobs_info.JobsProvider):
     # defined in `__konfig_resolve_exclude_fields__` to avoid trigger
     # slow XManager import in Kauldron.
     if isinstance(run, run_strategies.Standalone):
-      init_kwargs = konfig.resolve(run._kxm_init_kwargs)  # pylint: disable=protected-access
+      init_kwargs = konfig.resolve(run._kxm_init_kwargs)  # pylint: disable=protected-access  # pyrefly: ignore[missing-attribute]
       # Cannot use `dataclasses.replace` as it interact with the `merge_utils`
       run = type(run)(**init_kwargs)
 
@@ -220,10 +220,10 @@ class KauldronJobs(jobs_info.JobsProvider):
         run = run_strategies.StandaloneLastCheckpoint(
             # `eval_only` likely won't colide with other `cfg.evals` names.
             job_group="eval_only",
-            **self.trainer_xm_job._kxm_init_kwargs,  # pylint: disable=protected-access
+            **self.trainer_xm_job._kxm_init_kwargs,  # pylint: disable=protected-access  # pyrefly: ignore[missing-attribute]
         )
       elif isinstance(run, run_strategies.Standalone):
-        init_kwargs = dict(run._kxm_init_kwargs)  # pylint: disable=protected-access
+        init_kwargs = dict(run._kxm_init_kwargs)  # pylint: disable=protected-access  # pyrefly: ignore[missing-attribute]
         init_kwargs.pop("job_group", None)  # Avoid duplicated kwarg.
 
         run = run_strategies.StandaloneLastCheckpoint(
@@ -283,7 +283,7 @@ def _serialize_job_kwargs(job_kwargs: dict[str, _Json]) -> dict[str, _Json]:
 
 def deserialize_job_kwargs(job_kwargs: dict[str, _Json]) -> dict[str, _Json]:
   return {
-      k.removeprefix("cfg."): json_utils.arg_from_json(v)
+      k.removeprefix("cfg."): json_utils.arg_from_json(v)  # pyrefly: ignore[bad-argument-type]
       for k, v in job_kwargs.items()
   }
 

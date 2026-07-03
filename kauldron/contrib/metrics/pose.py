@@ -53,7 +53,7 @@ class RelativeRotationError(kd.metrics.Metric):
   rotation_as_quaternion: bool = False
 
   @flax.struct.dataclass
-  class State(base_state.AverageState):
+  class State(base_state.AverageState):  # pyrefly: ignore[bad-override]
     pass
 
   @typechecked
@@ -79,7 +79,7 @@ class RelativeRotationError(kd.metrics.Metric):
     else:
       values = delta_angle
 
-    return self.State.from_values(values=values, mask=mask)
+    return self.State.from_values(values=values, mask=mask)  # pyrefly: ignore[bad-return]
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -103,7 +103,7 @@ class RelativeTranslationError(kd.metrics.Metric):
   rotation_as_quaternion: bool = False
 
   @flax.struct.dataclass
-  class State(base_state.AverageState):
+  class State(base_state.AverageState):  # pyrefly: ignore[bad-override]
     pass
 
   @typechecked
@@ -140,7 +140,7 @@ class RelativeTranslationError(kd.metrics.Metric):
     else:
       values = transl_angle
 
-    return self.State.from_values(values=values, mask=mask)
+    return self.State.from_values(values=values, mask=mask)  # pyrefly: ignore[bad-return]
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -164,7 +164,7 @@ class PoseEndPointError(kd.metrics.Metric):
   _n_points: int = 2
 
   @flax.struct.dataclass
-  class State(base_state.AverageState):
+  class State(base_state.AverageState):  # pyrefly: ignore[bad-override]
     pass
 
   @typechecked
@@ -192,7 +192,7 @@ class PoseEndPointError(kd.metrics.Metric):
     ).mean(axis=-1)
     epe = epe.reshape(b_star)
 
-    return self.State.from_values(values=epe, mask=mask)
+    return self.State.from_values(values=epe, mask=mask)  # pyrefly: ignore[bad-return]
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -210,7 +210,7 @@ class PoseMeanAverageAccuracy(kd.metrics.Metric):
   rotation_as_quaternion: bool = False
 
   @flax.struct.dataclass
-  class State(base_state.AverageState):
+  class State(base_state.AverageState):  # pyrefly: ignore[bad-override]
     pass
 
   @typechecked
@@ -265,4 +265,4 @@ class PoseMeanAverageAccuracy(kd.metrics.Metric):
     num_pairs = float(max_errors.shape[1])
     normalized_histogram = histogram / num_pairs
     maa = jnp.mean(jnp.cumsum(normalized_histogram, axis=1), axis=1)  # [B]
-    return self.State.from_values(values=maa)
+    return self.State.from_values(values=maa)  # pyrefly: ignore[bad-return]

@@ -36,14 +36,14 @@ class MockExperiment(xm_mock.MockExperiment):
     self._work_unit = MockWorkUnit()
     self._results = []
 
-  def add(self, launch_work_unit: xm.JobGeneratorType, **kwargs) -> None:
+  def add(self, launch_work_unit: xm.JobGeneratorType, **kwargs) -> None:  # pyrefly: ignore[bad-override]
     self._results.append(launch_work_unit(self._work_unit, **kwargs))
 
   async def flatten_jobs(self) -> list[xm.Job]:
     await asyncio.gather(*self._results)
     return list(
         itertools.chain.from_iterable(
-            xm.job_operators.flatten_jobs(jobs) for jobs in self._work_unit.jobs
+            xm.job_operators.flatten_jobs(jobs) for jobs in self._work_unit.jobs  # pyrefly: ignore[bad-argument-type]
         )
     )
 

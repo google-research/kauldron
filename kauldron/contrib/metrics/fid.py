@@ -53,7 +53,7 @@ class FidWithStats(base.Metric):
     return self.reference_stats_loader()
 
   @flax.struct.dataclass
-  class State(metrics.AutoState["FidWithStats"]):
+  class State(metrics.AutoState["FidWithStats"]):  # pyrefly: ignore[bad-override]
     """FID state."""
 
     pred_feats: Float["b h w d"] = metrics.concat_field()

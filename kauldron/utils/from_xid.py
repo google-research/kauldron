@@ -114,7 +114,7 @@ def get_workdir(
 def get_element_spec(
     xid: int,
     wid: int = 1,
-) -> PyTree[enp.ArraySpec]:
+) -> PyTree[enp.ArraySpec]:  # pyrefly: ignore[not-a-type]
   """Returns the element_spec of the train dataset of an xmanager experiment.
 
   This allow to initialize an existing model without having to load an actual

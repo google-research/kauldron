@@ -204,7 +204,7 @@ class Trainer(config_util.BaseConfig):
   profiler: profile_utils.Profiler = dataclasses.field(
       default_factory=profile_utils.Profiler
   )
-  checkify_error_categories: frozenset[CheckifyErrorCategory] = frozenset()
+  checkify_error_categories: frozenset[CheckifyErrorCategory] = frozenset()  # pyrefly: ignore[invalid-annotation]
 
   # Optimizer
   schedules: MutableMapping[str, optax.Schedule] = dataclasses.field(
@@ -365,7 +365,7 @@ class Trainer(config_util.BaseConfig):
       *,
       skip_transforms: bool = False,
       skip_optimizer: bool = False,
-      element_spec: PyTree[enp.ArraySpec] | None = None,
+      element_spec: PyTree[enp.ArraySpec] | None = None,  # pyrefly: ignore[not-a-type]
   ) -> train_step.TrainState:
     """Create the state: `cfg.trainstep.init(element_spec)`."""
     if element_spec is None:
@@ -392,7 +392,7 @@ class Trainer(config_util.BaseConfig):
       Final model state
       Auxiliaries
     """
-    return train_loop.train_impl(self)
+    return train_loop.train_impl(self)  # pyrefly: ignore[bad-return]
 
   def continuous_eval(
       self,
