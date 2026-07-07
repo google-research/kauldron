@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import dataclasses
+import logging
 import typing
 from typing import TypeVar
 
@@ -97,6 +98,10 @@ class CheckpointedEvaluator(evaluators.Evaluator):
     step_nr_jax = sharding_lib.device_put(0, sharding_lib.REPLICATED)
     return self.step(step_nr=step_nr_jax, state=state, batch=batch).finalize()
 
+  def _eval_done_path(self, step: int) -> epath.Path:
+    """Return the path to the marker file indicating eval is done."""
+    return epath.Path(self.checkpointer.workdir) / f"step_{step}_done"
+
   def _step_checkpointer(
       self, step: int
   ) -> checkpoints.checkpointer.Checkpointer:
@@ -119,6 +124,17 @@ class CheckpointedEvaluator(evaluators.Evaluator):
   ) -> auxiliaries.AuxiliariesState:
     """Run one full evaluation with checkpointing."""
     self._assert_root_cfg_resolved()
+
+    # Skip evaluation if it already completed (handles preemption restarts).
+    done_path = self._eval_done_path(step)
+    if done_path.exists():
+      logging.info(
+          "Eval %r at step %d already completed. Skipping.",
+          self.name,
+          step,
+      )
+      return auxiliaries.AuxiliariesState()
+
     if self.discard_opt:
       state = state.replace(opt_state=None)
     state = self.init_transform.transform(state)
@@ -219,4 +235,6 @@ class CheckpointedEvaluator(evaluators.Evaluator):
       step_workdir = epath.Path(ckptr.workdir)
       if step_workdir.exists():
         step_workdir.rmtree()
+      # Write a marker file to indicate eval completed successfully.
+      done_path.touch()
     return merged_aux
