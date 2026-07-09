@@ -36,6 +36,12 @@ def build_and_upload(
   * On XManager: Add the articfacts for each dashboard.
   * On Colab: Print the links.
 
+  A single combined "overview" dashboard is created first, containing all plots
+  from all categories (losses, metrics, schedules, perf_stats, etc.). This
+  ensures the default Flatboard view shows all metrics, not just the first
+  category. The individual per-category dashboards are still available as
+  additional artifacts.
+
   Args:
     dashboards: The dashboards to build.
     ctx: Build context.
@@ -51,6 +57,21 @@ def build_and_upload(
   dashboards = dashboards.normalize().build(ctx)  # pyrefly: ignore[bad-assignment]
   if epy.is_test():  # Inside tests, do not actually create the dashboards.
     return
+
+  # Build a combined "overview" dashboard containing all plots from all
+  # categories so the default Flatboard view shows everything.
+  all_plots = []
+  for db in dashboards.values():  # pyrefly: ignore[missing-attribute]
+    all_plots.extend(db.plots)  # pyrefly: ignore[missing-attribute]
+  if all_plots:
+    overview_title = f'{ctx.id}: Overview'
+    overview_db = fb.Dashboard(title=overview_title, plots=all_plots)
+    overview_url = overview_db.save_url(
+        reader_permissions=fb.FlatboardDashboardPermissions.EVERYONE
+    ).split('/revisions/')[0]
+  else:
+    overview_url = None
+
   urls = {
       # Remove the `/revisions/` so that flatboard updates are reflected.
       # TODO(epot): Is it a good idea?
@@ -60,13 +81,19 @@ def build_and_upload(
       for k, db in dashboards.items()  # pyrefly: ignore[missing-attribute]
   }
   status.log('Dashboards:')
+  if overview_url:
+    status.log(f'* overview: {overview_url}')
   for k, url in urls.items():
     status.log(f'* {k}: {url}')
 
-  # Add the XManager atrifacts to setup the UI on XManager.
+  # Add the XManager artifacts to setup the UI on XManager.
   # Only add the flatboard artifacts for the first work-unit due to a race
   # condition between work-units (b/351986366).
   if status.on_xmanager and status.wid == 1:
+    # Register the combined overview dashboard first so it appears as the
+    # default when opening Flatboard from XManager.
+    if overview_url:
+      xm_utils.add_flatboard_artifact('overview', overview_url)
     for k, url in urls.items():
       xm_utils.add_flatboard_artifact(k, url)
 
