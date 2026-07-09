@@ -134,7 +134,7 @@ def test_resolve_union_proxy():
 
   # It should resolve to the types.UnionType if python >= 3.10
   # At runtime builtins.int evaluates to the actual python int
-  assert resolved_cfg.my_union == int | str
+  assert resolved_cfg['my_union'] == int | str
 
 
 def test_proxy_union_repr_and_resolution():
