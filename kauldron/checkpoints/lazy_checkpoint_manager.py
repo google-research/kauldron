@@ -19,6 +19,7 @@ import dataclasses
 import time
 from typing import Any, Optional, TypeVar
 
+from absl import logging
 from etils import epath
 from kauldron.checkpoints import checkpoint_items
 from orbax import checkpoint as ocp
@@ -47,6 +48,7 @@ class LazyCheckpointManager:
   _: dataclasses.KW_ONLY
   options: ocp.CheckpointManagerOptions
   fast: bool = True
+  cleanup_orphaned_snapshots: bool = False
 
   # Those arguments are dynamically set on first usage (in `_create_manager`)
   # Note that it's possible that when `.latest_step()`,... are called the
@@ -173,18 +175,27 @@ class LazyCheckpointManager:
   ) -> Iterator[int]:
     """Wrapper around `ocp.checkpoint_utils.checkpoints_iterator`."""
     mgr = self._get_manager()
+    checkpoint_dir = epath.Path(mgr.directory)
+    snapshot_dir = checkpoint_dir / f"_SNAPSHOTS-{time.time_ns()}"
+
+    # Optionally clean up stale snapshot directories leaked by previous
+    # evaluator runs that were preempted or crashed before their finally-block
+    # could release the snapshot.  Disabled by default to preserve existing
+    # behavior; opt in via cleanup_orphaned_snapshots=True.
+    if self.cleanup_orphaned_snapshots:
+      _cleanup_stale_snapshot_dirs(checkpoint_dir, exclude=snapshot_dir)
 
     # TODO(b/315316885): This should be part of the `ocp.CheckpointManager`
     # API (see comment 4)
     for step in ocp.checkpoint_utils.checkpoints_iterator(
-        checkpoint_dir=mgr.directory,
+        checkpoint_dir=checkpoint_dir,
         step_prefix=mgr._options.step_prefix,  # pylint: disable=protected-access
         step_format_fixed_length=mgr._options.step_format_fixed_length,  # pylint: disable=protected-access
         min_interval_secs=min_interval_secs,
         seconds_to_sleep=seconds_to_sleep,
         timeout=timeout,
         timeout_fn=timeout_fn,
-        snapshot_dir=epath.Path(mgr.directory) / f"_SNAPSHOTS-{time.time_ns()}",
+        snapshot_dir=snapshot_dir,
     ):
       yield step
 
@@ -230,3 +241,72 @@ def _checkpoint_steps(checkpoint_dir: epath.PathLike) -> list[int]:
 
   steps = [get_step_for_dir(step_dir) for step_dir in checkpoint_dir.iterdir()]
   return [step for step in steps if step >= 0]
+
+
+def _cleanup_stale_snapshot_dirs(
+    checkpoint_dir: epath.Path,
+    *,
+    exclude: epath.Path,
+    max_age_secs: int = 10800,
+) -> None:
+  """Remove stale ``_SNAPSHOTS-*`` directories from previous runs.
+
+  Each evaluator creates a unique ``_SNAPSHOTS-{time.time_ns()}`` directory
+  to avoid conflicts with parallel evaluators.  If the evaluator is
+  preempted or crashes before its ``finally`` block can release the
+  snapshot, the directory leaks and is never cleaned up because subsequent
+  runs create their own fresh directory.
+
+  This function scans the checkpoint directory on startup and removes any
+  ``_SNAPSHOTS-*`` directories whose embedded timestamp is older than
+  ``max_age_secs``, which are safely assumed to be orphaned.  Removal uses
+  ``epath.Path.rmtree``, consistent with Orbax's own
+  ``Snapshot.release_snapshot`` implementation.
+
+  Args:
+    checkpoint_dir: Root checkpoint directory to scan.
+    exclude: The snapshot directory for the current run (skip it).
+    max_age_secs: Age threshold in seconds.  Directories older than this are
+      removed.  Defaults to 10800 (3 hours).
+  """
+  if not checkpoint_dir.exists():
+    return
+
+  now_ns = time.time_ns()
+  removed = 0
+  try:
+    for child in checkpoint_dir.iterdir():
+      name = child.name
+      if not name.startswith("_SNAPSHOTS-"):
+        continue
+      if child == exclude:
+        continue
+      # Extract the nanosecond timestamp from the directory name.
+      try:
+        ts_ns = int(name.split("-", 1)[1])
+      except (ValueError, IndexError):
+        continue
+      age_secs = (now_ns - ts_ns) / 1e9
+      if age_secs > max_age_secs:
+        try:
+          child.rmtree()
+          removed += 1
+        except (OSError, FileNotFoundError):
+          logging.warning(
+              "Failed to remove stale snapshot directory: %s",
+              name,
+              exc_info=True,
+          )
+  except (OSError, FileNotFoundError):
+    logging.warning(
+        "Error scanning for stale snapshot directories in %s",
+        checkpoint_dir,
+        exc_info=True,
+    )
+  if removed:
+    logging.info(
+        "Removed %d stale snapshot director%s from %s.",
+        removed,
+        "y" if removed == 1 else "ies",
+        checkpoint_dir,
+    )

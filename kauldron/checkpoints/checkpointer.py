@@ -198,10 +198,13 @@ class Checkpointer(BaseCheckpointer):
     multiprocessing_options: See `ocp.MultiprocessingOptions`
     never_save_step_zero: If True, a checkpoint will be never saved for step 0,
       independently of any other parameter or setting.
-    lightweight_initialize: If True, the checkpoint manager will skip
-      loading metadata which saves time when initializing but will cause
-      problems with time-based checkpoint saving and selecting the best metric
-      from the previous checkpoints. See orbax documentation for more details.
+    lightweight_initialize: If True, the checkpoint manager will skip loading
+      metadata which saves time when initializing but will cause problems with
+      time-based checkpoint saving and selecting the best metric from the
+      previous checkpoints. See orbax documentation for more details.
+    cleanup_orphaned_snapshots: Whether to clean up stale snapshot
+      (`_SNAPSHOTS-*`) directories from previous interrupted or crashed runs
+      when iterating evaluations (defaults to False).
     fast: (internal) Activate some optimizations
     create: (internal) Whether to create the checkpoint directory, this is set
       by kauldron automatically based on whether the job is a training job
@@ -226,6 +229,7 @@ class Checkpointer(BaseCheckpointer):
 
   never_save_step_zero: bool = False
   lightweight_initialize: bool = False
+  cleanup_orphaned_snapshots: bool = False
   fast: bool = True
   create: bool = True
 
@@ -269,6 +273,7 @@ class Checkpointer(BaseCheckpointer):
         directory=epath.Path(self.workdir) / CHECKPOINT_FOLDER_NAME,
         options=mgr_options,
         fast=self.fast,
+        cleanup_orphaned_snapshots=self.cleanup_orphaned_snapshots,
     )
 
   def restore(

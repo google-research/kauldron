@@ -115,3 +115,17 @@ def _assert_timer(old, new):
   assert old.initial_training_time_hours == new.initial_training_time_hours
   assert old.per_device_batch_size == new.per_device_batch_size
   assert old.global_batch_size == new.global_batch_size
+
+
+def test_cleanup_orphaned_snapshots(tmp_path):
+  ckpt_default = checkpoints.Checkpointer(
+      workdir=tmp_path, save_interval_steps=1
+  )
+  assert not ckpt_default.cleanup_orphaned_snapshots
+  assert not ckpt_default._ckpt_mgr.cleanup_orphaned_snapshots
+
+  ckpt_enabled = checkpoints.Checkpointer(
+      workdir=tmp_path, save_interval_steps=1, cleanup_orphaned_snapshots=True
+  )
+  assert ckpt_enabled.cleanup_orphaned_snapshots
+  assert ckpt_enabled._ckpt_mgr.cleanup_orphaned_snapshots
