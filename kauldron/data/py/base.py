@@ -329,6 +329,9 @@ def _worker_init_fn(
   # See https://docs.jax.dev/en/latest/gpu_memory_allocation.html
   os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
 
+  # Prevent JAX from initializing TPU/GPU in PyGrain workers (CPU only).
+  os.environ["JAX_PLATFORMS"] = "cpu"
+
   if custom_worker_init_fn is not None:
     custom_worker_init_fn(worker_idx, worker_count)
 
