@@ -232,6 +232,7 @@ class Checkpointer(BaseCheckpointer):
   cleanup_orphaned_snapshots: bool = False
   fast: bool = True
   create: bool = True
+  enable_async_checkpointing: bool = True
 
   @functools.cached_property
   def _ckpt_mgr(self) -> lazy_checkpoint_manager.LazyCheckpointManager:
@@ -258,6 +259,7 @@ class Checkpointer(BaseCheckpointer):
         async_options=ocp.AsyncOptions(
             timeout_secs=60 * 30,  # 30 minutes
         ),
+        enable_async_checkpointing=self.enable_async_checkpointing,
         multiprocessing_options=self.multiprocessing_options,
         preservation_policy=self.preservation_policy,
         # Ensure that checkpoints are not world-readable.
