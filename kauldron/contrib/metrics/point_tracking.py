@@ -64,9 +64,14 @@ class TapOcclusionAccuracy(metrics.Metric):
   @flax.struct.dataclass
   class State(metrics.AutoState):  # pyrefly: ignore[bad-override]
     values: Float["*"] | tuple[Float["*"], ...] = metrics.concat_field()
+    masks: Float["*"] | tuple[Float["*"], ...] = metrics.concat_field()
 
     def compute(self):
-      return jnp.array(self.values).mean()
+      v = jnp.array(self.values)
+      m = jnp.array(self.masks)
+      # Mask-aware aggregation: padded/invalid batch elements contribute zero
+      # to both sum and denominator, preventing corruption of aggregates.
+      return (v * m).sum() / (m.sum() + 1e-8)
 
   @typechecked
   def get_state(
@@ -149,7 +154,8 @@ class TapOcclusionAccuracy(metrics.Metric):
       count = count * query_mask
     values = values.sum(axis=-1) / (count.sum(axis=-1) + 1e-8)
 
-    return self.State(values=values)
+    valid = count.sum(axis=-1) > 0
+    return self.State(values=values, masks=valid.astype(jnp.float32))
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -170,9 +176,14 @@ class TapPositionAccuracy(metrics.Metric):
   @flax.struct.dataclass
   class State(metrics.AutoState):  # pyrefly: ignore[bad-override]
     values: Float["*"] | tuple[Float["*"], ...] = metrics.concat_field()
+    masks: Float["*"] | tuple[Float["*"], ...] = metrics.concat_field()
 
     def compute(self):
-      return jnp.array(self.values).mean()
+      v = jnp.array(self.values)
+      m = jnp.array(self.masks)
+      # Mask-aware aggregation: padded/invalid batch elements contribute zero
+      # to both sum and denominator, preventing corruption of aggregates.
+      return (v * m).sum() / (m.sum() + 1e-8)
 
   @typechecked
   def get_state(
@@ -275,7 +286,8 @@ class TapPositionAccuracy(metrics.Metric):
 
     values = jnp.mean(jnp.stack(all_frac_within, axis=-1), axis=-1)
 
-    return self.State(values=values)
+    valid = count_visible_points > 0
+    return self.State(values=values, masks=valid.astype(jnp.float32))
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -298,9 +310,14 @@ class TapAverageJaccard(metrics.Metric):
   @flax.struct.dataclass
   class State(metrics.AutoState):  # pyrefly: ignore[bad-override]
     values: Float["*"] | tuple[Float["*"], ...] = metrics.concat_field()
+    masks: Float["*"] | tuple[Float["*"], ...] = metrics.concat_field()
 
     def compute(self):
-      return jnp.array(self.values).mean()
+      v = jnp.array(self.values)
+      m = jnp.array(self.masks)
+      # Mask-aware aggregation: padded/invalid batch elements contribute zero
+      # to both sum and denominator, preventing corruption of aggregates.
+      return (v * m).sum() / (m.sum() + 1e-8)
 
   @typechecked
   def get_state(
@@ -420,4 +437,5 @@ class TapAverageJaccard(metrics.Metric):
 
     values = jnp.mean(jnp.stack(all_jaccard, axis=-1), axis=-1)
 
-    return self.State(values=values)
+    valid = (gt_positives + false_positives) > 0
+    return self.State(values=values, masks=valid.astype(jnp.float32))
