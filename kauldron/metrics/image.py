@@ -54,9 +54,13 @@ def psnr(
     divisor = jnp.maximum(1, jnp.sum(mask, axis=(-3, -2, -1)))
   else:
     divisor = kt.dim["h"] * kt.dim["w"] * kt.dim["c"]  # pyrefly: ignore[unsupported-operation]
+
   error = jnp.square(a - b).sum(axis=(-3, -2, -1))
   mse = error / divisor  # pyrefly: ignore[unsupported-operation]
-  return 20.0 * jnp.log10(dynamic_range) - 10.0 * jnp.log10(mse[..., None])
+
+  # Protect against log10(0) if MSE is exactly 0
+  mse_safe = jnp.maximum(mse, 1e-10)
+  return 20.0 * jnp.log10(dynamic_range) - 10.0 * jnp.log10(mse_safe[..., None])
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
