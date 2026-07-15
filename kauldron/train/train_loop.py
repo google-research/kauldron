@@ -112,66 +112,68 @@ def train_impl(
         profiler=trainer.profiler,
         tqdm_info=trainer.setup.tqdm_info,
     ):
-      # Evaluation metrics are computed from the OLD model state *before*
-      # backprop gradients are applied.
-      eval_metrics = {}
-      with chrono.pause(chrono_utils.Pause.EVALS_ALONG_TRAIN):
-        for evaluator in trainer.evals.values():
-          # If the checkpointer is saving the best checkpoint according to eval
-          # metrics, evaluation frequency must be sync with checkpointing.
-          eval_aux = evaluator.maybe_eval(step=i, state=state)
-          if eval_aux is not None:
-            # TODO(klausg): remove once compute() is moved out of the writer.
-            eval_metrics[evaluator.name] = eval_aux.compute(
-                flatten=False
-            ).metric_values
+      with jax.profiler.StepTraceAnnotation("train", step_num=i):
+        # Evaluation metrics are computed from the OLD model state *before*
+        # backprop gradients are applied.
+        eval_metrics = {}
+        with chrono.pause(chrono_utils.Pause.EVALS_ALONG_TRAIN):
+          for evaluator in trainer.evals.values():
+            # If the checkpointer is saving the best checkpoint according to
+            # eval metrics, evaluation frequency must be sync with
+            # checkpointing.
+            eval_aux = evaluator.maybe_eval(step=i, state=state)
+            if eval_aux is not None:
+              # TODO(klausg): remove once compute() is moved out of the writer.
+              eval_metrics[evaluator.name] = eval_aux.compute(
+                  flatten=False
+              ).metric_values
 
-      if ckpt.should_save(i):
-        # Add the train metrics to the metrics used for checkpointing.
-        if log_metrics:
-          eval_metrics["train"] = aux.compute(flatten=False).metric_values  # pyrefly: ignore[missing-attribute]
-        # Take the time after executing the last training step so
-        # that the times logged and stored with the checkpoint match.
-        # TODO(epot): Should check `i` and `state.step` match
-        with chrono.pause(chrono_utils.Pause.CHECKPOINT):
-          ckpt.save(
-              checkpoint_state.CheckpointState(state, chrono, ds_iter),
-              step=i,
-              metrics=eval_metrics,
-          )
+        if ckpt.should_save(i):
+          # Add the train metrics to the metrics used for checkpointing.
+          if log_metrics:
+            eval_metrics["train"] = aux.compute(flatten=False).metric_values  # pyrefly: ignore[missing-attribute]
+          # Take the time after executing the last training step so
+          # that the times logged and stored with the checkpoint match.
+          # TODO(epot): Should check `i` and `state.step` match
+          with chrono.pause(chrono_utils.Pause.CHECKPOINT):
+            ckpt.save(
+                checkpoint_state.CheckpointState(state, chrono, ds_iter),
+                step=i,
+                metrics=eval_metrics,
+            )
 
-      log_summaries = i % trainer.log_summaries_every == 0
-      log_metrics = i % trainer.log_metrics_every == 0
-      log_any = log_metrics or log_summaries
+        log_summaries = i % trainer.log_summaries_every == 0
+        log_metrics = i % trainer.log_metrics_every == 0
+        log_any = log_metrics or log_summaries
 
-      batch = next(ds_iter)  # Only mutate `ds_iter` after `ckpt.save`
-      batch = sharding_lib.device_put(batch, trainer.sharding.batch)
-      state, aux = trainstep.step(
-          state,
-          batch,
-          return_losses=log_any,
-          return_metrics=log_metrics,
-          return_summaries=log_summaries,
-          checkify_error_categories=trainer.checkify_error_categories,
-      )
-
-      # TODO(epot): Should be a `@checkify` decorator in `trainstep.step`.
-      if trainer.checkify_error_categories:
-        jax.device_get(aux.error).throw()
-
-      # Finish the steps before writing the metrics.
-      chrono.finish_step()
-
-      if log_any:
-        # TODO(epot): Could report metrics writing separately
-        # with chrono.pause(chrono_utils.Pause.METRICS_WRITING):
-        writer.write_step_metrics(
-            step=i,
-            aux=aux,
-            schedules=trainer.schedules,
-            timer=chrono,
-            log_summaries=log_summaries,
+        batch = next(ds_iter)  # Only mutate `ds_iter` after `ckpt.save`
+        batch = sharding_lib.device_put(batch, trainer.sharding.batch)
+        state, aux = trainstep.step(
+            state,
+            batch,
+            return_losses=log_any,
+            return_metrics=log_metrics,
+            return_summaries=log_summaries,
+            checkify_error_categories=trainer.checkify_error_categories,
         )
+
+        # TODO(epot): Should be a `@checkify` decorator in `trainstep.step`.
+        if trainer.checkify_error_categories:
+          jax.device_get(aux.error).throw()
+
+        # Finish the steps before writing the metrics.
+        chrono.finish_step()
+
+        if log_any:
+          # TODO(epot): Could report metrics writing separately
+          # with chrono.pause(chrono_utils.Pause.METRICS_WRITING):
+          writer.write_step_metrics(
+              step=i,
+              aux=aux,
+              schedules=trainer.schedules,
+              timer=chrono,
+              log_summaries=log_summaries,
+          )
 
   # run last checkpoint evals if any
   final_evals = [
