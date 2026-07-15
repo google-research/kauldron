@@ -364,7 +364,11 @@ class Tap3DPositionAccuracy(metrics.Metric):
 
     values = jnp.mean(jnp.stack(all_frac_within, axis=-1), axis=-1)
 
-    return self.State.from_values(values=values)
+    batch_mask = None
+    if evaluation_mask is not None:
+      batch_mask = jnp.any(evaluation_mask.astype(bool), axis=(-2, -1))
+
+    return self.State.from_values(values=values, mask=batch_mask)
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -585,4 +589,8 @@ class Tap3DAverageJaccard(metrics.Metric):
 
     values = jnp.mean(jnp.stack(all_jaccard, axis=-1), axis=-1)
 
-    return self.State.from_values(values=values)
+    batch_mask = None
+    if evaluation_mask is not None:
+      batch_mask = jnp.any(evaluation_mask.astype(bool), axis=(-2, -1))
+
+    return self.State.from_values(values=values, mask=batch_mask)

@@ -16,6 +16,60 @@ from kauldron.contrib.metrics import point_tracking
 import numpy as np
 
 
+def test_tap_occlusion_accuracy_padded_batch_deflation():
+  # B=2, T=3, Q=1, C=1 (axis_order="BTQC")
+  # Batch 0: Valid
+  # Batch 1: Padded (Fully Invalid)
+
+  pred_visible = np.array(
+      [
+          [[[1]], [[0]], [[1]]],  # Batch 0
+          [[[0]], [[0]], [[0]]],  # Batch 1 (Padded)
+      ],
+      dtype=np.float32,
+  )
+
+  gt_visible = np.array(
+      [
+          [[[1]], [[1]], [[1]]],  # Batch 0
+          [[[1]], [[1]], [[1]]],  # Batch 1 (Padded, garbage GT)
+      ],
+      dtype=np.float32,
+  )
+
+  evaluation_mask = np.array(
+      [
+          [[1], [1], [0]],  # Batch 0 (frame 2 is invalid)
+          [[0], [0], [0]],  # Batch 1 (All invalid)
+      ],
+      dtype=np.float32,
+  )
+
+  metric = point_tracking.TapOcclusionAccuracy(axis_order="BTQC")
+  state = metric.get_state(
+      pred_visible=pred_visible,
+      gt_visible=gt_visible,
+      evaluation_mask=evaluation_mask,
+  )
+
+  # Batch 0: frames 0 and 1 are valid.
+  # Frame 0: Pred 1, GT 1 -> Correct
+  # Frame 1: Pred 0, GT 1 -> Incorrect
+  # Accuracy = 0.5
+
+  # Batch 1: All invalid.
+
+  # Old code would compute accuracy = 0 for Batch 1.
+  # And then State.compute() would average Batch 0 (0.5) and
+  # Batch 1 (0.0) -> 0.25 (Deflation).
+
+  # New code should ignore Batch 1 and give 0.5.
+
+  # We assert 0.5 here to test NEW code. It should FAIL on old code.
+  result = state.compute()
+  np.testing.assert_allclose(result, 0.5)
+
+
 def test_tap_occlusion_accuracy_padded_tracks_inflation():
   # B=1, T=3, Q=2, C=1 (axis_order="BTQC")
   # Track 0: Valid, 1/2 correct (excluding query at T=0)
