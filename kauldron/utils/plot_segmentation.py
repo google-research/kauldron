@@ -47,7 +47,7 @@ _M2 = np.array([
 _M2_inv = np.linalg.inv(_M2)
 
 
-def _oklab_from_rgb(rgb: Float['... 3']) -> Float['... 3']:  # pyrefly: ignore[not-a-type]
+def _oklab_from_rgb(rgb: Float['... 3']) -> Float['... 3']:
   """Convert colors from RGB (sRGB) colorspace to Oklab colorspace.
 
   See https://bottosson.github.io/posts/oklab/
@@ -64,7 +64,7 @@ def _oklab_from_rgb(rgb: Float['... 3']) -> Float['... 3']:  # pyrefly: ignore[n
   return lab
 
 
-def _rgb_from_oklab(lab: Float['... 3']) -> Float['... 3']:  # pyrefly: ignore[not-a-type]
+def _rgb_from_oklab(lab: Float['... 3']) -> Float['... 3']:
   """Convert colors from Oklab colorspace to RGB colorspace.
 
   See https://bottosson.github.io/posts/oklab/
@@ -81,7 +81,7 @@ def _rgb_from_oklab(lab: Float['... 3']) -> Float['... 3']:  # pyrefly: ignore[n
   return skimage.color.xyz2rgb(xyz)
 
 
-def _lch_from_oklab(lab: Float['... 3']) -> Float['... 3']:  # pyrefly: ignore[not-a-type]
+def _lch_from_oklab(lab: Float['... 3']) -> Float['... 3']:
   """Convert Oklab colors to LCh colors (the polar form of Oklab).
 
   This form is useful for generating color palettes.
@@ -106,7 +106,7 @@ def _lch_from_oklab(lab: Float['... 3']) -> Float['... 3']:  # pyrefly: ignore[n
   return np.stack([l, c, h], axis=-1)
 
 
-def _oklab_from_lch(lch: Float['... 3']) -> Float['... 3']:  # pyrefly: ignore[not-a-type]
+def _oklab_from_lch(lch: Float['... 3']) -> Float['... 3']:
   """Convert LCh colors (the polar form of Oklab) to Oklab colors.
 
   This form is useful for generating color palettes.
@@ -131,12 +131,12 @@ def _oklab_from_lch(lch: Float['... 3']) -> Float['... 3']:  # pyrefly: ignore[n
   return np.stack([l, a, b], axis=-1)
 
 
-def _lch_from_rgb(rgb: Float['... 3']) -> Float['... 3']:  # pyrefly: ignore[not-a-type]
+def _lch_from_rgb(rgb: Float['... 3']) -> Float['... 3']:
   lab = _oklab_from_rgb(rgb)
   return _lch_from_oklab(lab)
 
 
-def _rgb_from_lch(lch: Float['... 3']) -> Float['... 3']:  # pyrefly: ignore[not-a-type]
+def _rgb_from_lch(lch: Float['... 3']) -> Float['... 3']:
   lab = _oklab_from_lch(lch)
   return _rgb_from_oklab(lab)
 
@@ -152,9 +152,9 @@ _COLOR_SPACES = {
 
 
 def _maybe_convert_to_wide_form(
-    segmentation: Union[Float['... K'], Int['... 1']],  # pyrefly: ignore[not-a-type]
+    segmentation: Union[Float['... K'], Int['... 1']],
     nr_segments: Optional[int] = None,
-) -> Float['... K']:  # pyrefly: ignore[not-a-type]
+) -> Float['... K']:
   """Convert segmentation into the form with a dimension per segment."""
   k = segmentation.shape[-1]
   int_types = {np.uint8, np.uint16, np.int16, np.int32, np.int64}
@@ -171,9 +171,9 @@ def _maybe_convert_to_wide_form(
 
 
 def _convert_to_one_hot(
-    segmentation: Union[Float['... K'], Int['... 1']],  # pyrefly: ignore[not-a-type]
+    segmentation: Union[Float['... K'], Int['... 1']],
     nr_segments: Optional[int] = None,
-) -> Float['... K']:  # pyrefly: ignore[not-a-type]
+) -> Float['... K']:
   """Convert segmentation into one-hot form."""
   if segmentation.shape[-1] == 1:  # convert to one-hot
     return _maybe_convert_to_wide_form(segmentation, nr_segments)
@@ -182,7 +182,7 @@ def _convert_to_one_hot(
     return _maybe_convert_to_wide_form(argmax_seg, nr_segments)
 
 
-def _palette_lch(n: int, chroma=0.3, lightness=0.8) -> Float['n 3']:  # pyrefly: ignore[not-a-type]
+def _palette_lch(n: int, chroma=0.3, lightness=0.8) -> Float['n 3']:
   starting_hue = np.pi * 1.5  # blue
   hues = np.linspace(starting_hue, 2 * np.pi + starting_hue, n + 1) % (
       2 * np.pi
@@ -194,7 +194,7 @@ def _palette_lch(n: int, chroma=0.3, lightness=0.8) -> Float['n 3']:  # pyrefly:
   return pal[:-1]
 
 
-def _palette_hsv(n: int) -> Float['n 3']:  # pyrefly: ignore[not-a-type]
+def _palette_hsv(n: int) -> Float['n 3']:
   starting_hue = 2 / 3  # blue
   r = np.linspace(starting_hue, starting_hue + 1.0, n + 1) % 1.0
   cmap = mpl.cm.get_cmap('hsv')
@@ -209,7 +209,7 @@ def _palette_mpl(
     n: int,
     minv: float = 0.1,
     maxv: float = 0.9,
-) -> Float['n 3']:  # pyrefly: ignore[not-a-type]
+) -> Float['n 3']:
   """Create a discrete palette from a matplotlib colormap.
 
   Also discard the alpha channel, and optionally limit the range
@@ -243,13 +243,13 @@ PALETTES = {
 }
 
 
-def _safe_log2(x: Float['...'], eps: float = 1e-6):  # pyrefly: ignore[bad-index, not-a-type]
+def _safe_log2(x: Float['...'], eps: float = 1e-6):  # pyrefly: ignore[bad-index]
   """Avoid NaNs from log(0) by clipping the input to the range [eps, inf)."""
   safe_x = np.clip(x, a_min=eps, a_max=np.inf)
   return np.log2(safe_x)
 
 
-def _norm_entropy(x: Float['... k'], axis=-1) -> Float['... 1']:  # pyrefly: ignore[not-a-type]
+def _norm_entropy(x: Float['... k'], axis=-1) -> Float['... 1']:
   """Compute the normalized entropy [0, 1] along the final axis."""
   entropy = -np.sum(x * _safe_log2(x), axis=axis, keepdims=True)
   if x.shape[-1] == 1:
@@ -259,16 +259,16 @@ def _norm_entropy(x: Float['... k'], axis=-1) -> Float['... 1']:  # pyrefly: ign
 
 
 def _blur_image(
-    img: Float['... H W C'], *, sigma: float = 1.0  # pyrefly: ignore[not-a-type]
-) -> Float['... H W C']:  # pyrefly: ignore[not-a-type]
+    img: Float['... H W C'], *, sigma: float = 1.0
+) -> Float['... H W C']:
   batch_axis = np.arange(img.ndim - 3)  # all axis except the last three
   sigma = (0,) * len(batch_axis) + (sigma, sigma, 0)  # pyrefly: ignore[bad-assignment]
   return scipy.ndimage.gaussian_filter(img, sigma=sigma)
 
 
 def _optimize_palette(
-    palette: Float['k 3'],  # pyrefly: ignore[not-a-type]
-    segmentation: Union[Float['... H W K'], Int['... H W 1']],  # pyrefly: ignore[not-a-type]
+    palette: Float['k 3'],
+    segmentation: Union[Float['... H W K'], Int['... H W 1']],
     *,
     hard: bool = False,
     color_space: str = 'oklab',
@@ -276,8 +276,8 @@ def _optimize_palette(
     iterations: int = 10000,
     seed: int = 42,
     threshold: float = 0.75,
-    perm_mask: Optional[UInt8['k']] = None,  # pyrefly: ignore[not-a-type, unknown-name]
-) -> Float['k 3']:  # pyrefly: ignore[not-a-type]
+    perm_mask: Optional[UInt8['k']] = None,  # pyrefly: ignore[unknown-name]
+) -> Float['k 3']:
   """Shuffle a palette to reduce similar colors being next to each other."""
 
   to_colorspace, _ = _COLOR_SPACES[color_space]
@@ -318,11 +318,11 @@ def _optimize_palette(
 
 
 def _align_segmentation_to_reference(
-    segmentation: Union[Float['... H W K'], Int['... H W 1']],  # pyrefly: ignore[not-a-type]
-    reference: Union[Float['... H W K'], Int['... H W 1']],  # pyrefly: ignore[not-a-type]
+    segmentation: Union[Float['... H W K'], Int['... H W 1']],
+    reference: Union[Float['... H W K'], Int['... H W 1']],
     *,
     hard: bool = False,
-) -> Float['... H W K']:  # pyrefly: ignore[not-a-type]
+) -> Float['... H W K']:
   """Permute segmentation indices to best match a reference segmentation."""
   k = max(segmentation.shape[-1], reference.shape[-1])
   nr_segments = k if k != 1 else None
@@ -343,17 +343,17 @@ def _align_segmentation_to_reference(
 
 
 def plot_segmentation(
-    segmentation: Union[Float['... K'], Int['... 1']],  # pyrefly: ignore[not-a-type]
+    segmentation: Union[Float['... K'], Int['... 1']],
     *,
-    palette: Optional[Float['K 3']] = None,  # pyrefly: ignore[not-a-type]
+    palette: Optional[Float['K 3']] = None,
     color_space: str = 'oklab',
-    img: Union[Float['... c'], UInt8['... c']] = None,  # pyrefly: ignore[not-a-type]
+    img: Union[Float['... c'], UInt8['... c']] = None,
     hard: bool = False,
     entropy: bool = False,
     edges: bool = False,
     edge_lightness: float = 1.0,
     image_contrast: float = 0.6,
-) -> Float['... 3']:  # pyrefly: ignore[not-a-type]
+) -> Float['... 3']:
   """Function for various kinds of instance segmentation visualization.
 
   Args:
