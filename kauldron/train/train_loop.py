@@ -187,7 +187,7 @@ def train_impl(
     # free memory
     gc.collect()
     jax.clear_caches()
-    evaluator.evaluate(state=state, step=trainer.num_train_steps)
+    evaluator.evaluate(state=state, step=trainer.num_train_steps)  # pyrefly: ignore[bad-argument-type]
 
   # Ensure all hosts exit together. See section in dm/jax-faqs.
   _sync()
