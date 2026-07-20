@@ -46,7 +46,7 @@ class Tfds(base.DataLoader):
   shuffle_buffer_size: int = 10_000
   num_epochs: Optional[int] = None
 
-  def __call__(self, seed: Optional[PRNGKeyLike] = None) -> tf.data.Dataset:
+  def __call__(self, seed: Optional[PRNGKeyLike] = None) -> tf.data.Dataset:  # pyrefly: ignore[not-a-type]
     dataset_builder = tfds.builder(self.name, data_dir=self.data_dir)
 
     if self.shuffle and seed is None:
