@@ -58,7 +58,7 @@ class Pipeline(data_utils.IterableDataset, config_util.UpdateFromRootCfg):
   """
 
   batch_size: int | None = None
-  seed: Optional[PRNGKeyLike] = config_util.ROOT_CFG_REF.seed
+  seed: Optional[PRNGKeyLike] = config_util.ROOT_CFG_REF.seed  # pyrefly: ignore[not-a-type]
 
   @functools.cached_property
   def element_spec(self) -> PyTree[enp.ArraySpec]:  # pyrefly: ignore[not-a-type]
