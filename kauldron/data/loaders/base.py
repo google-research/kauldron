@@ -24,7 +24,7 @@ import tensorflow as tf
 
 class DataLoader(abc.ABC):
 
-  def __call__(self, seed: Optional[PRNGKeyLike] = None) -> tf.data.Dataset:
+  def __call__(self, seed: Optional[PRNGKeyLike] = None) -> tf.data.Dataset:  # pyrefly: ignore[not-a-type]
     raise NotImplementedError
 
   __repr__ = edc.repr
