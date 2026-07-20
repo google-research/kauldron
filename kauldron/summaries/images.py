@@ -185,7 +185,7 @@ class ShowBoxes(metrics.Metric):
       )
 
       # always clip to avoid display problems in TB and Datatables
-      return np.clip(images, 0.0, 1.0)
+      return np.clip(images, 0.0, 1.0)  # pyrefly: ignore[no-matching-overload]
 
   @typechecked
   def get_state(  # pyrefly: ignore[bad-override]
@@ -347,8 +347,8 @@ class ShowDifferenceImages(metrics.Metric):
     check_type(images2, Float["n h w c"])
 
     # Truncate just as an optimization to avoid unnecessary computations.
-    images1 = images1[: self.num_images]
-    images2 = images2[: self.num_images]
+    images1 = images1[: self.num_images]  # pyrefly: ignore[unsupported-operation]
+    images2 = images2[: self.num_images]  # pyrefly: ignore[unsupported-operation]
 
     if self.vrange is not None:
       vmin, vmax = self.vrange
