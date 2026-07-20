@@ -75,7 +75,7 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
   # the parent class
   if typing.TYPE_CHECKING:
     batch_size: int | None = ...  # pyrefly: ignore[bad-assignment]
-    seed: PRNGKeyLike | None = ...
+    seed: PRNGKeyLike | None = ...  # pyrefly: ignore[not-a-type]
 
   # TODO(epot): Users should also be able to specify drop_reminder or mask
   batch_drop_remainder: bool = True
