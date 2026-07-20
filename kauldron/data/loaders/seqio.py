@@ -114,7 +114,7 @@ class SeqIO(base.DataLoader):
     else:
       self._is_mixture = True
 
-  def __call__(self, seed: Optional[PRNGKeyLike] = None) -> tf.data.Dataset:
+  def __call__(self, seed: Optional[PRNGKeyLike] = None) -> tf.data.Dataset:  # pyrefly: ignore[not-a-type]
     if self.shuffle and seed is None:
       raise ValueError("Shuffling requires a random seed.")
 
