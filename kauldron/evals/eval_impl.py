@@ -219,7 +219,7 @@ def _preemptable_iter_new_checkpoints(
   # in this job group, so that the polling interval honors user configuration.
   seconds_to_sleep = min(
       (
-          trainer.evals[name].run.seconds_to_sleep
+          trainer.evals[name].run.seconds_to_sleep  # pyrefly: ignore[missing-attribute]
           for name in eval_names
           if isinstance(
               trainer.evals[name].run,
