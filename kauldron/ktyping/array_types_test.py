@@ -255,7 +255,7 @@ def test_shape_getitem_isinstance_fixed():
 def test_shape_double_spec_raises():
   """Shape['a']['b'] raises TypeError."""
   with pytest.raises(TypeError, match="redefine shape spec"):
-    _ = art.Shape["a"]["b"]
+    _ = art.Shape["a"]["b"]  # pyrefly: ignore[unsupported-operation]
 
 
 def test_shape_getitem_non_string_raises():
