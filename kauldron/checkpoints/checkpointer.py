@@ -230,6 +230,7 @@ class Checkpointer(BaseCheckpointer):
   never_save_step_zero: bool = False
   lightweight_initialize: bool = False
   cleanup_orphaned_snapshots: bool = False
+  enable_async_checkpointing: bool = True
   fast: bool = True
   create: bool = True
 
@@ -243,6 +244,7 @@ class Checkpointer(BaseCheckpointer):
     mgr_options = ocp.CheckpointManagerOptions(
         save_interval_steps=self.save_interval_steps,
         lightweight_initialize=self.lightweight_initialize,
+        enable_async_checkpointing=self.enable_async_checkpointing,
         max_to_keep=(
             self.max_to_keep if self.preservation_policy is None else None
         ),
