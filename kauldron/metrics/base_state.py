@@ -189,7 +189,7 @@ class AverageState(State[_MetricT]):
   @classmethod
   def from_values(
       cls,
-      values: Float["b *any"],
+      values: Float["b *any"],  # pyrefly: ignore[unknown-name]
       *,
       mask: Bool["b *#any"] | Float["b *#any"] | None = None,
   ) -> AverageState:
