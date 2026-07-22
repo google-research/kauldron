@@ -168,6 +168,15 @@ class EmptyState(State[_MetricT]):
     return {}
 
 
+@jax.jit
+def _safe_divide(total, count):
+  return jax.lax.cond(
+      count == 0,
+      lambda: total * 0.0,
+      lambda: total / count,
+  )
+
+
 # TODO(epot): Could be unified with `AllReduceMean` in `kd.losses`
 @flax.struct.dataclass
 class AverageState(State[_MetricT]):
@@ -233,11 +242,7 @@ class AverageState(State[_MetricT]):
     )
 
   def compute(self) -> Float[""]:
-    return jax.lax.cond(
-        self.count == 0,
-        lambda: self.total * 0.0,
-        lambda: self.total / self.count,
-    )
+    return _safe_divide(self.total, self.count)
 
 
 @flax.struct.dataclass
