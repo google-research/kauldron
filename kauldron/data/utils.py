@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import dataclasses
 import functools
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from etils import enp
 import flax.linen as nn
@@ -26,10 +26,13 @@ import jax
 import jax.numpy as jnp
 from kauldron import kontext
 from kauldron.ktyping import ArraySpec, ElementSpec, PyTree  # pylint: disable=g-multiple-import,g-importing-member
-from kauldron.train import context as context_lib
 from kauldron.utils import _jax
 from kauldron.utils import sharding_utils
 import numpy as np
+
+if TYPE_CHECKING:
+  # pylint: disable=g-bad-import-order
+  from kauldron.train import context as context_lib
 
 
 @dataclasses.dataclass(frozen=True)
@@ -150,6 +153,7 @@ def get_model_inputs_from_batch(
     args: The positional arguments
     kwargs: The keyword arguments
   """
+  from kauldron.train import context as context_lib  # pylint: disable=g-import-not-at-top
   context = context_lib.Context(step=0, batch=batch)
   args, kwargs = get_model_inputs(model, context)
   return args, kwargs
