@@ -17,20 +17,28 @@
 (as opposed to the parameters which are saved in the checkpoint)
 """
 
+from __future__ import annotations
+
 import abc
 import dataclasses
 import inspect
-from typing import Any, Literal, Optional, Sequence
+from typing import Any, Literal, Optional, Sequence, TYPE_CHECKING
+
 from etils import epath
 import flax.linen as nn
 import jax
 from jax import export
 from jax.experimental import checkify
-from kauldron import train
 from kauldron.data import utils as data_utils
 from kauldron.utils import config_util
 from kauldron.utils.sharding_utils import sharding  # pylint: disable=g-importing-member
 from kauldron.utils.status_utils import status  # pylint: disable=g-importing-member
+
+if TYPE_CHECKING:
+  # pylint: disable=g-bad-import-order
+  from kauldron.train import rngs_lib
+  from kauldron.train import train_step
+
 
 _DEFAULT_EXPORTED_NAME = 'train_model'
 
@@ -48,11 +56,11 @@ class ModelExporter(abc.ABC, config_util.UpdateFromRootCfg):
   name: str = _DEFAULT_EXPORTED_NAME
 
   workdir: epath.Path = config_util.ROOT_CFG_REF.workdir
-  rng_streams: train.RngStreams = config_util.ROOT_CFG_REF.rng_streams
+  rng_streams: rngs_lib.RngStreams = config_util.ROOT_CFG_REF.rng_streams
 
   __root_cfg_fields_to_recurse__ = ('rng_streams',)
 
-  def get_rngs(self, is_training: bool, step: int = 0) -> train.RngStreams:
+  def get_rngs(self, is_training: bool, step: int = 0) -> rngs_lib.RngStreams:
     self._assert_root_cfg_resolved()
     if is_training:
       return self.rng_streams.train_rngs(step)
@@ -64,7 +72,7 @@ class ModelExporter(abc.ABC, config_util.UpdateFromRootCfg):
       self,
       *,
       model: nn.Module,
-      state: train.TrainState,
+      state: train_step.TrainState,
       element_spec: Any,
       is_training: bool,
   ) -> None:
@@ -85,7 +93,7 @@ class NoopExporter(ModelExporter):
       self,
       *,
       model: nn.Module,
-      state: train.TrainState,
+      state: train_step.TrainState,
       element_spec: Any,
       is_training: bool,
   ) -> None:
@@ -124,7 +132,7 @@ class JaxModelExporter(ModelExporter):
       self,
       *,
       model: nn.Module,
-      state: train.TrainState,
+      state: train_step.TrainState,
       element_spec: Any,
       is_training: bool,
   ) -> None:
@@ -136,7 +144,8 @@ class JaxModelExporter(ModelExporter):
         element_spec, self.ds_sharding
     )
     symb_batch_spec = export.symbolic_args_specs(mock_batch, self.batch_specs)
-    context = train.Context.from_state_and_batch(
+    from kauldron.train import context as context_lib  # pylint: disable=g-import-not-at-top
+    context = context_lib.Context.from_state_and_batch(
         state=state, batch=symb_batch_spec
     )
     args, kwargs = data_utils.get_model_inputs(model, context)
@@ -154,6 +163,7 @@ class JaxModelExporter(ModelExporter):
     # https://docs.jax.dev/en/latest/export/export.html#device-polymorphic-export
     exported = export.export(jax.jit(forward_fn), platforms=self.platforms)(
         params=state.params,
+        collections=state.collections,
         key=jax.random.PRNGKey(0),
         **kwargs,
     )
@@ -174,20 +184,21 @@ def _create_dynamic_forward_fn(
     model: nn.Module,
     method: str | None = None,
     is_training: bool = False,
-    rngs: train.RngStreams,
+    rngs: rngs_lib.RngStreams,
     kwarg_names: Sequence[str],
 ):
   """Creates a forward function for the model with a custom signature."""
 
-  def _forward(*, params, key, **kwargs):
+  def _forward(*, params, collections, key, **kwargs):
     # Fold in the key to the individual rng streams
     # (which are treated as constants)
     bits = jax.random.bits(key)
     new_rngs = jax.tree.map(lambda r: jax.random.fold_in(r, bits), rngs)
 
+    variables = {'params': params} | collections
     model_apply_checkified = checkify.checkify(model.apply)
-    error, (preds, collections) = model_apply_checkified(
-        {'params': params},  # TODO(klausg): support collections?
+    error, (preds, out_collections) = model_apply_checkified(
+        variables,
         rngs=new_rngs,
         mutable=True,
         capture_intermediates=True,
@@ -197,10 +208,14 @@ def _create_dynamic_forward_fn(
     )
     del error  # ignore checkify errors for export
 
-    return {'preds': preds, 'interms': collections['intermediates']}
+    return {'preds': preds, 'interms': out_collections['intermediates']}
 
   # Create and set a dynamic signature for the function.
   parameters = [
+      inspect.Parameter('params', inspect.Parameter.KEYWORD_ONLY),
+      inspect.Parameter('collections', inspect.Parameter.KEYWORD_ONLY),
+      inspect.Parameter('key', inspect.Parameter.KEYWORD_ONLY),
+  ] + [
       inspect.Parameter(name, inspect.Parameter.KEYWORD_ONLY)
       for name in kwarg_names
   ]
