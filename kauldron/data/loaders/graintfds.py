@@ -47,7 +47,7 @@ class GrainTfds(base.DataLoader):
 
   # Loader Parameters
 
-  def __call__(self, seed: Optional[PRNGKeyLike] = None) -> tf.data.Dataset:
+  def __call__(self, seed: Optional[PRNGKeyLike] = None) -> tf.data.Dataset:  # pyrefly: ignore[not-a-type]
     split = tfds.split_for_jax_process(self.split)
     source = grain.TfdsDataSource.from_name(
         self.name,
