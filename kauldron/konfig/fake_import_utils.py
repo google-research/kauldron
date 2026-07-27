@@ -153,10 +153,11 @@ def _force_locals_update(frame, property_name):
   # https://stackoverflow.com/questions/34650744/modify-existing-variable-in-locals-or-frame-f-locals
   # Future Python version likely won't require this:
   # https://peps.python.org/pep-0667/
-  ctypes.pythonapi.PyFrame_LocalsToFast(
-      ctypes.py_object(frame),
-      ctypes.c_int(0),  # Keep existing `locals()`
-  )
+  if hasattr(ctypes.pythonapi, 'PyFrame_LocalsToFast'):
+    ctypes.pythonapi.PyFrame_LocalsToFast(
+        ctypes.py_object(frame),
+        ctypes.c_int(0),  # Keep existing `locals()`
+    )
 
 
 def _get_module_name(module: types.ModuleType) -> str | None:
