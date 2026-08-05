@@ -178,19 +178,31 @@ class TrainStep(config_util.UpdateFromRootCfg):
     )
     return sharding_lib.with_sharding_constraint(state, self.sharding.state)
 
+  @utils.checkify_ignore
+  @functools.partial(
+      jax.jit,
+      static_argnames="self",
+      donate_argnames=("state",),
+  )
+  def _reshard_state(self, state: TrainState) -> TrainState:
+    """Reshard state with buffer donation."""
+    # Reshard with buffer donation to avoid duplicating the entire state when
+    # running in eager mode, such as during init().
+    return sharding_lib.with_sharding_constraint(state, self.sharding.state)
+
   def _init_transform(self, state: TrainState) -> TrainState:
     """Run any additional init transformations and return the updated state."""
     state = self.init_transform.transform(state)
     # Transforms should ideally propagate the sharding from the state, but in
     # case they forget, we explicitly re-apply the sharding.
-    return sharding_lib.with_sharding_constraint(state, self.sharding.state)
+    return self._reshard_state(state)
 
   def _init_transform_after_optimizer(self, state: TrainState) -> TrainState:
     """Run any additional init transformations and return the updated state."""
     state = self.init_transform.transform_after_optimizer(state)
     # Transforms should ideally propagate the sharding from the state, but in
     # case they forget, we explicitly re-apply the sharding.
-    return sharding_lib.with_sharding_constraint(state, self.sharding.state)
+    return self._reshard_state(state)
 
   @utils.checkify_ignore
   @functools.partial(
