@@ -230,6 +230,7 @@ class Checkpointer(BaseCheckpointer):
   never_save_step_zero: bool = False
   lightweight_initialize: bool = False
   cleanup_orphaned_snapshots: bool = False
+  timeout_secs: int = 60 * 30  # 30 minutes (fail fast if CNS write stalls)
   fast: bool = True
   create: bool = True
 
@@ -256,7 +257,7 @@ class Checkpointer(BaseCheckpointer):
         # step_format_fixed_length=9,
         create=self.create,
         async_options=ocp.AsyncOptions(
-            timeout_secs=60 * 30,  # 30 minutes
+            timeout_secs=self.timeout_secs,
         ),
         multiprocessing_options=self.multiprocessing_options,
         preservation_policy=self.preservation_policy,
