@@ -79,6 +79,10 @@ class DashboardsBase(abc.ABC):
     """Returns a normalized version of the dashboard."""
     raise NotImplementedError()
 
+  def add_overview_dashboard(self) -> MultiDashboards:
+    """Returns a normalized MultiDashboards with an Overview dashboard added."""
+    return self.normalize().add_overview_dashboard()
+
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class SingleDashboard(DashboardsBase):
@@ -90,11 +94,13 @@ class SingleDashboard(DashboardsBase):
     title: Title of the dashboard. This can contain {xid} placeholders. For
       example: `{xid}: Performance statistics`
     plots: List of plots to display in the dashboard.
+    in_overview: Whether to include this dashboard's plots in the Overview.
   """
 
   name: str
   title: str
   plots: list[plot_utils.Plot]
+  in_overview: bool = True
 
   @classmethod
   def from_y_keys(
@@ -104,6 +110,7 @@ class SingleDashboard(DashboardsBase):
       title: str,
       y_keys: list[str],
       collections: list[str],  # pylint: disable=redefined-outer-name
+      in_overview: bool = True,
   ) -> SingleDashboard:
     return cls(
         name=name,
@@ -112,6 +119,7 @@ class SingleDashboard(DashboardsBase):
             plot_utils.Plot(y_key=y_key, collections=collections)
             for y_key in y_keys
         ],
+        in_overview=in_overview,
     )
 
   def normalize(self) -> MultiDashboards:
@@ -140,6 +148,12 @@ class MetricDashboards(DashboardsBase):
   """Standard `metrics` & `losses` dashboards for a single collection.
 
   All `MetricDashboards` from the various collections are merged together.
+
+  Attributes:
+    collection: The collection name (e.g. 'train', 'eval').
+    losses: Dictionary of losses.
+    metrics: Dictionary of metrics.
+    in_overview: Whether to include this dashboard's plots in the Overview.
   """
   collection: str
   losses: dict[str, base_loss.Loss | None] = dataclasses.field(
@@ -148,6 +162,7 @@ class MetricDashboards(DashboardsBase):
   metrics: dict[str, base.Metric | None] = dataclasses.field(
       default_factory=dict
   )
+  in_overview: bool = True
 
   def __post_init__(self):
     object.__setattr__(self, 'losses', copy.copy(self.losses))
@@ -167,12 +182,14 @@ class MetricDashboards(DashboardsBase):
             title='{xid}: Losses',
             y_keys=_get_key(losses, prefix='losses'),  # pyrefly: ignore[bad-argument-type]
             collections=[self.collection],
+            in_overview=self.in_overview,
         ),
         SingleDashboard.from_y_keys(
             name='metrics',
             title='{xid}: Metrics',
             y_keys=_get_key(self.metrics, prefix='metrics'),
             collections=[self.collection],
+            in_overview=self.in_overview,
         ),
     ])
 
@@ -202,13 +219,55 @@ class MultiDashboards(DashboardsBase):
                 f'* Dashboard 1: {prev_dash}\n'
                 f'* Dashboard 2: {dash}'
             )
+          extra_kwargs = {}
+          if hasattr(prev_dash, 'in_overview'):
+            prev_in_overview = getattr(prev_dash, 'in_overview', True)
+            new_in_overview = getattr(dash, 'in_overview', True)
+            if prev_in_overview != new_in_overview:
+              raise ValueError(
+                  f'Dashboard in_overview mismatch: '
+                  f'{prev_in_overview} != {new_in_overview}\n'
+                  f'* Dashboard 1: {prev_dash}\n'
+                  f'* Dashboard 2: {dash}'
+              )
+            extra_kwargs['in_overview'] = prev_in_overview
           merged_dashboards[name] = dataclasses.replace(
-              prev_dash, plots=_merge_plots(prev_dash.plots + dash.plots)
+              prev_dash,
+              plots=_merge_plots(prev_dash.plots + dash.plots),
+              **extra_kwargs,
           )
     return cls(dashboards=merged_dashboards)
 
   def normalize(self) -> MultiDashboards:
     return self
+
+  def add_overview_dashboard(self) -> MultiDashboards:
+    """Adds a combined Overview dashboard as the first dashboard."""
+    if 'overview' in self.dashboards:
+      new_dashboards = {'overview': self.dashboards['overview']}
+      for name, dash in self.dashboards.items():
+        if name != 'overview':
+          new_dashboards[name] = dash
+      return dataclasses.replace(self, dashboards=new_dashboards)
+
+    overview_plots = []
+    for name, dash in self.dashboards.items():
+      if not getattr(dash, 'in_overview', True):
+        continue
+      for plot in dash.plots:
+        overview_plots.append(dataclasses.replace(plot, remove_prefix=False))
+
+    if not overview_plots:
+      return self
+
+    overview_dashboard = SingleDashboard(
+        name='overview',
+        title='{xid}: Overview',
+        plots=_merge_plots(overview_plots),
+    )
+    new_dashboards = {'overview': overview_dashboard}
+    new_dashboards.update(self.dashboards)
+    return dataclasses.replace(self, dashboards=new_dashboards)
 
   def build(self, ctx: plot_utils.BuildContext) -> dict[str, fb.Dashboard]:
     return {

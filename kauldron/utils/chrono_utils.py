@@ -244,6 +244,7 @@ class Chrono(checkpoints.items.CheckpointItem):
         name='perf_stats',
         title='{xid}: Performance statistics',
         plots=plots,
+        in_overview=False,
     )
 
   # ========== Checkpoint protocol ==========

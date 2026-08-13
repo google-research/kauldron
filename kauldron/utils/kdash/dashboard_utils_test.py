@@ -19,10 +19,13 @@ from __future__ import annotations
 import dataclasses
 
 import flax.struct
+from kauldron import kd
 from kauldron import kontext
 from kauldron.metrics import base
 from kauldron.metrics import base_state
 from kauldron.utils.kdash import dashboard_utils
+from kauldron.utils.kdash import plot_utils
+import pytest
 
 
 @dataclasses.dataclass(eq=True, frozen=True, kw_only=True)
@@ -63,3 +66,180 @@ def test_get_key():
   out = dashboard_utils._get_key({'Average': m}, 'metrics')
   expected_out = [f'metrics/Average/{name}' for name in m.__metric_names__()]
   assert out == expected_out
+
+
+def test_overview_dashboard():
+  trainer = kd.train.Trainer(
+      train_ds=kd.data.py.Tfds(name='mnist', split='train', shuffle=True),
+      eval_ds=kd.data.py.Tfds(name='mnist', split='eval', shuffle=False),
+      model=None,
+      optimizer=None,
+      train_losses={'xent': None},
+      train_metrics={'accuracy': IntAverage()},
+      evals={
+          'eval': kd.evals.Evaluator(
+              run=kd.evals.EveryNSteps(100),
+              metrics={'accuracy': IntAverage()},
+          ),
+      },
+      schedules={'lr': None},
+  )
+  dashboards = trainer.__dashboards__.normalize().add_overview_dashboard()
+  assert list(dashboards.dashboards.keys()) == [
+      'overview',
+      'losses',
+      'metrics',
+      'schedules',
+      'perf_stats',
+  ]
+  assert dashboards.dashboards['overview'] == dashboard_utils.SingleDashboard(
+      name='overview',
+      title='{xid}: Overview',
+      plots=[
+          plot_utils.Plot(
+              y_key='losses/xent',
+              collections=['train', 'eval'],
+              remove_prefix=False,
+          ),
+          plot_utils.Plot(
+              y_key='metrics/accuracy/average',
+              collections=['train', 'eval'],
+              remove_prefix=False,
+          ),
+          plot_utils.Plot(
+              y_key='metrics/accuracy/twice_average',
+              collections=['train', 'eval'],
+              remove_prefix=False,
+          ),
+      ],
+  )
+
+
+def test_overview_dashboard_custom_and_opt_out():
+  custom_overview = dashboard_utils.SingleDashboard(
+      name='overview',
+      title='Custom Overview',
+      plots=[plot_utils.Plot(y_key='custom_metric', collections=['train'])],
+  )
+  opt_out_db = dashboard_utils.SingleDashboard(
+      name='opt_out_db',
+      title='Opt Out DB',
+      plots=[plot_utils.Plot(y_key='opt_out_metric', collections=['train'])],
+      in_overview=False,
+  )
+  normal_db = dashboard_utils.SingleDashboard(
+      name='normal_db',
+      title='Normal DB',
+      plots=[plot_utils.Plot(y_key='normal_metric', collections=['train'])],
+  )
+  # Test custom overview is respected and moved first
+  multi = dashboard_utils.MultiDashboards.from_iterable([
+      normal_db,
+      custom_overview,
+      opt_out_db,
+  ])
+  res = multi.add_overview_dashboard()
+  assert list(res.dashboards.keys()) == ['overview', 'normal_db', 'opt_out_db']
+  assert res.dashboards['overview'] == custom_overview
+
+  # Test in_overview=False is respected when generating overview
+  multi2 = dashboard_utils.MultiDashboards.from_iterable([
+      normal_db,
+      opt_out_db,
+  ])
+  res2 = multi2.add_overview_dashboard()
+  assert list(res2.dashboards.keys()) == ['overview', 'normal_db', 'opt_out_db']
+  assert res2.dashboards['overview'].plots == [
+      plot_utils.Plot(
+          y_key='normal_metric',
+          collections=['train'],
+          remove_prefix=False,
+      )
+  ]
+
+
+def test_metric_dashboards_opt_out():
+  metric_db = dashboard_utils.MetricDashboards(
+      collection='train',
+      losses={'xent': None},
+      metrics={'acc': None},
+      in_overview=False,
+  )
+  res = metric_db.normalize().add_overview_dashboard()
+  assert 'overview' not in res.dashboards
+
+
+def test_multi_dashboards_merge_in_overview_mismatch():
+  db1 = dashboard_utils.SingleDashboard(
+      name='metrics',
+      title='Metrics',
+      plots=[plot_utils.Plot(y_key='metric1', collections=['train'])],
+      in_overview=True,
+  )
+  db2 = dashboard_utils.SingleDashboard(
+      name='metrics',
+      title='Metrics',
+      plots=[plot_utils.Plot(y_key='metric2', collections=['eval'])],
+      in_overview=False,
+  )
+  with pytest.raises(ValueError, match='in_overview mismatch'):
+    dashboard_utils.MultiDashboards.from_iterable([db1, db2])
+
+
+def test_multi_dashboards_merge_in_overview_both_false():
+  db1 = dashboard_utils.SingleDashboard(
+      name='metrics',
+      title='Metrics',
+      plots=[plot_utils.Plot(y_key='metric1', collections=['train'])],
+      in_overview=False,
+  )
+  db2 = dashboard_utils.SingleDashboard(
+      name='metrics',
+      title='Metrics',
+      plots=[plot_utils.Plot(y_key='metric2', collections=['eval'])],
+      in_overview=False,
+  )
+  merged = dashboard_utils.MultiDashboards.from_iterable([db1, db2])
+  assert not merged.dashboards['metrics'].in_overview
+  res = merged.add_overview_dashboard()
+  assert 'overview' not in res.dashboards
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class CustomDashboardNoInOverview(dashboard_utils.DashboardsBase):
+  name: str
+  title: str
+  plots: list[plot_utils.Plot]
+
+  def normalize(self) -> dashboard_utils.MultiDashboards:
+    return dashboard_utils.MultiDashboards(
+        dashboards={self.name: self}  # pyrefly: ignore[bad-argument-type]
+    )
+
+  def build(self, ctx: plot_utils.BuildContext):
+    return None
+
+
+def test_multi_dashboards_merge_custom_without_in_overview():
+  db1 = CustomDashboardNoInOverview(
+      name='custom',
+      title='Custom Title',
+      plots=[plot_utils.Plot(y_key='metric1', collections=['train'])],
+  )
+  db2 = CustomDashboardNoInOverview(
+      name='custom',
+      title='Custom Title',
+      plots=[plot_utils.Plot(y_key='metric2', collections=['eval'])],
+  )
+  merged = dashboard_utils.MultiDashboards.from_iterable([db1, db2])
+  assert len(merged.dashboards['custom'].plots) == 2
+  res = merged.add_overview_dashboard()
+  assert 'overview' in res.dashboards
+  assert res.dashboards['overview'].plots == [
+      plot_utils.Plot(
+          y_key='metric1', collections=['train'], remove_prefix=False
+      ),
+      plot_utils.Plot(
+          y_key='metric2', collections=['eval'], remove_prefix=False
+      ),
+  ]
