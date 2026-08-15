@@ -309,15 +309,24 @@ class TrainEvaluator(kd.evals.EvaluatorBase):
   ) -> kdash.DashboardsBase:
 
     def _add_prefix(db: kdash.SingleDashboard):
-      new_plots = [
-          dataclasses.replace(
-              p,
-              collections=[
-                  self._global_collection_name(c) for c in p.collections
-              ],
-          )
-          for p in db.plots
-      ]
+      new_plots = []
+      for p in db.plots:
+        kwargs = {}
+        if p.collections:
+          kwargs["collections"] = [
+              self._global_collection_name(c) for c in p.collections
+          ]
+        if p.facet_to_collections:
+          kwargs["facet_to_collections"] = {
+              facet: [self._global_collection_name(c) for c in cols]
+              for facet, cols in p.facet_to_collections.items()
+          }
+        if p.collection_to_ykeys:
+          kwargs["collection_to_ykeys"] = {
+              self._global_collection_name(c): ykeys
+              for c, ykeys in p.collection_to_ykeys.items()
+          }
+        new_plots.append(dataclasses.replace(p, **kwargs))
       return dataclasses.replace(db, plots=new_plots)
 
     # Add the main collections
@@ -377,6 +386,7 @@ class TrainEvaluator(kd.evals.EvaluatorBase):
         name=self._extra_dashboard_name,
         title=f"{{xid}}: TrainEval {self.name}",
         plots=all_plots,
+        in_overview=False,
     )
 
   @functools.cached_property

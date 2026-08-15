@@ -259,6 +259,11 @@ class _ShardingAPI:
         return x_
       elif callable(s):  # Lazy sharding, resolving & recurse
         return self.with_sharding_constraint(x_, s(x_))
+      elif isinstance(x_, jax.core.Tracer):
+        return jax.lax.with_sharding_constraint(x_, s)
+      elif getattr(x_, 'sharding', None) == s:
+        # Concrete array already has the target sharding on device
+        return x_
       elif jax.tree.reduce(_all_shape_dtype_struct, x_, True):
         # If the tree is a `ShapeDtypeStruct`
         return jax.tree.map(
