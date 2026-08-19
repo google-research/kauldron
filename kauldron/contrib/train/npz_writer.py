@@ -74,6 +74,7 @@ class NpzWriter(metric_writer.KDMetricWriter):
       schedules: Mapping[str, optax.Schedule],
       log_summaries: bool,
       timer: Optional[chrono_utils.Chrono] = None,
+      flush: bool = True,
   ) -> None:
     super().write_step_metrics(
         step=step,
@@ -81,6 +82,7 @@ class NpzWriter(metric_writer.KDMetricWriter):
         schedules=schedules,
         log_summaries=log_summaries,
         timer=timer,
+        flush=flush,
     )
 
     if not status.is_lead_host:

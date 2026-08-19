@@ -172,6 +172,7 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
       schedules: Mapping[str, optax.Schedule],
       log_summaries: bool,
       timer: Optional[chrono_utils.Chrono] = None,
+      flush: bool = True,
   ) -> None:
     """Logs scalar and image summaries."""
     aux_result = aux.compute(flatten=True)
@@ -266,7 +267,8 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
 
     # TODO(epot): This is blocking and slow. Is it really required ?
     # Should likely be only called once at the end of the training / eval.
-    self.flush()
+    if flush:
+      self.flush()
 
   def flush(self) -> None:
     pass
@@ -597,6 +599,7 @@ class NoopWriter(NoopMetadataWriter):
       schedules: Mapping[str, optax.Schedule],
       log_summaries: bool,
       timer: Optional[chrono_utils.Chrono] = None,
+      flush: bool = True,
   ) -> None:
     pass
 

@@ -97,6 +97,7 @@ class GifVideoWriter(metric_writer.KDMetricWriter):
       schedules: Mapping[str, optax.Schedule],
       log_summaries: bool,
       timer: Optional[chrono_utils.Chrono] = None,
+      flush: bool = True,
   ) -> None:
     """Write step metrics including video summaries as animated GIFs."""
     super().write_step_metrics(
@@ -105,6 +106,7 @@ class GifVideoWriter(metric_writer.KDMetricWriter):
         schedules=schedules,
         log_summaries=log_summaries,
         timer=timer,
+        flush=flush,
     )
 
     if self.write_video_summaries and log_summaries:
