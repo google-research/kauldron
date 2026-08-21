@@ -31,13 +31,13 @@ import jax
 from jax.experimental import checkify
 from kauldron import checkpoints
 from kauldron import data
-from kauldron import export
 from kauldron import konfig
 from kauldron import losses
 from kauldron import metrics
 from kauldron.data import utils as data_utils
 from kauldron.evals import eval_impl
 from kauldron.evals import evaluators
+from kauldron.export import exporter
 from kauldron.inspect import profile_utils
 from kauldron.ktyping import PyTree  # pylint: disable=g-importing-member
 from kauldron.train import auxiliaries
@@ -221,8 +221,8 @@ class Trainer(config_util.BaseConfig):
   )
 
   # Exporter
-  exporter: export.ModelExporter = dataclasses.field(
-      default_factory=export.NoopExporter
+  exporter: exporter.ModelExporter = dataclasses.field(
+      default_factory=lambda: exporter.NoopExporter(),  # pylint: disable=unnecessary-lambda
   )
 
   # Train, eval loop
