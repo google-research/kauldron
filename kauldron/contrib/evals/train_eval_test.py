@@ -74,3 +74,14 @@ def test_train_eval(tmp_path: epath.Path):
     )
     assert hash(overwrite_transform) == old_hash
     del aux
+
+
+def test_train_evaluator_overview_dashboard_build(tmp_path: epath.Path):
+  """Tests that a Trainer with TrainEvaluator can generate overview dashboards."""
+  cfg = train_eval_config.get_config()
+  cfg.workdir = os.fspath(tmp_path)
+  trainer = kd.konfig.resolve(cfg)
+
+  dashboards = trainer.__dashboards__.normalize()
+  dashboards_with_overview = dashboards.add_overview_dashboard()
+  assert 'overview' in dashboards_with_overview.dashboards

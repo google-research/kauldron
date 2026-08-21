@@ -65,8 +65,19 @@ class BuildContext:
     )
 
 
+def _merge_dict_of_lists(
+    dicts: collections.abc.Iterable[collections.abc.Mapping[str, list[str]]],
+) -> dict[str, list[str]]:
+  merged = collections.defaultdict(list)
+  for d in dicts:
+    for k, v in d.items():
+      merged[k].extend(v)
+  return {k: list(dict.fromkeys(v)) for k, v in merged.items()}
+
+
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class Plot:
+
   """Single plot inside a dashboard.
 
   Attributes:
@@ -124,7 +135,10 @@ class Plot:
     """Merges multiple plots with the same y_key."""
     assert len(plots)  # pylint: disable=g-explicit-length-test
     if len(plots) == 1:
-      return plots[0]
+      p = plots[0]
+      if p.facet_to_collections and not any(p.facet_to_collections.values()):
+        return dataclasses.replace(p, facet_to_collections={})
+      return p
     # Cannot merge plots with different x_key or y_key.
     # TODO(epot): Signature should be a plot property
     signature = set((p.x_key, p.y_key) for p in plots)
@@ -133,24 +147,41 @@ class Plot:
           f'Cannot merge plots with different x_key or y_key: {signature}'
       )
 
-    # TODO(epot): Remove duplicates while keeping order.
+    # Remove duplicates while keeping order.
     merged_collections = list(
-        itertools.chain.from_iterable(p.collections for p in plots)
+        dict.fromkeys(
+            itertools.chain.from_iterable(p.collections for p in plots)
+        )
     )
-    merged_facet_to_collections = collections.defaultdict(list)
-    merged_collection_to_ykeys = collections.defaultdict(list)
-    for p in plots:
-      for facet, collections_ in p.facet_to_collections.items():
-        merged_facet_to_collections[facet].extend(collections_)
-      for collection, ykeys in p.collection_to_ykeys.items():
-        merged_collection_to_ykeys[collection].extend(ykeys)
+    facet_to_colls = _merge_dict_of_lists(p.facet_to_collections for p in plots)
+    coll_to_ykeys = _merge_dict_of_lists(p.collection_to_ykeys for p in plots)
 
-    # TODO(epot): Generic validation which check all fields except a list match
+    # Drop empty placeholder facet mappings if no collections were faceted.
+    if facet_to_colls:
+      faceted_collections = set(
+          itertools.chain.from_iterable(facet_to_colls.values())
+      )
+      if not faceted_collections:
+        facet_to_colls = {}
+      elif faceted_collections != set(merged_collections):
+        for c in merged_collections:
+          if c not in faceted_collections:
+            facet_to_colls[c] = [c]
+
+    if coll_to_ykeys and not any(coll_to_ykeys.values()):
+      coll_to_ykeys = {}
+
+    if facet_to_colls and coll_to_ykeys:
+      raise ValueError(
+          'Cannot merge plot with facet_to_collections and plot with'
+          f' collection_to_ykeys: {plots}'
+      )
+
     return dataclasses.replace(
         plots[0],
         collections=merged_collections,
-        facet_to_collections=dict(merged_facet_to_collections),
-        collection_to_ykeys=dict(merged_collection_to_ykeys),
+        facet_to_collections=facet_to_colls,
+        collection_to_ykeys=coll_to_ykeys,
     )
 
   def build(self, ctx: BuildContext) -> fb.Plot:

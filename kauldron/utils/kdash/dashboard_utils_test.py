@@ -243,3 +243,61 @@ def test_multi_dashboards_merge_custom_without_in_overview():
           y_key='metric2', collections=['eval'], remove_prefix=False
       ),
   ]
+
+
+def test_plot_merge_empty_facet_to_collections():
+  # Test merging a plot with empty facets and a plot with plain collections.
+  plot_empty_facets = plot_utils.Plot(
+      y_key='accuracy',
+      collections=[],
+      facet_to_collections={' train': [], 'eval': []},
+  )
+  plot_prefixed_collections = plot_utils.Plot(
+      y_key='accuracy',
+      collections=['ssv2_classification.eval'],
+  )
+  merged_plot = plot_utils.Plot.merge(
+      [plot_empty_facets, plot_prefixed_collections]
+  )
+  assert merged_plot.collections == ['ssv2_classification.eval']
+  assert not merged_plot.facet_to_collections
+
+
+def test_plot_merge_single_element_empty_facets():
+  plot_empty_facets = plot_utils.Plot(
+      y_key='accuracy',
+      collections=[],
+      facet_to_collections={' train': [], 'eval': []},
+  )
+  normalized = plot_utils.Plot.merge([plot_empty_facets])
+  assert not normalized.facet_to_collections
+
+
+def test_plot_merge_mixed_faceted_and_unfaceted():
+  faceted_plot = plot_utils.Plot(
+      y_key='loss',
+      collections=['train'],
+      facet_to_collections={' train': ['train']},
+  )
+  plain_plot = plot_utils.Plot(
+      y_key='loss',
+      collections=['eval'],
+  )
+  merged = plot_utils.Plot.merge([faceted_plot, plain_plot])
+  assert set(merged.collections) == {'train', 'eval'}
+  assert merged.facet_to_collections == {' train': ['train'], 'eval': ['eval']}
+
+
+def test_plot_merge_conflicting_facets_and_ykeys():
+  faceted_plot = plot_utils.Plot(
+      y_key='loss',
+      collections=['train'],
+      facet_to_collections={' train': ['train']},
+  )
+  multi_ykey_plot = plot_utils.Plot(
+      y_key='loss',
+      collections=['eval'],
+      collection_to_ykeys={'eval': ['loss/a', 'loss/b']},
+  )
+  with pytest.raises(ValueError, match='Cannot merge plot with'):
+    plot_utils.Plot.merge([faceted_plot, multi_ykey_plot])

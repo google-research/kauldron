@@ -377,6 +377,7 @@ class TrainEvaluator(kd.evals.EvaluatorBase):
         name=self._extra_dashboard_name,
         title=f"{{xid}}: TrainEval {self.name}",
         plots=all_plots,
+        in_overview=False,
     )
 
   @functools.cached_property
