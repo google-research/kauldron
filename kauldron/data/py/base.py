@@ -278,6 +278,19 @@ class DataSourceBase(PyGrainPipeline):
 
     # Shard the dataset
     if self.shard_by_process:
+      if (
+          self.batch_drop_remainder == DropRemainder.PAD
+          and self.batch_size
+          and jax.process_count() > 1
+      ):
+        ds_len = len(ds)
+        if ds_len > 0:
+          total_batch_size = self.host_batch_size * jax.process_count()
+          num_batches = math.ceil(ds_len / total_batch_size)
+          padded_len = num_batches * total_batch_size
+          if padded_len > ds_len:
+            num_epochs = math.ceil(padded_len / ds_len)
+            ds = ds.repeat(num_epochs)[:padded_len]
       ds = ds[jax.process_index() :: jax.process_count()]
 
     # Global shuffle
