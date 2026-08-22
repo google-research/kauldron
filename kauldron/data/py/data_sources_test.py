@@ -15,8 +15,10 @@
 """Tests for data sources."""
 
 import contextlib
+from unittest import mock
 from etils import enp
 from grain import python as grain
+import jax
 from kauldron import kd
 import numpy as np
 import pytest
@@ -150,3 +152,62 @@ def test_drop_remainder(
         expected,
         err_msg=f'mismatch at index {i}: {actual=} vs {expected=}',
     )
+
+
+def test_multi_host_pad_sharding():
+  # Test with 16 hosts, batch_size=128 (host_batch_size=8), dataset length 140 (e.g. OVIS).
+  # Padded length is ceil(140 / 128) * 128 = 256 items.
+  # Each host should get 256 / 16 = 16 items -> exactly 2 batches of size 8.
+  num_processes = 16
+  global_batch_size = 128
+  host_batch_size = 8
+  ds_len = 140
+  expected_num_batches = 2
+
+  with mock.patch('jax.process_count', return_value=num_processes):
+    for p_idx in range(num_processes):
+      with mock.patch('jax.process_index', return_value=p_idx):
+        ds = kd.data.py.DataSource(
+            grain.RangeDataSource(0, ds_len, 1),
+            shuffle=False,
+            num_epochs=1,
+            num_workers=0,
+            batch_size=global_batch_size,
+            batch_drop_remainder=kd.data.py.DropRemainder.PAD,
+        )
+        assert len(ds) == expected_num_batches
+        batches = list(ds)
+        assert len(batches) == expected_num_batches
+        for b in batches:
+          assert len(b) == host_batch_size
+
+
+def test_multi_host_pad_sharding_error():
+  num_processes = 2
+  global_batch_size = 4
+  ds_len = 10
+
+  with mock.patch("jax.process_count", return_value=num_processes):
+    with mock.patch("jax.process_index", return_value=0):
+      with mock.patch.object(
+          grain.MapDataset,
+          "repeat",
+          side_effect=AttributeError("Dataset does not support repeat"),
+      ):
+        ds = kd.data.py.DataSource(
+            grain.RangeDataSource(0, ds_len, 1),
+            shuffle=False,
+            num_epochs=1,
+            num_workers=0,
+            batch_size=global_batch_size,
+            batch_drop_remainder=kd.data.py.DropRemainder.PAD,
+        )
+        with pytest.raises(
+            AttributeError, match="Dataset does not support repeat"
+        ):
+          _ = ds.ds_for_current_process(jax.random.PRNGKey(0))
+
+
+
+
+
