@@ -39,6 +39,7 @@ cfg = konfig.resolve(cfg)
 """
 
 # pylint: disable=g-importing-member
+from kauldron.konfig import immutabledict_lib
 from kauldron.konfig.configdict_base import ConfigDict
 from kauldron.konfig.configdict_base import register_aliases
 from kauldron.konfig.configdict_base import register_default_values

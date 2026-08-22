@@ -20,7 +20,6 @@ from typing import Any
 
 from etils import enp
 from etils import epy
-from kauldron.utils import immutabledict
 
 
 def export_qualname(obj: Any) -> str:
@@ -98,11 +97,7 @@ def export(obj: Any) -> epy.typing.Json:
         '0': obj.tolist(),
         'dtype': obj.dtype.name,
     }
-  elif isinstance(obj, immutabledict.ImmutableDict):
-    fields = {
-        '__qualname__': export_qualname(obj),
-        '0': [[export(k), export(v)] for k, v in obj.items()],
-    }
+
   elif isinstance(obj, enp.ArraySpec):
     # TODO(geco): In theory this is not needed as ArraySpec now defines its own
     # __konfig_export__. However, there are binaries that have been built before

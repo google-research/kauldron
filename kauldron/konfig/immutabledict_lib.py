@@ -12,13 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""DEPRECATED: Use `from kauldron.utils import immutabledict` instead."""
+"""Deprecated backward-compatibility alias for immutabledict."""
 
-from kauldron.utils import immutabledict
+from typing import Any
+import warnings
 
-print(
-    'ImmutableDict was moved. Please uses `from kauldron.utils import'
-    ' immutabledict` instead.'
+import flax.core
+
+warnings.warn(
+    '`kauldron.konfig.immutabledict_lib` is deprecated and will be removed. '
+    'Please migrate to standard dict or `flax.core.FrozenDict`.',
+    DeprecationWarning,
+    stacklevel=2,
 )
 
-ImmutableDict = immutabledict.ImmutableDict
+ImmutableDict = flax.core.FrozenDict
+
+
+def freeze_dict_attrs(obj: Any, attrs: list[str]) -> None:
+  """Deprecated fallback for freeze_dict_attrs."""
+  warnings.warn(
+      '`freeze_dict_attrs` is deprecated. Default behavior is no freeze.',
+      DeprecationWarning,
+      stacklevel=2,
+  )
+  for attr in attrs:
+    val = getattr(obj, attr)
+    if isinstance(val, dict):
+      setattr(obj, attr, flax.core.FrozenDict(val))
+
+
+def freeze(x: Any) -> Any:
+  """Deprecated fallback for freeze."""
+  return flax.core.FrozenDict(x) if isinstance(x, dict) else x

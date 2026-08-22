@@ -25,13 +25,13 @@ import inspect
 import itertools
 import typing
 from typing import Any, TypeVar
+import warnings
 
 from absl import logging
 from etils import epy
 from kauldron.konfig import configdict_base
 from kauldron.konfig import fake_import_utils
 from kauldron.konfig import utils
-from kauldron.utils import immutabledict
 import ml_collections
 
 
@@ -124,13 +124,13 @@ def resolve(cfg: _T, *, freeze: bool = ...) -> _T:
   ...
 
 
-def resolve(cfg, *, freeze=True):
+def resolve(cfg, *, freeze=False):
   """Recursively parses a nested ConfigDict and resolves module constructors.
 
   Args:
     cfg: The config to resolved
-    freeze: If `True` (default), `list` are converted to `tuple`,
-      `dict`/`ConfigDict` are converted to `immutabledict`.
+    freeze: (Deprecated) If `True`, `list` are converted to `tuple`,
+      `dict`/`ConfigDict` are converted to `immutabledict`. Default to `False`.
 
   Returns:
     The resolved config.
@@ -139,9 +139,13 @@ def resolve(cfg, *, freeze=True):
   __tracebackhide__ = True  # pylint: disable=unused-variable,invalid-name
 
   # Check if the config has a `_konfig_experimental_nofreeze` key.
-  # TODO(klausg): make freeze=False the default and remove this.
   if '_konfig_experimental_nofreeze' in cfg:
-    freeze = not cfg['_konfig_experimental_nofreeze']
+    warnings.warn(
+        '`_konfig_experimental_nofreeze` is deprecated. Default behavior is now'
+        ' no freeze.',
+        DeprecationWarning,
+        stacklevel=2,
+    )
     cfg = copy.copy(cfg)
     del cfg['_konfig_experimental_nofreeze']
 
@@ -194,14 +198,10 @@ class _ConfigDictVisitor:
     ])
 
   def _resolve_dict(self, value):
-    value = {
+    return {
         k: _reraise_with_info(self._resolve_value, k)(v)
         for k, v in _as_dict(value).items()
     }
-    if self._freeze:
-      return immutabledict.ImmutableDict(value)
-    else:
-      return value
 
   def _resolve_reference(self, value: ml_collections.FieldReference):
     return self._resolve_value(value.get())

@@ -23,7 +23,6 @@ import jax
 from kauldron.data.tf import base
 from kauldron.ktyping import PRNGKey
 from kauldron.typing import PyTree  # pylint: disable=g-importing-member
-from kauldron.utils.immutabledict import immutabledict_lib
 import tensorflow as tf
 
 # Currently uses `TFDataPipeline` to support transformations but might not be
@@ -56,8 +55,6 @@ class ElementSpecDataset(base.TFDataPipeline):
           "ElementSpecDataset should not specify batch_size but rather include"
           " it in the spec."
       )
-    # Convert the spec to a plain dict to avoid serialization issues (e.g. json)
-    object.__setattr__(self, "spec", immutabledict_lib.unfreeze(self.spec))
 
   def ds_for_current_process(self, rng: PRNGKey) -> tf.data.Dataset:
     element_spec = etree.spec_like(self.spec)
