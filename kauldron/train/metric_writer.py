@@ -46,8 +46,6 @@ import numpy as np
 import optax
 import pandas as pd
 
-from unittest import mock as _mock ; xmanager_api = _mock.Mock()
-
 if TYPE_CHECKING:
   from kauldron.train import trainer_lib  # pylint: disable=g-import-not-at-top,g-bad-import-order
 
