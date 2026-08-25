@@ -16,9 +16,10 @@
 
 # pylint: disable=g-importing-member,g-bad-import-order
 
-from kauldron.data.py.base import PyGrainPipeline
 from kauldron.data.py.base import DataSourceBase
 from kauldron.data.py.base import DropRemainder
+from kauldron.data.py.base import PaddedElement
+from kauldron.data.py.base import PyGrainPipeline
 from kauldron.data.py.data_sources import DataSource
 from kauldron.data.py.data_sources import Tfds
 from kauldron.data.py.data_sources import Json

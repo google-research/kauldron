@@ -150,3 +150,87 @@ def test_drop_remainder(
         expected,
         err_msg=f'mismatch at index {i}: {actual=} vs {expected=}',
     )
+
+
+def test_multi_host_pad_wraps_in_padded_element():
+  """Tests that multi-host padding wraps elements in PaddedElement."""
+  from unittest import mock
+  import jax
+
+  # 10 elements across 4 hosts, batch_size=4 (host_batch_size=1).
+  # total_batch_size = 4, num_batches = ceil(10/4) = 3, padded_len = 12.
+  # Each host receives 12 // 4 = 3 elements.
+  all_host_elements = []
+  for proc_idx in range(4):
+    with (
+        mock.patch.object(jax, 'process_count', return_value=4),
+        mock.patch.object(jax, 'process_index', return_value=proc_idx),
+    ):
+      ds = kd.data.py.DataSource(
+          grain.RangeDataSource(0, 10, 1),
+          shuffle=False,
+          num_epochs=1,
+          num_workers=0,
+          batch_size=4,
+          batch_drop_remainder=kd.data.py.DropRemainder.PAD,
+      )
+      raw_ds = ds.ds_for_current_process(rng=jax.random.PRNGKey(0))
+      elements = list(raw_ds)
+      all_host_elements.append(elements)
+
+  # Verify every host has exactly 3 elements
+  for proc_idx, elements in enumerate(all_host_elements):
+    assert len(elements) == 3, f'Host {proc_idx} received {len(elements)} items'
+
+  # Host 0 (indices 0, 4, 8) -> all real
+  assert all_host_elements[0] == [
+      kd.data.py.PaddedElement(element=0, is_padding=False),
+      kd.data.py.PaddedElement(element=4, is_padding=False),
+      kd.data.py.PaddedElement(element=8, is_padding=False),
+  ]
+  # Host 1 (indices 1, 5, 9) -> all real
+  assert all_host_elements[1] == [
+      kd.data.py.PaddedElement(element=1, is_padding=False),
+      kd.data.py.PaddedElement(element=5, is_padding=False),
+      kd.data.py.PaddedElement(element=9, is_padding=False),
+  ]
+  # Host 2 (indices 2, 6, 10) -> 2 real, 1 padding
+  assert all_host_elements[2] == [
+      kd.data.py.PaddedElement(element=2, is_padding=False),
+      kd.data.py.PaddedElement(element=6, is_padding=False),
+      kd.data.py.PaddedElement(element=None, is_padding=True),
+  ]
+  # Host 3 (indices 3, 7, 11) -> 2 real, 1 padding
+  assert all_host_elements[3] == [
+      kd.data.py.PaddedElement(element=3, is_padding=False),
+      kd.data.py.PaddedElement(element=7, is_padding=False),
+      kd.data.py.PaddedElement(element=None, is_padding=True),
+  ]
+
+
+def test_multi_host_pad_exact_multiple_no_wrapping():
+  """Tests that when dataset divides evenly, elements remain raw."""
+  from unittest import mock
+  import jax
+
+  # 12 elements across 4 hosts, batch_size=4 -> exact multiple (12 == 12)
+  for proc_idx in range(4):
+    with (
+        mock.patch.object(jax, 'process_count', return_value=4),
+        mock.patch.object(jax, 'process_index', return_value=proc_idx),
+    ):
+      ds = kd.data.py.DataSource(
+          grain.RangeDataSource(0, 12, 1),
+          shuffle=False,
+          num_epochs=1,
+          num_workers=0,
+          batch_size=4,
+          batch_drop_remainder=kd.data.py.DropRemainder.PAD,
+      )
+      raw_ds = ds.ds_for_current_process(rng=jax.random.PRNGKey(0))
+      elements = list(raw_ds)
+      assert len(elements) == 3
+      # Elements are raw integers, not PaddedElement instances
+      for elem in elements:
+        assert isinstance(elem, int)
+

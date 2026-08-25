@@ -22,6 +22,7 @@ import functools
 import math
 import os
 import typing
+from typing import Any
 from typing import Callable
 from typing import Optional
 from typing import TypeVar
@@ -48,14 +49,59 @@ class DropRemainder(enum.StrEnum):
   """Determines how to handle a final partial batch of a dataset.
 
   Attributes:
-    DROP: Drop the last partial batch.
-    KEEP: Keep the last partial batch as is (may have size < `batch_size`).
-    PAD: Pad the last partial batch with zeros to reach `batch_size`.
+    DROP: Drop the last partial batch (recommended for training).
+    KEEP: Keep the last partial batch with its actual size (single-host only;
+      incompatible with fixed-shape JIT steps).
+    PAD: Pad to guarantee full batch sizes. In multi-host environments
+      (jax.process_count() > 1), also pads the dataset length before sharding
+      so all hosts execute an identical number of eval steps. Padding elements
+      are wrapped in PaddedElement and tagged with an `__is_padding__` boolean
+      mask so downstream metrics can discard them.
   """
 
   DROP = enum.auto()
   KEEP = enum.auto()
   PAD = enum.auto()
+
+
+@dataclasses.dataclass
+class PaddedElement:
+  """Carries padding metadata alongside dataset elements.
+
+  When DropRemainder.PAD is active in multi-host mode, DataSourceBase
+  wraps elements in a PaddedElement so downstream readers can distinguish
+  real data from padding slots.
+
+  Attributes:
+    element: The raw data element (e.g. serialized proto bytes), or None for
+      padding slots.
+    is_padding: True if this element exists only to equalize batch counts across
+      hosts and should be discarded by metrics.
+  """
+
+  element: Any
+  is_padding: bool = False
+
+
+class _PaddedSource(grain.RandomAccessDataSource):
+  """Wraps a source and pads to a target length with PaddedElement."""
+
+  def __init__(
+      self, original_source: grain.RandomAccessDataSource, padded_len: int
+  ):
+    self._source = original_source
+    self._original_len = len(original_source)
+    self._padded_len = padded_len
+
+  def __len__(self) -> int:
+    return self._padded_len
+
+  def __getitem__(self, index: int) -> PaddedElement:
+    if index < 0 or index >= self._padded_len:
+      raise IndexError(index)
+    if index < self._original_len:
+      return PaddedElement(element=self._source[index], is_padding=False)
+    return PaddedElement(element=None, is_padding=True)
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True, eq=True)
@@ -278,6 +324,21 @@ class DataSourceBase(PyGrainPipeline):
 
     # Shard the dataset
     if self.shard_by_process:
+      if (
+          self.batch_drop_remainder == DropRemainder.PAD
+          and self.batch_size
+          and jax.process_count() > 1
+      ):
+        ds_len = len(ds)
+        if ds_len > 0:
+          total_batch_size = self.host_batch_size * jax.process_count()
+          num_batches = math.ceil(ds_len / total_batch_size)
+          padded_len = num_batches * total_batch_size
+          if padded_len > ds_len:
+            ds = grain.MapDataset.source(
+                _PaddedSource(self.data_source, padded_len)
+            )
+            ds = ds.seed(random.random_seed(rng))
       ds = ds[jax.process_index() :: jax.process_count()]
 
     # Global shuffle
