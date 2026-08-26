@@ -64,7 +64,7 @@ class Job(job_params.JobParams):
           "`job.executable` should only be called after `queue_build()`"
       )
     # XM return a `PicklableAwaitableImpl` so have to unwrap it
-    return self.executable_future._get_future().result()  # pylint: disable=protected-access  # pytype: disable=attribute-error
+    return self.executable_future._get_future().result()  # pylint: disable=protected-access  # pyrefly: ignore[missing-attribute]
 
   def queue_build(self) -> None:
     """Add the job in the build queue."""
@@ -131,7 +131,7 @@ class Job(job_params.JobParams):
     if isinstance(mpm, job_params.MLPython):
       mpm = mpm.get_mpm(accelerator=self.requirements.accelerator)
 
-    return xm_abc.interpreter(  # pytype: disable=wrong-arg-types
+    return xm_abc.interpreter(  # pyrefly: ignore[bad-argument-type]
         script_path=script_path,
         interpreter_mpm=mpm,
         dependencies=self.dependencies,
@@ -158,7 +158,7 @@ class Job(job_params.JobParams):
     # missing ?
     job_requirements = xm.JobRequirements(
         **reqs_kwargs,
-        **self.requirements._kxm_init_kwargs,  # pylint: disable=protected-access  # pytype: disable=attribute-error
+        **self.requirements._kxm_init_kwargs,  # pylint: disable=protected-access  # pyrefly: ignore[missing-attribute]
     )
     return rs.Job(
         constraints=constraints,
@@ -251,7 +251,7 @@ def _resolve_and_normalize_arg(
 ) -> str:
   """Build up the commandline arguments to be passed."""
   # Use lambda to lazy-resolve the `dir_builder.wu_dir`, otherwise it would
-  # raise an error when `xp.root_dir` is not set even it it's never used.
+  # raise an error when `xp.root_dir` is not set even if it's never used.
   replaces = {
       "%": lambda: "%%",  # Fixes an issue with tfds splits containing "%"
       dir_utils.WU_DIR_PROXY: lambda: dir_builder.wu_dir,
@@ -278,7 +278,9 @@ def _resolve_and_normalize_arg(
           if isinstance(after, str):
             leaf = after + suffix
           elif isinstance(after, xm.ShellSafeArg):
-            leaf = xm.ShellSafeArg(after.arg + shlex.quote(suffix))
+            leaf = xm.ShellSafeArg(
+                after.arg + (shlex.quote(suffix) if suffix else "")
+            )
           else:
             raise ValueError(
                 f"Unsupported type for `replaces_startswith`: {type(after)}"
