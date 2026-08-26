@@ -77,6 +77,10 @@ class Experiment(job_params.JobParams):
     emoji_tags: Whether to use cool emoji tags.
     add_tensorboard_borg: Add TensorBoard
     add_tensorboard_corp: Add TensorBoard corp
+    tensorboard_args: Additional arguments passed to TensorBoard auxiliary units
+      (e.g. `{'samples_per_plugin': 'images=0'}` to display all images).
+    tensorboard_executor: Optional custom Borg executor for TensorBoard unit
+      (e.g. to configure RAM requirements).
     aux: A dict of arbitrary additional values.
     xid: optional xid of experiment. If provided, Kauldron will add work units
       to that experiment instead of creating a new one.
@@ -119,6 +123,8 @@ class Experiment(job_params.JobParams):
   # Auxiliary units (TB,...)
   add_tensorboard_borg: bool = False
   add_tensorboard_corp: bool = False
+  tensorboard_args: dict[str, Any] = dataclasses.field(default_factory=dict)
+  tensorboard_executor: Optional[xm_abc.Borg] = None
 
   # Additional arbitrary config values
   aux: Any = dataclasses.field(default_factory=dict)
@@ -188,16 +194,18 @@ class Experiment(job_params.JobParams):
         tensorboard.add_tensorboard_borg(
             xp,
             workdir=dir_builder.xp_dir,
-            args=self.tensorboard_args,
+            executor=self.tensorboard_executor,
+            args=self.resolved_tensorboard_args,
         )
       if self.add_tensorboard_corp:
         tensorboard.add_tensorboard_corp(
             xp,
             workdir=dir_builder.xp_dir,
+            executor=self.tensorboard_executor,
             # Sometimes, the default exporter exit before finishing exporting
             # all events, so increase default to 5h.
             termination_delay_secs=60 * 60 * 5,
-            args=self.tensorboard_args | _hparams_kwarg(self),
+            args=_hparams_kwarg(self),
         )
       # TODO(epot): Support Custom auxiliaries
 
@@ -340,15 +348,15 @@ class Experiment(job_params.JobParams):
     return tags
 
   @functools.cached_property
-  def tensorboard_args(self) -> dict[str, Any]:
+  def resolved_tensorboard_args(self) -> dict[str, Any]:
     """TensorBoard args."""
-    args = {}
-    if "gfs_user" in self.args:
+    args = dict(self.tensorboard_args)
+    if "gfs_user" in self.args and "gfs_user" not in args:
       args["gfs_user"] = self.args["gfs_user"]
     return args
 
   def _repr_html_(self) -> str:
-    from etils import ecolab  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+    from etils import ecolab  # pylint: disable=g-import-not-at-top  # pyrefly: ignore[missing-module-attribute]
 
     return ecolab.highlight_html(repr(self))
 

@@ -67,6 +67,10 @@ def get_config():
               mode=ml_workload_class_pb2.MLWorkloadClass.Mode.BATCH,
           ),
       ),
-      # Activate tensorboard.corp
+      # Activate tensorboard (both corp and borg)
       add_tensorboard_corp=True,
+      add_tensorboard_borg=True,
+      tensorboard_args={
+          'samples_per_plugin': 'images=0',
+      },
   )

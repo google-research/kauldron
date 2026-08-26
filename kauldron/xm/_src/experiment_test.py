@@ -14,7 +14,9 @@
 
 """Launcher test."""
 
+from unittest import mock
 from kauldron import kxm
+from xmanager.contrib.internal import tensorboard
 
 # Register XM mocking
 pytest_plugins = ('kauldron.xm._src.mock_xm',)
@@ -52,4 +54,47 @@ def test_launch_workdir():
   )
   xp.launch()
 
-  # TODO(epot): Add more tests (e.g. check the arguments are correctly updated)
+
+def test_launch_with_tensorboard():
+  xp = kxm.Experiment(
+      jobs={
+          'train': kxm.Job(
+              target='//path/to/my:target',
+              platform='jf=2x2',
+          ),
+      },
+      cell='jn',
+      root_dir='/tmp/some/{cell}/path/to/{author}/',
+      add_tensorboard_borg=True,
+      add_tensorboard_corp=True,
+      tensorboard_args={
+          'samples_per_plugin': 'images=0',
+      },
+  )
+  assert xp.add_tensorboard_borg
+  assert xp.add_tensorboard_corp
+  assert xp.resolved_tensorboard_args['samples_per_plugin'] == 'images=0'
+
+  with (
+      mock.patch.object(
+          tensorboard,
+          'add_tensorboard_borg',
+          autospec=True,
+      ) as mock_borg,
+      mock.patch.object(
+          tensorboard,
+          'add_tensorboard_corp',
+          autospec=True,
+      ) as mock_corp,
+  ):
+    xp.launch()
+
+  mock_borg.assert_called_once()
+  _, borg_kwargs = mock_borg.call_args
+  assert borg_kwargs['args'] == {'samples_per_plugin': 'images=0'}
+
+  mock_corp.assert_called_once()
+  _, corp_kwargs = mock_corp.call_args
+  assert 'hparams' in corp_kwargs['args']
+  assert 'samples_per_plugin' not in corp_kwargs['args']
+
