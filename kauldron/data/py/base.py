@@ -22,6 +22,7 @@ import functools
 import math
 import os
 import typing
+from typing import Any
 from typing import Callable
 from typing import Optional
 from typing import TypeVar
@@ -51,11 +52,86 @@ class DropRemainder(enum.StrEnum):
     DROP: Drop the last partial batch.
     KEEP: Keep the last partial batch as is (may have size < `batch_size`).
     PAD: Pad the last partial batch with zeros to reach `batch_size`.
+      WARNING: Users are responsible for handling the extra zero-padded elements
+        in downstream models/metrics (e.g., via masking or sentinel filtering).
+        Additionally, in multi-host/multi-process pipelines, dataset length is
+        not equalized before sharding, which can cause different hosts to yield
+        an uneven number of batches and lead to distributed step
+        desynchronization.
+    PAD_WITH_MASK: Like PAD, but pads the global dataset length before sharding
+      so all hosts execute an identical number of full eval steps. When padding
+      is needed, elements are wrapped in `PaddedElement`.
+      WARNING: Downstream readers and transforms must explicitly inspect the
+        `is_padding` field on `PaddedElement` and handle `None` elements (where
+        `is_padding=True`) correctly (e.g. substituting dummy bytes for parsing
+        and tagging batches with an `__is_padding__` mask so metrics can discard
+        them).
   """
 
   DROP = enum.auto()
   KEEP = enum.auto()
   PAD = enum.auto()
+  PAD_WITH_MASK = enum.auto()
+
+
+@dataclasses.dataclass
+class PaddedElement:
+  """Carries padding metadata alongside dataset elements.
+
+  When DropRemainder.PAD_WITH_MASK is active and dataset padding is required,
+  DataSourceBase wraps elements in a PaddedElement so downstream readers can
+  distinguish real data from padding slots.
+
+  WARNING: Downstream readers/transforms must inspect `is_padding` and handle
+  `element is None` for padding slots (e.g. by providing dummy data to parsers
+  and tagging downstream batches with an `__is_padding__` mask).
+
+  Attributes:
+    element: The raw data element (e.g. serialized proto bytes), or None for
+      padding slots (where is_padding=True).
+    is_padding: True if this element exists only to equalize batch counts across
+      hosts and should be discarded by metrics.
+  """
+
+  element: Any
+  is_padding: bool = False
+
+
+class _PaddedSource(grain.RandomAccessDataSource):
+  """Wraps a source and pads to a target length with PaddedElement."""
+
+  def __init__(
+      self, original_source: grain.RandomAccessDataSource, padded_len: int
+  ):
+    self._source = original_source
+    self._original_len = len(original_source)
+    self._padded_len = padded_len
+
+  def __len__(self) -> int:
+    return self._padded_len
+
+  def __getitem__(self, index: int) -> PaddedElement:
+    if index < 0 or index >= self._padded_len:
+      raise IndexError(index)
+    if index < self._original_len:
+      return PaddedElement(element=self._source[index], is_padding=False)
+    return PaddedElement(element=None, is_padding=True)
+
+
+def _assert_full_batch(values, *, batch_size):
+  """Batch function that asserts PAD_WITH_MASK never produces partial batches."""
+  result = grain.experimental.batch_and_pad(values, batch_size=batch_size)
+  # _PaddedSource guarantees all batches are full. If this fires,
+  # there is a bug in the padding logic.
+  first_leaf = (
+      result[next(iter(result))] if isinstance(result, dict) else result
+  )
+  if first_leaf.shape[0] != batch_size:
+    raise RuntimeError(
+        f"PAD_WITH_MASK produced a partial batch (got {first_leaf.shape[0]},"
+        f" expected {batch_size}). This should never happen."
+    )
+  return result
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True, eq=True)
@@ -138,6 +214,11 @@ class PyGrainPipeline(pipelines.Pipeline):
       case DropRemainder.PAD:
         batch_fn = functools.partial(
             grain.experimental.batch_and_pad, batch_size=self.host_batch_size
+        )
+        drop_remainder = False
+      case DropRemainder.PAD_WITH_MASK:
+        batch_fn = functools.partial(
+            _assert_full_batch, batch_size=self.host_batch_size
         )
         drop_remainder = False
       case DropRemainder.KEEP:
@@ -278,6 +359,22 @@ class DataSourceBase(PyGrainPipeline):
 
     # Shard the dataset
     if self.shard_by_process:
+      # PAD_WITH_MASK: pad dataset length to a multiple of total_batch_size
+      # so every host gets an identical number of full batches.
+      if (
+          self.batch_drop_remainder == DropRemainder.PAD_WITH_MASK
+          and self.batch_size
+      ):
+        ds_len = len(ds)
+        if ds_len > 0:
+          total_batch_size = self.host_batch_size * jax.process_count()
+          num_batches = math.ceil(ds_len / total_batch_size)
+          padded_len = num_batches * total_batch_size
+          if padded_len > ds_len:
+            ds = grain.MapDataset.source(
+                _PaddedSource(self.data_source, padded_len)
+            )
+            ds = ds.seed(random.random_seed(rng))
       ds = ds[jax.process_index() :: jax.process_count()]
 
     # Global shuffle
