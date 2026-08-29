@@ -20,8 +20,8 @@ jobs:
       with:
         python-version: "3.12"
         # Uncomment to cache of pip dependencies (if tests too slow)
-        # cache: pip
-        # cache-dependency-path: '**/pyproject.toml'
+        cache: pip
+        cache-dependency-path: '**/pyproject.toml'
 
     - run: pip --version
 
