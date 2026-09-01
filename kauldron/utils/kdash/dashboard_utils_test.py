@@ -169,6 +169,20 @@ def test_metric_dashboards_opt_out():
   assert 'overview' not in res.dashboards
 
 
+def test_overview_dashboard_disabled():
+  test_db = dashboard_utils.SingleDashboard(
+      name='test_db',
+      title='Test DB',
+      plots=[plot_utils.Plot(y_key='test_metric', collections=['train'])],
+  )
+  multi = dashboard_utils.MultiDashboards.from_iterable(
+      [test_db], create_overview_dashboard=False
+  )
+  res = multi.add_overview_dashboard()
+  assert 'overview' not in res.dashboards
+  assert list(res.dashboards.keys()) == ['test_db']
+
+
 def test_multi_dashboards_merge_in_overview_mismatch():
   db1 = dashboard_utils.SingleDashboard(
       name='metrics',

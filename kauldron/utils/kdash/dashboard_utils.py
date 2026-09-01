@@ -198,10 +198,14 @@ class MetricDashboards(DashboardsBase):
 class MultiDashboards(DashboardsBase):
   """Container of multiple dashboards."""
   dashboards: dict[str, SingleDashboard]
+  create_overview_dashboard: bool = True
 
   @classmethod
   def from_iterable(
-      cls, dashboards: Iterable[DashboardsBase]
+      cls,
+      dashboards: Iterable[DashboardsBase],
+      *,
+      create_overview_dashboard: bool = True,
   ) -> MultiDashboards:
     """Factory from an iterable of dashboards."""
     merged_dashboards = {}
@@ -236,13 +240,19 @@ class MultiDashboards(DashboardsBase):
               plots=_merge_plots(prev_dash.plots + dash.plots),
               **extra_kwargs,
           )
-    return cls(dashboards=merged_dashboards)
+    return cls(
+        dashboards=merged_dashboards,
+        create_overview_dashboard=create_overview_dashboard,
+    )
 
   def normalize(self) -> MultiDashboards:
     return self
 
   def add_overview_dashboard(self) -> MultiDashboards:
     """Adds a combined Overview dashboard as the first dashboard."""
+    if not self.create_overview_dashboard:
+      return self
+
     if 'overview' in self.dashboards:
       new_dashboards = {'overview': self.dashboards['overview']}
       for name, dash in self.dashboards.items():
