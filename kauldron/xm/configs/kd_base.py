@@ -71,6 +71,8 @@ def get_config():
       add_tensorboard_corp=True,
       add_tensorboard_borg=True,
       tensorboard_args={
-          'samples_per_plugin': 'images=0',
+          'samples_per_plugin': 'images=1000',
       },
+      tensorboard_corp_args={},
+      tensorboard_corp_target=None,
   )

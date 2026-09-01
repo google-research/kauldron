@@ -68,12 +68,16 @@ def test_launch_with_tensorboard():
       add_tensorboard_borg=True,
       add_tensorboard_corp=True,
       tensorboard_args={
-          'samples_per_plugin': 'images=0',
+          'samples_per_plugin': 'images=1000',
+      },
+      tensorboard_corp_args={
+          'min_secs_before_update_images': 0,
       },
   )
   assert xp.add_tensorboard_borg
   assert xp.add_tensorboard_corp
-  assert xp.resolved_tensorboard_args['samples_per_plugin'] == 'images=0'
+  assert xp.resolved_tensorboard_args['samples_per_plugin'] == 'images=1000'
+  assert xp.resolved_tensorboard_corp_args['min_secs_before_update_images'] == 0
 
   with (
       mock.patch.object(
@@ -91,10 +95,10 @@ def test_launch_with_tensorboard():
 
   mock_borg.assert_called_once()
   _, borg_kwargs = mock_borg.call_args
-  assert borg_kwargs['args'] == {'samples_per_plugin': 'images=0'}
+  assert borg_kwargs['args'] == {'samples_per_plugin': 'images=1000'}
 
   mock_corp.assert_called_once()
   _, corp_kwargs = mock_corp.call_args
   assert 'hparams' in corp_kwargs['args']
+  assert corp_kwargs['args']['min_secs_before_update_images'] == 0
   assert 'samples_per_plugin' not in corp_kwargs['args']
-
