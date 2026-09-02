@@ -78,7 +78,11 @@ class Experiment(job_params.JobParams):
     add_tensorboard_borg: Add TensorBoard
     add_tensorboard_corp: Add TensorBoard corp
     tensorboard_args: Additional arguments passed to TensorBoard auxiliary units
-      (e.g. `{'samples_per_plugin': 'images=0'}` to display all images).
+      (e.g. `{'samples_per_plugin': 'images=1000'}` to display images).
+    tensorboard_corp_args: Additional arguments passed to TensorBoard corp
+      auxiliary unit (e.g. `{'min_secs_before_update_images': 0}`).
+    tensorboard_corp_target: Optional custom bazel binary target for TensorBoard
+      corp.
     tensorboard_executor: Optional custom Borg executor for TensorBoard unit
       (e.g. to configure RAM requirements).
     aux: A dict of arbitrary additional values.
@@ -124,6 +128,10 @@ class Experiment(job_params.JobParams):
   add_tensorboard_borg: bool = False
   add_tensorboard_corp: bool = False
   tensorboard_args: dict[str, Any] = dataclasses.field(default_factory=dict)
+  tensorboard_corp_args: dict[str, Any] = dataclasses.field(
+      default_factory=dict
+  )
+  tensorboard_corp_target: Optional[str] = None
   tensorboard_executor: Optional[xm_abc.Borg] = None
 
   # Additional arbitrary config values
@@ -198,15 +206,51 @@ class Experiment(job_params.JobParams):
             args=self.resolved_tensorboard_args,
         )
       if self.add_tensorboard_corp:
-        tensorboard.add_tensorboard_corp(
-            xp,
-            workdir=dir_builder.xp_dir,
-            executor=self.tensorboard_executor,
-            # Sometimes, the default exporter exit before finishing exporting
-            # all events, so increase default to 5h.
-            termination_delay_secs=60 * 60 * 5,
-            args=_hparams_kwarg(self),
-        )
+        if self.tensorboard_corp_target:
+          executor = self.tensorboard_executor
+          if executor is None:
+            executor = xm_abc.Borg(
+                requirements=xm.JobRequirements(priority=200)
+            )
+          if not executor.requirements.location:
+            [requirements] = rs.select(
+                rs.Job([rs.Borg()], executor.requirements)
+            )
+            executor.requirements = requirements
+          provider = tensorboard.TensorboardProvider(
+              dir_builder.xp_dir, cell=executor.requirements.location
+          )
+          (executable,) = xp.package([
+              xm.bazel_binary(
+                  label=self.tensorboard_corp_target,
+                  executor_spec=xm_abc.Borg.Spec(),
+              )
+          ])
+          job = xm.Job(
+              executable,
+              executor,
+              name="event_exporter_par",
+              args=provider.get_tensorboard_corp_job_args(
+                  experiment_name=self.name or xp.context.annotations.title,
+                  xid=xp.experiment_id,
+                  additional_args=self.resolved_tensorboard_corp_args,
+              ),
+          )
+          xp.add(
+              job,
+              role=xm.AuxiliaryUnitRole(termination_delay_secs=60 * 60 * 5),
+              identity="tensorboard_corp",
+          )
+        else:
+          tensorboard.add_tensorboard_corp(
+              xp,
+              workdir=dir_builder.xp_dir,
+              executor=self.tensorboard_executor,
+              # Sometimes, the default exporter exit before finishing exporting
+              # all events, so increase default to 5h.
+              termination_delay_secs=60 * 60 * 5,
+              args=self.resolved_tensorboard_corp_args,
+          )
       # TODO(epot): Support Custom auxiliaries
 
     return xp
@@ -285,8 +329,7 @@ class Experiment(job_params.JobParams):
 
     # Add the `--cfg` flags.
     jobs = {
-        k: self.cfg_provider.maybe_add_cfg_flags(j)
-        for k, j in jobs.items()
+        k: self.cfg_provider.maybe_add_cfg_flags(j) for k, j in jobs.items()
     }
 
     # Merge jobs with the default runtime options
@@ -353,6 +396,13 @@ class Experiment(job_params.JobParams):
     args = dict(self.tensorboard_args)
     if "gfs_user" in self.args and "gfs_user" not in args:
       args["gfs_user"] = self.args["gfs_user"]
+    return args
+
+  @functools.cached_property
+  def resolved_tensorboard_corp_args(self) -> dict[str, Any]:
+    """TensorBoard corp args."""
+    args = dict(self.tensorboard_corp_args)
+    args |= _hparams_kwarg(self)
     return args
 
   def _repr_html_(self) -> str:
