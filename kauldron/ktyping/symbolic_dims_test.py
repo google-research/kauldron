@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from etils import enp
 import jax
 import jax.export
 from kauldron.ktyping import dim_view
@@ -281,7 +282,7 @@ class TestEdgeCases:
 class TestNoneDims:
 
   def _make_none_shape_struct(self, shape, dtype=np.float32):
-    return jax.ShapeDtypeStruct(shape, dtype)
+    return enp.ArraySpec(shape, dtype)
 
   def test_known_dims_still_checked(self):
     arr = self._make_none_shape_struct((None, 128))
