@@ -26,6 +26,7 @@ import time
 from absl import logging
 from etils import enp
 from etils import epath
+import jax
 from kauldron import data
 from kauldron import konfig
 from kauldron.checkpoints import checkpointer
@@ -369,13 +370,10 @@ def _get_eval_ckpt(
 def _get_element_spec(trainer: trainer_lib.Trainer) -> PyTree[enp.ArraySpec]:  # pyrefly: ignore[not-a-type]
   """Loads the element spec from disk, or from train_ds for eval-only jobs."""
 
-  # Load from training
-  path = trainer.workdir / constants.ELEMENT_SPEC_FILENAME
-  sleep_time = 10
-  while not path.exists():
-    logging.info(
-        'Waiting for element_spec in %s. Sleeping for %ds.', path, sleep_time
-    )
-    time.sleep(sleep_time)
-  spec = json.loads(path.read_text())
-  return konfig.resolve(spec, freeze=False)
+  def _override_batch_size(leaf):
+    if hasattr(leaf, 'shape') and len(leaf.shape) > 0:
+      new_shape = (1,) + tuple(leaf.shape[1:])
+      return enp.ArraySpec(shape=new_shape, dtype=leaf.dtype)
+    return leaf
+
+  return jax.tree.map(_override_batch_size, spec)
