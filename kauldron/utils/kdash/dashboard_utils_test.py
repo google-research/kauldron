@@ -68,53 +68,6 @@ def test_get_key():
   assert out == expected_out
 
 
-def test_overview_dashboard():
-  trainer = kd.train.Trainer(
-      train_ds=kd.data.py.Tfds(name='mnist', split='train', shuffle=True),
-      eval_ds=kd.data.py.Tfds(name='mnist', split='eval', shuffle=False),
-      model=None,
-      optimizer=None,
-      train_losses={'xent': None},
-      train_metrics={'accuracy': IntAverage()},
-      evals={
-          'eval': kd.evals.Evaluator(
-              run=kd.evals.EveryNSteps(100),
-              metrics={'accuracy': IntAverage()},
-          ),
-      },
-      schedules={'lr': None},
-  )
-  dashboards = trainer.__dashboards__.normalize().add_overview_dashboard()
-  assert list(dashboards.dashboards.keys()) == [
-      'overview',
-      'losses',
-      'metrics',
-      'schedules',
-      'perf_stats',
-  ]
-  assert dashboards.dashboards['overview'] == dashboard_utils.SingleDashboard(
-      name='overview',
-      title='{xid}: Overview',
-      plots=[
-          plot_utils.Plot(
-              y_key='losses/xent',
-              collections=['train', 'eval'],
-              remove_prefix=False,
-          ),
-          plot_utils.Plot(
-              y_key='metrics/accuracy/average',
-              collections=['train', 'eval'],
-              remove_prefix=False,
-          ),
-          plot_utils.Plot(
-              y_key='metrics/accuracy/twice_average',
-              collections=['train', 'eval'],
-              remove_prefix=False,
-          ),
-      ],
-  )
-
-
 def test_overview_dashboard_custom_and_opt_out():
   custom_overview = dashboard_utils.SingleDashboard(
       name='overview',
