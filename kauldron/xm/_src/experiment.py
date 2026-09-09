@@ -81,6 +81,13 @@ class Experiment(job_params.JobParams):
       (e.g. `{'samples_per_plugin': 'images=0'}` to display all images).
     tensorboard_executor: Optional custom Borg executor for TensorBoard unit
       (e.g. to configure RAM requirements).
+    tensorboard_borg_termination_delay_secs: How long (in seconds) to keep the
+      TensorBoard Borg auxiliary unit running after all work units complete.
+      Defaults to 0 so the auxiliary unit terminates immediately upon
+      completion and does not keep the experiment running.
+    tensorboard_corp_termination_delay_secs: How long (in seconds) to keep the
+      TensorBoard Corp auxiliary unit running after all work units complete.
+      Defaults to 5 hours.
     aux: A dict of arbitrary additional values.
     xid: optional xid of experiment. If provided, Kauldron will add work units
       to that experiment instead of creating a new one.
@@ -125,6 +132,8 @@ class Experiment(job_params.JobParams):
   add_tensorboard_corp: bool = False
   tensorboard_args: dict[str, Any] = dataclasses.field(default_factory=dict)
   tensorboard_executor: Optional[xm_abc.Borg] = None
+  tensorboard_borg_termination_delay_secs: int = 0
+  tensorboard_corp_termination_delay_secs: int = 60 * 60 * 5
 
   # Additional arbitrary config values
   aux: Any = dataclasses.field(default_factory=dict)
@@ -195,6 +204,7 @@ class Experiment(job_params.JobParams):
             xp,
             workdir=dir_builder.xp_dir,
             executor=self.tensorboard_executor,
+            termination_delay_secs=self.tensorboard_borg_termination_delay_secs,
             args=self.resolved_tensorboard_args,
         )
       if self.add_tensorboard_corp:
@@ -203,8 +213,8 @@ class Experiment(job_params.JobParams):
             workdir=dir_builder.xp_dir,
             executor=self.tensorboard_executor,
             # Sometimes, the default exporter exit before finishing exporting
-            # all events, so increase default to 5h.
-            termination_delay_secs=60 * 60 * 5,
+            # all events, so default to 5h.
+            termination_delay_secs=self.tensorboard_corp_termination_delay_secs,
             args=_hparams_kwarg(self),
         )
       # TODO(epot): Support Custom auxiliaries

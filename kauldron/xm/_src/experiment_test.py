@@ -74,6 +74,8 @@ def test_launch_with_tensorboard():
   assert xp.add_tensorboard_borg
   assert xp.add_tensorboard_corp
   assert xp.resolved_tensorboard_args['samples_per_plugin'] == 'images=0'
+  assert xp.tensorboard_borg_termination_delay_secs == 0
+  assert xp.tensorboard_corp_termination_delay_secs == 60 * 60 * 5
 
   with (
       mock.patch.object(
@@ -92,9 +94,50 @@ def test_launch_with_tensorboard():
   mock_borg.assert_called_once()
   _, borg_kwargs = mock_borg.call_args
   assert borg_kwargs['args'] == {'samples_per_plugin': 'images=0'}
+  assert borg_kwargs['termination_delay_secs'] == 0
 
   mock_corp.assert_called_once()
   _, corp_kwargs = mock_corp.call_args
   assert 'hparams' in corp_kwargs['args']
   assert 'samples_per_plugin' not in corp_kwargs['args']
+  assert corp_kwargs['termination_delay_secs'] == 60 * 60 * 5
+
+
+def test_launch_with_custom_tensorboard_termination_delay():
+  xp = kxm.Experiment(
+      jobs={
+          'train': kxm.Job(
+              target='//path/to/my:target',
+              platform='jf=2x2',
+          ),
+      },
+      cell='jn',
+      root_dir='/tmp/some/{cell}/path/to/{author}/',
+      add_tensorboard_borg=True,
+      add_tensorboard_corp=True,
+      tensorboard_borg_termination_delay_secs=3600,
+      tensorboard_corp_termination_delay_secs=7200,
+  )
+
+  with (
+      mock.patch.object(
+          tensorboard,
+          'add_tensorboard_borg',
+          autospec=True,
+      ) as mock_borg,
+      mock.patch.object(
+          tensorboard,
+          'add_tensorboard_corp',
+          autospec=True,
+      ) as mock_corp,
+  ):
+    xp.launch()
+
+  mock_borg.assert_called_once()
+  _, borg_kwargs = mock_borg.call_args
+  assert borg_kwargs['termination_delay_secs'] == 3600
+
+  mock_corp.assert_called_once()
+  _, corp_kwargs = mock_corp.call_args
+  assert corp_kwargs['termination_delay_secs'] == 7200
 
