@@ -319,9 +319,9 @@ class TrainStep(config_util.UpdateFromRootCfg):
     )
     params_grads = context_grads.params
     updates, new_opt_state = jax.named_call(self.optimizer.update)(
-        params_grads, state.opt_state, state.params
+        params_grads, state.opt_state, state.params  # pyrefly: ignore[bad-argument-type]
     )
-    new_params = jax.named_call(optax.apply_updates)(state.params, updates)
+    new_params = jax.named_call(optax.apply_updates)(state.params, updates)  # pyrefly: ignore[bad-argument-type]
 
     next_state = state.replace(
         step=state.step + 1,

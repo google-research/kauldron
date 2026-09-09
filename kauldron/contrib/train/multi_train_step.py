@@ -160,7 +160,7 @@ class MultiTrainStep(kd.train.TrainStep):
           forward_with_loss,
           loss_name=loss_name,
           model=self.model,
-          losses=self.aux.losses,
+          losses=self.aux.losses,  # pyrefly: ignore[bad-argument-type]
           subgrad_fns=copy.copy(subgrad_fns),  # copy to keep from mutating
       )
       grad_fn = jax.grad(forward, argnums=0, has_aux=True, allow_int=True)
@@ -184,7 +184,7 @@ class MultiTrainStep(kd.train.TrainStep):
     # that way they can hopefully all share the same forward pass
     grads = jax.tree.map(lambda *x: sum(x), *subgrads.values())
     updates = jax.tree.map(lambda *x: sum(x), *all_updates.values())
-    new_params = jax.named_call(optax.apply_updates)(state.params, updates)
+    new_params = jax.named_call(optax.apply_updates)(state.params, updates)  # pyrefly: ignore[bad-argument-type]
 
     next_state = state.replace(
         step=state.step + 1,

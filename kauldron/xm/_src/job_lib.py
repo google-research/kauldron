@@ -218,7 +218,7 @@ class Job(job_params.JobParams):
     )
 
     executor = attr.evolve(
-        self.executor,
+        self.executor,  # pyrefly: ignore[bad-argument-type]
         use_auto_host_resources=use_auto_host_resources,
         requirements=self.requirements,
     )

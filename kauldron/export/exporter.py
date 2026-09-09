@@ -177,7 +177,7 @@ class JaxModelExporter(ModelExporter):
             name=self.name,
         )
     )
-    path.write_bytes(blob)
+    path.write_bytes(blob)  # pyrefly: ignore[bad-argument-type]
 
 
 def _create_dynamic_forward_fn(

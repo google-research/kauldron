@@ -73,7 +73,7 @@ class SweepOrchestrator(Orchestrator):
     num_existing_work_units = len(xp.work_units)
 
     # TODO(klausg): Add a confirmation dialogue before starting lots of workers?
-    for i, sweep_item in enumerate(sweep_info):  # pyrefly: ignore[bad-argument-type]
+    for i, sweep_item in enumerate(sweep_info):  # pyrefly: ignore[bad-argument-type, not-iterable]
       xp.add(
           functools.partial(
               self._launch_work_unit,

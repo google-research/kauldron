@@ -75,7 +75,7 @@ def _format_module_config(cfg: Optional[Any]) -> str:
     if isinstance(c, ml_collections.ConfigDict):
       qn = getattr(c, "__qualname__", None)
       if qn is not None:
-        return konfig.ConfigDict({"__qualname__": qn, 0: ...})  # pyrefly: ignore[bad-argument-type]
+        return konfig.ConfigDict({"__qualname__": qn, 0: ...})  # pyrefly: ignore[bad-argument-type, bad-assignment]
       else:
         return c
     return c

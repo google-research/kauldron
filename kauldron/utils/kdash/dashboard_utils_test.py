@@ -180,7 +180,7 @@ class CustomDashboardNoInOverview(dashboard_utils.DashboardsBase):
 
   def normalize(self) -> dashboard_utils.MultiDashboards:
     return dashboard_utils.MultiDashboards(
-        dashboards={self.name: self}  # pyrefly: ignore[bad-argument-type]
+        dashboards={self.name: self}  # pyrefly: ignore[bad-argument-type, bad-assignment]
     )
 
   def build(self, ctx: plot_utils.BuildContext):

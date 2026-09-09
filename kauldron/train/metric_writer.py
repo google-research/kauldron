@@ -523,7 +523,7 @@ class KDMetricWriter(MetadataWriter):
     )
     # export pandas dataframe as markdown text
     markdown_table = ctx_df.to_markdown(index=False, tablefmt="github")
-    self.write_texts(step, {"context_spec": markdown_table})  # pyrefly: ignore[bad-argument-type]
+    self.write_texts(step, {"context_spec": markdown_table})  # pyrefly: ignore[bad-argument-type, bad-assignment]
 
   def flush(self) -> None:
     self._scalar_writer.flush()
