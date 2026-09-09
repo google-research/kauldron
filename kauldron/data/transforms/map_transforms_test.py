@@ -15,6 +15,7 @@
 from etils import enp
 from etils.array_types import f32, ui8  # pylint: disable=g-multiple-import
 from kauldron import kd
+import numpy as np
 import pytest
 import tensorflow as tf
 
@@ -128,7 +129,10 @@ def test_center_crop(xnp: enp.NpModule):
   before = {"img": data}
   after = vr.map(before)
   assert after["img"].shape == (12, 12)
-  xnp.allclose(after["img"], expected_crop)
+  if enp.lazy.is_tf(after["img"]):
+    tf.debugging.assert_equal(after["img"], expected_crop)
+  else:
+    np.testing.assert_array_equal(after["img"], expected_crop)
 
 
 @enp.testing.parametrize_xnp(skip=["torch"])
@@ -143,4 +147,7 @@ def test_center_crop_partial(xnp: enp.NpModule):
   before = {"img": data}
   after = vr.map(before)
   assert after["img"].shape == (12, 16)
-  xnp.allclose(after["img"], expected_crop)
+  if enp.lazy.is_tf(after["img"]):
+    tf.debugging.assert_equal(after["img"], expected_crop)
+  else:
+    np.testing.assert_array_equal(after["img"], expected_crop)

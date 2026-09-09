@@ -16,13 +16,25 @@
 
 from __future__ import annotations
 
-import collections
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from typing import Any, Callable, ClassVar, Self, TypeVar, Union, overload
 
 from etils import epy
-from etils.etree import jax as etree  # pylint: disable=g-importing-member
-import jax.tree_util
+
+try:
+  import jax.tree_util  # pyrefly: ignore[missing-import]  # pylint: disable=g-import-not-at-top
+
+  JaxKeyEntry = Union[
+      jax.tree_util.SequenceKey,  # pyrefly: ignore[unsupported-operation]
+      jax.tree_util.DictKey,  # pyrefly: ignore[unsupported-operation]
+      jax.tree_util.GetAttrKey,  # pyrefly: ignore[unsupported-operation]
+      jax.tree_util.FlattenedIndexKey,  # pyrefly: ignore[unsupported-operation]
+  ]
+except ImportError:
+  jax = None  # pylint: disable=invalid-name
+  JaxKeyEntry = Any
+
+from etils.etree import py as etree  # pylint: disable=g-importing-member,g-import-not-at-top
 from kauldron.kontext import path_parser
 import ml_collections
 
@@ -34,14 +46,6 @@ Context = Any
 Part = path_parser.Part
 
 
-JaxKeyEntry = Union[
-    jax.tree_util.SequenceKey,
-    jax.tree_util.DictKey,
-    jax.tree_util.GetAttrKey,
-    jax.tree_util.FlattenedIndexKey,
-]
-
-
 def _is_valid_part(part: Any, *, wildcard_ok: bool = False) -> bool:
   if isinstance(part, tuple):
     return all(_is_valid_part(p, wildcard_ok=wildcard_ok) for p in part)
@@ -51,7 +55,7 @@ def _is_valid_part(part: Any, *, wildcard_ok: bool = False) -> bool:
     return isinstance(part, Part)
 
 
-class AbstractPath(collections.abc.Sequence):
+class AbstractPath:
   """Represents a string path."""
 
   __slots__ = ("parts",)
@@ -81,6 +85,12 @@ class AbstractPath(collections.abc.Sequence):
 
   def __len__(self) -> int:
     return len(self.parts)
+
+  def __iter__(self) -> Iterator[Part]:
+    return iter(self.parts)
+
+  def __contains__(self, item: Any) -> bool:
+    return item in self.parts
 
   def __hash__(self) -> int:
     hashable_parts = tuple(
@@ -242,6 +252,29 @@ def get_by_path(
   return path.get_from(obj, default=default)
 
 
+def _iter_flatten_with_path(
+    pytree: Any,
+    current_path: tuple[Part, ...] = (),
+    *,
+    is_leaf: Callable[[Any], bool] | None = None,
+) -> Iterator[tuple[tuple[Part, ...], Any]]:
+  """Recursively yield (current_path, leaf) pairs."""
+  if is_leaf is not None and is_leaf(pytree):
+    yield current_path, pytree
+  elif isinstance(pytree, (list, tuple)):
+    for idx, item in enumerate(pytree):
+      yield from _iter_flatten_with_path(
+          item, current_path + (idx,), is_leaf=is_leaf
+      )
+  elif isinstance(pytree, (dict, Mapping)):
+    for key, value in sorted(pytree.items()):
+      yield from _iter_flatten_with_path(
+          value, current_path + (key,), is_leaf=is_leaf
+      )
+  else:
+    yield current_path, pytree
+
+
 def flatten_with_path(
     pytree: PyTree[_T],
     *,
@@ -253,13 +286,29 @@ def flatten_with_path(
   if isinstance(pytree, ml_collections.ConfigDict):
     # Normalize ConfigDict to dict
     pytree = pytree.to_dict()
+
+  if jax is None:
+    flat_tree_items = _iter_flatten_with_path(pytree, is_leaf=is_leaf)
+    prefix_parts = (prefix,) if prefix else ()
+
+    def _format_path_nojax(parts):
+      path = Path(*(prefix_parts + parts))
+      if separator is None:
+        return str(path)
+      else:
+        return separator.join(str(p) for p in path.parts)
+
+    return {
+        _format_path_nojax(parts): value for parts, value in flat_tree_items
+    }
+
   flat_tree_items, _ = jax.tree_util.tree_flatten_with_path(
       pytree, is_leaf=is_leaf
   )
-  prefix = (jax.tree_util.GetAttrKey(prefix),) if prefix else ()  # pyrefly: ignore[bad-assignment]
+  prefix_tuple = (jax.tree_util.GetAttrKey(prefix),) if prefix else ()  # pyrefly: ignore[bad-assignment]
 
   def _format_path(jax_path):
-    path = Path.from_jax_path(prefix + jax_path)
+    path = Path.from_jax_path(prefix_tuple + jax_path)
     if separator is None:
       return str(path)
     else:

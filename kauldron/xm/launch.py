@@ -25,8 +25,6 @@ from __future__ import annotations
 from absl import app
 from absl import flags
 from etils import epy
-# Import jax outside the `binary_adhoc` scope to avoid some errors
-import jax  # pylint: disable=unused-import
 
 # Re-import `epy` from HEAD (as the XManager CLI might contain an old version)
 with epy.binary_adhoc(reload="etils"):

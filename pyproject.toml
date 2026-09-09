@@ -19,6 +19,7 @@ dependencies = [
     "altair",
     "chex",
     "clu",
+    "dm-tree",
     "einops",
     "etils[edc,enp,epath,epy,etree]",
     "flax",

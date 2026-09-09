@@ -24,9 +24,9 @@ import typing
 from typing import Annotated, Any, Callable, Iterable, Optional, TypeVar
 
 from etils import epy
-import jax
 from kauldron.kontext import paths
 from kauldron.kontext import type_utils
+import tree
 
 _T = TypeVar("_T")
 
@@ -107,7 +107,7 @@ def resolve_from_keypaths(
   # No remaining None keys left. This constraint could be relaxed based
   # on use-case.
   _assert_no_none_keys(key_paths)
-  key_values = jax.tree.map(
+  key_values = tree.map_structure(
       lambda path: paths.get_by_path(context, path, default=_MISSING),
       key_paths,
   )
