@@ -14,6 +14,7 @@
 
 """Property based testing for string paths."""
 
+import collections
 import re
 from typing import Any
 
@@ -21,6 +22,7 @@ import flax.struct
 import hypothesis
 import hypothesis.strategies as st
 from kauldron import kontext
+from kauldron.kontext import paths
 import numpy as np
 import pytest
 
@@ -115,6 +117,40 @@ def test_tree_flatten_with_path():
 
   flat_tree = kontext.flatten_with_path(mt, prefix="cfg", separator="/")
   assert flat_tree == {"cfg/foo/a": 10, "cfg/foo/b/0": 7, "cfg/bar": 9}
+
+
+@pytest.mark.parametrize("use_jax", [True, False])
+@pytest.mark.parametrize("prefix", ["", "cfg"])
+@pytest.mark.parametrize("separator", [None, "/"])
+def test_flatten_builtin_trees_without_jax(
+    monkeypatch, use_jax, prefix, separator
+):
+  pair = collections.namedtuple("Pair", ["weights", "bias"])
+  tree = {"model": pair([1, None, {"x": 2}], None), "empty": [None, (), {}]}
+  expected = (
+      {"model.weights[0]": 1, "model.weights[2].x": 2}
+      if separator is None
+      else {"model/weights/0": 1, "model/weights/2/x": 2}
+  )
+  if prefix:
+    expected = {prefix + (separator or ".") + k: v for k, v in expected.items()}
+  if not use_jax:
+    monkeypatch.setattr(paths, "jax", None)
+  assert kontext.flatten_with_path(
+      tree, prefix=prefix, separator=separator
+  ) == expected
+
+
+@pytest.mark.parametrize("use_jax", [True, False])
+def test_flatten_without_jax_respects_is_leaf(monkeypatch, use_jax):
+  pair = collections.namedtuple("Pair", ["weights", "bias"])
+  node = pair(1, None)
+  tree = {"model": node, "missing": None}
+  if not use_jax:
+    monkeypatch.setattr(paths, "jax", None)
+  assert kontext.flatten_with_path(
+      tree, is_leaf=lambda x: x is None or isinstance(x, pair)
+  ) == tree
 
 
 CTX = {
