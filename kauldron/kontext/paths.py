@@ -261,6 +261,13 @@ def _iter_flatten_with_path(
   """Recursively yield (current_path, leaf) pairs."""
   if is_leaf is not None and is_leaf(pytree):
     yield current_path, pytree
+  elif pytree is None:
+    return  # JAX treats None as an empty node unless is_leaf overrides it.
+  elif isinstance(pytree, tuple) and hasattr(pytree, "_fields"):
+    for name, item in zip(pytree._fields, pytree):
+      yield from _iter_flatten_with_path(
+          item, current_path + (name,), is_leaf=is_leaf
+      )
   elif isinstance(pytree, (list, tuple)):
     for idx, item in enumerate(pytree):
       yield from _iter_flatten_with_path(
