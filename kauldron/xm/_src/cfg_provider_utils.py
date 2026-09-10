@@ -22,6 +22,8 @@ import importlib
 import inspect
 import os
 import pathlib
+import posixpath
+import sys
 import types
 import typing
 from typing import Any, Self
@@ -116,6 +118,8 @@ class ConfigProvider(ConfigProviderBase):
   def from_flag(
       cls,
       flag: flags.FlagHolder[ml_collections.ConfigDict],
+      *,
+      config: konfig.ConfigDictLike[Any] | None = None,
   ) -> Self:
     """Create a `ConfigProvider` from a `DEFINE_config_file` flag."""
     # Get the flags.FLAGS object linked to the flag
@@ -133,8 +137,29 @@ class ConfigProvider(ConfigProviderBase):
     config_path, *config_parameter = config_path.split(":", 1)
 
     # Import the config module (needed for sweeps etc.).
-    config_path = config_path.replace("/", ".")
-    config_module = importlib.import_module(config_path)
+    config_path = posixpath.normpath(config_path)
+    module_name = config_path.removesuffix(".py").lstrip("/").replace("/", ".")
+    config_module = None
+    if module_name and not module_name.startswith("."):
+      try:
+        config_module = importlib.import_module(module_name)
+      except ModuleNotFoundError as e:
+        if not (
+            e.name
+            and (e.name == module_name or module_name.startswith(f"{e.name}."))
+        ):
+          raise
+    if config_module is None:
+      raw_value = flagvalues[flag.name]._value  # pylint: disable=protected-access
+      config_module = getattr(raw_value, "module", None) or sys.modules.get(
+          f"{flag.name}_config"
+      )
+      if config_module is None:
+        raise ModuleNotFoundError(
+            f"Could not import config module {module_name!r} from"
+            f" {config_path!r}.",
+            name=module_name,
+        )
 
     # In addition to the filename we also need the config overrides to pass on
     # to the worker units, so here we collect them from the list of all flags.
@@ -146,7 +171,7 @@ class ConfigProvider(ConfigProviderBase):
 
     return cls(
         module=config_module,
-        config=flag.value,
+        config=flag.value if config is None else config,
         config_parameter=config_parameter[0] if config_parameter else None,
         overrides=config_overrides,
         requires_local_config_update=False,
@@ -213,7 +238,12 @@ class ConfigProvider(ConfigProviderBase):
     if xp.context.annotations.title == experiment.DEFAULT_EXPERIMENT_NAME:
       xp.context.annotations.set_title(self.config_path.stem)
 
+    try:
+      file_content = inspect.getsource(self.module)
+    except OSError:
+      file_content = "# Failed to retrieve source code via inspect.getsource\n"
+
     xp.context.add_config_file(
-        file_content=inspect.getsource(self.module),
+        file_content=file_content,
         description=f"Content of {self.config_path}",
     )

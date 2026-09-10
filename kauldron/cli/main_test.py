@@ -77,6 +77,16 @@ class TestParseFlags:
     with pytest.raises(SystemExit):
       cli_main.flag_parser(["prog", "config"])
 
+  def test_main_missing_cfg_raises_value_error(self):
+    args = cli_main.flag_parser(["prog", "config", "show"])
+    with (
+        mock.patch.object(
+            flags.FLAGS[cli_main._CONFIG.name], "_value", None  # pylint: disable=protected-access
+        ),
+        pytest.raises(ValueError, match="Missing required flag: --cfg"),
+    ):
+      cli_main.main(args)
+
 
 class TestPatchFlags:
 

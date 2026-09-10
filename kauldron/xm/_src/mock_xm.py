@@ -16,6 +16,8 @@
 
 # Could move this to `etils.exm` ?
 
+from collections.abc import Iterator
+import contextlib
 from unittest import mock
 
 import pytest
@@ -35,13 +37,22 @@ class _MockExperiment(xm_mock.MockExperiment):
     return None
 
 
-@pytest.fixture(autouse=True)
-def mock_xm():
-  """Mock XManager."""
+@contextlib.contextmanager
+def patch_xm() -> Iterator[_MockExperiment]:
+  """Patches XManager APIs with `_MockExperiment`."""
   xm_xp = _MockExperiment()
+
+  def _create_experiment(experiment_title: str | None = None, **_):
+    if experiment_title is not None:
+      xm_xp.context.annotations.set_title(experiment_title)
+    return xm_xp
+
   with (
       mock.patch.object(
-          xm_abc, 'create_experiment', return_value=xm_xp, autospec=True
+          xm_abc,
+          'create_experiment',
+          side_effect=_create_experiment,
+          autospec=True,
       ),
       mock.patch.object(
           xm_abc, 'get_current_experiment', return_value=xm_xp, autospec=True
@@ -58,4 +69,11 @@ def mock_xm():
       ),
       mock.patch.object(xmanager_api, 'XManagerApi', autospec=True),
   ):
-    yield
+    yield xm_xp
+
+
+@pytest.fixture(autouse=True)
+def mock_xm() -> Iterator[_MockExperiment]:
+  """Mock XManager."""
+  with patch_xm() as xm_xp:
+    yield xm_xp

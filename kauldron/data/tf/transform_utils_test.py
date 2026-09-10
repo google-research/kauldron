@@ -66,7 +66,7 @@ def test_source(is_supervised: bool):
       else {'image': None, 'label': None}
   )
   assert not isinstance(tr, grain.MapTransform)
-  tr = transform_utils._adapt_for_tfgrain(tr)
+  tr = transform_utils.adapt_for_tfgrain(tr)
   assert isinstance(tr, grain.MapTransform)
   data_loader = grain.TfDataLoader(
       source=source,
