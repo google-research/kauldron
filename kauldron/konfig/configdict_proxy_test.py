@@ -22,6 +22,7 @@ from unittest import mock
 
 from etils import epy
 from kauldron import konfig
+from kauldron.konfig import configdict_proxy
 import numpy as np
 import pytest
 
@@ -244,3 +245,96 @@ def test_configdict_not_freeze():
 def test_resolve_plain_dict_no_frame_crash():
   with pytest.raises(TypeError):
     konfig.resolve({"__qualname__": "builtins:int", "bad_kwarg": "x"})
+
+
+def test_get_qualnames():
+  with konfig.imports():
+    import types as fake_types  # pylint: disable=reimported,g-import-not-at-top
+    import pathlib as fake_pathlib  # pylint: disable=reimported,g-import-not-at-top
+
+  cfg = fake_types.SimpleNamespace(
+      x=123,
+      const=fake_pathlib.Path,
+      y=[fake_types.SimpleNamespace(), {"z": fake_pathlib.Path("a")}],
+  )
+  assert konfig.get_qualnames(cfg) == {
+      "types:SimpleNamespace",
+      "pathlib:Path",
+  }
+
+
+def test_get_qualnames_no_resolve():
+  # `get_qualnames` never imports nor calls anything, so works on configs
+  # which cannot be resolved.
+  cfg = konfig.ConfigDict({"__qualname__": "not_a_module.at_all:Thing"})
+  assert konfig.get_qualnames(cfg) == {"not_a_module.at_all:Thing"}
+  assert konfig.get_qualnames(123) == set()
+  assert konfig.get_qualnames({"a": [1, {"b": None}]}) == set()
+
+
+def test_get_qualnames_required_field():
+  cfg = konfig.ConfigDict({
+      "__qualname__": "types:SimpleNamespace",
+      "x": konfig.required(int),
+  })
+  assert konfig.get_qualnames(cfg) == {"types:SimpleNamespace"}
+
+
+def test_resolve_allowlist():
+  with konfig.imports():
+    import types as fake_types  # pylint: disable=reimported,g-import-not-at-top
+
+  cfg = fake_types.SimpleNamespace(x=123)
+
+  assert konfig.resolve(cfg, allowlist=[types]) == types.SimpleNamespace(x=123)
+  assert konfig.resolve(cfg, allowlist=["types"]) == types.SimpleNamespace(
+      x=123
+  )
+  assert konfig.resolve(
+      cfg, allowlist=[types.SimpleNamespace]
+  ) == types.SimpleNamespace(x=123)
+
+  with pytest.raises(konfig.NotAllowedError, match="types:SimpleNamespace"):
+    konfig.resolve(cfg, allowlist=[pathlib])
+
+
+def test_resolve_allowlist_nested():
+  with konfig.imports():
+    import types as fake_types  # pylint: disable=reimported,g-import-not-at-top
+    import pathlib as fake_pathlib  # pylint: disable=reimported,g-import-not-at-top
+
+  cfg = fake_types.SimpleNamespace(path=fake_pathlib.Path("a"))
+
+  with pytest.raises(konfig.NotAllowedError, match="pathlib:Path"):
+    konfig.resolve(cfg, allowlist=[types])
+
+  out = konfig.resolve(cfg, allowlist=[types, pathlib])
+  assert out == types.SimpleNamespace(path=pathlib.Path("a"))
+
+
+def test_resolve_allowlist_fails_before_import():
+  # The whole config is validated upfront, so a single rejected symbol
+  # prevents the other (allowlisted) symbols from being imported/executed.
+  with mock.patch.object(configdict_proxy, "import_qualname") as spy:
+    with pytest.raises(konfig.NotAllowedError):
+      konfig.resolve(
+          konfig.ConfigDict({
+              "__qualname__": "types:SimpleNamespace",
+              "x": konfig.ConfigDict({"__qualname__": "builtins:eval"}),
+          }),
+          allowlist=["types"],
+      )
+  spy.assert_not_called()
+
+
+def test_resolve_allowlist_rejects_dunder():
+  cfg = konfig.ConfigDict({"__qualname__": "types:SimpleNamespace.__class__"})
+  with pytest.raises(konfig.NotAllowedError, match="dunder"):
+    konfig.resolve(cfg, allowlist=[types])
+
+
+def test_resolve_no_allowlist_unchanged():
+  # Default behavior (no allowlist) is unrestricted.
+  cfg = konfig.ConfigDict({"__qualname__": "builtins:sum", "0": [1, 2]})
+  assert konfig.resolve(cfg) == 3
+
