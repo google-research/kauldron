@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Utils to parially initialize objects."""
+"""Utils to partially initialize objects."""
 
 from __future__ import annotations
 
@@ -31,11 +31,11 @@ from kauldron.utils import immutabledict
 
 # Use lazy-import as this file is imported in Kauldron
 with epy.lazy_imports():
-  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+  # pylint: disable=g-import-not-at-top,g-blanket-type-suppression  # pytype: disable=import-error
   import attr
   from kauldron.xm._src import job_params
   from kauldron.xm._src import job_lib
-  # pylint: enable=g-import-not-at-top  # pytype: disable=import-error
+  # pylint: enable=g-import-not-at-top,g-blanket-type-suppression
 
 
 _T = TypeVar("_T")
@@ -86,7 +86,7 @@ def add_merge_support(cls: _ClsT) -> _ClsT:
   Returns:
     The decorated class
   """
-  # TODO(epot): Allow displaying the origin when there's a value missmatch
+  # TODO(epot): Allow displaying the origin when there's a value mismatch
   # Extract where the `kxm.Job()` line is defined. How ?
   # Also how to deal with `dataclasses.replace` ?
 
@@ -104,7 +104,7 @@ def add_merge_support(cls: _ClsT) -> _ClsT:
 
 
 def _wrap_new(cls: _ClsT) -> _ClsT:
-  """`__new__` decorator that save values explicitly given as arg."""
+  """`__new__` decorator that saves values explicitly given as arg."""
 
   old_new_fn = _internal.unwrap_on_reload(cls.__new__)
 
@@ -209,7 +209,7 @@ def merge(*objs: _T) -> _T:
 
 
 def merge(*objs):
-  """Merge multiple instances together, recursivelly.
+  """Merge multiple instances together, recursively.
 
   Instances should previously have been decorated with `add_merge_support`
   See `add_merge_support` for usage.
@@ -227,7 +227,7 @@ def merge(*objs):
         obj,
         path=f"({type(final_obj).__name__} / {type(obj).__name__})",
     )
-  return final_obj  # pytype: disable=bad-return-type
+  return final_obj  # pytype: disable=bad-return-type  # pylint: disable=g-blanket-type-suppression
 
 
 def _merge(obj0: Any, obj1: Any, *, path: str) -> Any:
@@ -274,24 +274,91 @@ def _merge(obj0: Any, obj1: Any, *, path: str) -> Any:
     )
 
 
+def _validate_is_dataclass(cls: type[Any], *, path: str) -> None:
+  """Ensures Job subclasses defining state are decorated with @dataclass.
+
+  `dataclasses.is_dataclass(cls)` returns True for all `Job` subclasses via MRO,
+  so undecorated subclasses silently drop new fields during `dataclasses.fields`
+  introspection. We check `cls.__dict__` for `__dataclass_fields__` and reject
+  undecorated subclasses that introduce state via:
+  - Own annotations (`inspect.get_annotations` for PEP 649/Python 3.14+ safety),
+  - Unannotated `dataclasses.field(...)` descriptors, or
+  - Custom `__init__` overrides.
+  Pure pass-through subclasses (adding only methods) remain allowed.
+
+  Args:
+    cls: The class to validate.
+    path: The config path for error reporting.
+  """
+  if not dataclasses.is_dataclass(cls):
+    raise TypeError(
+        f"Job subclass '{cls.__name__}' in {path} must be a dataclass."
+    )
+  has_field = any(
+      isinstance(v, dataclasses.Field) for v in cls.__dict__.values()
+  )
+  if "__dataclass_fields__" not in cls.__dict__ and (
+      bool(inspect.get_annotations(cls))
+      or "__init__" in cls.__dict__
+      or has_field
+  ):
+    raise TypeError(
+        f"Job subclass '{cls.__name__}' in {path} defines fields or __init__"
+        " but is missing the `@dataclasses.dataclass` decorator. Without it,"
+        " subclass fields cannot be merged."
+    )
+
+
 def _merge_obj(obj0: _MergableObj, obj1: _MergableObj, *, path: str) -> Any:
   """Merge 2 objects together."""
   final_kwargs = _merge_dict(
       obj0._kxm_init_kwargs, obj1._kxm_init_kwargs, path=path  # pylint: disable=protected-access
   )
-  # Could make this a protocol, rather than hardcoding it
-  if isinstance(obj0, job_params.JobParams):
-    # Filter only the arguments common to `Job`
-    available_fields = {f.name for f in dataclasses.fields(job_lib.Job)}
-    final_kwargs = {
-        k: v for k, v in final_kwargs.items() if k in available_fields
-    }
-    return job_lib.Job(**final_kwargs)
-  else:
+  # For non-JobParams objects, types must match and are preserved.
+  if not (
+      isinstance(obj0, job_params.JobParams)
+      and isinstance(obj1, job_params.JobParams)
+  ):
     return type(obj0)(**final_kwargs)
 
+  # Preserve Job subclass if present; otherwise fall back to base Job.
+  cls0 = type(obj0)
+  cls1 = type(obj1)
+  is_job0 = issubclass(cls0, job_lib.Job)
+  is_job1 = issubclass(cls1, job_lib.Job)
+  if is_job0:
+    _validate_is_dataclass(cls0, path=path)
+  if is_job1:
+    _validate_is_dataclass(cls1, path=path)
 
-def _merge_dict(d0: dict[str, Any], d1: dict[str, Any], *, path: str):
+  # Resolve target class: preserve more specific Job subclass if present.
+  if is_job0 and is_job1:
+    if issubclass(cls1, cls0):
+      target_cls = cls1
+    elif issubclass(cls0, cls1):
+      target_cls = cls0
+    else:
+      raise TypeError(
+          f"Cannot merge conflicting Job subclasses {cls0.__name__} and"
+          f" {cls1.__name__} in {path}."
+      )
+  elif is_job0:
+    target_cls = cls0
+  elif is_job1:
+    target_cls = cls1
+  else:
+    target_cls = job_lib.Job
+
+  available_fields = {f.name for f in dataclasses.fields(target_cls) if f.init}
+  final_kwargs = {
+      k: v for k, v in final_kwargs.items() if k in available_fields
+  }
+  return target_cls(**final_kwargs)
+
+
+def _merge_dict(
+    d0: dict[str, Any], d1: dict[str, Any], *, path: str
+) -> dict[str, Any]:
   final_dict = dict(d0)
   for k, v in d1.items():
     if k not in final_dict:  # Non-overlapping key
@@ -302,7 +369,7 @@ def _merge_dict(d0: dict[str, Any], d1: dict[str, Any], *, path: str):
   return final_dict
 
 
-def _is_mapping(obj) -> bool:
+def _is_mapping(obj: Any) -> bool:
   return isinstance(obj, (dict, immutabledict.ImmutableDict))
 
 

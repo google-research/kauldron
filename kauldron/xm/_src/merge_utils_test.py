@@ -20,6 +20,7 @@ from typing import Any
 
 from etils import epy
 from kauldron import kxm
+from kauldron.xm._src import job_params
 from kauldron.xm._src import merge_utils
 import pytest
 from xmanager import xm
@@ -166,3 +167,176 @@ def test_repr():
   assert epy.pretty_repr(a1).startswith('Debug(\n')
   assert epy.pretty_repr(a2).startswith('Job(\n')
   assert epy.pretty_repr(a3).startswith('Borg(\n')
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class CustomJob(kxm.Job):
+  min_hbm: int = 16
+  is_fungible: bool = True
+
+
+def test_merge_job_subclass_with_params():
+  defaults = job_params.JobParams(cell='jn', platform='v4')
+  custom_job = CustomJob(target='//path/to:target', min_hbm=32)
+
+  # 1. Merge JobParams defaults with CustomJob
+  merged = merge_utils.merge(defaults, custom_job)
+  assert isinstance(merged, CustomJob)
+  assert merged.cell == 'jn'
+  assert merged.platform == 'v4'
+  assert merged.target == '//path/to:target'
+  assert merged.min_hbm == 32
+  assert merged.is_fungible
+
+  # 2. Reverse merge order preserves the subclass
+  merged_rev = merge_utils.merge(custom_job, defaults)
+  assert isinstance(merged_rev, CustomJob)
+  assert merged_rev.cell == 'jn'
+  assert merged_rev.platform == 'v4'
+  assert merged_rev.target == '//path/to:target'
+  assert merged_rev.min_hbm == 32
+
+  # 3. 3-argument merge preserves the concrete subclass across all permutations
+  p_cell = job_params.JobParams(cell='jn')
+  p_platform = job_params.JobParams(platform='v4')
+  for m in (
+      merge_utils.merge(custom_job, p_cell, p_platform),
+      merge_utils.merge(p_cell, custom_job, p_platform),
+      merge_utils.merge(p_cell, p_platform, custom_job),
+  ):
+    assert isinstance(m, CustomJob)
+    assert m.cell == 'jn'
+    assert m.platform == 'v4'
+    assert m.min_hbm == 32
+
+  # 4. Non-Job parameter containers safely fall back to Job (legacy behavior)
+  p0 = job_params.JobParams(cell='jn')
+  p1 = job_params.JobParams(platform='v4')
+  merged_p = merge_utils.merge(p0, p1)
+  assert type(merged_p) is kxm.Job  # pylint: disable=unidiomatic-typecheck
+  assert merged_p.cell == 'jn'
+  assert merged_p.platform == 'v4'
+
+
+def test_merge_job_subclass_hierarchy():
+  # Base Job with CustomJob preserves the more specific subclass
+  base_job = kxm.Job(target='//path/to:target', platform='v4')
+  merged_with_base = merge_utils.merge(base_job, CustomJob(min_hbm=64))
+  assert isinstance(merged_with_base, CustomJob)
+  assert merged_with_base.platform == 'v4'
+  assert merged_with_base.min_hbm == 64
+
+  merged_with_base_rev = merge_utils.merge(CustomJob(min_hbm=64), base_job)
+  assert isinstance(merged_with_base_rev, CustomJob)
+  assert merged_with_base_rev.platform == 'v4'
+  assert merged_with_base_rev.min_hbm == 64
+
+  # Multi-level subclass hierarchy
+  @dataclasses.dataclass(frozen=True, kw_only=True)
+  class SpecificJob(CustomJob):
+    extra_tag: str = 'tag'
+
+  spec_job = SpecificJob(min_hbm=64, extra_tag='custom')
+  merged_spec = merge_utils.merge(
+      CustomJob(target='//path/to:target'), spec_job
+  )
+  assert isinstance(merged_spec, SpecificJob)
+  assert merged_spec.min_hbm == 64
+  assert merged_spec.extra_tag == 'custom'
+  assert merged_spec.target == '//path/to:target'
+
+  merged_spec_rev = merge_utils.merge(
+      spec_job, CustomJob(target='//path/to:target')
+  )
+  assert isinstance(merged_spec_rev, SpecificJob)
+  assert merged_spec_rev.min_hbm == 64
+  assert merged_spec_rev.extra_tag == 'custom'
+  assert merged_spec_rev.target == '//path/to:target'
+
+
+def test_merge_job_subclass_with_experiment():
+  custom_job = CustomJob(target='//path/to:target', min_hbm=32)
+  xp = kxm.Experiment(
+      cell='jn',
+      platform='v4',
+      root_dir='/tmp/test_dir',
+      tags=['test'],
+  )
+  merged_xp = merge_utils.merge(xp, custom_job)
+  assert isinstance(merged_xp, CustomJob)
+  assert merged_xp.cell == 'jn'
+  assert merged_xp.platform == 'v4'
+  assert merged_xp.target == '//path/to:target'
+  assert merged_xp.min_hbm == 32
+  assert not hasattr(merged_xp, 'root_dir')
+
+
+def test_merge_job_subclass_conflicts():
+  # Conflicting field on custom subclass raises ValueError
+  with pytest.raises(ValueError, match='conflicting values'):
+    merge_utils.merge(CustomJob(min_hbm=16), CustomJob(min_hbm=32))
+
+  # Non-conflicting fields on two custom job instances merge properly
+  j1 = CustomJob(min_hbm=32)
+  j2 = CustomJob(is_fungible=False)
+  merged = merge_utils.merge(j1, j2)
+  assert isinstance(merged, CustomJob)
+  assert merged.min_hbm == 32
+  assert not merged.is_fungible
+
+  # Sibling Job subclasses raise TypeError on conflict
+  @dataclasses.dataclass(frozen=True, kw_only=True)
+  class SiblingJob(kxm.Job):
+    other_field: str = 'val'
+
+  with pytest.raises(
+      TypeError,
+      match=(
+          r'Cannot merge conflicting Job subclasses CustomJob and SiblingJob in'
+          r' \(CustomJob / SiblingJob\)'
+      ),
+  ):
+    merge_utils.merge(
+        CustomJob(target='//path/to:target', min_hbm=32),
+        SiblingJob(target='//path/to:target', other_field='test'),
+    )
+
+
+def test_merge_job_subclass_init_false():
+  @dataclasses.dataclass(frozen=True, kw_only=True)
+  class JobWithInitFalse(kxm.Job):
+    computed: str = dataclasses.field(init=False, default='computed_value')
+
+  @dataclasses.dataclass(frozen=True, kw_only=True)
+  class OtherParams(job_params.JobParams):
+    computed: str = 'should_be_stripped'
+
+  merged = merge_utils.merge(
+      OtherParams(), JobWithInitFalse(target='//path/to:target')
+  )
+  assert isinstance(merged, JobWithInitFalse)
+  assert merged.computed == 'computed_value'
+  assert merged.target == '//path/to:target'
+
+
+def test_merge_job_subclass_missing_dataclass():
+  class UndecoratedJob(kxm.Job):
+    min_hbm: int = 16
+
+  with pytest.raises(
+      TypeError, match='missing the `@dataclasses.dataclass` decorator'
+  ):
+    merge_utils.merge(UndecoratedJob(), job_params.JobParams(platform='v4'))
+
+  undecorated_field_cls = type(
+      'UndecoratedFieldJob',
+      (kxm.Job,),
+      {'min_hbm': dataclasses.field(default=16)},
+  )
+
+  with pytest.raises(
+      TypeError, match='missing the `@dataclasses.dataclass` decorator'
+  ):
+    merge_utils.merge(
+        undecorated_field_cls(), job_params.JobParams(platform='v4')
+    )
