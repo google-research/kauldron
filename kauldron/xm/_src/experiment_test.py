@@ -14,6 +14,7 @@
 
 """Launcher test."""
 
+import dataclasses
 from unittest import mock
 from kauldron import kxm
 from xmanager.contrib.internal import tensorboard
@@ -98,3 +99,29 @@ def test_launch_with_tensorboard():
   assert 'hparams' in corp_kwargs['args']
   assert 'samples_per_plugin' not in corp_kwargs['args']
 
+
+def test_resolved_jobs_custom_subclass():
+  @dataclasses.dataclass(frozen=True, kw_only=True)
+  class CustomJob(kxm.Job):
+    min_hbm: int = 16
+    is_fungible: bool = True
+
+  xp = kxm.Experiment(
+      jobs={
+          'train': CustomJob(
+              target='//path/to/my:target',
+              platform='jf=2x2',
+              min_hbm=32,
+          ),
+      },
+      cell='jn',
+      root_dir='/tmp/some/{cell}/path/to/{author}/',
+  )
+  resolved = xp.resolved_jobs['train']
+  assert isinstance(resolved, CustomJob)
+  assert resolved.cell == 'jn'
+  assert resolved.platform == 'jf=2x2'
+  assert resolved.min_hbm == 32
+  assert resolved.is_fungible
+  assert not hasattr(resolved, 'root_dir')
+  xp.launch()
