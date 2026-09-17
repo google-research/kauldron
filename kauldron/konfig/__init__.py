@@ -39,9 +39,12 @@ cfg = konfig.resolve(cfg)
 """
 
 # pylint: disable=g-importing-member
+from kauldron.konfig.allowlist_utils import Allowlist
+from kauldron.konfig.allowlist_utils import NotAllowedError
 from kauldron.konfig.configdict_base import ConfigDict
 from kauldron.konfig.configdict_base import register_aliases
 from kauldron.konfig.configdict_base import register_default_values
+from kauldron.konfig.configdict_proxy import get_qualnames
 from kauldron.konfig.configdict_proxy import resolve
 from kauldron.konfig.export_utils import export
 from kauldron.konfig.export_utils import export_qualname
