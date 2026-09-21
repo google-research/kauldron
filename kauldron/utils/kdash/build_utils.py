@@ -84,7 +84,7 @@ def make_collection_path_prefix() -> str:
 
 def _get_user() -> str:
   if epy.is_notebook():
-    from etils import ecolab  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+    from etils import ecolab  # pylint: disable=g-import-not-at-top  # pyrefly: ignore[missing-module-attribute]
 
     return ecolab.getuser()
   else:

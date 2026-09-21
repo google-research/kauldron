@@ -25,10 +25,10 @@ try:
   import jax.tree_util  # pyrefly: ignore[missing-import]  # pylint: disable=g-import-not-at-top
 
   JaxKeyEntry = Union[
-      jax.tree_util.SequenceKey,  # pyrefly: ignore[unsupported-operation]
-      jax.tree_util.DictKey,  # pyrefly: ignore[unsupported-operation]
-      jax.tree_util.GetAttrKey,  # pyrefly: ignore[unsupported-operation]
-      jax.tree_util.FlattenedIndexKey,  # pyrefly: ignore[unsupported-operation]
+      jax.tree_util.SequenceKey,
+      jax.tree_util.DictKey,
+      jax.tree_util.GetAttrKey,
+      jax.tree_util.FlattenedIndexKey,
   ]
 except ImportError:
   jax = None  # pylint: disable=invalid-name
@@ -200,19 +200,17 @@ def _jax_key_entry_to_kd_path_element(
     jax_key_entry: JaxKeyEntry,
 ) -> Part:
   """Convert a JaxKeyEntry into a valid `kontext.Path` element."""
-  # pytype: disable=match-error
   match jax_key_entry:
-    case jax.tree_util.GetAttrKey(name):
+    case jax.tree_util.GetAttrKey(name):  # pyrefly: ignore[missing-attribute]
       return name
-    case jax.tree_util.DictKey(key):
+    case jax.tree_util.DictKey(key):  # pyrefly: ignore[missing-attribute]
       if not isinstance(key, Part):
         raise TypeError(f"Invalid dict key type {type(key)}")
       return key
-    case jax.tree_util.SequenceKey(idx):
+    case jax.tree_util.SequenceKey(idx):  # pyrefly: ignore[missing-attribute]
       return idx
-    case jax.tree_util.FlattenedIndexKey(key):
+    case jax.tree_util.FlattenedIndexKey(key):  # pyrefly: ignore[missing-attribute]
       return key
-  # pytype: enable=match-error
   raise TypeError(f"Unknown key entry type {type(jax_key_entry)}")
 
 
@@ -305,7 +303,7 @@ def flatten_with_path(
   flat_tree_items, _ = jax.tree_util.tree_flatten_with_path(
       pytree, is_leaf=is_leaf
   )
-  prefix_tuple = (jax.tree_util.GetAttrKey(prefix),) if prefix else ()  # pyrefly: ignore[bad-assignment]
+  prefix_tuple = (jax.tree_util.GetAttrKey(prefix),) if prefix else ()
 
   def _format_path(jax_path):
     path = Path.from_jax_path(prefix_tuple + jax_path)
