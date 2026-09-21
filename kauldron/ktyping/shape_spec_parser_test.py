@@ -100,6 +100,21 @@ SHAPE_SPEC_EXAMPLES = [
         "+_foo",
         ShapeSpec(AnonDims("foo", length=(1, None))),
     ),
+    (
+        "prod(*b) sum(h)",
+        ShapeSpec(
+            FunctionDim(
+                "prod",
+                NAME_2_FUNC["prod"],
+                [NamedDims("b", length=None)],
+            ),
+            FunctionDim(
+                "sum",
+                NAME_2_FUNC["sum"],
+                [NamedDims("h")],
+            ),
+        ),
+    ),
 ]
 
 
