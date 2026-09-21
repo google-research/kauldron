@@ -25,7 +25,6 @@ from typing import Any, Optional
 
 import attr
 from etils import etree
-from etils import g3_utils
 from kauldron.xm._src import dir_utils
 from kauldron.xm._src import job_params
 from kauldron.xm._src import json_utils
@@ -104,43 +103,6 @@ class Job(job_params.JobParams):
         executor_spec=xm_abc.Borg.Spec(),
         # Need to wait for next build
         bazel_args=bazel_args,
-    )
-
-  @functools.cached_property
-  def interpreter_package(self) -> xm.Packageable:
-    """Returns the interpreter package."""
-    if self.interpreter_info.script_path:
-      script_path = self.interpreter_info.script_path
-    else:
-      script_path = _target_to_script_path(self.target)
-
-    # TODO(epot): `merge_utils` should support `xm_abc.ml_python`, then
-    # here, should replace
-    # `xm_abc.ml_python().replace(accelerator=self.requirements.accelerator)`
-
-    # Set the adhoc import dir to the user workspace (or adhoc import source
-    # in Colab)
-    citc_info = g3_utils.citc_info_from_source_or_piper(self.citc_source)
-    citc_info = citc_info.immutable()
-
-    script_full_path = citc_info.g3_path / script_path.removeprefix("//")
-    if not script_full_path.exists():
-      raise ValueError(f"Could not find script {script_full_path}.")
-
-    mpm = self.interpreter_info.mpm
-    if isinstance(mpm, job_params.MLPython):
-      mpm = mpm.get_mpm(accelerator=self.requirements.accelerator)
-
-    return xm_abc.interpreter(  # pyrefly: ignore[bad-argument-type]
-        script_path=script_path,
-        interpreter_mpm=mpm,
-        dependencies=self.dependencies,
-        args={
-            "adhoc_import_dir": citc_info.g3_dir,
-        },
-        env_vars={
-            "GOOGLE_PYTHON_USE_LAZY_IMPORTS": "0",
-        },
     )
 
   @functools.cached_property
