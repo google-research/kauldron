@@ -24,6 +24,8 @@ import os
 import typing
 from typing import Any, Optional
 
+from absl import flags
+import attr
 from etils import epy
 from etils import exm
 from etils import g3_utils
@@ -194,14 +196,14 @@ class Experiment(job_params.JobParams):
         tensorboard.add_tensorboard_borg(
             xp,
             workdir=dir_builder.xp_dir,
-            executor=self.tensorboard_executor,
+            executor=self.resolved_tensorboard_executor,
             args=self.resolved_tensorboard_args,
         )
       if self.add_tensorboard_corp:
         tensorboard.add_tensorboard_corp(
             xp,
             workdir=dir_builder.xp_dir,
-            executor=self.tensorboard_executor,
+            executor=self.resolved_tensorboard_executor,
             # Sometimes, the default exporter exit before finishing exporting
             # all events, so increase default to 5h.
             termination_delay_secs=60 * 60 * 5,
@@ -285,8 +287,7 @@ class Experiment(job_params.JobParams):
 
     # Add the `--cfg` flags.
     jobs = {
-        k: self.cfg_provider.maybe_add_cfg_flags(j)
-        for k, j in jobs.items()
+        k: self.cfg_provider.maybe_add_cfg_flags(j) for k, j in jobs.items()
     }
 
     # Merge jobs with the default runtime options
@@ -354,6 +355,38 @@ class Experiment(job_params.JobParams):
     if "gfs_user" in self.args and "gfs_user" not in args:
       args["gfs_user"] = self.args["gfs_user"]
     return args
+
+  @functools.cached_property
+  def resolved_tensorboard_executor(self) -> Optional[xm_abc.Borg]:
+    """TensorBoard executor with resolved `borg_user`."""
+    borg_user = None
+    if (
+        "borguser" in flags.FLAGS
+        and flags.FLAGS.is_parsed()
+        and not flags.FLAGS["borguser"].using_default_value
+    ):
+      borg_user = flags.FLAGS["borguser"].value
+    elif (
+        self.tensorboard_executor is not None
+        and self.tensorboard_executor.borg_user
+    ):
+      borg_user = self.tensorboard_executor.borg_user
+    elif isinstance(self.executor, xm_abc.Borg) and self.executor.borg_user:
+      borg_user = self.executor.borg_user
+    elif env_borg_user := os.getenv("XM_BORG_USER"):
+      borg_user = env_borg_user
+
+    if self.tensorboard_executor is None:
+      if not borg_user:
+        return None
+      return xm_abc.Borg(
+          borg_user=borg_user,
+          requirements=xm.JobRequirements(priority=200),
+      )
+
+    if borg_user and self.tensorboard_executor.borg_user != borg_user:
+      return attr.evolve(self.tensorboard_executor, borg_user=borg_user)
+    return self.tensorboard_executor
 
   def _repr_html_(self) -> str:
     from etils import ecolab  # pylint: disable=g-import-not-at-top  # pyrefly: ignore[missing-module-attribute]

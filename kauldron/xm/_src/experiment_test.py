@@ -17,6 +17,7 @@
 import dataclasses
 from unittest import mock
 from kauldron import kxm
+from xmanager import xm_abc
 from xmanager.contrib.internal import tensorboard
 
 # Register XM mocking
@@ -98,6 +99,46 @@ def test_launch_with_tensorboard():
   _, corp_kwargs = mock_corp.call_args
   assert 'hparams' in corp_kwargs['args']
   assert 'samples_per_plugin' not in corp_kwargs['args']
+
+
+def test_launch_with_tensorboard_borg_user():
+  xp = kxm.Experiment(
+      jobs={
+          'train': kxm.Job(
+              target='//path/to/my:target',
+              platform='jf=2x2',
+          ),
+      },
+      cell='jn',
+      root_dir='/tmp/some/{cell}/path/to/{author}/',
+      executor=xm_abc.Borg(borg_user='custom-borg-user'),
+      add_tensorboard_borg=True,
+      add_tensorboard_corp=True,
+  )
+  assert xp.resolved_tensorboard_executor is not None
+  assert xp.resolved_tensorboard_executor.borg_user == 'custom-borg-user'
+
+  with (
+      mock.patch.object(
+          tensorboard,
+          'add_tensorboard_borg',
+          autospec=True,
+      ) as mock_borg,
+      mock.patch.object(
+          tensorboard,
+          'add_tensorboard_corp',
+          autospec=True,
+      ) as mock_corp,
+  ):
+    xp.launch()
+
+  mock_borg.assert_called_once()
+  _, borg_kwargs = mock_borg.call_args
+  assert borg_kwargs['executor'].borg_user == 'custom-borg-user'
+
+  mock_corp.assert_called_once()
+  _, corp_kwargs = mock_corp.call_args
+  assert corp_kwargs['executor'].borg_user == 'custom-borg-user'
 
 
 def test_resolved_jobs_custom_subclass():
