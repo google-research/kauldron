@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any
+from typing import Any, Sequence
 
 from etils import edc
 from etils import epy
@@ -90,7 +90,7 @@ class InterpreterInfo:
   """Interpreter additional configuration.
 
   Attributes:
-    mpm: Intepreter to use when `use_interpreter is True` (default to
+    mpm: Interpreter to use when `use_interpreter is True` (default to
       `ml_python`)
     script_path: Path of the script to execute. If missing, is automatically
       computed from the `job.target`.
@@ -105,7 +105,7 @@ class InterpreterInfo:
 @edc.dataclass
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class JobParams:
-  """Single job atributes.
+  """Single job attributes.
 
   Can be set either:
 
