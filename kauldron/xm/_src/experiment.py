@@ -24,6 +24,7 @@ import os
 import typing
 from typing import Any, Optional
 
+from absl import flags
 from etils import epy
 from etils import exm
 from etils import g3_utils
@@ -194,14 +195,14 @@ class Experiment(job_params.JobParams):
         tensorboard.add_tensorboard_borg(
             xp,
             workdir=dir_builder.xp_dir,
-            executor=self.tensorboard_executor,
+            executor=self.resolved_tensorboard_executor,
             args=self.resolved_tensorboard_args,
         )
       if self.add_tensorboard_corp:
         tensorboard.add_tensorboard_corp(
             xp,
             workdir=dir_builder.xp_dir,
-            executor=self.tensorboard_executor,
+            executor=self.resolved_tensorboard_executor,
             # Sometimes, the default exporter exit before finishing exporting
             # all events, so increase default to 5h.
             termination_delay_secs=60 * 60 * 5,
@@ -285,8 +286,7 @@ class Experiment(job_params.JobParams):
 
     # Add the `--cfg` flags.
     jobs = {
-        k: self.cfg_provider.maybe_add_cfg_flags(j)
-        for k, j in jobs.items()
+        k: self.cfg_provider.maybe_add_cfg_flags(j) for k, j in jobs.items()
     }
 
     # Merge jobs with the default runtime options
@@ -319,6 +319,13 @@ class Experiment(job_params.JobParams):
     return jobs
 
   @functools.cached_property
+  def main_job(self) -> job_lib.Job:
+    """Main job of the experiment."""
+    if not self.resolved_jobs:
+      raise ValueError("Experiment has no jobs configured.")
+    return next(iter(self.resolved_jobs.values()))
+
+  @functools.cached_property
   def dir_builder(self) -> dir_utils.DirectoryBuilder:
     """Directory state."""
     return dir_utils.DirectoryBuilder(
@@ -336,12 +343,11 @@ class Experiment(job_params.JobParams):
     else:
       make_tag_fn = _make_default_tags
     # TODO(epot): Support multi-jobs tag (with name: `train: cpu`,...)
-    main_job = list(self.resolved_jobs.values())[0]
     tags.extend(
         make_tag_fn(
-            priority=main_job.priority,
-            platform=main_job.platform,  # pyrefly: ignore[bad-argument-type]
-            cell=main_job.cell,
+            priority=self.main_job.priority,
+            platform=self.main_job.platform,  # pyrefly: ignore[bad-argument-type]
+            cell=self.main_job.cell,
         )
     )
     tags.extend(self.sweep_info.tags)
@@ -354,6 +360,68 @@ class Experiment(job_params.JobParams):
     if "gfs_user" in self.args and "gfs_user" not in args:
       args["gfs_user"] = self.args["gfs_user"]
     return args
+
+  @functools.cached_property
+  def resolved_tensorboard_executor(self) -> Optional[xm_abc.Borg]:
+    """TensorBoard executor with resolved `borg_user`."""
+    # `self.main_job` already merges experiment-level (`self.executor`) and
+    # job-level (`job.executor`) settings via `merge_utils.merge`.
+    base_executor = (
+        self.main_job.executor
+        if isinstance(self.main_job.executor, xm_abc.Borg)
+        else None
+    )
+
+    # Resolve `borg_user` from most specific to most general so that
+    # `tensorboard.add_tensorboard_borg` constructs the artifact URL with the
+    # effective Borg user rather than falling back to `getpass.getuser()`.
+    borg_user = None
+    if (
+        self.tensorboard_executor is not None
+        and self.tensorboard_executor.borg_user
+    ):
+      borg_user = self.tensorboard_executor.borg_user
+    elif (
+        "borguser" in flags.FLAGS
+        and flags.FLAGS.is_parsed()
+        and not flags.FLAGS["borguser"].using_default_value
+    ):
+      borg_user = flags.FLAGS["borguser"].value
+    elif base_executor is not None and base_executor.borg_user:
+      borg_user = base_executor.borg_user
+    elif env_borg_user := os.getenv("XM_BORG_USER"):
+      borg_user = env_borg_user
+
+    # When no custom `tensorboard_executor` is provided, construct one if a
+    # `borg_user` was resolved, forwarding cell location, autopilot settings,
+    # and restricted credentials from the main job.
+    if self.tensorboard_executor is None:
+      if not borg_user:
+        return None
+      return xm_abc.Borg(
+          borg_user=borg_user,
+          requirements=xm.JobRequirements(
+              priority=200, location=self.main_job.cell
+          ),
+          autopilot_params=(
+              base_executor.autopilot_params
+              if base_executor is not None
+              else xm_abc.AutopilotParams()
+          ),
+          restricted_credentials=(
+              base_executor.restricted_credentials
+              if base_executor is not None
+              else None
+          ),
+      )
+
+    # If a custom `tensorboard_executor` was provided without an explicit
+    # `borg_user`, populate the resolved `borg_user` via `merge_utils.merge`.
+    if borg_user and self.tensorboard_executor.borg_user != borg_user:
+      return merge_utils.merge(
+          self.tensorboard_executor, xm_abc.Borg(borg_user=borg_user)
+      )
+    return self.tensorboard_executor
 
   def _repr_html_(self) -> str:
     from etils import ecolab  # pylint: disable=g-import-not-at-top  # pyrefly: ignore[missing-module-attribute]
