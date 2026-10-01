@@ -39,13 +39,13 @@ class NoopTrainStep(kd.train.TrainStep):
       static_argnames=("self", "elem_spec", "model_method"),
   )
   def _init_model(self, elem_spec, **kwargs):
-    state = kd.train.TrainState(  # pytype: disable=wrong-arg-types
+    state = kd.train.TrainState(
         step=jnp.asarray(0),  # pyrefly: ignore[bad-argument-type]
         params=flax.core.FrozenDict(),
         opt_state=flax.core.FrozenDict(),
         collections=flax.core.FrozenDict(),
     )
-    return kd.sharding.with_sharding_constraint(state, self.sharding.state)  # pytype: disable=wrong-arg-types
+    return kd.sharding.with_sharding_constraint(state, self.sharding.state)
 
   def _init_transform(self, state: TrainState) -> TrainState:
     return state
@@ -63,7 +63,7 @@ class NoopTrainStep(kd.train.TrainStep):
       self,
       state: TrainState,
   ) -> TrainState:
-    return kd.sharding.with_sharding_constraint(state, self.sharding.state)  # pytype: disable=wrong-arg-types
+    return kd.sharding.with_sharding_constraint(state, self.sharding.state)
 
   def _step(
       self,
