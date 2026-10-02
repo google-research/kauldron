@@ -217,6 +217,46 @@ def test_merge_truncate():
     s3.merge(s1)
 
 
+def test_merge_pytree_truncate():
+
+  @flax.struct.dataclass(kw_only=True)
+  class TruncateState(auto_state.AutoState):
+    num_b: int = 4
+    num_c: int = 3
+    b: dict[str, Float] = auto_state.truncate_field(num_field="num_b")  # pyrefly: ignore[not-a-type]
+    c: dict[str, Float] = auto_state.truncate_field(num_field="num_c", axis=1)  # pyrefly: ignore[not-a-type]
+    d: dict[str, Float] | None = auto_state.truncate_field(  # pyrefly: ignore[not-a-type]
+        num_field="num_b", default=None
+    )
+
+  pytree1 = dict(key1=np.ones((3, 2)), key2=np.zeros((3, 2)))
+  pytree2 = dict(key1=np.ones((3, 2)), key2=np.ones((3, 2)))
+  s1 = TruncateState(b=pytree1, c=pytree2)
+  s2 = TruncateState(b=pytree2, c=pytree2)
+  s3 = TruncateState(b=pytree1, c=pytree1, d=pytree2)
+
+  s = s1.merge(s2)
+  result = s.compute()
+
+  assert result.b.keys() == pytree1.keys()
+  assert result.b["key1"].shape == (4, 2)
+  assert result.b["key2"].shape == (4, 2)
+  assert result.c["key1"].shape == (3, 3)
+  assert result.c["key2"].shape == (3, 3)
+  np.testing.assert_allclose(result.b["key1"], 1.0)
+  np.testing.assert_allclose(result.b["key2"][:3], 0.0)
+  np.testing.assert_allclose(result.b["key2"][3:], 1.0)
+
+  # no error:
+  _ = s3.merge(s3)
+
+  with pytest.raises(ValueError, match=r"Cannot .*truncate.* None"):
+    s1.merge(s3)
+
+  with pytest.raises(ValueError, match=r"Cannot .*truncate.* None"):
+    s3.merge(s1)
+
+
 def test_merge_truncate_without_merge():
 
   @flax.struct.dataclass(kw_only=True)
