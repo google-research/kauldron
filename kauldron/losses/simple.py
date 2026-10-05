@@ -102,7 +102,12 @@ class NegativeCosineSimilarity(base.Loss):
   eps: float = 1e-8
 
   def _safe_normalize(self, x):
-    return x / (jnp.linalg.norm(x, axis=-1, keepdims=True) + self.eps)
+    squared_norm = jnp.sum(jnp.square(x), axis=-1, keepdims=True)
+    nonzero = squared_norm > 0
+    # Keep sqrt's derivative finite even for the unselected zero-norm branch.
+    norm = jnp.sqrt(jnp.where(nonzero, squared_norm, 1.0))
+    norm = jnp.where(nonzero, norm, 0.0)
+    return x / (norm + self.eps)
 
   @typechecked
   def get_values(
