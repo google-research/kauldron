@@ -541,10 +541,10 @@ class _Truncate(_FieldMerger):
 
   def merge(
       self,
-      v1: Array | Empty | None,
-      v2: Array | Empty | None,
+      v1: Array | PyTree[Array] | Empty | None,
+      v2: Array | PyTree[Array] | Empty | None,
       state: base_state.State,
-  ) -> Array | Empty | None:
+  ) -> Array | PyTree[Array] | Empty | None:
     # TODO(klausg): this restriction could be lifted by padding
     _assert_no_tracer(state, v1, v2)
     num = kontext.get_by_path(state, self.num_field)
@@ -562,15 +562,25 @@ class _Truncate(_FieldMerger):
         )
       return None
 
-    assert isinstance(v1, Array) and isinstance(v2, Array)
-    if num is None or v1.shape[self.axis] < num:
-      v1 = np.concatenate([v1, v2], axis=self.axis)
-    return self._maybe_truncate(v1, num)
+    def _concat_and_truncate(x1: Any, x2: Any) -> np.ndarray:
+      assert isinstance(x1, Array) and isinstance(x2, Array)
+      if num is None or x1.shape[self.axis] < num:
+        x1 = np.concatenate([x1, x2], axis=self.axis)
+      return self._truncate_leaf(x1, num)
 
-  def _maybe_truncate(self, v: Array | Empty, num: int | None) -> Array | Empty:
-    """If v is not None, then truncate it to num elements along axis."""
+    return jax.tree.map(_concat_and_truncate, v1, v2)
+
+  def _maybe_truncate(
+      self,
+      v: Array | PyTree[Array] | Empty | None,
+      num: int | None,
+  ) -> Array | PyTree[Array] | Empty | None:
+    """If v is not None, then truncate its leaves to num elements along axis."""
     if v is EMPTY or v is None:
       return v
+    return jax.tree.map(lambda x: self._truncate_leaf(x, num), v)
+
+  def _truncate_leaf(self, v: Any, num: int | None) -> np.ndarray:
     assert isinstance(v, Array)
     if num is None:
       return np.asarray(v)
@@ -579,9 +589,9 @@ class _Truncate(_FieldMerger):
 
   def finalize(
       self,
-      v: Array | Empty | None,
+      v: Array | PyTree[Array] | Empty | None,
       state: base_state.State,
-  ) -> Array | None:
+  ) -> Array | PyTree[Array] | None:
     # TODO(klausg): truncation would be better done in AutoState.__post_init__
     if v is EMPTY or v is None:
       return None
