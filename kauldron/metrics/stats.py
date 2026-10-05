@@ -174,9 +174,10 @@ class StdState(base_state.State):
     if mask is None:
       mask = jnp.ones([])
     mask = jnp.broadcast_to(mask, values.shape)
+    values = jnp.where(mask, values, jnp.zeros_like(values))
     return cls(
-        total=jnp.where(mask, values, jnp.zeros_like(values)).sum(),
-        sum_of_squares=jnp.where(mask, values**2, jnp.zeros_like(values)).sum(),
+        total=(values * mask).sum(),
+        sum_of_squares=(values**2 * mask).sum(),
         count=mask.sum(),
     )
 
