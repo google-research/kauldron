@@ -310,7 +310,7 @@ def contains_jaxtyping_type(annot: Any) -> bool:
     # if jaxtyping is not imported all is good
     # (kauldron.typing also depends on jaxtyping)
     return False
-  import jaxtyping  # pylint: disable=g-import-not-at-top,unused-import  # pytype: disable=import-error
+  import jaxtyping  # pylint: disable=g-import-not-at-top,unused-import
 
   if inspect.isclass(annot) and (
       issubclass(annot, jaxtyping.AbstractArray)

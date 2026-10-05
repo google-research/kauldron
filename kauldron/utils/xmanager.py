@@ -92,7 +92,7 @@ class Experiment:
     # TODO(epot): `kd.xm` is already in kauldron. Should support reloading
     # kauldron but not reload `XManager`
 
-    from etils import ecolab  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+    from etils import ecolab  # pylint: disable=g-import-not-at-top  # pyrefly: ignore[missing-module-attribute]
 
     with ecolab.adhoc(
         f'xid/{self.exp.id}',
@@ -119,7 +119,7 @@ class Experiment:
   @functools.cached_property
   def config(self) -> konfig.ConfigDictLike[trainer_lib.Trainer]:
     """Unresolved `ConfigDict`."""
-    return load_config_from_path(self.wu.workdir, lazy=self.lazy)  # pytype: disable=bad-return-type
+    return load_config_from_path(self.wu.workdir, lazy=self.lazy)
 
   @functools.cached_property
   def trainer(self) -> trainer_lib.Trainer:
@@ -156,7 +156,7 @@ def load_config_from_path(
   config_path = epath.Path(workdir) / constants.CONFIG_FILENAME
   config = json.loads(config_path.read_text())
   # Wrap the dict to ConfigDict
-  return _json_to_config(config, lazy=lazy)  # pytype: disable=bad-return-type
+  return _json_to_config(config, lazy=lazy)
 
 
 def _json_to_config(json_value, *, lazy: bool):

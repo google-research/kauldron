@@ -88,7 +88,7 @@ class ArrayTypeMeta(type):
     # specifier for the default array types: e.g. Float32[np.ndarray, "a b"]
     if cls._array_types is MISSING:
       return (NpArray, JaxArray)
-    return cls._array_types  # pytype: disable=bad-return-type
+    return cls._array_types
 
   def __getitem__(
       cls,
@@ -215,7 +215,7 @@ class ArrayTypeMeta(type):
   def dtype_matches(cls, instance: Any) -> bool:
     if cls.dtype is MISSING:
       return True
-    return cls.dtype.matches(instance)  # pytype: disable=attribute-error
+    return cls.dtype.matches(instance)
 
   def shape_matches(
       cls,
@@ -270,7 +270,7 @@ class ArrayTypeMeta(type):
           dtype=dtype,
       )
     else:
-      return type.__or__(cls, other)  # pytype: disable=unsupported-operands
+      return type.__or__(cls, other)
 
   def __call__(cls, *args, **kwargs):
     """Raises a RuntimeError to prevent accidental Array("b n") syntax."""

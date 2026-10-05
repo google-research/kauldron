@@ -181,7 +181,7 @@ class TransparentScope(ShapeScope):
 
   @property
   def candidates(self) -> CandidateDims:
-    return self.active_scope.candidates  # pytype: disable=bad-return-type
+    return self.active_scope.candidates
 
   @candidates.setter
   def candidates(self, new_value: Sequence[Mapping[str, DimValue]]):

@@ -126,7 +126,7 @@ class BaseConfig(konfig.WithRef):
   # TODO(epot): pretty_repr should recurse inside `FrozenDict` (custom type)
 
   def _repr_html_(self) -> str:
-    from etils import ecolab  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+    from etils import ecolab  # pylint: disable=g-import-not-at-top  # pyrefly: ignore[missing-module-attribute]
 
     return ecolab.highlight_html(repr(self))
 
@@ -160,7 +160,7 @@ class _FakeRootCfg:
 
   @classmethod
   def make_fake_cfg(cls) -> trainer_lib.Trainer:
-    return cls()  # pytype: disable=bad-return-type
+    return cls()  # pyrefly: ignore[bad-return]
 
   @property
   def names(self) -> tuple[str, ...]:
@@ -262,14 +262,14 @@ class UpdateFromRootCfg:
       return self
     else:
       return dataclasses.replace(  # pyrefly: ignore[bad-specialization]
-          self, **fields_to_replace, _fake_refs=fake_refs  # pytype: disable=wrong-keyword-args
+          self, **fields_to_replace, _fake_refs=fake_refs
       )
 
   def _base_fields(
       self, root_cfg: trainer_lib.Trainer
   ) -> tuple[dict[str, Any], dict[str, _FakeRootCfg]]:
     """Return the fields to replace."""
-    curr_fake_refs = self._fake_refs  # pytype: disable=attribute-error
+    curr_fake_refs = self._fake_refs  # pyrefly: ignore[missing-attribute]
     fields_to_replace = {}
     fake_refs = {}
     for f in dataclasses.fields(self):
@@ -294,14 +294,14 @@ class UpdateFromRootCfg:
           # Overwrite the resolved value by the new resolved ROOT_CFG_REF, as
           # the previous value was automatically set by a previous
           # `update_from_root_cfg` call.
-          fake_ref = curr_fake_refs[f.name]  # pytype: disable=not-indexable
+          fake_ref = curr_fake_refs[f.name]
         else:
           continue  # Ignore (ROOT_CFG_REF explicitly overwritten)
 
       # value is a fake cfg, should be update
       try:
         new_value = root_cfg
-        for attr in fake_ref.names[1:]:  # pytype: disable=attribute-error
+        for attr in fake_ref.names[1:]:
           new_value = getattr(new_value, attr)
       except Exception as e:  # pylint: disable=broad-exception-caught
         epy.reraise(
@@ -318,7 +318,7 @@ class UpdateFromRootCfg:
 
       fields_to_replace[f.name] = new_value
       fake_refs[f.name] = fake_ref
-    return fields_to_replace, fake_refs  # pytype: disable=bad-return-type
+    return fields_to_replace, fake_refs
 
   def _recurse_fields(
       self,

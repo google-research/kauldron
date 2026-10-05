@@ -239,11 +239,11 @@ def test_contains_jaxtyping_type_true_for_jaxtyping_types(annot):
         kt.Float[""],
         kt.UInt8["a b"],
         # composite ktyping types
-        Union[float, kt.Float32["n"]],  # pyrefly: ignore[not-a-type, unknown-name]
-        Optional[kt.Int[""]],  # pyrefly: ignore[not-a-type]
+        Union[float, kt.Float32["n"]],  # pyrefly: ignore[unknown-name]
+        Optional[kt.Int[""]],
         int | kt.Int[""],
-        tuple[int, bool, kt.Bool[""]],  # pyrefly: ignore[not-a-type]
-        dict[str, kt.Complex64[""]],  # pyrefly: ignore[not-a-type]
+        tuple[int, bool, kt.Bool[""]],
+        dict[str, kt.Complex64[""]],
     ],
 )
 def test_contains_jaxtyping_type_false_otherwise(annot):

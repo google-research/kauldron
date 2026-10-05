@@ -30,4 +30,4 @@ def test_lpips_vgg_not_found():
 
 def test_lazy_imports():
   with pytest.raises(ImportError):
-    from grand_vision.eval.metrics import clustering  # pylint: disable=g-import-not-at-top,unused-import  # pytype: disable=import-error
+    from grand_vision.eval.metrics import clustering  # pylint: disable=g-import-not-at-top,unused-import  # pyrefly: ignore[missing-import]

@@ -99,7 +99,7 @@ def train_property() -> bool:
   Returns:
     The `is_training` property
   """
-  return property(_is_training)  # pytype: disable=bad-return-type
+  return property(_is_training)  # pyrefly: ignore[bad-return]
 
 
 def _is_training(self: nn.Module) -> bool:

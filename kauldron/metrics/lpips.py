@@ -44,8 +44,8 @@ class VggBlock(nn.Module):
   @kt.typechecked
   @nn.compact
   def __call__(
-      self, x: Float["*b h w _c"]  # pyrefly: ignore[not-a-type]
-  ) -> Float["*b h w {self.num_features}"]:  # pyrefly: ignore[not-a-type]
+      self, x: Float["*b h w _c"]
+  ) -> Float["*b h w {self.num_features}"]:
     for _ in range(self.num_layers):
       x = nn.Conv(
           features=self.num_features, kernel_size=(3, 3), padding="SAME"
@@ -60,12 +60,12 @@ class VggNet(nn.Module):
 
   @kt.typechecked
   @nn.compact
-  def __call__(self, x: Float["*b h w c"]) -> tuple[  # pyrefly: ignore[not-a-type]
-      Float["*b h w 64"],  # pyrefly: ignore[not-a-type]
-      Float["*b h//2 w//2 128"],  # pyrefly: ignore[not-a-type]
-      Float["*b h//4 w//4 256"],  # pyrefly: ignore[not-a-type]
-      Float["*b h//8 w//8 512"],  # pyrefly: ignore[not-a-type]
-      Float["*b h//16 w//16 512"],  # pyrefly: ignore[not-a-type]
+  def __call__(self, x: Float["*b h w c"]) -> tuple[
+      Float["*b h w 64"],
+      Float["*b h//2 w//2 128"],
+      Float["*b h//4 w//4 256"],
+      Float["*b h//8 w//8 512"],
+      Float["*b h//16 w//16 512"],
   ]:
     assert x.shape[-2] >= 16, str(x.shape)
     assert x.shape[-3] >= 16, str(x.shape)
@@ -99,10 +99,10 @@ class _LpipsVgg(nn.Module):
   @nn.compact
   def __call__(
       self,
-      images_1: Float["*b h w c"],  # pyrefly: ignore[not-a-type]
-      images_2: Float["*b h w c"],  # pyrefly: ignore[not-a-type]
+      images_1: Float["*b h w c"],
+      images_2: Float["*b h w c"],
       epsilon: float = 1e-5,
-  ) -> Float["*b 1"]:  # pyrefly: ignore[not-a-type]
+  ) -> Float["*b 1"]:
     """Compute the loss between inputs[0] and inputs[1].
 
     Both images must have height & width of at least 16 pixels.
@@ -178,8 +178,8 @@ class LpipsVgg(base.Metric):
   @kt.typechecked
   def get_state(  # pyrefly: ignore[bad-override]
       self,
-      pred: Float["*b h w c"],  # pyrefly: ignore[not-a-type]
-      target: Float["*b h w c"],  # pyrefly: ignore[not-a-type]
+      pred: Float["*b h w c"],
+      target: Float["*b h w c"],
       mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> LpipsVgg.State:
     vgg_model = _get_vgg_model()

@@ -202,7 +202,7 @@ class TreeState(base_state.State):
     )
     return dataclasses.replace(self, tree=finalized_tree)
 
-  def compute(self) -> PyTree[Any]:  # pytype: disable=signature-mismatch  # jnp-array
+  def compute(self) -> PyTree[Any]:  # pyrefly: ignore[not-a-type]
     """Calls compute for all metric states in tree."""
     return jax.tree.map(
         lambda x: x.compute(), self.tree, is_leaf=base_state.State.isinstance

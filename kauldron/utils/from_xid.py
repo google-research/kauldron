@@ -141,7 +141,7 @@ def _adhoc_cm(
 
   if adhoc_from is None:
     return contextlib.nullcontext()
-  from etils import ecolab  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+  from etils import ecolab  # pylint: disable=g-import-not-at-top  # pyrefly: ignore[missing-module-attribute]
 
   return ecolab.adhoc(source=adhoc_from, invalidate=False)
 

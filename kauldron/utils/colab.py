@@ -23,13 +23,13 @@ from kauldron import kontext
 
 
 with epy.lazy_imports():
-  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
-  from etils import ecolab
-  from kauldron.xm._src import kauldron_utils
-  from kauldron.xm._src import sweep_cfg_utils
+  # pylint: disable=g-import-not-at-top
+  from etils import ecolab  # pyrefly: ignore[missing-module-attribute]
+  from kauldron.xm._src import kauldron_utils  # pyrefly: ignore[missing-module-attribute]
+  from kauldron.xm._src import sweep_cfg_utils  # pyrefly: ignore[missing-module-attribute]
 
-  from colabtools import interactive_forms
-  # pylint: enable=g-import-not-at-top  # pytype: enable=import-error
+  from colabtools import interactive_forms  # pyrefly: ignore[missing-import]
+  # pylint: enable=g-import-not-at-top
 
 
 class SweepMode(epy.StrEnum):

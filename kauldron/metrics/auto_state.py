@@ -144,7 +144,7 @@ class AutoState(base_state.State[_MetricT]):  # pyrefly: ignore[bad-specializati
           value = value.compute()
         output[f.name] = value
 
-    return _AutoStateOutput(**output)  # pytype: disable=bad-return-type
+    return _AutoStateOutput(**output)  # pyrefly: ignore[bad-return]
 
 
 # TODO(klausg): overloaded type annotation similar to dataclasses.field?
@@ -593,7 +593,7 @@ class _Truncate(_FieldMerger):
 class _StateMerger(_FieldMerger):
   """Merges two values by calling their merge method."""
 
-  def merge(  # pytype: disable=signature-mismatch
+  def merge(
       self,
       v1: base_state.State | Empty | None,
       v2: base_state.State | Empty | None,
@@ -610,7 +610,7 @@ class _StateMerger(_FieldMerger):
     assert isinstance(v1, base_state.State) and isinstance(v2, base_state.State)
     return v1.merge(v2)
 
-  def finalize(  # pytype: disable=signature-mismatch
+  def finalize(
       self,
       v: base_state.State | Empty | None,
       state: base_state.State,

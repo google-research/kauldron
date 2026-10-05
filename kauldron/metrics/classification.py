@@ -71,7 +71,7 @@ class Accuracy(base.Metric):
   def get_state(  # pyrefly: ignore[bad-override]
       self,
       *,
-      labels: Int["*b 1"],  # pyrefly: ignore[not-a-type]
+      labels: Int["*b 1"],
       logits: Float["*b n"] | None = None,
       pred_labels: Int["*b 1"] | None = None,
       mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
@@ -98,8 +98,8 @@ class Precision1(base.Metric):
   @kt.typechecked
   def get_state(  # pyrefly: ignore[bad-override]
       self,
-      logits: Float["*b n"],  # pyrefly: ignore[not-a-type]
-      labels: Float["*b n"],  # pyrefly: ignore[not-a-type]
+      logits: Float["*b n"],
+      labels: Float["*b n"],
       mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> Precision1.State:
     pred_argmax = logits.argmax(axis=-1, keepdims=True)
@@ -121,8 +121,8 @@ class BinaryAccuracy(base.Metric):
   @kt.typechecked
   def get_state(  # pyrefly: ignore[bad-override]
       self,
-      logits: Float["*any"],  # pyrefly: ignore[not-a-type]
-      labels: Int["*any"],  # pyrefly: ignore[not-a-type]
+      logits: Float["*any"],
+      labels: Int["*any"],
       mask: Optional[Bool["*#any"] | Float["*#any"]] = None,
   ):
     correct = (logits > 0) == labels
@@ -155,8 +155,8 @@ class RocAuc(base.Metric):
   class State(metrics.AutoState["RocAuc"]):  # pyrefly: ignore[bad-override]
     """RocAuc state."""
 
-    labels: Int["*b 1"] = metrics.concat_field()  # pyrefly: ignore[not-a-type]
-    probs: Float["*b n"] = metrics.concat_field()  # pyrefly: ignore[not-a-type]
+    labels: Int["*b 1"] = metrics.concat_field()
+    probs: Float["*b n"] = metrics.concat_field()
     mask: Bool["*b 1"] | Float["*b 1"] = metrics.concat_field()
 
     @kt.typechecked
@@ -203,8 +203,8 @@ class RocAuc(base.Metric):
   @kt.typechecked
   def get_state(  # pyrefly: ignore[bad-override]
       self,
-      logits: Float["*b n"],  # pyrefly: ignore[not-a-type]
-      labels: Int["*b 1"],  # pyrefly: ignore[not-a-type]
+      logits: Float["*b n"],
+      labels: Int["*b 1"],
       mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> RocAuc.State:
     # simply collect the given values

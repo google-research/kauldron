@@ -86,7 +86,7 @@ class State(abc.ABC, Generic[_MetricT]):
   _: dataclasses.KW_ONLY
   parent: _MetricT = flax.struct.field(
       pytree_node=False, default=EMPTY
-  )  # pytype: disable=annotation-type-mismatch
+  )
 
   def __init_subclass__(cls, **kwargs):
     super().__init_subclass__(**kwargs)
@@ -333,7 +333,7 @@ class CollectingState(State[_MetricT]):
     """Returns the concatenated values."""
     # TODO(klausg): move this to finalize() like in the AutoState
     #   Note: That would require changing the __post_init__ logic as well.
-    return _CollectingStateOutput(  # pytype: disable=bad-return-type
+    return _CollectingStateOutput(  # pyrefly: ignore[bad-return]
         **{k: np.concatenate(v) for k, v in self._accumulated_fields.items()}  # pylint: disable=protected-access  # pyrefly: ignore[missing-attribute]
     )
 
@@ -428,7 +428,7 @@ class CollectFirstState(State[_MetricT]):
   # Return `_SelfT` so auto-complete works
   def compute(self: _SelfT) -> _SelfT:
     """Returns the concatenated values."""
-    return _CollectingStateOutput(**self._accumulated_fields)  # pytype: disable=bad-return-type
+    return _CollectingStateOutput(**self._accumulated_fields)  # pyrefly: ignore[bad-return, missing-attribute]
 
 
 def _maybe_truncate(v: Array["b *any"] | None, num: int):  # pyrefly: ignore[unknown-name]

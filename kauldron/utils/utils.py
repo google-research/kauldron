@@ -63,7 +63,7 @@ def enum_iter(
   if total_steps is None or total_steps < 0:  # Infinite iterator
     range_ = itertools.count(init_step)
     try:
-      total = len(iter)  # pytype: disable=wrong-arg-types
+      total = len(iter)  # pyrefly: ignore[bad-argument-type]
     except TypeError:
       total = None
   else:

@@ -27,7 +27,7 @@ from kauldron.metrics import base
 from kauldron.metrics import base_state
 
 with epy.lazy_imports():
-  from grand_vision.eval.metrics import clustering as gv_clustering  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+  from grand_vision.eval.metrics import clustering as gv_clustering  # pylint: disable=g-import-not-at-top  # pyrefly: ignore[missing-import]
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -62,8 +62,8 @@ class Ari(base.Metric):
   @typechecked
   def get_state(  # pyrefly: ignore[bad-override]
       self,
-      predictions: Int["*b t h w 1"],  # pyrefly: ignore[not-a-type]
-      labels: Int["*b t h w 1"],  # pyrefly: ignore[not-a-type]
+      predictions: Int["*b t h w 1"],
+      labels: Int["*b t h w 1"],
       mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> Ari.State:
     # TODO(svansteenkiste): support non video inputs.

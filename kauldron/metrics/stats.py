@@ -47,7 +47,7 @@ class SingleDimension(base.Metric):
     pass
 
   @typechecked
-  def get_state(self, tensor: Float["*any"]) -> SingleDimension.State:  # pyrefly: ignore[bad-override, not-a-type]
+  def get_state(self, tensor: Float["*any"]) -> SingleDimension.State:  # pyrefly: ignore[bad-override]
     if self.index is not None:
       tensor = tensor[..., self.index]
     return self.State.from_values(values=tensor)  # pyrefly: ignore[bad-return]
@@ -106,7 +106,7 @@ class Norm(base.Metric):
         )
       return super().merge(other)
 
-    def compute(self) -> Float[""]:  # pyrefly: ignore[not-a-type]
+    def compute(self) -> Float[""]:
       parent = self.parent
       aggregation_type = (
           parent.aggregation_type
@@ -126,7 +126,7 @@ class Norm(base.Metric):
   @typechecked
   def get_state(  # pyrefly: ignore[bad-override]
       self,
-      tensor: Float["*any"],  # pyrefly: ignore[not-a-type]
+      tensor: Float["*any"],
       mask: Optional[Bool["*#any"] | Float["*#any"]] = None,
   ) -> Norm.State:
     if self.ord is not None and self.axis is None:
@@ -224,7 +224,7 @@ class Std(base.Metric):
   @typechecked
   def get_state(  # pyrefly: ignore[bad-override]
       self,
-      values: Float["*b n"],  # pyrefly: ignore[not-a-type]
+      values: Float["*b n"],
       mask: Optional[Bool["*b 1"] | Float["*b 1"]] = None,
   ) -> Std.State:
     return self.State.from_values(values=values, mask=mask)  # pyrefly: ignore[bad-return]

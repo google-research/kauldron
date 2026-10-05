@@ -37,9 +37,9 @@ def test_trainer_replace():
 
   assert trainer.eval_ds.seed == 0  # pyrefly: ignore[missing-attribute]
   assert trainer.train_ds.seed == 60
-  assert trainer.evals['eval'].ds.seed == 0  # pytype: disable=attribute-error
+  assert trainer.evals['eval'].ds.seed == 0  # pyrefly: ignore[missing-attribute]
   assert isinstance(trainer.evals['eval'].writer, metric_writer.KDMetricWriter)
-  assert trainer.trainstep.init_transform.workdir == '/some/workdir'  # pytype: disable=attribute-error
+  assert trainer.trainstep.init_transform.workdir == '/some/workdir'  # pyrefly: ignore[missing-attribute]
 
   # Replacing the trainer values are correctly propagated.
   new_trainer = dataclasses.replace(
@@ -51,6 +51,6 @@ def test_trainer_replace():
 
   assert new_trainer.eval_ds.seed == 42  # pyrefly: ignore[missing-attribute]
   assert new_trainer.train_ds.seed == 60
-  assert new_trainer.evals['eval'].ds.seed == 42  # pytype: disable=attribute-error
+  assert new_trainer.evals['eval'].ds.seed == 42  # pyrefly: ignore[missing-attribute]
   assert isinstance(new_trainer.evals['eval'].writer, metric_writer.NoopWriter)
-  assert new_trainer.trainstep.init_transform.workdir == '/new/workdir'  # pytype: disable=attribute-error
+  assert new_trainer.trainstep.init_transform.workdir == '/new/workdir'  # pyrefly: ignore[missing-attribute]

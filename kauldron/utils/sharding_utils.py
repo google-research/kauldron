@@ -62,11 +62,11 @@ class ShardingStrategy:
   """
 
   batch: ShardingTree = dataclasses.field(  # pyrefly: ignore[not-a-type]
-      default_factory=lambda: sharding.FIRST_DIM  # pytype: disable=name-error
+      default_factory=lambda: sharding.FIRST_DIM
   )
 
   params: ShardingTree = dataclasses.field(  # pyrefly: ignore[not-a-type]
-      default_factory=lambda: sharding.REPLICATED  # pytype: disable=name-error
+      default_factory=lambda: sharding.REPLICATED
   )
   collections: ShardingTree = None  # pyrefly: ignore[not-a-type]
   # Use `None` to auto-propagate the sharding from model sharding
@@ -74,7 +74,7 @@ class ShardingStrategy:
   # TODO(epot): Should auto-propagate sharding for auxiliaries, but currently
   # image summaries propagate the wrong sharding, like: xid/97663348
   aux: ShardingTree = dataclasses.field(  # pyrefly: ignore[not-a-type]
-      default_factory=lambda: sharding.REPLICATED  # pytype: disable=name-error
+      default_factory=lambda: sharding.REPLICATED
   )
 
   @property
@@ -82,7 +82,7 @@ class ShardingStrategy:
     """State sharding."""
     from kauldron.train import train_step  # pylint: disable=g-import-not-at-top
 
-    return train_step.TrainState(  # pytype: disable=wrong-arg-types
+    return train_step.TrainState(
         step=sharding.REPLICATED,  # pyrefly: ignore[bad-argument-type]
         params=self.params,
         collections=self.collections,

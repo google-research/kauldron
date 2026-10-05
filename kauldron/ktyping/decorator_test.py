@@ -41,7 +41,7 @@ def test_basic():
 
   assert f(1, 2) == 3
   with pytest.raises(typeguard.TypeCheckError):
-    f(1, 2.0)  # pytype: disable=wrong-arg-types
+    f(1, 2.0)  # pyrefly: ignore[bad-argument-type]
 
 
 def test_array_type_check():
@@ -50,7 +50,7 @@ def test_array_type_check():
   )
 
   @typechecked
-  def f(x: NpFloat["*b h w"], y: Float["*b"]) -> Float["*b"]:  # pyrefly: ignore[not-a-type]
+  def f(x: NpFloat["*b h w"], y: Float["*b"]) -> Float["*b"]:
     return np.sum(x, axis=(-1, -2)) + y
 
   x = np.zeros((2, 3, 5, 7), dtype=np.float32)
@@ -73,24 +73,24 @@ def test_array_type_check():
 
 def test_array_type_check_with_regular_types():
   @typechecked
-  def f(x: Float["*b h w"], y: int, z: str) -> Float["*b"]:  # pyrefly: ignore[not-a-type]
+  def f(x: Float["*b h w"], y: int, z: str) -> Float["*b"]:
     return np.sum(x, axis=(-1, -2)) + len(z) + y
 
   x = np.zeros((2, 3, 5, 7), dtype=np.float32)
   assert f(x, 7, "abc").shape == (2, 3)
 
   with pytest.raises(typeguard.TypeCheckError):
-    f(x, "abc", 7)  # pytype: disable=wrong-arg-types
+    f(x, "abc", 7)  # pyrefly: ignore[bad-argument-type]
 
   with pytest.raises(errors.KTypeCheckError, match="is not an instance of"):
-    f("array", 7, "abc")  # pytype: disable=wrong-arg-types
+    f("array", 7, "abc")
 
 
 def test_array_type_check_with_containers():
   @typechecked
   def f(
-      x: list[Float["a b"]], y: dict[str, Int[""]]  # pyrefly: ignore[not-a-type]
-  ) -> tuple[Float["a b"], int]:  # pyrefly: ignore[not-a-type]
+      x: list[Float["a b"]], y: dict[str, Int[""]]
+  ) -> tuple[Float["a b"], int]:
     return x[0], int(y["a"])
 
   x = [np.zeros((2, 3), dtype=np.float32)]
@@ -108,7 +108,7 @@ def test_array_type_check_with_containers():
 
 def test_simple_array_type_union_check():
   @typechecked
-  def f(x: Float["*b h w"] | Float["*b"], y: Float["*b"]) -> Float["*b"]:  # pyrefly: ignore[not-a-type]
+  def f(x: Float["*b h w"] | Float["*b"], y: Float["*b"]) -> Float["*b"]:
     del x
     return y
 
@@ -125,7 +125,7 @@ def test_simple_array_type_union_check():
 
 def test_non_greedy_array_type_union_check():
   @typechecked
-  def f(x: Float["a"] | Float["b"], y: Float["a"]):  # pyrefly: ignore[not-a-type, unknown-name]
+  def f(x: Float["a"] | Float["b"], y: Float["a"]):  # pyrefly: ignore[unknown-name]
     del x, y
     return dim_view.dim["b"]
 
@@ -137,7 +137,7 @@ def test_non_greedy_array_type_union_check():
 
 def test_compound_array_type_union_check():
   @typechecked
-  def f(x: Float["3"] | Int["1"]) -> Float["*b"]:  # pyrefly: ignore[bad-index, not-a-type]
+  def f(x: Float["3"] | Int["1"]) -> Float["*b"]:  # pyrefly: ignore[bad-index]
     return x
 
   with pytest.raises(errors.KTypeCheckError, match="is not an instance of"):
@@ -162,7 +162,7 @@ def test_compound_array_type_union_check():
 
 def test_fstring_interpolation():
   @typechecked
-  def f(x: Float["{batch_size} h {len(text)*5}"], batch_size: int, text: str):  # pyrefly: ignore[not-a-type]
+  def f(x: Float["{batch_size} h {len(text)*5}"], batch_size: int, text: str):
     del x, batch_size, text
     return
 
@@ -184,11 +184,11 @@ def test_fstring_interpolation():
 def test_typeddict_check():
   class Custom(TypedDict):
     a: int
-    b: Float["*b c"]  # pyrefly: ignore[not-a-type]
-    c: Float["c"]  # pyrefly: ignore[not-a-type, unknown-name]
+    b: Float["*b c"]
+    c: Float["c"]  # pyrefly: ignore[unknown-name]
 
   @typechecked
-  def f(x: Custom, y: Int["*b"]) -> int:  # pyrefly: ignore[not-a-type]
+  def f(x: Custom, y: Int["*b"]) -> int:
     return x["a"] + y.ndim
 
   x = {"a": 7, "b": np.zeros((2, 3)), "c": np.zeros((3,))}
@@ -258,13 +258,13 @@ def test_typechecked_dataclass_init():
   @dataclasses.dataclass
   class Foo:
     x: int
-    y: Float["*b"]  # pyrefly: ignore[not-a-type]
+    y: Float["*b"]
     z: str = "abc"
 
     def __post_init__(self):
       self.x = int(self.x)
 
-  _ = Foo(x=7.2, y=np.zeros((2, 3), dtype=np.float32))  # pytype: disable=wrong-arg-types
+  _ = Foo(x=7.2, y=np.zeros((2, 3), dtype=np.float32))  # pyrefly: ignore[bad-argument-type]
 
   with pytest.raises(errors.KTypeCheckError, match="is not dtype-compatible"):
     Foo(x=7, y=np.zeros((2, 3), dtype=np.int32))  # wrong dtype
@@ -282,7 +282,7 @@ def test_typechecked_dataclass_init_with_subclass():
     x: float  # pyrefly: ignore[bad-override]
 
     def __init__(self, x):  # pylint: disable=useless-parent-delegation
-      super().__init__(x)  # pytype: disable=wrong-arg-types
+      super().__init__(x)
 
   _ = Bar(x=7.2)
 
@@ -291,25 +291,25 @@ def test_typechecked_dataclass_arguments():
   @dataclasses.dataclass
   class Unchecked:
     a: int
-    b: Float["*b"]  # pyrefly: ignore[not-a-type]
+    b: Float["*b"]
 
   @typechecked
   @dataclasses.dataclass
   class Checked:
     a: int
-    b: Float["*b"]  # pyrefly: ignore[not-a-type]
+    b: Float["*b"]
 
   @typechecked
   def f(x: Unchecked, y: Checked):
     return x.a, y.a
 
-  x = Unchecked(a="seven", b=np.zeros((2, 3), dtype=np.int32))  # pytype: disable=wrong-arg-types
+  x = Unchecked(a="seven", b=np.zeros((2, 3), dtype=np.int32))  # pyrefly: ignore[bad-argument-type]
   y = Checked(a=8, b=np.zeros((2, 3), dtype=np.float32))
 
   # This call is ok, because the Unchecked dataclass is not typechecked.
   assert f(x, y) == ("seven", 8)
 
-  y.a = "eight"  # pytype: disable=annotation-type-mismatch
+  y.a = "eight"  # pyrefly: ignore[bad-assignment]
 
   with pytest.raises(errors.KTypeCheckError, match="is not an instance of"):
     f(x, y)  # y.a is not an int
@@ -334,7 +334,7 @@ def test_typechecked_method():
   f.bar(1)  # ok
 
   with pytest.raises(errors.KTypeCheckError, match="is not an instance of"):
-    f.bar("one")  # pytype: disable=wrong-arg-types
+    f.bar("one")  # pyrefly: ignore[bad-argument-type]
 
 
 def test_typechecked_classmethod():
@@ -348,7 +348,7 @@ def test_typechecked_classmethod():
   Foo.bar(1)  # ok
 
   with pytest.raises(errors.KTypeCheckError, match="is not an instance of"):
-    Foo.bar("one")  # pytype: disable=wrong-arg-types
+    Foo.bar("one")  # pyrefly: ignore[bad-argument-type]
 
 
 def test_typechecked_property_success():
@@ -380,7 +380,7 @@ def test_typechecked_property_fail():
     @typechecked
     @property
     def bar(self) -> int:
-      return "42"  # pytype: disable=bad-return-type
+      return "42"  # pyrefly: ignore[bad-return]
 
     @typechecked
     @bar.setter
@@ -390,7 +390,7 @@ def test_typechecked_property_fail():
     @typechecked
     @bar.deleter
     def bar(self) -> None:
-      return 42  # pytype: disable=bad-return-type
+      return 42  # pyrefly: ignore[bad-return]
 
   with pytest.raises(errors.KTypeCheckError, match="property 'bar'"):
     _ = Foo().bar
@@ -406,12 +406,12 @@ def test_typechecked_generator_args():
   @typechecked
   def my_gen(a: int) -> Generator[str, None, bool]:
     yield "a"
-    return True if a != 3 else "False"  # pytype: disable=bad-return-type
+    return True if a != 3 else "False"  # pyrefly: ignore[bad-return]
 
   assert [x for x in my_gen(1)] == ["a"]
 
   with pytest.raises(errors.KTypeCheckError, match="is not an instance of"):
-    _ = [x for x in my_gen("one")]  # pytype: disable=wrong-arg-types
+    _ = [x for x in my_gen("one")]  # pyrefly: ignore[bad-argument-type]
 
   with pytest.raises(errors.KTypeCheckError, match="return value"):
     _ = [x for x in my_gen(3)]

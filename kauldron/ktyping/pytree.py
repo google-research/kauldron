@@ -136,17 +136,15 @@ def _jax_key_entry_to_str(
     jax_key_entry: Any,
 ) -> str:
   """Convert a JaxKeyEntry into a str representation."""
-  # pytype: disable=match-error
   match jax_key_entry:
-    case jax.tree_util.GetAttrKey(name):
+    case jax.tree_util.GetAttrKey(name):  # pyrefly: ignore[bad-match]
       return name
-    case jax.tree_util.DictKey(key):
+    case jax.tree_util.DictKey(key):  # pyrefly: ignore[bad-match]
       return f"[{key!r}]"
-    case jax.tree_util.SequenceKey(idx):
+    case jax.tree_util.SequenceKey(idx):  # pyrefly: ignore[bad-match]
       return f"[{idx!r}]"
-    case jax.tree_util.FlattenedIndexKey(key):
+    case jax.tree_util.FlattenedIndexKey(key):  # pyrefly: ignore[bad-match]
       return f"[{key!r}]"
-  # pytype: enable=match-error
   raise TypeError(f"Unknown key entry type {type(jax_key_entry)}")
 
 
