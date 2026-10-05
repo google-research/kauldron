@@ -220,14 +220,14 @@ class SliceVideosIntoFrames(grain.UnsafeTfDataTransform):
           grain_batch[key] = batch[key]
       if self.context_tensors_names:
         return tf.data.Dataset.zip(
-            tf.data.Dataset.from_tensor_slices(slicable_batch),  # pyrefly: ignore[bad-argument-type]
-            tf.data.Dataset.from_tensors(context_batch).repeat(num_slices),  # pyrefly: ignore[bad-argument-type]
-            tf.data.Dataset.from_tensors(grain_batch).repeat(num_slices),  # pyrefly: ignore[bad-argument-type]
+            tf.data.Dataset.from_tensor_slices(slicable_batch),
+            tf.data.Dataset.from_tensors(context_batch).repeat(num_slices),
+            tf.data.Dataset.from_tensors(grain_batch).repeat(num_slices),
         )
       else:
         return tf.data.Dataset.zip(
-            tf.data.Dataset.from_tensor_slices(slicable_batch),  # pyrefly: ignore[bad-argument-type]
-            tf.data.Dataset.from_tensors(grain_batch).repeat(num_slices),  # pyrefly: ignore[bad-argument-type]
+            tf.data.Dataset.from_tensor_slices(slicable_batch),
+            tf.data.Dataset.from_tensors(grain_batch).repeat(num_slices),
         )
 
     def to_dict(*arg):
@@ -502,7 +502,7 @@ class Repeat(kd.data.ElementWiseTransform):
   """
 
   pattern: str
-  axes_lengths: dict[str, int] = dataclasses.field(default_factory=FrozenDict)  # pyrefly: ignore[bad-assignment]
+  axes_lengths: dict[str, int] = dataclasses.field(default_factory=FrozenDict)
 
   @typechecked
   def map_element(self, element: Any) -> XArray:  # pyrefly: ignore[not-a-type]

@@ -29,16 +29,14 @@ def assert_module(m: konfig.fake_import_utils.ProxyObject, name: str) -> None:
 def test_fake_imports():
   with konfig.imports():
     # pylint: disable=g-import-not-at-top,g-multiple-import
-    # pytype: disable=import-error
-    import a0
-    import a1.b.c
-    import a2.b.c as c00
-    import a2.b.c as c01  # Importing object twice is the same instance
-    from a2.b import c as c02
+    import a0  # pyrefly: ignore[missing-import]
+    import a1.b.c  # pyrefly: ignore[missing-import]
+    import a2.b.c as c00  # pyrefly: ignore[missing-import]
+    import a2.b.c as c01  # Importing object twice is the same instance  # pyrefly: ignore[missing-import]
+    from a2.b import c as c02  # pyrefly: ignore[missing-import]
 
-    from a3 import c2, c3
-    from a3.b.c import c4
-    # pytype: enable=import-error
+    from a3 import c2, c3  # pyrefly: ignore[missing-import]
+    from a3.b.c import c4  # pyrefly: ignore[missing-import]
     # pylint: enable=g-import-not-at-top,g-multiple-import
 
   assert_module(a0, 'a0')  # pyrefly: ignore[bad-argument-type]
@@ -64,46 +62,44 @@ def test_fake_imports():
 
 def test_lazy_imports():
   # pylint: disable=g-import-not-at-top,g-multiple-import,unused-import
-  # pytype: disable=import-error
   with konfig.imports():
     with pytest.raises(ImportError):
-      import asdasdasd
+      import asdasdasd  # pyrefly: ignore[missing-import]
     with pytest.raises(ImportError):
-      from aaa import bbb
+      from aaa import bbb  # pyrefly: ignore[missing-import]
 
   with konfig.set_lazy_imported_modules(lazy_import=['*'], except_=['aaa.ccc']):
     with konfig.imports():
-      import asdasdasd
-      from aaa import bbb
-      from aaa.cccddd import ddd
+      import asdasdasd  # pyrefly: ignore[missing-import]
+      from aaa import bbb  # pyrefly: ignore[missing-import]
+      from aaa.cccddd import ddd  # pyrefly: ignore[missing-import]
 
       with pytest.raises(ImportError):
-        from aaa.ccc import ddd
+        from aaa.ccc import ddd  # pyrefly: ignore[missing-import]
 
   with konfig.set_lazy_imported_modules(lazy_import=['aaa.ccc']):
     with konfig.imports():
       with pytest.raises(ImportError):
-        import asdasdasd
+        import asdasdasd  # pyrefly: ignore[missing-import]
       with pytest.raises(ImportError):
-        from aaa.cccddd import ddd
+        from aaa.cccddd import ddd  # pyrefly: ignore[missing-import]
 
-      from aaa.ccc import ddd
+      from aaa.ccc import ddd  # pyrefly: ignore[missing-import]
 
   with konfig.imports(lazy=True):
-    import import_lazy0
-    from import_lazy1 import bbb
+    import import_lazy0  # pyrefly: ignore[missing-import]
+    from import_lazy1 import bbb  # pyrefly: ignore[missing-import]
 
   # Lazy and `set_lazy_imported_modules` can be nested
   with konfig.set_lazy_imported_modules(except_=['non_lazy_import']):
     with konfig.imports(lazy=True):
-      import import_lazy0
-      import non_lazy_import  # Inside, is lazy
+      import import_lazy0  # pyrefly: ignore[missing-import]
+      import non_lazy_import  # Inside, is lazy  # pyrefly: ignore[missing-import]
 
     with konfig.imports():
       with pytest.raises(ImportError):
-        import non_lazy_import
+        import non_lazy_import  # pyrefly: ignore[missing-import]
 
-  # pytype: enable=import-error
   # pylint: enable=g-import-not-at-top,g-multiple-import,unused-import
 
 

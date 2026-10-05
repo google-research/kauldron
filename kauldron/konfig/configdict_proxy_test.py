@@ -29,7 +29,7 @@ import pytest
 @konfig.set_lazy_imported_modules(lazy_import=["*"])
 def test_configdict():
   with konfig.imports():
-    import abc.edf as some_module  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+    import abc.edf as some_module  # pylint: disable=g-import-not-at-top  # pyrefly: ignore[missing-import]
 
   assert some_module.MyClass(
       x=123,
@@ -58,8 +58,8 @@ def test_configdict():
 
 def test_configdict_resolve_constructor():
   with konfig.imports():
-    import types as fake_types  # pylint: disable=reimported,g-import-not-at-top  # pytype: disable=import-error
-    import pathlib as fake_pathlib  # pylint: disable=reimported,g-import-not-at-top  # pytype: disable=import-error
+    import types as fake_types  # pylint: disable=reimported,g-import-not-at-top
+    import pathlib as fake_pathlib  # pylint: disable=reimported,g-import-not-at-top
 
   cfg = fake_types.SimpleNamespace(
       x=123,
@@ -106,7 +106,7 @@ def test_configdict_resolve_constructor():
       elems=(types.SimpleNamespace(), types.SimpleNamespace())
   )
 
-  obj = konfig.resolve(fake_pathlib.Path("a", "b"))  # pytype: disable=wrong-arg-types
+  obj = konfig.resolve(fake_pathlib.Path("a", "b"))
   expected_obj = pathlib.Path("a", "b")
   assert obj == expected_obj
 
@@ -116,31 +116,29 @@ def test_configdict_resolve_constructor():
           fake_pathlib.Path("b"),
           "c",
       )
-  )  # pytype: disable=wrong-arg-types
+  )
   expected_obj = pathlib.Path("a", pathlib.Path("b"), "c")
   assert obj == expected_obj
 
 
 def test_configdict_args_mutation():
   with konfig.imports():
-    import pathlib as fake_pathlib  # pylint: disable=reimported,g-import-not-at-top  # pytype: disable=import-error
+    import pathlib as fake_pathlib  # pylint: disable=reimported,g-import-not-at-top
 
-  obj = fake_pathlib.Path("a", "b")  # pytype: disable=wrong-arg-types
-  # pytype: disable=unsupported-operands
-  assert obj[0] == "a"
-  assert obj[1] == "b"
-  assert obj[-1] == "b"
-  obj[-1] = "b2"  # pylint: disable=unsupported-assignment-operation
-  assert obj[-1] == "b2"
-
-  with pytest.raises(IndexError):
-    _ = obj[-3]
+  obj = fake_pathlib.Path("a", "b")
+  assert obj[0] == "a"  # pyrefly: ignore[bad-index]
+  assert obj[1] == "b"  # pyrefly: ignore[bad-index]
+  assert obj[-1] == "b"  # pyrefly: ignore[bad-index]
+  obj[-1] = "b2"  # pylint: disable=unsupported-assignment-operation  # pyrefly: ignore[unsupported-operation]
+  assert obj[-1] == "b2"  # pyrefly: ignore[bad-index]
 
   with pytest.raises(IndexError):
-    _ = obj[2]
+    _ = obj[-3]  # pyrefly: ignore[bad-index]
 
-  obj[2] = "c1"  # pylint: disable=unsupported-assignment-operation
-  # pytype: enable=unsupported-operands
+  with pytest.raises(IndexError):
+    _ = obj[2]  # pyrefly: ignore[bad-index]
+
+  obj[2] = "c1"  # pylint: disable=unsupported-assignment-operation  # pyrefly: ignore[unsupported-operation]
 
   expected_obj = pathlib.Path("a", "b2", "c1")
   assert konfig.resolve(obj) == expected_obj
@@ -148,7 +146,7 @@ def test_configdict_args_mutation():
 
 def test_configdict_shared():
   with konfig.imports():
-    import types as fake_types  # pylint: disable=reimported,g-import-not-at-top  # pytype: disable=import-error
+    import types as fake_types  # pylint: disable=reimported,g-import-not-at-top
 
   model = fake_types.SimpleNamespace(num_layers=4)
   model2 = fake_types.SimpleNamespace(num_layers=4)
@@ -216,8 +214,8 @@ def test_configdict_shared():
 
 def test_configdict_partial():
   with konfig.imports():
-    import types as fake_types  # pylint: disable=reimported,g-import-not-at-top  # pytype: disable=import-error
-    import pathlib as fake_pathlib  # pylint: disable=reimported,g-import-not-at-top  # pytype: disable=import-error
+    import types as fake_types  # pylint: disable=reimported,g-import-not-at-top
+    import pathlib as fake_pathlib  # pylint: disable=reimported,g-import-not-at-top
 
   cfg = konfig.ConfigDict({
       "ns": functools.partial(fake_types.SimpleNamespace, num_layers=4),
@@ -232,8 +230,8 @@ def test_configdict_partial():
 
 def test_configdict_not_freeze():
   with konfig.imports():
-    import builtins as fake_builtins  # pylint: disable=reimported,g-import-not-at-top  # pytype: disable=import-error
-    import numpy as fake_np  # pylint: disable=reimported,g-import-not-at-top  # pytype: disable=import-error
+    import builtins as fake_builtins  # pylint: disable=reimported,g-import-not-at-top
+    import numpy as fake_np  # pylint: disable=reimported,g-import-not-at-top
   c = fake_builtins.dict(schedules={"learning_rate": fake_np.array([1, 2, 3])})
 
   c = konfig.resolve(c, freeze=False)

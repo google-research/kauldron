@@ -38,7 +38,7 @@ class Identity(nn.Module):
   """
 
   @nn.compact
-  def __call__(self, inputs: Array['*any'], *args, **kwargs) -> Array['*any']:  # pyrefly: ignore[not-a-type]
+  def __call__(self, inputs: Array['*any'], *args, **kwargs) -> Array['*any']:
     return inputs
 
 
@@ -57,9 +57,9 @@ class Dropout(nn.Dropout):
       )
 
   @nn.compact
-  def __call__(  # pytype: disable=signature-mismatch
-      self, inputs: Array['*any'], *, rng: PRNGKey | None = None  # pyrefly: ignore[not-a-type]
-  ) -> Array['*any']:  # pyrefly: ignore[not-a-type]
+  def __call__(
+      self, inputs: Array['*any'], *, rng: PRNGKey | None = None
+  ) -> Array['*any']:
     return super().__call__(inputs, deterministic=not self.is_training, rng=rng)
 
 
@@ -88,10 +88,10 @@ class Rearrange(nn.Module):
   """
 
   pattern: str
-  axes_lengths: dict[str, int] = dataclasses.field(default_factory=FrozenDict)  # pyrefly: ignore[bad-assignment]
+  axes_lengths: dict[str, int] = dataclasses.field(default_factory=FrozenDict)
 
   @typechecked
-  def __call__(self, tensor: Array['...']) -> Array['...']:  # pyrefly: ignore[bad-index, not-a-type]
+  def __call__(self, tensor: Array['...']) -> Array['...']:  # pyrefly: ignore[bad-index]
     return einops.rearrange(tensor, pattern=self.pattern, **self.axes_lengths)
 
 
@@ -122,10 +122,10 @@ class Reduce(nn.Module):
 
   pattern: str
   reduction: Literal['min', 'max', 'sum', 'mean', 'prod']
-  axes_lengths: dict[str, int] = dataclasses.field(default_factory=FrozenDict)  # pyrefly: ignore[bad-assignment]
+  axes_lengths: dict[str, int] = dataclasses.field(default_factory=FrozenDict)
 
   @typechecked
-  def __call__(self, tensor: Array['...']) -> Array['...']:  # pyrefly: ignore[bad-index, not-a-type]
+  def __call__(self, tensor: Array['...']) -> Array['...']:  # pyrefly: ignore[bad-index]
     return einops.reduce(
         tensor,
         pattern=self.pattern,
@@ -144,5 +144,5 @@ class DummyModel(nn.Module):
   inputs: Optional[kontext.Key] = None
 
   @typechecked
-  def __call__(self, inputs: Any = None) -> dict[str, Float['1']]:  # pyrefly: ignore[bad-index, not-a-type]
+  def __call__(self, inputs: Any = None) -> dict[str, Float['1']]:  # pyrefly: ignore[bad-index]
     return {'logits': jnp.ones((1,)) * 42}

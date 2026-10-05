@@ -382,7 +382,7 @@ class Checkpointer(BaseCheckpointer):
     # Do not check step as it can lead to race conditions.
     # if step not in self._ckpt_mgr.all_steps():
     #   raise ValueError(f"No checkpoint is available for step {step}")
-    return step  # pytype: disable=bad-return-type
+    return step
 
   def item_metadata(self, step: int = -1) -> dict[str, Any]:
     """Returns the metadata (tree, shape,...) associated with the step."""

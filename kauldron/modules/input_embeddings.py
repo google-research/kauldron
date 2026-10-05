@@ -28,7 +28,7 @@ class Patchify(nn.Module):
 
   @typechecked
   @nn.compact
-  def __call__(self, images: Float['*b h w c']) -> Float['*b n d']:  # pyrefly: ignore[not-a-type]
+  def __call__(self, images: Float['*b h w c']) -> Float['*b n d']:
     tokens = einops.rearrange(
         images,
         '... (ht hp) (wt wp) C -> ... (ht wt) (hp wp C)',
@@ -46,7 +46,7 @@ class PatchifyEmbed(nn.Module):
 
   @typechecked
   @nn.compact
-  def __call__(self, images: Float['*b h w c']) -> Float['*b n d']:  # pyrefly: ignore[not-a-type]
+  def __call__(self, images: Float['*b h w c']) -> Float['*b n d']:
     # Linear patch embedding with a Conv layer.
     tokens = nn.Conv(
         name='patchifier',

@@ -26,12 +26,12 @@ define `cfg.executor = `, `cfg.requirements = `.
 from kauldron import konfig
 
 with konfig.imports(lazy=True):
-  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
-  from kauldron import kd
-  from kauldron import kxm
-  from xmanager import xm
-  from xmanager import xm_abc
-  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+  # pylint: disable=g-import-not-at-top
+  from kauldron import kd  # pyrefly: ignore[missing-module-attribute]
+  from kauldron import kxm  # pyrefly: ignore[missing-module-attribute]
+  from xmanager import xm  # pyrefly: ignore[missing-import]
+  from xmanager import xm_abc  # pyrefly: ignore[missing-import]
+  # pylint: disable=g-import-not-at-top
 
 
 # We cannot automatically deduce which fields should be
@@ -128,7 +128,7 @@ _eval_only_trainer = kd.train.Trainer.eval_only(
     setup=kd.train.Setup(eval_only=True),
     xm_job=kxm.Job(),
 )
-_eval_only_trainer.update(  # pytype: disable=attribute-error
+_eval_only_trainer.update(
     # No train dataset, but specs are needed to initialize the model.
     train_ds=kd.data.tf.ElementSpecDataset(
         spec=kd.from_xid.get_element_spec(

@@ -40,7 +40,7 @@ class AddEmbedding(nn.Module):
   emb: knn_types.PositionEmbedding
   axis: Axes
 
-  def __call__(self, inputs: Float['*any']) -> Float['*any']:  # pyrefly: ignore[not-a-type]
+  def __call__(self, inputs: Float['*any']) -> Float['*any']:
     return inputs + self.emb(inputs.shape, axis=self.axis)
 
 
@@ -140,7 +140,7 @@ class AddLearnedEmbedding(nn.Module):
 
   @typechecked
   @nn.compact
-  def __call__(self, inputs: Float['*b n d']) -> Float['*b n d']:  # pyrefly: ignore[not-a-type]
+  def __call__(self, inputs: Float['*b n d']) -> Float['*b n d']:
     warnings.warn(
         f'{self.__class__.__name__} is deprecated in favor of LearnedEmbedding',
         DeprecationWarning,
@@ -217,7 +217,7 @@ def _get_shape_from_axes(full_shape: Shape, axes: Axes) -> Shape:  # pyrefly: ig
 def _create_gradient_grid(
     samples_per_dim: tuple[int, ...],
     value_range: tuple[float, float] = (-1.0, 1.0),
-) -> Float['...']:  # pyrefly: ignore[bad-index, not-a-type]
+) -> Float['...']:  # pyrefly: ignore[bad-index]
   """Creates a tensor with equidistant entries from -1 to +1 in each dim.
 
   Args:
@@ -236,10 +236,10 @@ def _create_gradient_grid(
 
 @typechecked
 def convert_to_fourier_features(
-    inputs: Float['... D'],  # pyrefly: ignore[not-a-type]
+    inputs: Float['... D'],
     basis_degree: int,
     precision: Optional[jax.lax.PrecisionLike] = jax.lax.Precision.HIGHEST,
-) -> Float['... d']:  # pyrefly: ignore[not-a-type]
+) -> Float['... d']:
   """Convert inputs to Fourier features, e.g. for positional encoding."""
 
   # inputs.shape = (..., n_dims).

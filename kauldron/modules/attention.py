@@ -27,8 +27,8 @@ from kauldron.typing import Initializer  # pylint: disable=g-importing-member
 
 
 def softmax(
-    x: Float['*a'], axis: Axes = -1, dtype: DType | None = jnp.float32  # pyrefly: ignore[not-a-type]
-) -> Float['*a']:  # pyrefly: ignore[not-a-type]
+    x: Float['*a'], axis: Axes = -1, dtype: DType | None = jnp.float32
+) -> Float['*a']:
   if dtype is None:
     dtype = x.dtype
   return jax.nn.softmax(x.astype(dtype), axis=axis).astype(x.dtype)
@@ -52,12 +52,12 @@ class MultiHeadDotProductAttention(nn.MultiHeadDotProductAttention):
   @nn.compact
   def __call__(
       self,
-      inputs_q: Float['*b q dq'],  # pyrefly: ignore[not-a-type]
-      inputs_k: Optional[Float['*b k dk']] = None,  # pyrefly: ignore[not-a-type]
-      inputs_v: Optional[Float['*b k dv']] = None,  # pyrefly: ignore[not-a-type]
+      inputs_q: Float['*b q dq'],
+      inputs_k: Optional[Float['*b k dk']] = None,
+      inputs_v: Optional[Float['*b k dv']] = None,
       *,
-      mask: Optional[Bool['*b #heads #q #k']] = None,  # pyrefly: ignore[not-a-type]
-  ) -> Float['*b q do']:  # pyrefly: ignore[not-a-type]
+      mask: Optional[Bool['*b #heads #q #k']] = None,
+  ) -> Float['*b q do']:
     return super().__call__(
         inputs_q=inputs_q,
         inputs_k=inputs_k,
@@ -69,13 +69,13 @@ class MultiHeadDotProductAttention(nn.MultiHeadDotProductAttention):
 
 @typechecked
 def dot_product_attention_weights(
-    query: Float['*b q h d'],  # pyrefly: ignore[not-a-type]
-    key: Float['*b k h d'],  # pyrefly: ignore[not-a-type]
+    query: Float['*b q h d'],
+    key: Float['*b k h d'],
     softmax_axis: Axes = -1,
-    bias: Optional[Float['*b #h #q #k']] = None,  # pyrefly: ignore[not-a-type]
-    mask: Optional[Bool['*b #h #q #k']] = None,  # pyrefly: ignore[not-a-type]
+    bias: Optional[Float['*b #h #q #k']] = None,
+    mask: Optional[Bool['*b #h #q #k']] = None,
     softmax_dtype: DType | None = jnp.float32,
-) -> Float['*b h q k']:  # pyrefly: ignore[not-a-type]
+) -> Float['*b h q k']:
   """Computes dot-product attention weights given query and key.
 
   q: number of queries, k: number of keys, h: number of heads
@@ -143,7 +143,7 @@ class ImprovedMultiHeadDotProductAttention(nn.Module):
   kernel_init: Initializer = nn.initializers.lecun_normal()
   bias_init: Initializer = nn.initializers.zeros_init()
   use_bias: bool = True
-  attn_weights_fn: Callable[..., Float['...']] = dot_product_attention_weights  # pyrefly: ignore[bad-index, not-a-type]
+  attn_weights_fn: Callable[..., Float['...']] = dot_product_attention_weights  # pyrefly: ignore[bad-index]
   decode: bool = False
 
   interms = knn.interms_property()
@@ -152,13 +152,13 @@ class ImprovedMultiHeadDotProductAttention(nn.Module):
   @nn.compact
   def __call__(
       self,
-      inputs_q: Float['*b q dq'],  # pyrefly: ignore[not-a-type]
-      inputs_k: Optional[Float['*b kv dk']] = None,  # defaults to inputs_q  # pyrefly: ignore[not-a-type]
-      inputs_v: Optional[Float['*b kv dv']] = None,  # defaults to inputs_k  # pyrefly: ignore[not-a-type]
+      inputs_q: Float['*b q dq'],
+      inputs_k: Optional[Float['*b kv dk']] = None,  # defaults to inputs_q
+      inputs_v: Optional[Float['*b kv dv']] = None,  # defaults to inputs_k
       *,
-      bias: Optional[Float['*b #num_heads #q #kv']] = None,  # pyrefly: ignore[not-a-type]
-      mask: Optional[Bool['*b #num_heads #q #kv']] = None,  # pyrefly: ignore[not-a-type]
-  ) -> Float['*b q do']:  # pyrefly: ignore[not-a-type]
+      bias: Optional[Float['*b #num_heads #q #kv']] = None,
+      mask: Optional[Bool['*b #num_heads #q #kv']] = None,
+  ) -> Float['*b q do']:
     """Applies multi-head dot product attention on the input data.
 
     Projects the inputs into multi-headed query, key, and value vectors,

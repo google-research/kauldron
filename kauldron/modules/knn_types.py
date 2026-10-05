@@ -20,7 +20,7 @@ from kauldron.ktyping import Axes, Bool, Float, Shape  # pylint: disable=g-multi
 from kauldron.typing import Initializer  # pylint: disable=g-importing-member,unused-import
 
 
-ActivationFunction = Callable[[Float['*any']], Float['*any']]  # pyrefly: ignore[not-a-type]
+ActivationFunction = Callable[[Float['*any']], Float['*any']]
 
 
 class AttentionModule(Protocol):
@@ -35,12 +35,12 @@ class AttentionModule(Protocol):
 
   def __call__(
       self,
-      inputs_q: Float['*b q dq'],  # pyrefly: ignore[not-a-type]
-      inputs_k: Optional[Float['*b k dk']] = None,  # defaults to inputs_q  # pyrefly: ignore[not-a-type]
-      inputs_v: Optional[Float['*b k dv']] = None,  # defaults to inputs_k  # pyrefly: ignore[not-a-type]
+      inputs_q: Float['*b q dq'],
+      inputs_k: Optional[Float['*b k dk']] = None,  # defaults to inputs_q
+      inputs_v: Optional[Float['*b k dv']] = None,  # defaults to inputs_k
       *,
-      mask: Optional[Float['*b #num_heads #q #k']] = None,  # pyrefly: ignore[not-a-type]
-  ) -> Float['*b q do']:  # pyrefly: ignore[not-a-type]
+      mask: Optional[Float['*b #num_heads #q #k']] = None,
+  ) -> Float['*b q do']:
     pass
 
 
@@ -53,7 +53,7 @@ class ImageTokenizer(Protocol):
   Examples include Patchify and PatchifyEmbed.
   """
 
-  def __call__(self, image: Float['*b h w c']) -> Float['*b n d']:  # pyrefly: ignore[not-a-type]
+  def __call__(self, image: Float['*b h w c']) -> Float['*b n d']:
     pass
 
 
@@ -66,7 +66,7 @@ class NormModule(Protocol):
   Example modules include: nn.LayerNorm, nn.RMSNorm, nn.GroupNorm, nn.BatchNorm.
   """
 
-  def __call__(self, x: Float['*any']) -> Float['*any']:  # pyrefly: ignore[not-a-type]
+  def __call__(self, x: Float['*any']) -> Float['*any']:
     pass
 
 
@@ -88,7 +88,7 @@ class TransformerBlock(Protocol):
 
   def __call__(
       self,
-      tokens: Float['*b n d'],  # pyrefly: ignore[not-a-type]
+      tokens: Float['*b n d'],
       attention_mask: Bool['*b 1 n n'] | None = None,
-  ) -> Float['*b n d']:  # pyrefly: ignore[not-a-type]
+  ) -> Float['*b n d']:
     pass

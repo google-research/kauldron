@@ -92,7 +92,7 @@ class TopLevelCheckpointItem(CheckpointItem):
 
   @functools.cached_property
   def _items_fields(self) -> dict[str, CheckpointItem]:
-    fields = {name: getattr(self, name) for name in type(self)._fields}  # pytype: disable=attribute-error
+    fields = {name: getattr(self, name) for name in type(self)._fields}  # pyrefly: ignore[missing-attribute]
     if self.DEFAULT_ITEM is not None:
       fields[ocp.checkpoint_manager.DEFAULT_ITEM_NAME] = fields.pop(
           self.DEFAULT_ITEM

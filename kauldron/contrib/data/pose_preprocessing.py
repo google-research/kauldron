@@ -21,8 +21,8 @@ import dataclasses
 from kauldron import kd
 from kauldron.typing import TfArray, typechecked  # pylint: disable=g-importing-member,g-multiple-import
 import tensorflow as tf
-from tensorflow_graphics.geometry.transformation import quaternion  # pytype: disable=import-error
-from tensorflow_graphics.geometry.transformation import rotation_matrix_3d  # pytype: disable=import-error
+from tensorflow_graphics.geometry.transformation import quaternion  # pyrefly: ignore[missing-import]
+from tensorflow_graphics.geometry.transformation import rotation_matrix_3d  # pyrefly: ignore[missing-import]
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)

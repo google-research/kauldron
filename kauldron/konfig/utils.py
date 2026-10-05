@@ -209,9 +209,9 @@ class FrameStack(list[FrameInfo]):
 
       # Capture the current f_lasti and f_lineno as those values get updated
       # as execution continues.
-      info = FrameInfo(frame=frame, lasti=frame.f_lasti, lineno=frame.f_lineno)  # pytype: disable=attribute-error
+      info = FrameInfo(frame=frame, lasti=frame.f_lasti, lineno=frame.f_lineno)
       stack.append(info)
-      frame = frame.f_back  # pytype: disable=attribute-error
+      frame = frame.f_back
     return stack
 
   def as_traceback(self) -> types.TracebackType:
@@ -219,7 +219,7 @@ class FrameStack(list[FrameInfo]):
     tb = None
     for info in self:
       tb = types.TracebackType(tb, info.frame, info.lasti, info.lineno)
-    return tb  # pytype: disable=bad-return-type
+    return tb  # pyrefly: ignore[bad-return]
 
   # We want this class to be picklable so that configs that include it can be
   # picklable, but the frames themselves are not picklable and we don't actually

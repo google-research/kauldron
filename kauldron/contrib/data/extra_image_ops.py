@@ -22,7 +22,7 @@ from typing import Optional
 import grain.tensorflow as grain
 from kauldron import kontext
 from kauldron.typing import TfFloat, TfUInt8, check_type  # pylint: disable=g-multiple-import,g-importing-member
-import tensorflow_models as tfm  # pytype: disable=import-error
+import tensorflow_models as tfm  # pyrefly: ignore[missing-import]
 
 
 # TODO(msajjadi): Deprecate in favour of the version in

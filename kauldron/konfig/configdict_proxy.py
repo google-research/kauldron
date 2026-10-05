@@ -97,10 +97,10 @@ class ConfigDictProxyObject(fake_import_utils.ProxyObject, dict):
         **kwargs,
     })
 
-  def __or__(self, other) -> fake_import_utils.ProxyUnionObject:  # pytype: disable=signature-mismatch
+  def __or__(self, other) -> fake_import_utils.ProxyUnionObject:  # pyrefly: ignore[bad-override]
     return super().__or__(other)
 
-  def __ror__(self, other) -> fake_import_utils.ProxyUnionObject:  # pytype: disable=signature-mismatch
+  def __ror__(self, other) -> fake_import_utils.ProxyUnionObject:  # pyrefly: ignore[bad-override]
     return super().__ror__(other)
 
   # Overwritte `dict` methods
@@ -299,7 +299,7 @@ def import_qualname(qualname_str: str) -> Callable[..., Any]:
     raise
   for attr in attributes.split('.'):
     obj = getattr(obj, attr)
-  return obj  # pytype: disable=bad-return-type
+  return obj  # pyrefly: ignore[bad-return]
 
 
 def _maybe_add_hint(exc: ModuleNotFoundError, import_str: str):

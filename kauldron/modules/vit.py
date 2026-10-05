@@ -123,7 +123,7 @@ class VitEncoder(nn.Module):
 
   @kt.typechecked
   @nn.compact
-  def __call__(self, image: Float['*b h w c']) -> Float['*b n d']:  # pyrefly: ignore[not-a-type]
+  def __call__(self, image: Float['*b h w c']) -> Float['*b n d']:
     # Embed the inputs into tokens of shape `*b n1 d`. Note that it's n1 instead
     # of n here, because there might be an additional cls token.
     tokens = self.embedding(image)
@@ -209,8 +209,8 @@ class Vit(nn.Module):
   @nn.compact
   def __call__(
       self,
-      image: Float['*b h w c'],  # pyrefly: ignore[not-a-type]
-  ) -> dict[str, Float['*b num_classes']]:  # pyrefly: ignore[not-a-type]
+      image: Float['*b h w c'],
+  ) -> dict[str, Float['*b num_classes']]:
     tokens = self.encoder(image)
     kt.check_type(tokens, Float['*b n feat'])
 
@@ -256,7 +256,7 @@ class VitAutoEncoder(nn.Module):
 
   @kt.typechecked
   @nn.compact
-  def __call__(self, image: Float['*b h w c']) -> dict[str, Float['*b h w c']]:  # pyrefly: ignore[not-a-type]
+  def __call__(self, image: Float['*b h w c']) -> dict[str, Float['*b h w c']]:
     tokens = self.encoder(image)
     # reshape tokens to be an image
     h, w, c = image.shape[-3:]

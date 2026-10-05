@@ -57,7 +57,7 @@ def test_state(tmp_path):
   new_state = ckpt.restore(checkpoints.items.StandardCheckpointItem(), step=1)
   # The restored structure is a dict
   assert isinstance(new_state, dict)
-  np.testing.assert_array_equal(state.x, new_state['x'])  # pytype: disable=unsupported-operands
+  np.testing.assert_array_equal(state.x, new_state['x'])
 
 
 def test_timer(tmp_path):

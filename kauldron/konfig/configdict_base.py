@@ -54,7 +54,7 @@ _ALIASES = {
 _QUALNAME_TO_DEFAULT_VALUES: dict[str, ConfigDict] = {}
 
 # Register to support `isinstance(cfg, collections.abc.Mapping)`
-MutableMapping.register(ml_collections.ConfigDict)  # pytype: disable=attribute-error
+MutableMapping.register(ml_collections.ConfigDict)  # pyrefly: ignore[missing-attribute]
 
 
 class ConfigDict(ml_collections.ConfigDict):
@@ -68,7 +68,7 @@ class ConfigDict(ml_collections.ConfigDict):
       _normalized: bool = False,
   ) -> None:
     init_dict = dict(init_dict or {})
-    init_dict = _maybe_update_init_dict(init_dict)  # pytype: disable=name-error
+    init_dict = _maybe_update_init_dict(init_dict)  # pyrefly: ignore[bad-assignment]
 
     # Capture the frame stack (to trace back where the ConfigDict is created)
     object.__setattr__(self, '_frame', utils.FrameStack.from_current())
@@ -77,7 +77,7 @@ class ConfigDict(ml_collections.ConfigDict):
     # to have a global cache for all shared values (so shared fields are
     # correctly handled).
     if not _normalized:
-      init_dict = _normalize_config_only_value(init_dict, '', id_to_dict={})  # pytype: disable=name-error
+      init_dict = _normalize_config_only_value(init_dict, '', id_to_dict={})
     super().__init__(
         initial_dictionary=init_dict,  # pyrefly: ignore[bad-argument-type]
         type_safe=True,
@@ -124,7 +124,7 @@ class ConfigDict(ml_collections.ConfigDict):
   __str__ = __repr__
 
   def _repr_html_(self) -> str:
-    from etils import ecolab  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+    from etils import ecolab  # pylint: disable=g-import-not-at-top  # pyrefly: ignore[missing-module-attribute]
 
     return ecolab.highlight_html(repr(self))
 
@@ -148,7 +148,7 @@ class ConfigDict(ml_collections.ConfigDict):
       key = '.'.join(key)
     return key
 
-  def to_json(self, **dumps_kwargs) -> str:  # pytype: disable=signature-mismatch
+  def to_json(self, **dumps_kwargs) -> str:  # pyrefly: ignore[bad-override]
     return json.dumps(utils.to_json(self), **dumps_kwargs)
 
   @property
@@ -170,7 +170,7 @@ class ConfigDict(ml_collections.ConfigDict):
     Raises:
       RuntimeError: When used outside of a `konfig.ConfigDict` context.
     """
-    return super().ref  # pytype: disable=attribute-error
+    return super().ref
 
 
 def _maybe_update_init_dict(init_dict: Mapping[str, Any]) -> Mapping[str, Any]:
@@ -204,7 +204,7 @@ class _Visitor(Generic[_T]):
   @classmethod
   def match(cls, obj: Any) -> bool:
     """Returns True if the object should be processed by the visitor."""
-    return isinstance(obj, cls.CLS)  # pyrefly: ignore[missing-attribute]
+    return isinstance(obj, cls.CLS)
 
   def watch(self, obj: _T) -> Any:
     """Track whether the object was already visited or not."""
@@ -259,7 +259,7 @@ class _DictVisitor(_Visitor):
   def _repr_const(self, obj: ml_collections.ConfigDict) -> str:
     return _normalize_qualname(obj[configdict_proxy.CONST_KEY])
 
-  def _repr_qualname(self, obj: ml_collections.ConfigDict) -> str:  # pytype: disable=signature-mismatch
+  def _repr_qualname(self, obj: ml_collections.ConfigDict) -> str:
     """Repr qualname/ConfigDict."""
     fields = self._recurse(obj)
 
@@ -400,7 +400,7 @@ class _VisitedTracker:
       self.pyid_to_id[pyid] = utils.CachedObj(ref=obj, value=None)
       return False
     elif self.pyid_to_id[pyid].value is None:  # Already visited, set a new id
-      self.pyid_to_id[pyid].value = next(self.count)  # pytype: disable=container-type-mismatch
+      self.pyid_to_id[pyid].value = next(self.count)
       return True
     else:  # Already visited and id set, do nothing
       return True
@@ -413,10 +413,10 @@ class _VisitedTracker:
     # Object has duplicate
     id_ = cached.value
     if id_ in self.pyid_was_repr:
-      return id_, True  # Object was already repr  # pytype: disable=bad-return-type
+      return id_, True  # Object was already repr
     else:
-      self.pyid_was_repr.add(id_)  # pytype: disable=container-type-mismatch
-      return id_, False  # Object never repr  # pytype: disable=bad-return-type
+      self.pyid_was_repr.add(id_)  # pyrefly: ignore[bad-argument-type]
+      return id_, False  # Object never repr  # pyrefly: ignore[bad-return]
 
 
 def _normalize_qualname(name: str) -> str:

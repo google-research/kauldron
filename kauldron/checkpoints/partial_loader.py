@@ -170,7 +170,7 @@ class PartialKauldronLoader(epy.ContextManager, InitTransform):
   """
 
   workdir: epath.PathLike
-  new_to_old: _StrDict = dataclasses.field(  # pyrefly: ignore[bad-assignment]
+  new_to_old: _StrDict = dataclasses.field(
       default_factory=lambda: FrozenDict({
           'params': 'params',
           'collections': 'collections',
