@@ -48,7 +48,7 @@ class SweepFromCfg(sweep_utils.SweepInfo):
   """
   # Module from which to extract the sweep functions, automatically set inside
   # `replace_with_job_provider`
-  _module: types.ModuleType = dataclasses.field(  # pytype: disable=annotation-type-mismatch
+  _module: types.ModuleType = dataclasses.field(  # pyrefly: ignore[bad-assignment]
       default=None,
       repr=False,
   )

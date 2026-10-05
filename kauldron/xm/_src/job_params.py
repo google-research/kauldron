@@ -25,11 +25,11 @@ from kauldron.xm._src import merge_utils
 from typing_extensions import Self
 
 with epy.lazy_imports():
-  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
-  from xmanager import resource_selector as rs
-  from xmanager import xm
-  from xmanager import xm_abc  # Open-source would use xm_local
-  # pylint: enable=g-import-not-at-top  # pytype: enable=import-error
+  # pylint: disable=g-import-not-at-top
+  from xmanager import resource_selector as rs  # pyrefly: ignore[missing-import]
+  from xmanager import xm  # pyrefly: ignore[missing-import]
+  from xmanager import xm_abc  # Open-source would use xm_local  # pyrefly: ignore[missing-import]
+  # pylint: enable=g-import-not-at-top
 
 
 @merge_utils.add_merge_support
@@ -200,7 +200,7 @@ class JobParams:
     )
 
   def replace(self, **kwargs) -> Self:
-    final_kwargs = self._kxm_init_kwargs  # pytype: disable=attribute-error
+    final_kwargs = self._kxm_init_kwargs  # pyrefly: ignore[missing-attribute]
     final_kwargs.update(kwargs)
     final_kwargs = {  # Filter `dataclasses.MISSING` attributes
         k: v for k, v in final_kwargs.items() if v is not dataclasses.MISSING

@@ -45,10 +45,10 @@ def maybe_log_colab() -> Iterator[None]:
   if not epy.is_notebook():
     yield
   else:
-    # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
-    from etils import ecolab  # pylint: disable=g-import-not-at-top
-    from colabtools import googlelog  # pylint: disable=g-import-not-at-top
-    # pylint: enable=g-import-not-at-top  # pytype: enable=import-error
+    # pylint: disable=g-import-not-at-top
+    from etils import ecolab  # pylint: disable=g-import-not-at-top  # pyrefly: ignore[missing-module-attribute]
+    from colabtools import googlelog  # pylint: disable=g-import-not-at-top  # pyrefly: ignore[missing-import]
+    # pylint: enable=g-import-not-at-top
 
     with ecolab.collapse('Build output'):
       with googlelog.Capture():

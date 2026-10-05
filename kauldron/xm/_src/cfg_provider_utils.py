@@ -126,7 +126,7 @@ class ConfigProvider(ConfigProviderBase):
     # filepath.
     # We cannot simply use a DEFINE_string flag instead, because we also need
     # the evaluated config with CLI config overrides. Thus the hack below:
-    config_path = flagvalues[flag.name].config_filename  # pytype: disable=attribute-error
+    config_path = flagvalues[flag.name].config_filename  # pyrefly: ignore[missing-attribute]
     # DEFINE_config_file supports additional arguments to be appended like this
     # config.py:args
     # We need to remove them to get the actual config path.

@@ -51,7 +51,7 @@ class SweepInfo(abc.ABC):
 
   # Automatically set in `Experiment.__post_init__`
   # `_sweep_value` contains the value passed to `--xp.sweep=`
-  _sweep_value: bool | str | list[str] = dataclasses.field(  # pytype: disable=annotation-type-mismatch
+  _sweep_value: bool | str | list[str] = dataclasses.field(  # pyrefly: ignore[bad-assignment]
       default=None,
       repr=False,
   )
@@ -62,7 +62,7 @@ class SweepInfo(abc.ABC):
     raise NotImplementedError("Abstract method")
 
   def __len__(self) -> int:
-    it = iter(self)  # pytype: disable=wrong-arg-types
+    it = iter(self)  # pyrefly: ignore[no-matching-overload]
     return len(list(it))  # Could be cached, but likely don't matter
 
   @functools.cached_property
@@ -90,10 +90,8 @@ class NoSweep(SweepInfo):
     return []
 
 
-# pytype: disable=invalid-function-definition
 @dataclasses.dataclass(frozen=True)
 class SimpleSweep(SweepInfo):
-  # pytype: enable=invalid-function-definition
   """Simple sweep (e.g. on Colab).
 
   Usage:

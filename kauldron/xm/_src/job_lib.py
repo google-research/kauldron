@@ -131,7 +131,7 @@ class Job(job_params.JobParams):
     if isinstance(mpm, job_params.MLPython):
       mpm = mpm.get_mpm(accelerator=self.requirements.accelerator)
 
-    return xm_abc.interpreter(  # pyrefly: ignore[bad-argument-type]
+    return xm_abc.interpreter(
         script_path=script_path,
         interpreter_mpm=mpm,
         dependencies=self.dependencies,
@@ -162,7 +162,7 @@ class Job(job_params.JobParams):
     )
     return rs.Job(
         constraints=constraints,
-        requirements=job_requirements,  # pyrefly: ignore[bad-argument-type]
+        requirements=job_requirements,
     )
 
   def make_xm_job(

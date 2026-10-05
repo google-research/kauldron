@@ -49,7 +49,7 @@ from kauldron.xm._src import sweep_utils
 from xmanager import xm
 
 if typing.TYPE_CHECKING:
-  from kauldron import kd  # pylint: disable=g-bad-import-order  # pytype: disable=import-error
+  from kauldron import kd  # pylint: disable=g-bad-import-order  # pyrefly: ignore[missing-module-attribute]
 
 _Json = epy.typing.Json
 
@@ -127,7 +127,7 @@ class KauldronJobs(jobs_info.JobsProvider):
 
   @functools.cached_property
   def base_job(self) -> job_lib.Job:
-    return job_lib.Job(  # pytype: disable=wrong-keyword-args
+    return job_lib.Job(
         target=self.project_info.target,
         interpreter_info=job_params.InterpreterInfo(
             # We need to explicitly set the script path because the `:trainer`
@@ -203,8 +203,8 @@ class KauldronJobs(jobs_info.JobsProvider):
     # import path.
     # TODO(epot): Should add another registration mechanism to automatically
     # rewrite the imports.
-    if run.__qualname__.startswith("kauldron.kd:evals."):  # pytype: disable=attribute-error
-      _, _, end = run.__qualname__.rpartition(".")  # pytype: disable=attribute-error
+    if run.__qualname__.startswith("kauldron.kd:evals."):
+      _, _, end = run.__qualname__.rpartition(".")
       run.__qualname__ = f"kauldron.evals.run_strategies:{end}"
     run = konfig.resolve(run)
     # Resolve the XM parameters of the `Standalone` jobs. Those had to be

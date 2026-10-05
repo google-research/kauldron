@@ -38,7 +38,7 @@ class JobsProvider:
       from `kxm.Experiment`.
   """
 
-  cfg_provider: cfg_provider_utils.ConfigProvider = dataclasses.field(  # pytype: disable=annotation-type-mismatch
+  cfg_provider: cfg_provider_utils.ConfigProvider = dataclasses.field(  # pyrefly: ignore[bad-assignment]
       default=None, repr=False
   )
 

@@ -49,7 +49,7 @@ def mock_xm():
       mock.patch.object(
           xm_abc,
           'get_current_work_unit',
-          lambda: xm_xp._create_experiment_unit({}).result(),  # pytype: disable=attribute-error  # pylint: disable=attribute-error,protected-access
+          lambda: xm_xp._create_experiment_unit({}).result(),  # pylint: disable=attribute-error,protected-access  # pyrefly: ignore[missing-attribute]
       ),
       mock.patch.object(
           rs,
