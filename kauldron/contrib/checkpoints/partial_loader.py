@@ -21,7 +21,7 @@ import dataclasses
 import typing
 from typing import TypeVar
 
-from clu import checkpoint as clu_checkpoint  # pytype: disable=import-error
+from clu import checkpoint as clu_checkpoint  # pyrefly: ignore[missing-module-attribute]
 from etils import epath
 import flax
 import jax
@@ -67,7 +67,7 @@ class PartialCLULoader(partial_loader.InitTransform):
   """
 
   ckpt_dir: epath.PathLike
-  new_to_old: MutableMapping[str, str] = dataclasses.field(  # pyrefly: ignore[bad-assignment]
+  new_to_old: MutableMapping[str, str] = dataclasses.field(
       default_factory=lambda: FrozenDict({
           'params': 'params',
           'collections': 'collections',

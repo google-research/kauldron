@@ -124,8 +124,8 @@ def main(args: Args) -> None:
   # Get relevant info from commandline arguments
   patcher: patch_config.PatchConfig = args.patch
   cfg = _CONFIG.value
-  filename = FLAGS["cfg"].config_filename  # pytype: disable=attribute-error
-  overrides = FLAGS["cfg"].override_values  # pytype: disable=attribute-error
+  filename = FLAGS["cfg"].config_filename  # pyrefly: ignore[missing-attribute]
+  overrides = FLAGS["cfg"].override_values  # pyrefly: ignore[missing-attribute]
 
   # Workdir management
   with tempfile.TemporaryDirectory(prefix="kauldron_") as workdir:

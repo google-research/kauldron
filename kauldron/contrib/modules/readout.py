@@ -26,7 +26,7 @@ from kauldron.typing import typechecked  # pylint: disable=g-multiple-import,g-i
 
 
 @dataclasses.dataclass(kw_only=True)
-class ReadoutWrapper(nn.Module, kw_only=True):  # pytype: disable=invalid-function-definition
+class ReadoutWrapper(nn.Module, kw_only=True):
   """Wrapper for adding readout heads to a model.
 
   This model adds arbitrary readout heads to a given model. It is intended to be

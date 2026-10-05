@@ -31,7 +31,7 @@ with epy.lazy_imports(
         "seqio requires adding `//third_party/py/seqio` to your trainer."
     )
 ):
-  import seqio  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+  import seqio  # pylint: disable=g-import-not-at-top  # pyrefly: ignore[missing-import]
 
 
 def _get_seqio_task_dataset(

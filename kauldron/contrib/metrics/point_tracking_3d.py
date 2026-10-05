@@ -36,7 +36,6 @@ from kauldron import metrics
 from kauldron.contrib.metrics import point_tracking
 from kauldron.typing import Bool, Dim, Float, Int, Shape, set_shape, typechecked  # pylint: disable=g-multiple-import,g-importing-member
 
-# pytype: disable=attribute-error
 
 PIXEL_TO_FIXED_METRIC_THRESH = {
     1: 0.01,
@@ -84,12 +83,12 @@ def gather_points_jax(tensor: Float["B T H W C"], indices: Int["B K 2"]):
   # Create batch indices.
   batch_indices = jnp.arange(Dim("B"))
   batch_indices = batch_indices[:, None, None]
-  batch_indices = jnp.broadcast_to(batch_indices, Shape("B T K"))
+  batch_indices = jnp.broadcast_to(batch_indices, Shape("B T K"))  # pyrefly: ignore[bad-argument-type]
 
   # Create time indices
   time_indices = jnp.arange(Dim("T"))
   time_indices = time_indices[None, :, None]
-  time_indices = jnp.broadcast_to(time_indices, Shape("B T K"))
+  time_indices = jnp.broadcast_to(time_indices, Shape("B T K"))  # pyrefly: ignore[bad-argument-type]
   # Stack indices to gather
   indices = jnp.stack(
       [batch_indices, time_indices, y_indices, x_indices], axis=-1
@@ -186,7 +185,7 @@ class Tap3DPositionAccuracy(metrics.Metric):
   use_normalized_coordinates: bool = False
 
   @flax.struct.dataclass
-  class State(metrics.AverageState):
+  class State(metrics.AverageState):  # pyrefly: ignore[bad-override]
     pass
 
   @typechecked
@@ -252,26 +251,26 @@ class Tap3DPositionAccuracy(metrics.Metric):
     gt_visible = gt_visible.squeeze(-1).astype(bool)
 
     if self.axis_order == "BTQC":
-      set_shape("T Q", Shape("M N"))
-      query_frame = jnp.zeros(Shape("*B Q"))
+      set_shape("T Q", Shape("M N"))  # pyrefly: ignore[bad-argument-type]
+      query_frame = jnp.zeros(Shape("*B Q"))  # pyrefly: ignore[bad-argument-type]
       pred_tracks = einops.rearrange(pred_tracks, "... T Q C -> ... Q T C")
       pred_visible = einops.rearrange(pred_visible, "... T Q -> ... Q T")
       gt_tracks = einops.rearrange(gt_tracks, "... T Q C -> ... Q T C")
       gt_visible = einops.rearrange(gt_visible, "... T Q -> ... Q T")
       if evaluation_mask is None:
         evaluation_frames = point_tracking.get_evaluation_frames(
-            query_frame, Shape("T")[0], self.query_mode
+            query_frame, Shape("T")[0], self.query_mode  # pyrefly: ignore[bad-argument-type]
         )
       else:
         evaluation_frames = einops.rearrange(
             evaluation_mask.astype(bool), "... T Q -> ... Q T"
         )
     else:
-      set_shape("Q T", Shape("M N"))
-      query_frame = jnp.zeros(Shape("*B Q"))
+      set_shape("Q T", Shape("M N"))  # pyrefly: ignore[bad-argument-type]
+      query_frame = jnp.zeros(Shape("*B Q"))  # pyrefly: ignore[bad-argument-type]
       if evaluation_mask is None:
         evaluation_frames = point_tracking.get_evaluation_frames(
-            query_frame, Shape("T")[0], self.query_mode
+            query_frame, Shape("T")[0], self.query_mode  # pyrefly: ignore[bad-argument-type]
         )
       else:
         evaluation_frames = evaluation_mask.astype(bool)
@@ -283,7 +282,7 @@ class Tap3DPositionAccuracy(metrics.Metric):
       else:
         tracks_2d = pred_tracks_2d
 
-      if offline_depth_predictions.ndim == 5:
+      if offline_depth_predictions.ndim == 5:  # pyrefly: ignore[missing-attribute]
         # Dense depth map are provided as [..., T, H, W, 1]. We need to gather
         # the depth values at the corresponding pixel locations for each track.
         depth = einops.rearrange(
@@ -295,7 +294,7 @@ class Tap3DPositionAccuracy(metrics.Metric):
             self.use_normalized_coordinates,
         )
         sparse_depth = einops.rearrange(
-            sparse_depth, "(B T) 1 Q C -> B T Q C", B=tracks_2d.shape[0]
+            sparse_depth, "(B T) 1 Q C -> B T Q C", B=tracks_2d.shape[0]  # pyrefly: ignore[missing-attribute]
         )
       else:
         # Depth is already sparse.
@@ -304,10 +303,10 @@ class Tap3DPositionAccuracy(metrics.Metric):
               offline_depth_predictions, "... Q T C -> ... T Q C"
           )
         sparse_depth = offline_depth_predictions
-      sparse_depth = sparse_depth.squeeze(-1)
+      sparse_depth = sparse_depth.squeeze(-1)  # pyrefly: ignore[missing-attribute]
 
       pred_tracks = image_to_camera_3d(
-          tracks_2d[..., 0:2], sparse_depth, intrinsics
+          tracks_2d[..., 0:2], sparse_depth, intrinsics  # pyrefly: ignore[unsupported-operation]
       )
       pred_tracks = einops.rearrange(pred_tracks, "... T Q C -> ... Q T C")
 
@@ -338,7 +337,7 @@ class Tap3DPositionAccuracy(metrics.Metric):
     for thresh in self.thresholds:
 
       if self.use_fixed_metric_threshold:
-        pointwise_thresh = PIXEL_TO_FIXED_METRIC_THRESH[thresh]
+        pointwise_thresh = PIXEL_TO_FIXED_METRIC_THRESH[thresh]  # pyrefly: ignore[bad-index]
       else:
         multiplier = get_pointwise_threshold_multiplier(
             gt_tracks, unnormalized_intrinsics
@@ -368,7 +367,7 @@ class Tap3DPositionAccuracy(metrics.Metric):
     if evaluation_mask is not None:
       batch_mask = jnp.any(evaluation_mask.astype(bool), axis=(-2, -1))
 
-    return self.State.from_values(values=values, mask=batch_mask)
+    return self.State.from_values(values=values, mask=batch_mask)  # pyrefly: ignore[bad-return]
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True, eq=True)
@@ -396,7 +395,7 @@ class Tap3DAverageJaccard(metrics.Metric):
   use_normalized_coordinates: bool = False
 
   @flax.struct.dataclass
-  class State(metrics.AverageState):
+  class State(metrics.AverageState):  # pyrefly: ignore[bad-override]
     pass
 
   @typechecked
@@ -464,26 +463,26 @@ class Tap3DAverageJaccard(metrics.Metric):
     gt_visible = gt_visible.squeeze(-1).astype(bool)
 
     if self.axis_order == "BTQC":
-      set_shape("T Q", Shape("M N"))
-      query_frame = jnp.zeros(Shape("*B Q"))
+      set_shape("T Q", Shape("M N"))  # pyrefly: ignore[bad-argument-type]
+      query_frame = jnp.zeros(Shape("*B Q"))  # pyrefly: ignore[bad-argument-type]
       pred_tracks = einops.rearrange(pred_tracks, "... T Q C -> ... Q T C")
       pred_visible = einops.rearrange(pred_visible, "... T Q -> ... Q T")
       gt_tracks = einops.rearrange(gt_tracks, "... T Q C -> ... Q T C")
       gt_visible = einops.rearrange(gt_visible, "... T Q -> ... Q T")
       if evaluation_mask is None:
         evaluation_frames = point_tracking.get_evaluation_frames(
-            query_frame, Shape("T")[0], self.query_mode
+            query_frame, Shape("T")[0], self.query_mode  # pyrefly: ignore[bad-argument-type]
         )
       else:
         evaluation_frames = einops.rearrange(
             evaluation_mask.astype(bool), "... T Q -> ... Q T"
         )
     else:
-      set_shape("Q T", Shape("M N"))
-      query_frame = jnp.zeros(Shape("*B Q"))
+      set_shape("Q T", Shape("M N"))  # pyrefly: ignore[bad-argument-type]
+      query_frame = jnp.zeros(Shape("*B Q"))  # pyrefly: ignore[bad-argument-type]
       if evaluation_mask is None:
         evaluation_frames = point_tracking.get_evaluation_frames(
-            query_frame, Shape("T")[0], self.query_mode
+            query_frame, Shape("T")[0], self.query_mode  # pyrefly: ignore[bad-argument-type]
         )
       else:
         evaluation_frames = evaluation_mask.astype(bool)
@@ -495,7 +494,7 @@ class Tap3DAverageJaccard(metrics.Metric):
       else:
         tracks_2d = pred_tracks_2d
 
-      if offline_depth_predictions.ndim == 5:
+      if offline_depth_predictions.ndim == 5:  # pyrefly: ignore[missing-attribute]
         # Dense depth map are provided as [..., T, H, W, 1]. We need to gather
         # the depth values at the corresponding pixel locations for each track.
         depth = einops.rearrange(
@@ -507,7 +506,7 @@ class Tap3DAverageJaccard(metrics.Metric):
             self.use_normalized_coordinates,
         )
         sparse_depth = einops.rearrange(
-            sparse_depth, "(B T) 1 Q C -> B T Q C", B=tracks_2d.shape[0]
+            sparse_depth, "(B T) 1 Q C -> B T Q C", B=tracks_2d.shape[0]  # pyrefly: ignore[missing-attribute]
         )
       else:
         # Depth is already sparse.
@@ -516,10 +515,10 @@ class Tap3DAverageJaccard(metrics.Metric):
               offline_depth_predictions, "... Q T C -> ... T Q C"
           )
         sparse_depth = offline_depth_predictions
-      sparse_depth = sparse_depth.squeeze(-1)
+      sparse_depth = sparse_depth.squeeze(-1)  # pyrefly: ignore[missing-attribute]
 
       pred_tracks = image_to_camera_3d(
-          tracks_2d[..., 0:2], sparse_depth, intrinsics
+          tracks_2d[..., 0:2], sparse_depth, intrinsics  # pyrefly: ignore[unsupported-operation]
       )
       pred_tracks = einops.rearrange(pred_tracks, "... T Q C -> ... Q T C")
 
@@ -550,7 +549,7 @@ class Tap3DAverageJaccard(metrics.Metric):
     for thresh in self.thresholds:
 
       if self.use_fixed_metric_threshold:
-        pointwise_thresh = PIXEL_TO_FIXED_METRIC_THRESH[thresh]
+        pointwise_thresh = PIXEL_TO_FIXED_METRIC_THRESH[thresh]  # pyrefly: ignore[bad-index]
       else:
         multiplier = get_pointwise_threshold_multiplier(
             gt_tracks, unnormalized_intrinsics
@@ -593,4 +592,4 @@ class Tap3DAverageJaccard(metrics.Metric):
     if evaluation_mask is not None:
       batch_mask = jnp.any(evaluation_mask.astype(bool), axis=(-2, -1))
 
-    return self.State.from_values(values=values, mask=batch_mask)
+    return self.State.from_values(values=values, mask=batch_mask)  # pyrefly: ignore[bad-return]

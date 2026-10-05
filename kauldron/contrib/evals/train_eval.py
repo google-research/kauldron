@@ -170,7 +170,7 @@ class TrainEvaluator(kd.evals.EvaluatorBase):
     # Avoid problems with workdir=None
     # Should NOT be used!
     readout_cfg.workdir = os.fspath(
-        self.base_cfg.workdir / f"train_evals.{self.name}"  # pytype: disable=unsupported-operands
+        self.base_cfg.workdir / f"train_evals.{self.name}"
     )
 
     # TODO(epot): Supports metrics. Everytime `.evaluate` is run, metrics
@@ -408,7 +408,7 @@ class TrainEvaluator(kd.evals.EvaluatorBase):
   @functools.cached_property
   def _steps_path(self) -> epath.Path:
     """File containing the list of steps."""
-    return self.base_cfg.workdir / f"train_eval-{self.name}-steps.txt"  # pytype: disable=unsupported-operands
+    return self.base_cfg.workdir / f"train_eval-{self.name}-steps.txt"
 
 
 # TrainEvaluator has custom `cfg` objects:

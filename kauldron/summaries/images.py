@@ -68,7 +68,7 @@ class ShowImages(metrics.Metric):
     )
 
     @typechecked
-    def compute(self) -> Float["n h w #3"]:  # pyrefly: ignore[not-a-type]
+    def compute(self) -> Float["n h w #3"]:
       images = self.images
 
       # If cmap is set, apply the colormap.
@@ -155,15 +155,15 @@ class ShowBoxes(metrics.Metric):
   class State(metrics.AutoState["ShowBoxes"]):  # pyrefly: ignore[bad-override]
     """Collects the first num_images images and boxes."""
 
-    images: Float["n h w #3"] = metrics.truncate_field(  # pyrefly: ignore[not-a-type]
+    images: Float["n h w #3"] = metrics.truncate_field(
         num_field="parent.num_images"
     )
-    boxes: Float["n k 4"] = metrics.truncate_field(  # pyrefly: ignore[not-a-type]
+    boxes: Float["n k 4"] = metrics.truncate_field(
         num_field="parent.num_images"
     )
 
     @typechecked
-    def compute(self) -> Float["n h w #3"]:  # pyrefly: ignore[not-a-type]
+    def compute(self) -> Float["n h w #3"]:
       images, boxes = self.images, self.boxes
 
       # flatten batch dimensions
@@ -190,8 +190,8 @@ class ShowBoxes(metrics.Metric):
   @typechecked
   def get_state(  # pyrefly: ignore[bad-override]
       self,
-      images: Float["..."],  # pyrefly: ignore[bad-index, not-a-type]
-      boxes: Float["*b k 4"],  # pyrefly: ignore[not-a-type]
+      images: Float["..."],  # pyrefly: ignore[bad-index]
+      boxes: Float["*b k 4"],
       boxes_mask: Bool["*b k 1"] | None = None,
   ) -> ShowBoxes.State:
     if boxes_mask is not None:
@@ -233,7 +233,7 @@ class ShowSegmentations(metrics.Metric):
   num_images: int = 5
   entropy: bool = False
   hard: bool = False
-  palette: Optional[Float["K 3"]] = None  # pyrefly: ignore[not-a-type]
+  palette: Optional[Float["K 3"]] = None
 
   rearrange: Optional[str] = None
   rearrange_kwargs: Mapping[str, Any] | None = None
@@ -251,7 +251,7 @@ class ShowSegmentations(metrics.Metric):
     )
 
     @typechecked
-    def compute(self) -> Float["n h w #3"]:  # pyrefly: ignore[not-a-type]
+    def compute(self) -> Float["n h w #3"]:
       palette = np.asarray(self.parent.palette) if self.parent.palette else None
       segmentation_images = segplot.plot_segmentation(
           self.segmentations,
@@ -308,12 +308,12 @@ class ShowDifferenceImages(metrics.Metric):
   class State(metrics.AutoState["ShowDifferenceImages"]):  # pyrefly: ignore[bad-override]
     """Collects the first num_images images."""
 
-    diff_images: Float["n h w 1"] = metrics.truncate_field(  # pyrefly: ignore[not-a-type]
+    diff_images: Float["n h w 1"] = metrics.truncate_field(
         num_field="parent.num_images"
     )
 
     @typechecked
-    def compute(self) -> Float["n h w #3"]:  # pyrefly: ignore[not-a-type]
+    def compute(self) -> Float["n h w #3"]:
 
       # Use the vrange bounds for the colormapping if available.
       if self.parent.vrange is not None:
@@ -337,8 +337,8 @@ class ShowDifferenceImages(metrics.Metric):
   @typechecked
   def get_state(  # pyrefly: ignore[bad-override]
       self,
-      images1: Float["..."],  # pyrefly: ignore[bad-index, not-a-type]
-      images2: Float["..."],  # pyrefly: ignore[bad-index, not-a-type]
+      images1: Float["..."],  # pyrefly: ignore[bad-index]
+      images2: Float["..."],  # pyrefly: ignore[bad-index]
   ) -> ShowDifferenceImages.State:
     # maybe rearrange and then check shape
     images1 = _maybe_rearrange(images1, self.rearrange, self.rearrange_kwargs)

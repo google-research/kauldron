@@ -30,7 +30,7 @@ from kauldron.ktyping import Array  # pylint: disable=g-multiple-import,g-import
 class Histogram:
   """Output type for histogram summaries."""
 
-  tensor: Array["n"]  # pyrefly: ignore[not-a-type, unknown-name]
+  tensor: Array["n"]  # pyrefly: ignore[unknown-name]
   num_buckets: int
 
 
@@ -45,7 +45,7 @@ class HistogramSummary(metrics.Metric):
   class State(metrics.AutoState["HistogramSummary"]):  # pyrefly: ignore[bad-override]
     """Collecting state that returns Histograms."""
 
-    tensor: Array["n"] = metrics.concat_field()  # pyrefly: ignore[not-a-type, unknown-name]
+    tensor: Array["n"] = metrics.concat_field()  # pyrefly: ignore[unknown-name]
 
     @kt.typechecked
     def compute(self) -> Histogram:  # pyrefly: ignore[bad-override]
@@ -62,5 +62,5 @@ class HistogramSummary(metrics.Metric):
       )
 
   @kt.typechecked
-  def get_state(self, tensor: Array["*any"]) -> HistogramSummary.State:  # pyrefly: ignore[bad-override, not-a-type]
+  def get_state(self, tensor: Array["*any"]) -> HistogramSummary.State:  # pyrefly: ignore[bad-override]
     return self.State(tensor=tensor.reshape((-1,)))

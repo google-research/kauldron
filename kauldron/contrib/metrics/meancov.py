@@ -119,7 +119,7 @@ class MeanCov(kd.metrics.State):
     )
     return cls(total=total, squares=squares, weight=weight, ddof=ddof)
 
-  def merge(self, other: Self) -> Self:  # pytype: disable=signature-mismatch
+  def merge(self, other: Self) -> Self:
     if self.weight is None:
       return other
     elif other.weight is None:

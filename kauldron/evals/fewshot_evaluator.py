@@ -162,7 +162,7 @@ class FewShotEvaluator(evaluators.EvaluatorBase):
       state: train_step.TrainState,
       ds: data.IterableDataset,
       split: str,
-  ) -> tuple[dict[str, Array['...']], Array['...']]:  # pyrefly: ignore[bad-index, not-a-type]
+  ) -> tuple[dict[str, Array['...']], Array['...']]:  # pyrefly: ignore[bad-index]
     merged_aux = None
     for eval_step, batch in utils.enum_iter(
         ds.device_put(self.base_cfg.sharding.batch),
@@ -227,16 +227,16 @@ class ComputeFeaturesMetric(base.Metric):
 
   @flax.struct.dataclass
   class State(metrics.AutoState):  # pyrefly: ignore[bad-override]
-    features: Array['...'] = metrics.concat_field()  # pyrefly: ignore[bad-index, not-a-type]
+    features: Array['...'] = metrics.concat_field()  # pyrefly: ignore[bad-index]
 
     @typechecked
-    def compute(self) -> Array['...']:  # pyrefly: ignore[bad-index, not-a-type]
+    def compute(self) -> Array['...']:  # pyrefly: ignore[bad-index]
       return np.array(self.features)
 
   @typechecked
   def get_state(  # pyrefly: ignore[bad-override]
       self,
-      features: Array['...'],  # pyrefly: ignore[bad-index, not-a-type]
+      features: Array['...'],  # pyrefly: ignore[bad-index]
   ) -> ComputeFeaturesMetric.State:
     # simply collect the given values
     return self.State(features=features)
@@ -245,23 +245,23 @@ class ComputeFeaturesMetric(base.Metric):
 BIAS_CONSTANT = 100.0
 
 
-def to_cpu(x: Array['any*']) -> Array['any*']:  # pyrefly: ignore[not-a-type]
+def to_cpu(x: Array['any*']) -> Array['any*']:
   return jax.device_put(x, jax.local_devices(backend='cpu')[0])
 
 
 @typechecked
 def run_fewshot(
-    x_train_all: Float['n_tr d'],  # pyrefly: ignore[not-a-type]
-    y_train_all: Int['n_tr'],  # pyrefly: ignore[not-a-type, unknown-name]
-    x_val: Float['n_v d'],  # pyrefly: ignore[not-a-type]
-    y_val: Int['n_v'],  # pyrefly: ignore[not-a-type, unknown-name]
-    x_test: Float['n_t d'],  # pyrefly: ignore[not-a-type]
-    y_test: Int['n_t'],  # pyrefly: ignore[not-a-type, unknown-name]
+    x_train_all: Float['n_tr d'],
+    y_train_all: Int['n_tr'],  # pyrefly: ignore[unknown-name]
+    x_val: Float['n_v d'],
+    y_val: Int['n_v'],  # pyrefly: ignore[unknown-name]
+    x_test: Float['n_t d'],
+    y_test: Int['n_t'],  # pyrefly: ignore[unknown-name]
     num_classes: int,
     all_shots: tuple[int, ...],
     l2_regs: tuple[float, ...],
     seed: int = 17,
-) -> tuple[Float['shots regs'], Float['shots regs']]:  # pyrefly: ignore[not-a-type]
+) -> tuple[Float['shots regs'], Float['shots regs']]:
   """Run few-shot evaluation."""
   rng = np.random.default_rng(seed)
 
@@ -304,8 +304,8 @@ def run_fewshot(
 @functools.partial(jax.jit, backend='cpu', static_argnums=(2,))
 @typechecked
 def _precompute_cache(
-    x: Float['n d'],  # pyrefly: ignore[not-a-type]
-    y: Int['n'],  # pyrefly: ignore[not-a-type, unknown-name]
+    x: Float['n d'],
+    y: Int['n'],  # pyrefly: ignore[unknown-name]
     num_classes: int,
 ) -> _FewShotCache:
   """Cache quantities to speed-up the computation of L2-regularized least-sq."""
@@ -356,16 +356,16 @@ class _FewShotCache:
   eigs: Float['d'] | Float['n']  # pyrefly: ignore[unknown-name]
   rhs: Float['d d'] | Float['n n']
   lhs: Float['n n'] | Float['d d']
-  mean: Float['1 d']  # pyrefly: ignore[not-a-type]
-  std: Float['1 d']  # pyrefly: ignore[not-a-type]
+  mean: Float['1 d']
+  std: Float['1 d']
 
 
 @functools.partial(jax.jit, backend='cpu')
 @typechecked
 def _eig_fewshot_acc_fn(
     cache: _FewShotCache,
-    x_test: Float['m d'],  # pyrefly: ignore[not-a-type]
-    y_test: Int['m'],  # pyrefly: ignore[not-a-type, unknown-name]
+    x_test: Float['m d'],
+    y_test: Int['m'],  # pyrefly: ignore[unknown-name]
     l2_reg: Scalar,  # pyrefly: ignore[not-a-type]
 ) -> Scalar:  # pyrefly: ignore[not-a-type]
   """Computes (x,y) linear regression accuracy on (x_test, y_test)."""

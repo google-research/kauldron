@@ -27,7 +27,7 @@ def test_eval_impl(tmp_path: epath.Path):
   cfg = mnist_autoencoder.get_config()
 
   cfg.train_ds.batch_size = 1
-  cfg.evals.eval.ds.batch_size = 1  # pytype: disable=attribute-error
+  cfg.evals.eval.ds.batch_size = 1
   cfg.model.encoder.features = 3
   cfg.num_train_steps = 1
   cfg.workdir = os.fspath(tmp_path)

@@ -27,7 +27,7 @@ from kauldron import kd
 from kauldron import kontext
 from kauldron.metrics import base_state
 from kauldron.typing import Bool, Float, typechecked  # pylint: disable=g-multiple-import,g-importing-member
-import visu3d as v3d  # pytype: disable=import-error
+import visu3d as v3d  # pyrefly: ignore[missing-import]
 
 
 def quaternion_to_rotation_matrix(quat: Float["*B 4"]) -> Float["*B 3 3"]:

@@ -83,11 +83,11 @@ class KdNnxModule(*bases):  # pyrefly: ignore[invalid-inheritance]
         self, nnx.Param, nnx.Any(nnx.RngCount, nnx.RngKey), ...
     )
     return {
-        'params': params._mapping,  # pylint: disable=protected-access  # pyrefly: ignore[missing-attribute]
+        'params': params._mapping,  # pylint: disable=protected-access
         'nnx': {
             'graphdef': gdef,
-            'rng_vars': rng_vars._mapping,  # pylint: disable=protected-access  # pyrefly: ignore[missing-attribute]
-            'attributes': attributes._mapping,  # pylint: disable=protected-access  # pyrefly: ignore[missing-attribute]
+            'rng_vars': rng_vars._mapping,  # pylint: disable=protected-access
+            'attributes': attributes._mapping,  # pylint: disable=protected-access
         },
         'intermediates': intermediates,
     }

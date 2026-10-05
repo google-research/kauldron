@@ -170,11 +170,11 @@ class LinenFromNnxDef(nn.Module):
     # Save the graph def and other variables.
     if self.is_mutable_collection('nnx'):
       self.put_variable('nnx', 'graphdef', gdef)
-      self.put_variable('nnx', 'rng_vars', rng_vars._mapping)  # pyrefly: ignore[missing-attribute]
-      self.put_variable('nnx', 'attributes', attributes._mapping)  # pyrefly: ignore[missing-attribute]
+      self.put_variable('nnx', 'rng_vars', rng_vars._mapping)
+      self.put_variable('nnx', 'attributes', attributes._mapping)
 
     if self.is_initializing():
-      for k, v in params._mapping.items():  # pyrefly: ignore[missing-attribute]
+      for k, v in params._mapping.items():
         self.put_variable('params', k, v)
 
     return outputs

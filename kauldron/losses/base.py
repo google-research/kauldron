@@ -75,7 +75,7 @@ class AllReduceMean(base_state.State):
         count=self.count + other.count,
     )
 
-  def compute(self) -> Float[""]:  # pyrefly: ignore[not-a-type]
+  def compute(self) -> Float[""]:
     return self.value / jnp.clip(self.count, min=1e-8)
 
 
@@ -132,7 +132,7 @@ class Loss(metrics.Metric, abc.ABC):
   )
 
   @abc.abstractmethod
-  def get_values(self, *args, **kwargs) -> Array["..."]:  # pyrefly: ignore[bad-index, not-a-type]
+  def get_values(self, *args, **kwargs) -> Array["..."]:  # pyrefly: ignore[bad-index]
     """Compute the loss values (before masking, averaging and weighting).
 
     Subclasses need to implement this method.
@@ -148,7 +148,7 @@ class Loss(metrics.Metric, abc.ABC):
   def get_state(  # pyrefly: ignore[bad-override]
       self,
       *args,
-      mask: Optional[Array["..."]] = None,  # pyrefly: ignore[bad-index, not-a-type]
+      mask: Optional[Array["..."]] = None,  # pyrefly: ignore[bad-index]
       step: Optional[int] = None,
       **kwargs,
   ) -> Loss.State:
@@ -209,7 +209,7 @@ class Loss(metrics.Metric, abc.ABC):
         values=values, mask=mask, weight=weight, normalize_by=self.normalize_by
     )
 
-  def get_weight(self, step: Optional[int] = None) -> Float[""]:  # pyrefly: ignore[not-a-type]
+  def get_weight(self, step: Optional[int] = None) -> Float[""]:
     """Return the weight of this loss at the given step number.
 
     Args:
@@ -231,7 +231,7 @@ class Loss(metrics.Metric, abc.ABC):
       *,
       context: Optional[Any] = None,
       **kwargs,
-  ) -> Float[""]:  # pyrefly: ignore[not-a-type]
+  ) -> Float[""]:
     """Shorthand to evaluate the loss either from context or kwargs.
 
     Is equivalent to first calling `get_state` (or `get_state_from_context`) and
@@ -277,5 +277,5 @@ def compute_losses(
       jnp.add,
       loss_values,
       initializer=jnp.asarray(0.0),
-  )  # pytype: disable=wrong-arg-types  # numpy-scalars
+  )
   return total_loss, loss_states

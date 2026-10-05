@@ -34,7 +34,7 @@ with epy.lazy_imports(
         'To use HuggingFace datasets, please install `pip install datasets`.'
     )
 ):
-  import datasets  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+  import datasets  # pylint: disable=g-import-not-at-top  # pyrefly: ignore[missing-import]
 
 
 @dataclasses.dataclass(frozen=True)

@@ -63,7 +63,7 @@ _filter_logs.add_filter(
 )
 
 # Import contrib at the end as they can use all
-from kauldron import contrib  # pylint: disable=g-bad-import-order  # pytype: disable=import-error
+from kauldron import contrib  # pylint: disable=g-bad-import-order
 
 # TODO(epot): This could be optional for the top-level module
 # Automated documentation info

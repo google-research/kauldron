@@ -101,7 +101,7 @@ def Dim(spec_str: str) -> int:  # pylint: disable=invalid-name
     raise ShapeError(
         f"Dim expects a single-axis string, but got : {ret!r}"
     )
-  return ret[0]  # pytype: disable=bad-return-type
+  return ret[0]
 
 
 # try grammar online: https://www.lark-parser.org/ide/#

@@ -129,7 +129,7 @@ class TestPatchFlags:
       cli_main.flag_parser(argv)
     patcher = patch_config.PatchConfig(stop_after_steps=3, batch_size=16)
 
-    orig_cfg = flags.FLAGS["cfg"].value  # pytype: disable=attribute-error
+    orig_cfg = flags.FLAGS["cfg"].value
     assert orig_cfg is not None
     cfg, updates = patcher(orig_cfg)
 

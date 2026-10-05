@@ -33,7 +33,7 @@ def test_train_eval(tmp_path: epath.Path):
   cfg.workdir = os.fspath(tmp_path)
   cfg.stop_after_steps = 1
 
-  readout_cfg = cfg.evals['readout'].readout_config  # pytype: disable=attribute-error
+  readout_cfg = cfg.evals['readout'].readout_config
   readout_cfg.num_train_steps = 1
   kd.kontext.set_by_path(readout_cfg, '**.batch_size', 1)
   kd.kontext.set_by_path(readout_cfg, 'evals.*.num_batches', 1)
@@ -51,7 +51,7 @@ def test_train_eval(tmp_path: epath.Path):
     assert isinstance(train_evaluator, kd.contrib.evals.TrainEvaluator)
     aux = train_evaluator.evaluate(state, 0)
 
-    readout_trainer = train_evaluator.readout_trainer_for_step(state, 0)  # pytype: disable=attribute-error
+    readout_trainer = train_evaluator.readout_trainer_for_step(state, 0)
     # Sanity check to check that the `init_transform` are correctly propagated
     # (as the root `init_transform` is mutated, we should make sure the
     # changes are reflected on the `trainstep`)

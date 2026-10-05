@@ -37,7 +37,7 @@ class TfGrainCheckpointSave(grain.TfGrainCheckpointSave):
   pass
 
 
-@ocp.args.register_with_handler(TfGrainCheckpointHandler, for_restore=True)  # pytype:disable=wrong-arg-types
+@ocp.args.register_with_handler(TfGrainCheckpointHandler, for_restore=True)
 class TfGrainCheckpointRestore(grain.TfGrainCheckpointRestore):
   pass
 

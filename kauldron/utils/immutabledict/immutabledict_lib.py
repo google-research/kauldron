@@ -32,13 +32,13 @@ class ImmutableDict(immutabledict_lib.immutabledict):
 
   def __new__(cls, *args: Any, **kwargs: Any) -> ImmutableDict:
     if not cls._dca_jax_tree_registered and 'jax' in sys.modules:
-      import jax  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+      import jax  # pylint: disable=g-import-not-at-top  # pyrefly: ignore[missing-import]
 
       jax.tree_util.register_pytree_with_keys_class(cls)
       cls._dca_jax_tree_registered = True
 
     if not cls._flax_registered and 'flax' in sys.modules:
-      import flax  # pylint: disable=g-import-not-at-top,g-bad-import-order  # pytype: disable=import-error
+      import flax  # pylint: disable=g-import-not-at-top,g-bad-import-order  # pyrefly: ignore[missing-import]
 
       for type_ in list(flax.serialization._STATE_DICT_REGISTRY):  # pylint: disable=undefined-variable
         match type_:
@@ -91,7 +91,7 @@ class ImmutableDict(immutabledict_lib.immutabledict):
     Returns:
       A flattened version of this FrozenDict instance.
     """
-    import jax  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+    import jax  # pylint: disable=g-import-not-at-top  # pyrefly: ignore[missing-import]
 
     sorted_keys = sorted(self)
     return tuple(
@@ -118,7 +118,7 @@ class ImmutableDict(immutabledict_lib.immutabledict):
 
 def unfreeze(obj: Any):
   """Recursively convert all ImmutableDicts to dicts."""
-  import jax  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+  import jax  # pylint: disable=g-import-not-at-top  # pyrefly: ignore[missing-import]
 
   def _to_dict(x):
     if isinstance(x, ImmutableDict):
