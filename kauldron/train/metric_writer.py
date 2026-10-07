@@ -82,7 +82,7 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
   def write_images(
       self,
       step: int,
-      images: Mapping[str, Array["n h w c"]],  # pyrefly: ignore[not-a-type]
+      images: Mapping[str, Array["n h w c"]],
   ) -> None:
     """Write images for the step."""
 
@@ -111,7 +111,7 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
   def write_videos(
       self,
       step: int,
-      videos: Mapping[str, Array["n t h w c"]],  # pyrefly: ignore[not-a-type]
+      videos: Mapping[str, Array["n t h w c"]],
   ) -> None:
     """Write videos for the step."""
     raise NotImplementedError()
@@ -120,7 +120,7 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
   def write_audios(
       self,
       step: int,
-      audios: Mapping[str, Float["n t c"]],  # pyrefly: ignore[not-a-type]
+      audios: Mapping[str, Float["n t c"]],
       *,
       sample_rate: int,
   ) -> None:
@@ -444,7 +444,7 @@ class KDMetricWriter(MetadataWriter):
     self._tf_summary_writer.write_scalars(step, scalars)
 
   def write_images(
-      self, step: int, images: Mapping[str, Array["n h w c"]]  # pyrefly: ignore[not-a-type]
+      self, step: int, images: Mapping[str, Array["n h w c"]]
   ) -> None:
     images_uint8 = {}
     for key, image in images.items():
@@ -465,14 +465,14 @@ class KDMetricWriter(MetadataWriter):
     self._tf_summary_writer.write_histograms(step, arrays, num_buckets)
 
   def write_videos(
-      self, step: int, videos: Mapping[str, Array["n t h w c"]]  # pyrefly: ignore[not-a-type]
+      self, step: int, videos: Mapping[str, Array["n t h w c"]]
   ) -> None:
     self._tf_summary_writer.write_videos(step, videos)
 
   def write_audios(
       self,
       step: int,
-      audios: Mapping[str, Float["n t c"]],  # pyrefly: ignore[not-a-type]
+      audios: Mapping[str, Float["n t c"]],
       *,
       sample_rate: int,
   ) -> None:
@@ -490,9 +490,9 @@ class KDMetricWriter(MetadataWriter):
   def write_pointcloud(
       self,
       step: int,
-      point_clouds: Mapping[str, Array["n 3"]],  # pyrefly: ignore[not-a-type]
+      point_clouds: Mapping[str, Array["n 3"]],
       *,
-      point_colors: Mapping[str, Array["n 3"]] | None = None,  # pyrefly: ignore[not-a-type]
+      point_colors: Mapping[str, Array["n 3"]] | None = None,
       configs: Mapping[str, str | float | bool | None] | None = None,
   ) -> None:
     if not point_clouds:
@@ -523,7 +523,7 @@ class KDMetricWriter(MetadataWriter):
     )
     # export pandas dataframe as markdown text
     markdown_table = ctx_df.to_markdown(index=False, tablefmt="github")
-    self.write_texts(step, {"context_spec": markdown_table})  # pyrefly: ignore[bad-argument-type, bad-assignment]
+    self.write_texts(step, {"context_spec": markdown_table})  # pyrefly: ignore[bad-assignment]
 
   def flush(self) -> None:
     self._scalar_writer.flush()
@@ -552,7 +552,7 @@ class NoopWriter(NoopMetadataWriter):
     pass
 
   def write_images(
-      self, step: int, images: Mapping[str, Array["n h w c"]]  # pyrefly: ignore[not-a-type]
+      self, step: int, images: Mapping[str, Array["n h w c"]]
   ) -> None:
     pass
 
@@ -567,7 +567,7 @@ class NoopWriter(NoopMetadataWriter):
   def write_pointcloud(
       self,
       step: int,
-      point_clouds: Array["n 3"],  # pyrefly: ignore[not-a-type]
+      point_clouds: Array["n 3"],
       *,
       point_colors: Array["n 3"] | None = None,
       configs: Mapping[str, str | float | bool | None] | None = None,
@@ -575,14 +575,14 @@ class NoopWriter(NoopMetadataWriter):
     pass
 
   def write_videos(
-      self, step: int, videos: Mapping[str, Array["n t h w c"]]  # pyrefly: ignore[not-a-type]
+      self, step: int, videos: Mapping[str, Array["n t h w c"]]
   ) -> None:
     pass
 
   def write_audios(
       self,
       step: int,
-      audios: Mapping[str, Float["n t c"]],  # pyrefly: ignore[not-a-type]
+      audios: Mapping[str, Float["n t c"]],
       *,
       sample_rate: int,
   ) -> None:
