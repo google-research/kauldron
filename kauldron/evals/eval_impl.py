@@ -122,6 +122,9 @@ def continuous_eval(
     # Processing checkpoint
     aux = dict()
     for ev in every_checkpoint_evals:
+      # Do not re-run evaluators which failed on a previous checkpoint.
+      if ev.name in tracker.failed_eval_names:
+        continue
       with tracker.catch_exception(name=ev.name, step=step):
         aux[ev.name] = ev.evaluate(state=state, step=step)
     final_step = step
@@ -143,6 +146,7 @@ class _ExceptionTracker:
 
   eval_names: list[str]
   exceptions: list[Exception] = dataclasses.field(default_factory=list)
+  failed_eval_names: set[str] = dataclasses.field(default_factory=set)
 
   @contextlib.contextmanager
   def catch_exception(
@@ -155,7 +159,9 @@ class _ExceptionTracker:
     try:
       yield
     except Exception as e:  # pylint: disable=broad-exception-caught
+      e.add_note(f'Evaluator {name!r} failed at step {step}')
       self.exceptions.append(e)
+      self.failed_eval_names.add(name)
       logging.exception('Failed to evaluate %s at step %s', name, step)
       exc_name = type(e).__name__
       status.xp.add_tags(f'🚨 Eval {name}: {exc_name} 🚨')

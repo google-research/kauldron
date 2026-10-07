@@ -34,11 +34,11 @@ def test_path_builder_annotated():
   assert str(a.a1.b0) == 'A.a1.b0'
 
   with pytest.raises(AttributeError):
-    _ = a.non_existing  # pytype: disable=attribute-error
+    _ = a.non_existing  # pyrefly: ignore[missing-attribute]
 
   b = a.a1
   with pytest.raises(AttributeError):
-    _ = b.a1  # pytype: disable=attribute-error
+    _ = b.a1  # pyrefly: ignore[missing-attribute]
 
 
 def test_dynamic_path_builder():
