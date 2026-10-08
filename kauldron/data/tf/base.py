@@ -142,7 +142,7 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
     # auto-detect, however it might be better to explicitly raise an error
     # so user explicitly set their pipeline as non-checkpointable.
     if self._should_checkpoint:
-      return iterators.TFDataIterator(source=self, iter=iter(self._root_ds))  # pyrefly: ignore[bad-argument-type]
+      return iterators.TFDataIterator(source=self, iter=iter(self._root_ds))
     else:
       return iterators.NonCheckpointableIterator(
           source=self, iter=iter(tfds.as_numpy(self._root_ds))
@@ -154,7 +154,7 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
     return etree.spec_like(self._root_ds.element_spec)
 
   def __len__(self) -> int:
-    return len(self._root_ds)  # pyrefly: ignore[bad-argument-type]
+    return len(self._root_ds)
 
   # ======================== Internals ========================
 

@@ -69,7 +69,7 @@ def get_annotated(
 
   # Unwrap the token if `Annotated[_T, token]` is given.
   if _is_annotated_type(annotated_token):
-    (annotated_token,) = annotated_token.__metadata__  # pytype: disable=attribute-error
+    (annotated_token,) = annotated_token.__metadata__  # pyrefly: ignore[missing-attribute]
 
   # Filter all hints annotated with the token
   return [
