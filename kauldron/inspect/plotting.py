@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 
 with epy.lazy_imports():
-  import altair as alt  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+  import altair as alt  # pylint: disable=g-import-not-at-top  # pyrefly: ignore[missing-import]
 
 
 def plot_schedules(schedules: PyTree[Schedule], num_steps: int) -> alt.Chart:
