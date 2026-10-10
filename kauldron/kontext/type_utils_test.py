@@ -24,19 +24,19 @@ _token_a = object()
 _token_b = object()
 
 _T = TypeVar('_T')
-_KeyA = Annotated[_T, _token_a]  # pytype: disable=invalid-typevar
-_KeyB = Annotated[_T, _token_b]  # pytype: disable=invalid-typevar
+_KeyA = Annotated[_T, _token_a]
+_KeyB = Annotated[_T, _token_b]
 
 
 class A:
   x0: Annotated[int, _token_a, _token_b]
   _: dataclasses.KW_ONLY
-  x: _KeyA[_KeyB[int]]  # pytype: disable=unsupported-operands
-  y: _KeyA[float]  # pytype: disable=unsupported-operands
-  z: _KeyA[int]  # pytype: disable=unsupported-operands
-  z_opt: Optional[_KeyA[int]]  # pytype: disable=unsupported-operands
-  z_opt2: None | _KeyA[int]  # pytype: disable=unsupported-operands
-  nested: dict[str, list[_KeyA[int]]]  # pytype: disable=unsupported-operands
+  x: _KeyA[_KeyB[int]]
+  y: _KeyA[float]
+  z: _KeyA[int]
+  z_opt: Optional[_KeyA[int]]
+  z_opt2: None | _KeyA[int]
+  nested: dict[str, list[_KeyA[int]]]
   a: int
 
 
