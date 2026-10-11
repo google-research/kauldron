@@ -120,6 +120,7 @@ class TrainEvaluator(kd.evals.EvaluatorBase):
       default_stop_after_steps_schedule_fn
   )
   overrides: dict[str, Any] | None = None
+  stop_after_steps: int | None = None
 
   readout_inputs: Optional[Any] = None
 
@@ -261,6 +262,13 @@ class TrainEvaluator(kd.evals.EvaluatorBase):
       workdir = self.readout_trainer_base.workdir
     else:
       raise ValueError(f"Unsupported checkpointer type: {type(checkpointer)}")
+    if self.stop_after_steps is not None:
+      stop_after_steps = self.stop_after_steps
+    else:
+      stop_after_steps = self.stop_after_steps_schedule_fn(
+          step, self.readout_trainer_base.num_train_steps  # pyrefly: ignore[bad-argument-type]
+      )
+
     return dataclasses.replace(
         self.readout_trainer_base,
         workdir=workdir,  # pyrefly: ignore[unexpected-keyword]
@@ -277,9 +285,7 @@ class TrainEvaluator(kd.evals.EvaluatorBase):
             curr_step=step,
             train_eval_name=self.name,
         ),
-        stop_after_steps=self.stop_after_steps_schedule_fn(  # pyrefly: ignore[unexpected-keyword]
-            step, self.readout_trainer_base.num_train_steps  # pyrefly: ignore[bad-argument-type]
-        ),
+        stop_after_steps=stop_after_steps,  # pyrefly: ignore[unexpected-keyword]
     )
 
   @property
@@ -445,7 +451,44 @@ class _OverwriteParams(kd.ckpts.InitTransform):
         kontext.get_by_path(params, params_key), state_params
     )
     kontext.set_by_path(params, params_key, state_params)
-    return state.replace(params=params)
+
+    collections = state.collections
+    if (
+        collections is not None
+        and self.state_from_training.collections is not None
+    ):
+      if isinstance(collections, flax.core.FrozenDict):
+        collections_dict = flax.core.unfreeze(collections)
+      else:
+        collections_dict = dict(collections)
+      for c_name, c_val in self.state_from_training.collections.items():
+        if c_name not in collections_dict:
+          collections_dict[c_name] = {}
+        if self.copy_params:
+          c_val = jax.tree.map(lambda x: x.copy(), c_val)
+        c_dict = collections_dict[c_name]
+        if isinstance(c_dict, flax.core.FrozenDict):
+          c_dict_mut = flax.core.unfreeze(c_dict)
+          c_dict_was_frozen = True
+        else:
+          c_dict_mut = dict(c_dict)
+          c_dict_was_frozen = False
+        try:
+          target_struct = kontext.get_by_path(c_dict_mut, params_key)
+          chex.assert_trees_all_equal_structs(target_struct, c_val)
+        except (KeyError, ValueError, AssertionError):
+          pass
+        kontext.set_by_path(c_dict_mut, params_key, c_val)
+        if c_dict_was_frozen:
+          collections_dict[c_name] = flax.core.freeze(c_dict_mut)
+        else:
+          collections_dict[c_name] = c_dict_mut
+      if isinstance(collections, flax.core.FrozenDict):
+        collections = flax.core.freeze(collections_dict)
+      else:
+        collections = collections_dict
+
+    return state.replace(params=params, collections=collections)
 
 
 # ================ cfg.writer ================
