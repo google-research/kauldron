@@ -36,8 +36,8 @@ class BuildContext:
       for example to average plots over seeds. If `None`, is auto-computed.
   """
 
-  collection_path_prefix: str = None  # pytype: disable=annotation-type-mismatch
-  sweep_argnames: list[str] = None  # pytype: disable=annotation-type-mismatch
+  collection_path_prefix: str = None  # pyrefly: ignore[bad-assignment]
+  sweep_argnames: list[str] = None  # pyrefly: ignore[bad-assignment]
 
   def __post_init__(self):
     if self.collection_path_prefix is None:
