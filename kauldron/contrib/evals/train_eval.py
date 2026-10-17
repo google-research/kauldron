@@ -156,6 +156,9 @@ class TrainEvaluator(kd.evals.EvaluatorBase):
         sub_evaluator = sub_evaluator.replace(losses=flax.core.freeze({}))
 
       sub_evaluator.evaluate(state=train_state, step=step)
+      # `sub_evaluator` has its own temporary writer, so wait for its metrics
+      # to be flushed before it goes out of scope.
+      sub_evaluator.writer.wait_for_background_flush()
 
     # We do not return auxiliaries. We could try to merge all auxiliaries from
     # all sub-evaluators, but it's not clear how to handle conflicts (if two
