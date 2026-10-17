@@ -141,6 +141,11 @@ def train_impl(
                 step=i,
                 metrics=eval_metrics,
             )
+          # Metrics are written asynchronously in the loop below. Flush them
+          # with each checkpoint so they are persisted up to the step that a
+          # restarted job resumes from.
+          with chrono.pause(chrono_utils.Pause.METRICS_WRITING):
+            writer.flush()
 
         log_summaries = i % trainer.log_summaries_every == 0
         log_metrics = i % trainer.log_metrics_every == 0
@@ -173,7 +178,13 @@ def train_impl(
               schedules=trainer.schedules,
               timer=chrono,
               log_summaries=log_summaries,
+              # Flushing blocks the loop (and the accelerators) until every
+              # pending write has completed. Flush at checkpoints instead.
+              flush=False,
           )
+
+  # Persist the metrics of the last steps.
+  writer.flush()
 
   # run last checkpoint evals if any
   final_evals = [
