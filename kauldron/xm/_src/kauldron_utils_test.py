@@ -16,6 +16,7 @@
 
 from kauldron import konfig
 from kauldron import kxm
+from kauldron.evals import run_strategies
 from kauldron.xm.configs import kd_base
 
 # Register XM mocking
@@ -53,4 +54,32 @@ def test_launch_with_evals():
 
   with konfig.set_lazy_imported_modules():
     xp = konfig.resolve(xp_cfg)
+  xp.launch()
+
+
+def test_last_checkpoint_eval_job_starts_after_train():
+  xp_cfg = kd_base.get_config()
+  xp_cfg.cell = 'xx'  # Auto-cell selection not activated in tests
+  with konfig.mock_modules():
+    xp_cfg.cfg_provider = kxm.ConfigProvider.from_module(
+        module='kauldron.examples.mnist_standalone_eval',
+        overrides={
+            'xm_job.target': '//third_party/py/kauldron/examples:trainer',
+        },
+    )
+
+  with konfig.set_lazy_imported_modules():
+    xp = konfig.resolve(xp_cfg)
+  with konfig.mock_modules():
+    xp.cfg_provider.config.evals.isolated_eval.run = (
+        run_strategies.StandaloneLastCheckpoint()
+    )
+
+  jobs = xp.resolved_jobs
+  # `StandaloneLastCheckpoint` only evaluates once train has completed, so its
+  # job waits for train instead of holding accelerators during training.
+  assert jobs['isolated_eval'].executor.dependencies.after_names == ['train']
+  # `StandaloneEveryCheckpoint` evaluates checkpoints during training.
+  assert jobs['grouped_evals'].executor.dependencies is None
+  assert jobs['train'].executor.dependencies is None
   xp.launch()

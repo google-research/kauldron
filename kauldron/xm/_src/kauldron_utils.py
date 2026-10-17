@@ -47,6 +47,7 @@ from kauldron.xm._src import merge_utils
 from kauldron.xm._src import sweep_cfg_utils
 from kauldron.xm._src import sweep_utils
 from xmanager import xm
+from xmanager import xm_abc
 
 if typing.TYPE_CHECKING:
   from kauldron import kd  # pylint: disable=g-bad-import-order  # pyrefly: ignore[missing-module-attribute]
@@ -104,18 +105,29 @@ class KauldronJobs(jobs_info.JobsProvider):
         )
 
     # Create the associated job
-    return {
-        eval_name: merge_utils.merge(
-            self.base_job,
-            run,
-            job_params.JobParams(
-                args={"eval_names": ",".join(eval_names)},
-            ),
-        )
-        for eval_name, (run, eval_names) in epy.zip_dict(
-            final_runs, run_to_eval_names  # pyrefly: ignore[bad-argument-type]
-        )
-    }
+    jobs = {}
+    for job_group, (run, eval_names) in epy.zip_dict(
+        final_runs, run_to_eval_names  # pyrefly: ignore[bad-argument-type]
+    ):
+      job = merge_utils.merge(
+          self.base_job,
+          run,
+          job_params.JobParams(
+              args={"eval_names": ",".join(eval_names)},
+          ),
+      )
+      if not self._is_eval_only and all(
+          isinstance(runs[name], run_strategies.StandaloneLastCheckpoint)
+          for name in eval_names
+      ):
+        job = _start_after_train(job, train_job_name=self._train_job_name)
+      jobs[job_group] = job
+    return jobs
+
+  @functools.cached_property
+  def _train_job_name(self) -> str:
+    """Name of the `train` job (`Experiment.resolved_jobs` defaults it)."""
+    return self.trainer_job.name or "train"
 
   @functools.cached_property
   def trainer_xm_job(self) -> job_lib.Job:
@@ -298,6 +310,20 @@ def _ui_repr(v):
     repr_ = repr_.removeprefix("<ConfigDict[").removesuffix("]>")
   # TODO(epot): If str is too big, should truncate ?
   return repr_
+
+
+def _start_after_train(job: job_lib.Job, *, train_job_name: str) -> job_lib.Job:
+  """Returns `job`, set to start only once the train job has succeeded.
+
+  A job whose evaluators are all `StandaloneLastCheckpoint` only evaluates the
+  last checkpoint, after train has completed. Launched alongside train, it
+  would hold its accelerators idle for the whole training run.
+
+  Args:
+    job: The standalone eval job.
+    train_job_name: Name of the train job in the same work unit.
+  """
+  return job
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
