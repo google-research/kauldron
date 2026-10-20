@@ -52,7 +52,7 @@ class BatchSize:
 
 
 def array_spec_to_jnp_empty(spec: ArraySpec, batch_dim: int = 17) -> jax.Array:  # pyrefly: ignore[not-a-type]
-  """Convert a tf.data.TensorSpec element_spec to a jnp.empty array.
+  """Convert a tf.data.TensorSpec element_spec to a mock (zero) jnp array.
 
   Used for initializing a model.
 
@@ -62,7 +62,7 @@ def array_spec_to_jnp_empty(spec: ArraySpec, batch_dim: int = 17) -> jax.Array: 
       this.
 
   Returns:
-    An empty jnp array with the requested shape and dtype.
+    A zero jnp array with the requested shape and dtype.
   """
   # silently convert 64-bit -> 32-bit to avoid jax warning when x64 is disabled
   if spec.dtype in [jnp.int64, np.int64]:
@@ -81,13 +81,22 @@ def array_spec_to_jnp_empty(spec: ArraySpec, batch_dim: int = 17) -> jax.Array: 
     # rest of the dimensions are also concrete by replacing None with 1.
     remaining_dims = _make_concrete_shape(spec.shape[1:])
     final_shape = (batch_dim,) + remaining_dims
-    return jnp.empty(final_shape, dtype)
+    return _mock_array(final_shape, dtype)
   else:
     # All dimensions defined in spec.shape, make them all concrete. This branch
     # is hit if spec.shape is e.g. (B, None, H, W) or in your case (1, None,
     # None). Replace any None with 1.
     final_shape = _make_concrete_shape(spec.shape)
-    return jnp.empty(final_shape, dtype)
+    return _mock_array(final_shape, dtype)
+
+
+def _mock_array(shape: tuple[int, ...], dtype: Any) -> jax.Array:  # pyrefly: ignore[not-a-type]
+  # Not `jnp.empty`: since JAX v0.11.0 it lowers to an `AllocateBuffer`
+  # custom call on GPU and TPU, which the SPMD partitioner does not shard, so
+  # `mock_batch_from_elem_spec` allocated the whole global batch on every
+  # device before its sharding constraint (103 GiB per H100 for a batch of
+  # 5120 videos). A broadcast zero is partitioned like any other op.
+  return jnp.zeros(shape, dtype)
 
 
 def mock_batch_from_elem_spec(
