@@ -166,8 +166,11 @@ other_dim: "_" NAME?    -> anon_dim
 //   - a list of at least two normal dims e.g. min(a,b,c)
 //     (but not a single normal dim like min(a))
 //   - a combination: e.g. sum(a,*b)
-?arg_list: expr ("," (expr | var_dim))+
-         | var_dim ("," (expr | var_dim))*
+// NOTE: this rule must not be inlined (no leading "?"), otherwise lark
+// replaces a single-argument list by the argument itself and
+// FunctionDim.arguments ends up being a DimSpec instead of a list.
+arg_list: expr ("," (expr | var_dim))+
+        | var_dim ("," (expr | var_dim))*
 
 // TODO: maybe add composition to atom?
 // composition: "(" name_dim (_WS_INLINE (name_dim | var_dim))+ ")"

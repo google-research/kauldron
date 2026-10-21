@@ -77,6 +77,13 @@ SHAPE_SPEC_EXAMPLES = [
             )
         ),
     ),
+    (
+        "prod(*b) min(*b)",
+        ShapeSpec(
+            FunctionDim("prod", NAME_2_FUNC["prod"], [VariadicDim("b")]),
+            FunctionDim("min", NAME_2_FUNC["min"], [VariadicDim("b")]),
+        ),
+    ),
 ]
 
 
@@ -100,6 +107,12 @@ def test_shape_eval():
     return Shape("sum(*b,h) h//2 min(w,4) c+1")  # pyrefly: ignore[bad-argument-type]
 
   assert _foo(np.zeros((1, 2, 3, 4))) == (3, 1, 3, 5)
+
+  @typechecked
+  def _foo_single_arg(_: Float["*b h w c"]):
+    return Shape("sum(*b) prod(*b) min(*b) max(*b)")  # pyrefly: ignore[bad-argument-type]
+
+  assert _foo_single_arg(np.zeros((2, 3, 5, 7, 11))) == (5, 6, 2, 3)
 
 
 def test_dim():

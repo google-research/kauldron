@@ -63,7 +63,10 @@ POW_OP.3: "**"
 
 FUNCTION.4: "min" | "max" | "sum" | "prod"
 
-?arg_list: expr ("," expr)*
+// NOTE: this rule must not be inlined (no leading "?"), otherwise lark
+// replaces a single-argument list by the argument itself and
+// FunctionDim.arguments ends up being a DimSpec instead of a list.
+arg_list: expr ("," expr)*
 
 // dimension names consist of letters, digits and underscores but have to start
 // with a letter (underscores are used to indicate anonymous dims)
