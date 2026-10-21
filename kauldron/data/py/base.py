@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import dataclasses
-import enum
 import functools
 import math
 import os
@@ -37,41 +36,14 @@ from kauldron.data import iterators
 from kauldron.data import pipelines
 from kauldron.data.py import transform_utils
 from kauldron.data.transforms import normalize as tr_normalize
-from kauldron.ktyping import PRNGKey, PRNGKeyLike, PyTree  # pylint: disable=g-importing-member,g-multiple-import
+from kauldron.ktyping import Array, PRNGKey, PRNGKeyLike, PyTree  # pylint: disable=g-importing-member,g-multiple-import
 import tensorflow as tf
 
 _ConsistentDatasetType = TypeVar(
     "_ConsistentDatasetType", grain.MapDataset, grain.IterDataset
 )
 
-
-class DropRemainder(enum.StrEnum):
-  """Determines how to handle a final partial batch of a dataset.
-
-  Attributes:
-    DROP: Drop the last partial batch.
-    KEEP: Keep the last partial batch as is (may have size < `batch_size`).
-    PAD: Pad the last partial batch with zeros to reach `batch_size`.
-      WARNING: Users are responsible for handling the extra zero-padded elements
-        in downstream models/metrics (e.g., via masking or sentinel filtering).
-        Additionally, in multi-host/multi-process pipelines, dataset length is
-        not equalized before sharding, which can cause different hosts to yield
-        an uneven number of batches and lead to distributed step
-        desynchronization.
-    PAD_WITH_MASK: Like PAD, but pads the global dataset length before sharding
-      so all hosts execute an identical number of full eval steps. When padding
-      is needed, elements are wrapped in `PaddedElement`.
-      WARNING: Downstream readers and transforms must explicitly inspect the
-        `is_padding` field on `PaddedElement` and handle `None` elements (where
-        `is_padding=True`) correctly (e.g. substituting dummy bytes for parsing
-        and tagging batches with an `__is_padding__` mask so metrics can discard
-        them).
-  """
-
-  DROP = enum.auto()
-  KEEP = enum.auto()
-  PAD = enum.auto()
-  PAD_WITH_MASK = enum.auto()
+DropRemainder = pipelines.DropRemainder
 
 
 @dataclasses.dataclass
@@ -116,22 +88,6 @@ class _PaddedSource(grain.RandomAccessDataSource):
     if index < self._original_len:
       return PaddedElement(element=self._source[index], is_padding=False)
     return PaddedElement(element=None, is_padding=True)
-
-
-def _assert_full_batch(values, *, batch_size):
-  """Batch function that asserts PAD_WITH_MASK never produces partial batches."""
-  result = grain.experimental.batch_and_pad(values, batch_size=batch_size)
-  # _PaddedSource guarantees all batches are full. If this fires,
-  # there is a bug in the padding logic.
-  first_leaf = (
-      result[next(iter(result))] if isinstance(result, dict) else result
-  )
-  if first_leaf.shape[0] != batch_size:
-    raise RuntimeError(
-        f"PAD_WITH_MASK produced a partial batch (got {first_leaf.shape[0]},"
-        f" expected {batch_size}). This should never happen."
-    )
-  return result
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True, eq=True)
@@ -188,7 +144,7 @@ class PyGrainPipeline(pipelines.Pipeline):
     object.__setattr__(
         self,
         "batch_drop_remainder",
-        _normalize_batch_drop_remainder(self.batch_drop_remainder),
+        pipelines.normalize_batch_drop_remainder(self.batch_drop_remainder),
     )
 
   # The pipeline is constructed in 4 functions:
@@ -430,13 +386,35 @@ def _worker_init_fn(
     custom_worker_init_fn(worker_idx, worker_count)
 
 
-def _normalize_batch_drop_remainder(
-    batch_drop_remainder: bool | str | DropRemainder,
-) -> DropRemainder:
-  """Normalize the batch drop remainder to an enum value."""
-  if batch_drop_remainder is True:  # pylint: disable=g-bool-id-comparison
-    return DropRemainder.DROP
-  elif batch_drop_remainder is False:  # pylint: disable=g-bool-id-comparison
-    return DropRemainder.KEEP
-  else:
-    return DropRemainder(batch_drop_remainder)
+def _assert_full_batch(values, *, batch_size):
+  """Batch function that asserts PAD_WITH_MASK never produces partial batches."""
+  result = grain.experimental.batch_and_pad(values, batch_size=batch_size)
+  # _PaddedSource guarantees all batches are full. If this fires,
+  # there is a bug in the padding logic.
+  first_leaf = _first_shaped_leaf(result)
+  if first_leaf.shape[0] != batch_size:
+    raise RuntimeError(
+        f"PAD_WITH_MASK produced a partial batch (got {first_leaf.shape[0]},"
+        f" expected {batch_size}). This should never happen."
+    )
+  return result
+
+
+def _first_shaped_leaf(
+    batch: PyTree[Array["*b"]],  # pyrefly: ignore[not-a-type]
+) -> Array["b *_"]:  # pyrefly: ignore[not-a-type, unknown-name]
+  """Returns the first array leaf in `batch` with `ndim >= 1`.
+
+  Args:
+    batch: Batch PyTree of arrays.
+
+  Returns:
+    The first `Array` leaf with `leaf.ndim >= 1`.
+
+  Raises:
+    ValueError: If no array leaf in `batch` has `ndim >= 1`.
+  """
+  for leaf in jax.tree.leaves(batch):
+    if isinstance(leaf, Array["_ *_"]):
+      return leaf
+  raise ValueError(f"Could not find any leaf with rank >= 1 in batch: {batch}")

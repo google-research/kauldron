@@ -21,9 +21,27 @@ from etils import enp
 from grain import python as grain
 import jax
 from kauldron import kd
+from kauldron.data.py import base as py_base
 import numpy as np
 import pytest
 import tensorflow_datasets as tfds
+
+
+class _NestedDictWithNoneFirstLeaf(grain.MapTransform):
+  """Maps PaddedElement or int into a dict with None and nested dict leaves."""
+
+  def map(self, element):
+    if isinstance(element, kd.data.py.PaddedElement):
+      val = 0 if element.is_padding else element.element
+      is_pad = element.is_padding
+    else:
+      val = element
+      is_pad = False
+    return {
+        '00_empty': None,
+        '01_nested': {'value': np.asarray(val, dtype=np.int64)},
+        '__is_padding__': np.asarray(is_pad, dtype=np.bool_),
+    }
 
 
 def test_tfds():
@@ -126,6 +144,7 @@ def test_drop_remainder(
     expected_output: list[list[int]],
     should_raise: bool,
 ):
+  assert kd.data.DropRemainder is kd.data.py.DropRemainder
   if should_raise:
     cm = pytest.raises(ValueError, match='is not a valid DropRemainder')
   else:
@@ -230,3 +249,29 @@ def test_multi_host_pad_with_mask_exact_multiple_no_wrapping():
       # Elements are raw integers, not PaddedElement instances
       for elem in elements:
         assert isinstance(elem, int)
+
+
+def test_pad_with_mask_skips_unshaped_and_nested_first_leaf():
+  ds = kd.data.py.DataSource(
+      grain.RangeDataSource(0, 10, 1),
+      shuffle=False,
+      num_epochs=1,
+      num_workers=0,
+      batch_size=3,
+      transforms=[_NestedDictWithNoneFirstLeaf()],
+      batch_drop_remainder=kd.data.py.DropRemainder.PAD_WITH_MASK,
+  )
+  batches = list(ds)
+  assert len(batches) == 4
+  assert batches[3]['00_empty'] is None
+  np.testing.assert_array_equal(batches[3]['01_nested']['value'], [9, 0, 0])
+  np.testing.assert_array_equal(
+      batches[3]['__is_padding__'], [False, True, True]
+  )
+
+
+def test_first_shaped_leaf_raises_on_no_valid_leaf():
+  with pytest.raises(
+      ValueError, match='Could not find any leaf with rank >= 1'
+  ):
+    py_base._first_shaped_leaf({'empty': None, 'scalar': np.asarray(1)})
