@@ -24,6 +24,7 @@ with _epy.lazy_api_imports(globals()):
   from kauldron.data.data_utils import IterableDataset
   # Top-level pipelines
   from kauldron.data.pipelines import Pipeline
+  from kauldron.data.pipelines import DropRemainder
   from kauldron.data.in_memory import InMemoryPipeline
 
   # Iterators
