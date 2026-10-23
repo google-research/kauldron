@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests."""
-
 import dataclasses
 import functools
 import pathlib
@@ -21,6 +19,7 @@ from unittest import mock
 
 import grain.tensorflow as grain
 from kauldron import kd
+from kauldron.data.tf import base as tf_base
 import numpy as np
 import pytest
 import tensorflow as tf
@@ -35,6 +34,25 @@ class _DummyRandomTransform(grain.RandomMapTransform):
         features['id'], tf.float32
     ) + tf.random.stateless_uniform([], seed)
     return features
+
+
+class _DummyFilterTransform(grain.FilterTransform):
+  """Filter to create unknown cardinality dataset."""
+
+  def filter(self, features):
+    return features['id'] < 10
+
+
+class _UnshapedFirstLeafTransform(grain.MapTransform):
+  """Inserts a tensor with unknown static rank as the first dictionary key."""
+
+  def map(self, features):
+    unshaped = tf.py_function(
+        func=lambda x: x,
+        inp=[features['id']],
+        Tout=tf.int64,
+    )
+    return {'00_unshaped': unshaped, **features}
 
 
 dummy_tfds_ds = functools.partial(
@@ -108,13 +126,13 @@ def test_no_shuffle(
     ds_cls: _TfdsCls,
     dummy_builder: tfds.core.GeneratorBasedBuilder,
 ):  # pylint: disable=redefined-outer-name
-  ds = ds_cls(  # pytype: disable=wrong-keyword-args,missing-parameter
+  ds = ds_cls(  # pyrefly: ignore[missing-argument]
       data_dir=dummy_builder.data_dir_root,
       num_epochs=2,
       shuffle=False,
   )
   assert len(ds) == 200
-  assert list(ds.element_spec.keys()) == ['id', 'rand']  # pytype: disable=attribute-error
+  assert list(ds.element_spec.keys()) == ['id', 'rand']
   exs = list(ds)
   assert _ids(exs) == list(range(100)) + list(range(100))
   # Rng across epochs are different.
@@ -129,7 +147,7 @@ def test_shuffle(
     ds_cls: _TfdsCls,
     dummy_builder: tfds.core.GeneratorBasedBuilder,
 ):  # pylint: disable=redefined-outer-name
-  ds = ds_cls(  # pytype: disable=wrong-keyword-args,missing-parameter
+  ds = ds_cls(  # pyrefly: ignore[missing-argument]
       data_dir=dummy_builder.data_dir_root,
       num_epochs=1,
       shuffle=True,
@@ -145,7 +163,7 @@ def test_shuffle(
     ds = dataclasses.replace(ds)
   assert list(ds) == exs
 
-  ds = ds_cls(  # pytype: disable=wrong-keyword-args,missing-parameter
+  ds = ds_cls(  # pyrefly: ignore[missing-argument]
       data_dir=dummy_builder.data_dir_root,
       num_epochs=2,
       shuffle=True,
@@ -156,7 +174,7 @@ def test_shuffle(
   # The second epoch has different shuffling.
   assert _ids(exs2) != ids + ids
 
-  ds = ds_cls(  # pytype: disable=wrong-keyword-args,missing-parameter
+  ds = ds_cls(  # pyrefly: ignore[missing-argument]
       data_dir=dummy_builder.data_dir_root,
       num_epochs=1,
       shuffle=True,
@@ -177,7 +195,7 @@ def test_sharding(
   with mock.patch('jax.process_count', return_value=4):
     for process_index in range(4):
       with mock.patch('jax.process_index', return_value=process_index):
-        ds = ds_cls(  # pytype: disable=wrong-keyword-args,missing-parameter
+        ds = ds_cls(  # pyrefly: ignore[missing-argument]
             data_dir=dummy_builder.data_dir_root,
             num_epochs=1,
             shuffle=True,
@@ -203,7 +221,7 @@ def test_sample_from_datasets(dummy_builder: tfds.core.GeneratorBasedBuilder):  
           kd.contrib.data.AddConstants({'src': 0}),
       ],
   )
-  ds2 = dummy_tfds_legacy_ds(  # pytype: disable=wrong-keyword-args
+  ds2 = dummy_tfds_legacy_ds(
       data_dir=dummy_builder.data_dir_root,
       num_epochs=2,
       shuffle=False,
@@ -213,9 +231,7 @@ def test_sample_from_datasets(dummy_builder: tfds.core.GeneratorBasedBuilder):  
           kd.contrib.data.AddConstants({'src': 1}),
       ],
   )
-  dsmix = kd.data.tf.SampleFromDatasets(  # pytype: disable=wrong-keyword-args
-      [ds1, ds2], seed=0
-  )
+  dsmix = kd.data.tf.SampleFromDatasets([ds1, ds2], seed=0)
   exs = list(dsmix)
   ids = _ids(exs, key='code')
   assert len(ids) == 300
@@ -243,12 +259,12 @@ def test_checkpoint(
   )
 
   checkpoint_kwargs = {}
-  if issubclass(ds_cls.func, kd.data.tf.TfdsLegacy):  # pytype: disable=attribute-error
+  if issubclass(ds_cls.func, kd.data.tf.TfdsLegacy):  # pyrefly: ignore[missing-attribute]
     checkpoint_kwargs['checkpoint'] = True
 
   def _make_ds_iter():
     # Load the dataset.
-    ds = ds_cls(  # pytype: disable=wrong-keyword-args,missing-parameter
+    ds = ds_cls(
         data_dir=dummy_builder.data_dir_root,
         num_epochs=2,
         shuffle=True,
@@ -263,9 +279,238 @@ def test_checkpoint(
   for ex in exs[:45]:
     assert next(ds_iter) == ex
 
-  ckpt.save(ds_iter, step=1)  # pytype: disable=wrong-arg-types
+  ckpt.save(ds_iter, step=1)
 
   ds_iter = _make_ds_iter()
-  ds_iter = ckpt.restore(ds_iter)  # pytype: disable=wrong-arg-types
+  ds_iter = ckpt.restore(ds_iter)
   for ex in exs[45:]:
     assert next(ds_iter) == ex
+
+
+@with_ds_cls
+@pytest.mark.parametrize(
+    'batch_drop_remainder',
+    [
+        True,
+        False,
+        'drop',
+        'keep',
+        'pad',
+        'pad_with_mask',
+        kd.data.tf.DropRemainder.DROP,
+        kd.data.tf.DropRemainder.KEEP,
+        kd.data.tf.DropRemainder.PAD,
+        kd.data.tf.DropRemainder.PAD_WITH_MASK,
+    ],
+)
+def test_drop_remainder(
+    ds_cls: _TfdsCls,
+    dummy_builder: tfds.core.GeneratorBasedBuilder,
+    batch_drop_remainder: bool | str | kd.data.tf.DropRemainder,
+):  # pylint: disable=redefined-outer-name
+  assert kd.data.DropRemainder is kd.data.tf.DropRemainder
+
+  ds = ds_cls(  # pyrefly: ignore[missing-argument]
+      data_dir=dummy_builder.data_dir_root,
+      num_epochs=1,
+      shuffle=False,
+      batch_size=30,
+      batch_drop_remainder=batch_drop_remainder,
+  )
+  batches = list(ds)
+
+  if batch_drop_remainder in (True, 'drop', kd.data.tf.DropRemainder.DROP):
+    assert len(ds) == 3
+    assert len(batches) == 3
+    assert [batch['id'].shape for batch in batches] == [(30,), (30,), (30,)]
+    np.testing.assert_array_equal(batches[0]['id'], np.arange(0, 30))
+    np.testing.assert_array_equal(batches[1]['id'], np.arange(30, 60))
+    np.testing.assert_array_equal(batches[2]['id'], np.arange(60, 90))
+    assert '__is_padding__' not in ds.element_spec
+    for batch in batches:
+      assert '__is_padding__' not in batch
+  elif batch_drop_remainder in (False, 'keep', kd.data.tf.DropRemainder.KEEP):
+    assert len(ds) == 4
+    assert len(batches) == 4
+    assert [batch['id'].shape for batch in batches] == [
+        (30,),
+        (30,),
+        (30,),
+        (10,),
+    ]
+    np.testing.assert_array_equal(batches[0]['id'], np.arange(0, 30))
+    np.testing.assert_array_equal(batches[1]['id'], np.arange(30, 60))
+    np.testing.assert_array_equal(batches[2]['id'], np.arange(60, 90))
+    np.testing.assert_array_equal(batches[3]['id'], np.arange(90, 100))
+    assert '__is_padding__' not in ds.element_spec
+    for batch in batches:
+      assert '__is_padding__' not in batch
+  elif batch_drop_remainder in ('pad', kd.data.tf.DropRemainder.PAD):
+    assert len(ds) == 4
+    assert len(batches) == 4
+    assert ds.element_spec['id'].shape == (30,)
+    assert [batch['id'].shape for batch in batches] == [
+        (30,),
+        (30,),
+        (30,),
+        (30,),
+    ]
+    np.testing.assert_array_equal(batches[0]['id'], np.arange(0, 30))
+    np.testing.assert_array_equal(batches[1]['id'], np.arange(30, 60))
+    np.testing.assert_array_equal(batches[2]['id'], np.arange(60, 90))
+    expected_last_ids = np.concatenate(
+        [np.arange(90, 100), np.zeros(20, dtype=np.int64)]
+    )
+    np.testing.assert_array_equal(batches[3]['id'], expected_last_ids)
+    assert '__is_padding__' not in ds.element_spec
+    for batch in batches:
+      assert '__is_padding__' not in batch
+  elif batch_drop_remainder in (
+      'pad_with_mask',
+      kd.data.tf.DropRemainder.PAD_WITH_MASK,
+  ):
+    assert len(ds) == 4
+    assert len(batches) == 4
+    assert ds.element_spec['id'].shape == (30,)
+    assert ds.element_spec['__is_padding__'].shape == (30,)
+    assert ds.element_spec['__is_padding__'].dtype == np.bool_
+    for batch in batches:
+      assert batch['id'].shape == (30,)
+      assert batch['__is_padding__'].shape == (30,)
+    np.testing.assert_array_equal(batches[0]['id'], np.arange(0, 30))
+    np.testing.assert_array_equal(batches[1]['id'], np.arange(30, 60))
+    np.testing.assert_array_equal(batches[2]['id'], np.arange(60, 90))
+    for batch in batches[:3]:
+      assert not np.any(batch['__is_padding__'])
+    expected_last_ids = np.concatenate(
+        [np.arange(90, 100), np.zeros(20, dtype=np.int64)]
+    )
+    np.testing.assert_array_equal(batches[3]['id'], expected_last_ids)
+    expected_last_mask = np.array([False] * 10 + [True] * 20)
+    np.testing.assert_array_equal(
+        batches[3]['__is_padding__'], expected_last_mask
+    )
+
+
+@with_ds_cls
+def test_invalid_drop_remainder(
+    ds_cls: _TfdsCls,
+    dummy_builder: tfds.core.GeneratorBasedBuilder,
+):  # pylint: disable=redefined-outer-name
+  with pytest.raises(ValueError):
+    ds_cls(  # pyrefly: ignore[missing-argument]
+        data_dir=dummy_builder.data_dir_root,
+        num_epochs=1,
+        shuffle=False,
+        batch_size=30,
+        batch_drop_remainder='keepp',
+    )
+
+
+def test_multi_host_pad_with_mask(
+    dummy_builder: tfds.core.GeneratorBasedBuilder,
+):  # pylint: disable=redefined-outer-name
+  with mock.patch('jax.process_count', return_value=4):
+    for process_index in range(4):
+      with (
+          mock.patch('jax.process_index', return_value=process_index),
+          mock.patch(
+              'jax.experimental.multihost_utils.process_allgather',
+              return_value=np.array([25, 25, 24, 24]),
+          ),
+      ):
+        ds = dummy_tfds_ds(
+            data_dir=dummy_builder.data_dir_root,
+            split='train[:98]',
+            num_epochs=1,
+            shuffle=False,
+            batch_size=32,
+            batch_drop_remainder=kd.data.tf.DropRemainder.PAD_WITH_MASK,
+        )
+        assert len(ds) == 4
+        batches = list(ds)
+        assert len(batches) == 4
+        for batch in batches:
+          assert batch['id'].shape == (8,)
+          assert batch['__is_padding__'].shape == (8,)
+        for batch in batches[:3]:
+          assert not np.any(batch['__is_padding__'])
+
+        if process_index in (0, 1):
+          assert not batches[3]['__is_padding__'][0]
+          assert np.all(batches[3]['__is_padding__'][1:])
+        else:
+          assert np.all(batches[3]['__is_padding__'])
+
+
+@pytest.mark.parametrize(
+    'batch_drop_remainder',
+    [
+        kd.data.tf.DropRemainder.PAD,
+        kd.data.tf.DropRemainder.PAD_WITH_MASK,
+    ],
+)
+def test_unknown_cardinality_pad_and_pad_with_mask(
+    dummy_builder: tfds.core.GeneratorBasedBuilder,
+    batch_drop_remainder: kd.data.tf.DropRemainder,
+):  # pylint: disable=redefined-outer-name
+  ds = dummy_tfds_ds(
+      data_dir=dummy_builder.data_dir_root,
+      num_epochs=1,
+      shuffle=False,
+      batch_size=3,
+      transforms=[_DummyFilterTransform()],
+      batch_drop_remainder=batch_drop_remainder,
+  )
+  assert ds.element_spec['id'].shape == (3,)
+  if batch_drop_remainder == kd.data.tf.DropRemainder.PAD_WITH_MASK:
+    assert ds.element_spec['__is_padding__'].shape == (3,)
+
+  batches = list(ds)
+  assert len(batches) == 4
+  for batch in batches:
+    assert batch['id'].shape == (3,)
+
+  np.testing.assert_array_equal(batches[0]['id'], [0, 1, 2])
+  np.testing.assert_array_equal(batches[1]['id'], [3, 4, 5])
+  np.testing.assert_array_equal(batches[2]['id'], [6, 7, 8])
+  np.testing.assert_array_equal(batches[3]['id'], [9, 0, 0])
+
+  if batch_drop_remainder == kd.data.tf.DropRemainder.PAD_WITH_MASK:
+    for batch in batches:
+      assert batch['__is_padding__'].shape == (3,)
+    for batch in batches[:3]:
+      assert not np.any(batch['__is_padding__'])
+    np.testing.assert_array_equal(
+        batches[3]['__is_padding__'], [False, True, True]
+    )
+  else:
+    for batch in batches:
+      assert '__is_padding__' not in batch
+
+
+def test_pad_batch_skips_unshaped_first_leaf(
+    dummy_builder: tfds.core.GeneratorBasedBuilder,
+):  # pylint: disable=redefined-outer-name
+  ds = dummy_tfds_ds(
+      data_dir=dummy_builder.data_dir_root,
+      num_epochs=1,
+      shuffle=False,
+      batch_size=3,
+      transforms=[_DummyFilterTransform(), _UnshapedFirstLeafTransform()],
+      batch_drop_remainder=kd.data.tf.DropRemainder.PAD_WITH_MASK,
+  )
+  batches = list(ds)
+  assert len(batches) == 4
+  np.testing.assert_array_equal(batches[3]['id'], [9, 0, 0])
+  np.testing.assert_array_equal(batches[3]['00_unshaped'], [9, 0, 0])
+  np.testing.assert_array_equal(
+      batches[3]['__is_padding__'], [False, True, True]
+  )
+
+
+def test_first_shaped_tensor_raises_on_no_valid_leaf():
+  with pytest.raises(
+      ValueError, match='Could not find any tensor leaf with rank >= 1'
+  ):
+    tf_base._first_shaped_tensor({'scalar': tf.constant(1), 'empty': None})

@@ -26,16 +26,20 @@ from etils import enp
 from etils.etree import jax as etree  # pylint: disable=g-importing-member
 import grain.tensorflow as grain
 import jax
+from jax.experimental import multihost_utils
 from kauldron import random
 from kauldron.data import iterators
 from kauldron.data import pipelines
 from kauldron.data.tf import grain_utils
 from kauldron.data.tf import transform_utils as tr_utils
-from kauldron.ktyping import PRNGKey, PRNGKeyLike, PyTree  # pylint: disable=g-importing-member,g-multiple-import
+from kauldron.ktyping import PRNGKey, PRNGKeyLike, PyTree, TfArray  # pylint: disable=g-importing-member,g-multiple-import
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
 # pylint: disable=logging-fstring-interpolation
+
+PADDING_MASK_KEY: str = "__is_padding__"
+DropRemainder = pipelines.DropRemainder
 
 
 # Output of `tfds.as_numpy`
@@ -59,6 +63,8 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
   returns the `tf.data.Dataset` for the current process.
 
   Attributes:
+    batch_drop_remainder: Determines how to handle a final partial batch of a
+      dataset (DROP, KEEP, PAD, PAD_WITH_MASK).
     transforms: A list of `grain.Transformation` to apply to the dataset. Can be
       a dict to allow easier CLI / sweep access (
       `--cfg.train_ds.transforms.img_scale.in_vrange=(-1,1)`)
@@ -77,8 +83,7 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
     batch_size: int | None = ...  # pyrefly: ignore[bad-assignment]
     seed: PRNGKeyLike | None = ...  # pyrefly: ignore[not-a-type]
 
-  # TODO(epot): Users should also be able to specify drop_reminder or mask
-  batch_drop_remainder: bool = True
+  batch_drop_remainder: bool | str | DropRemainder = True
   transforms: _Transforms = dataclasses.field(default_factory=tuple)
 
   # Those fields are only applied once at the top level
@@ -89,6 +94,12 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
   # ======================== Protocol ========================
 
   def __post_init__(self):
+    object.__setattr__(
+        self,
+        "batch_drop_remainder",
+        pipelines.normalize_batch_drop_remainder(self.batch_drop_remainder),
+    )
+
     if hasattr(super(), "__post_init__"):
       super().__post_init__()  # Future proof to run `__post_init__` in parents  # pyrefly: ignore[missing-attribute]
 
@@ -142,7 +153,7 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
     # auto-detect, however it might be better to explicitly raise an error
     # so user explicitly set their pipeline as non-checkpointable.
     if self._should_checkpoint:
-      return iterators.TFDataIterator(source=self, iter=iter(self._root_ds))  # pyrefly: ignore[bad-argument-type]
+      return iterators.TFDataIterator(source=self, iter=iter(self._root_ds))
     else:
       return iterators.NonCheckpointableIterator(
           source=self, iter=iter(tfds.as_numpy(self._root_ds))
@@ -154,7 +165,7 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
     return etree.spec_like(self._root_ds.element_spec)
 
   def __len__(self) -> int:
-    return len(self._root_ds)  # pyrefly: ignore[bad-argument-type]
+    return len(self._root_ds)
 
   # ======================== Internals ========================
 
@@ -205,12 +216,39 @@ class TFDataPipeline(pipelines.Pipeline, abc.ABC):
     else:
       transforms.extend(self.transforms)
     if self.batch_size:
-      transforms.append(
-          grain.TfBatch(
-              batch_size=self.host_batch_size,
-              drop_remainder=self.batch_drop_remainder,
+      match self.batch_drop_remainder:
+        case DropRemainder.DROP:
+          transforms.append(
+              grain.TfBatch(
+                  batch_size=self.host_batch_size,
+                  drop_remainder=True,
+              )
           )
-      )
+        case DropRemainder.KEEP:
+          transforms.append(
+              grain.TfBatch(
+                  batch_size=self.host_batch_size,
+                  drop_remainder=False,
+              )
+          )
+        case DropRemainder.PAD:
+          transforms.append(
+              _TfBatchWithPad(
+                  batch_size=self.host_batch_size,
+                  add_padding_mask=False,
+              )
+          )
+        case DropRemainder.PAD_WITH_MASK:
+          transforms.append(
+              _TfBatchWithPad(
+                  batch_size=self.host_batch_size,
+                  add_padding_mask=True,
+              )
+          )
+        case _:
+          raise ValueError(
+              f"Unsupported batch_drop_remainder: {self.batch_drop_remainder}"
+          )
     ds = tr_utils.apply_transformations(ds, transforms)
     return ds
 
@@ -272,3 +310,172 @@ def _get_if_root(value, *, default, is_root: bool):
       return None
   else:
     return value
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class _TfBatchWithPad(grain.UnsafeTfDataTransform):
+  """Batches a `tf.data.Dataset` and pads partial batches with zeros.
+
+  Attributes:
+    batch_size: Target per-host batch size.
+    add_padding_mask: Whether to inject a boolean `__is_padding__` mask (`False`
+      for valid elements, `True` for padded elements) and equalize batch counts
+      across hosts when cardinality is known.
+    mask_key: Feature key used for the boolean padding mask when
+      `add_padding_mask=True`.
+    num_parallel_calls: Number of parallel calls for batching and mapping.
+  """
+
+  batch_size: int
+  add_padding_mask: bool = False
+  mask_key: str = PADDING_MASK_KEY
+  num_parallel_calls: int = tf.data.AUTOTUNE
+
+  def apply_to_dataset(self, ds: tf.data.Dataset) -> tf.data.Dataset:
+    """Applies batching, zero-padding, and optional mask injection to `ds`."""
+    # Validate any pre-existing padding mask feature before batching.
+    if self.add_padding_mask and self.mask_key in ds.element_spec:
+      spec = ds.element_spec[self.mask_key]
+      if spec.dtype != tf.bool or spec.shape.rank != 0:
+        raise ValueError(
+            f"Dataset already contains {self.mask_key!r} with spec {spec}, "
+            "expected scalar tf.bool."
+        )
+
+    cardinality = ds.cardinality().numpy()
+    if self.add_padding_mask and cardinality >= 0:
+      # When dataset cardinality is statically known and
+      # `add_padding_mask=True`, synchronize local shard lengths across JAX
+      # processes and pad the unbatched dataset up to a common multiple of
+      # `batch_size`. This guarantees that every host produces the exact same
+      # number of batches even when sharding yields uneven per-host dataset
+      # lengths.
+      local_cardinality = int(cardinality)
+      if jax.process_count() > 1:
+        max_cardinality = int(
+            multihost_utils.process_allgather(local_cardinality).max()
+        )
+      else:
+        max_cardinality = local_cardinality
+      # Round `max_cardinality` up to the next multiple of `self.batch_size`.
+      target_cardinality = (
+          -(-max_cardinality // self.batch_size) * self.batch_size
+      )
+      num_pad_elements = target_cardinality - local_cardinality
+
+      # Tag all valid dataset elements with `mask_key = False` if not already
+      # present.
+      if self.mask_key not in ds.element_spec:
+        ds = ds.map(
+            lambda features: dict(features)
+            | {self.mask_key: tf.constant(False, dtype=tf.bool)},
+            num_parallel_calls=self.num_parallel_calls,
+        )
+
+      # Append `num_pad_elements` zero-filled filler elements with
+      # `mask_key = True` and `grain.INDEX = -1` so downstream metrics can
+      # discard padded slots and Grain's validator sees a valid index feature.
+      if num_pad_elements > 0:
+        filler = jax.tree.map(
+            lambda spec: tf.zeros(spec.shape, dtype=spec.dtype),
+            ds.element_spec,
+        )
+        filler[self.mask_key] = tf.constant(True, dtype=tf.bool)
+        if grain.INDEX in filler:
+          filler[grain.INDEX] = tf.cast(-1, tf.int64)
+        pad_ds = tf.data.Dataset.from_tensors(filler).repeat(num_pad_elements)
+        ds = ds.concatenate(pad_ds)
+
+      # Since the dataset length is now an exact multiple of `batch_size`,
+      # `drop_remainder=True` preserves all elements while setting a static
+      # leading dimension of `batch_size` on `element_spec`.
+      return ds.batch(
+          self.batch_size,
+          drop_remainder=True,
+          num_parallel_calls=self.num_parallel_calls,
+      )
+
+    # Fallback path when `add_padding_mask=False` (`DropRemainder.PAD`) or when
+    # dataset cardinality is unknown/infinite (e.g. after `.filter()`): batch
+    # with `drop_remainder=False` and dynamically pad any partial batch to
+    # `self.batch_size` inside `ds.map`.
+    ds = ds.batch(
+        self.batch_size,
+        drop_remainder=False,
+        num_parallel_calls=self.num_parallel_calls,
+    )
+
+    def _pad_batch(
+        batch: dict[str, TfArray["b *_"]],  # pyrefly: ignore[not-a-type, unknown-name]
+    ) -> dict[str, TfArray["B *_"]]:  # pyrefly: ignore[not-a-type, unknown-name]
+      # Infer the runtime batch size from the first tensor leaf that has a
+      # defined rank >= 1 (skipping `None`, scalars, or unranked tensors).
+      first_leaf = _first_shaped_tensor(batch)
+      valid_batch_size = tf.shape(first_leaf)[0]
+      pad_size = self.batch_size - valid_batch_size
+
+      def _pad_leaf(
+          leaf: TfArray["b *_"],  # pyrefly: ignore[not-a-type, unknown-name]
+      ) -> TfArray["B *_"]:  # pyrefly: ignore[not-a-type, unknown-name]
+        # Pad the batch dimension (axis 0) with zeros up to `self.batch_size`
+        # and restore the static leading dimension when the leaf rank is known.
+        pad_shape = tf.concat([[pad_size], tf.shape(leaf)[1:]], axis=0)
+        padded = tf.concat(
+            [leaf, tf.zeros(pad_shape, dtype=leaf.dtype)], axis=0
+        )
+        if leaf.shape.rank is not None:
+          padded.set_shape((self.batch_size,) + tuple(leaf.shape[1:]))
+        return padded
+
+      padded_batch = jax.tree.map(_pad_leaf, batch)
+      if self.add_padding_mask:
+        # Mark indices `>= valid_batch_size` as padded (`True`), OR-ing with any
+        # pre-existing `mask_key` tensor in the batch.
+        is_padded = tf.range(self.batch_size) >= valid_batch_size
+        if self.mask_key in batch:
+          padded_batch[self.mask_key] = tf.logical_or(
+              padded_batch[self.mask_key], is_padded
+          )
+        else:
+          padded_batch[self.mask_key] = is_padded
+        padded_batch[self.mask_key].set_shape((self.batch_size,))
+        # Replace padded `grain.INDEX` entries with `-1` to match the
+        # known-cardinality padding convention.
+        if grain.INDEX in padded_batch:
+          padded_batch[grain.INDEX] = tf.where(
+              is_padded,
+              tf.cast(-1, tf.int64),
+              padded_batch[grain.INDEX],
+          )
+          padded_batch[grain.INDEX].set_shape((self.batch_size,))
+
+      return padded_batch
+
+    return ds.map(_pad_batch, num_parallel_calls=self.num_parallel_calls)
+
+
+def _first_shaped_tensor(
+    batch: PyTree[TfArray["*b"]],  # pyrefly: ignore[not-a-type]
+) -> TfArray["b *_"]:  # pyrefly: ignore[not-a-type, unknown-name]
+  """Returns the first tensor leaf in `batch` with a defined rank >= 1.
+
+  Args:
+    batch: Batch PyTree of tensors.
+
+  Returns:
+    The first `TfArray` leaf with `leaf.shape.rank is not None` and
+    `leaf.shape.rank >= 1`.
+
+  Raises:
+    ValueError: If no tensor leaf in `batch` has a defined rank >= 1.
+  """
+  for leaf in jax.tree.leaves(batch):
+    if (
+        isinstance(leaf, TfArray)
+        and leaf.shape.rank is not None
+        and isinstance(leaf, TfArray["_ *_"])
+    ):
+      return leaf
+  raise ValueError(
+      f"Could not find any tensor leaf with rank >= 1 in batch: {batch}"
+  )

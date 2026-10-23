@@ -20,6 +20,7 @@ from typing import Any, ClassVar, Mapping, Optional
 from etils import epath
 import grain.tensorflow as grain
 from kauldron import random
+from kauldron.data import pipelines
 from kauldron.data.tf import base
 from kauldron.ktyping import PRNGKey
 import tensorflow as tf
@@ -41,7 +42,6 @@ class Tfds(base.TFDataPipeline):
 
   # Sampler parameters
   shuffle: bool = True
-  shard_drop_remainder: bool = True
   num_epochs: Optional[int] = None
 
   _supports_symbolic_checkpoint: ClassVar[bool] = True  # pyrefly: ignore[bad-override]
@@ -55,12 +55,17 @@ class Tfds(base.TFDataPipeline):
         cache=self.cache,
     )
 
+    # Drop the shard remainder only when `batch_drop_remainder` is `DROP` so
+    # `KEEP`, `PAD`, and `PAD_WITH_MASK` do not discard examples during
+    # multi-host sharding.
     sampler = grain.TfDefaultIndexSampler(
         num_records=len(source),
         shuffle=self.shuffle,
         seed=random.random_seed(rng),
         shard_options=grain.ShardByJaxProcess(
-            drop_remainder=self.shard_drop_remainder
+            drop_remainder=(
+                self.batch_drop_remainder == pipelines.DropRemainder.DROP
+            )
         ),
         num_epochs=self.num_epochs,
         shard_before_shuffle=False,
