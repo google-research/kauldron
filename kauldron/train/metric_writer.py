@@ -21,6 +21,7 @@ import dataclasses
 import functools
 import json
 import sys
+import threading
 from typing import Any, Mapping, Optional, TYPE_CHECKING
 
 from absl import logging
@@ -82,7 +83,7 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
   def write_images(
       self,
       step: int,
-      images: Mapping[str, Array["n h w c"]],  # pyrefly: ignore[not-a-type]
+      images: Mapping[str, Array["n h w c"]],
   ) -> None:
     """Write images for the step."""
 
@@ -111,7 +112,7 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
   def write_videos(
       self,
       step: int,
-      videos: Mapping[str, Array["n t h w c"]],  # pyrefly: ignore[not-a-type]
+      videos: Mapping[str, Array["n t h w c"]],
   ) -> None:
     """Write videos for the step."""
     raise NotImplementedError()
@@ -120,7 +121,7 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
   def write_audios(
       self,
       step: int,
-      audios: Mapping[str, Float["n t c"]],  # pyrefly: ignore[not-a-type]
+      audios: Mapping[str, Float["n t c"]],
       *,
       sample_rate: int,
   ) -> None:
@@ -265,13 +266,21 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
           texts={k: text for k, text in text_summaries.items()},
       )
 
-    # TODO(epot): This is blocking and slow. Is it really required ?
-    # Should likely be only called once at the end of the training / eval.
     if flush:
-      self.flush()
+      # Writers with a background thread can flush there (e.g.
+      # `KDMetricWriter(blocking_flush=False)`), so the train loop does not
+      # wait for the metrics to be written.
+      self.flush_in_background()
 
   def flush(self) -> None:
     pass
+
+  def flush_in_background(self) -> None:
+    """Starts flushing pending writes without waiting for them to finish.
+
+    Writers without a background thread flush synchronously.
+    """
+    self.flush()
 
   def close(self) -> None:
     pass
@@ -361,6 +370,31 @@ class NoopMetadataWriter(WriterBase):
     pass
 
 
+class _BackgroundFlushAsyncWriter(metric_writers.AsyncWriter):
+  """`AsyncWriter` that can also flush on its writer thread.
+
+  `flush()` blocks until all pending writes are persisted.
+  `flush_in_background()` queues a flush of the wrapped writer behind the
+  pending writes and returns immediately. At most one background flush is
+  queued at a time, so flushes do not pile up when writing is slower than
+  logging.
+  """
+
+  def __init__(self, writer: metric_writers.MetricWriter):
+    super().__init__(writer)
+    self._background_flush_queued = threading.Event()
+
+  def flush_in_background(self) -> None:
+    if self._background_flush_queued.is_set():
+      return
+    self._background_flush_queued.set()
+    self._pool(self._flush_wrapped_writer)()
+
+  def _flush_wrapped_writer(self) -> None:
+    self._background_flush_queued.clear()
+    self._writer.flush()
+
+
 @dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
 class KDMetricWriter(MetadataWriter):
   """Writes summaries to logs, tf_summaries and datatables.
@@ -374,6 +408,10 @@ class KDMetricWriter(MetadataWriter):
   """
 
   add_artifacts: bool = True
+  # If True, `write_step_metrics` waits for each flush to finish. By default,
+  # the flush runs on the writer threads, so the train loop does not wait for
+  # the metrics to be written.
+  blocking_flush: bool = False
 
   @functools.cached_property
   def _collection_path_prefix(self) -> str:
@@ -404,8 +442,10 @@ class KDMetricWriter(MetadataWriter):
   def _tf_summary_writer(self) -> metric_writers.MetricWriter:
     if status.is_lead_host:
       self._assert_collection_is_set()
-      return metric_writers.SummaryWriter(
-          logdir=str(self.workdir / self.collection)  # pyrefly: ignore[unsupported-operation]
+      return _BackgroundFlushAsyncWriter(
+          metric_writers.SummaryWriter(
+              logdir=str(self.workdir / self.collection)  # pyrefly: ignore[unsupported-operation]
+          )
       )
     else:
       return self._noop
@@ -444,7 +484,7 @@ class KDMetricWriter(MetadataWriter):
     self._tf_summary_writer.write_scalars(step, scalars)
 
   def write_images(
-      self, step: int, images: Mapping[str, Array["n h w c"]]  # pyrefly: ignore[not-a-type]
+      self, step: int, images: Mapping[str, Array["n h w c"]]
   ) -> None:
     images_uint8 = {}
     for key, image in images.items():
@@ -465,14 +505,14 @@ class KDMetricWriter(MetadataWriter):
     self._tf_summary_writer.write_histograms(step, arrays, num_buckets)
 
   def write_videos(
-      self, step: int, videos: Mapping[str, Array["n t h w c"]]  # pyrefly: ignore[not-a-type]
+      self, step: int, videos: Mapping[str, Array["n t h w c"]]
   ) -> None:
     self._tf_summary_writer.write_videos(step, videos)
 
   def write_audios(
       self,
       step: int,
-      audios: Mapping[str, Float["n t c"]],  # pyrefly: ignore[not-a-type]
+      audios: Mapping[str, Float["n t c"]],
       *,
       sample_rate: int,
   ) -> None:
@@ -490,9 +530,9 @@ class KDMetricWriter(MetadataWriter):
   def write_pointcloud(
       self,
       step: int,
-      point_clouds: Mapping[str, Array["n 3"]],  # pyrefly: ignore[not-a-type]
+      point_clouds: Mapping[str, Array["n 3"]],
       *,
-      point_colors: Mapping[str, Array["n 3"]] | None = None,  # pyrefly: ignore[not-a-type]
+      point_colors: Mapping[str, Array["n 3"]] | None = None,
       configs: Mapping[str, str | float | bool | None] | None = None,
   ) -> None:
     if not point_clouds:
@@ -523,12 +563,26 @@ class KDMetricWriter(MetadataWriter):
     )
     # export pandas dataframe as markdown text
     markdown_table = ctx_df.to_markdown(index=False, tablefmt="github")
-    self.write_texts(step, {"context_spec": markdown_table})  # pyrefly: ignore[bad-argument-type, bad-assignment]
+    self.write_texts(step, {"context_spec": markdown_table})  # pyrefly: ignore[bad-assignment]
 
   def flush(self) -> None:
     self._scalar_writer.flush()
     self._array_writer.flush()
     self._tf_summary_writer.flush()
+
+  def flush_in_background(self) -> None:
+    if self.blocking_flush:
+      self.flush()
+      return
+    for writer in (
+        self._scalar_writer,
+        self._array_writer,
+        self._tf_summary_writer,
+    ):
+      if isinstance(writer, _BackgroundFlushAsyncWriter):
+        writer.flush_in_background()
+      else:
+        writer.flush()
 
   def close(self) -> None:
     self._scalar_writer.close()
@@ -552,7 +606,7 @@ class NoopWriter(NoopMetadataWriter):
     pass
 
   def write_images(
-      self, step: int, images: Mapping[str, Array["n h w c"]]  # pyrefly: ignore[not-a-type]
+      self, step: int, images: Mapping[str, Array["n h w c"]]
   ) -> None:
     pass
 
@@ -567,7 +621,7 @@ class NoopWriter(NoopMetadataWriter):
   def write_pointcloud(
       self,
       step: int,
-      point_clouds: Array["n 3"],  # pyrefly: ignore[not-a-type]
+      point_clouds: Array["n 3"],
       *,
       point_colors: Array["n 3"] | None = None,
       configs: Mapping[str, str | float | bool | None] | None = None,
@@ -575,14 +629,14 @@ class NoopWriter(NoopMetadataWriter):
     pass
 
   def write_videos(
-      self, step: int, videos: Mapping[str, Array["n t h w c"]]  # pyrefly: ignore[not-a-type]
+      self, step: int, videos: Mapping[str, Array["n t h w c"]]
   ) -> None:
     pass
 
   def write_audios(
       self,
       step: int,
-      audios: Mapping[str, Float["n t c"]],  # pyrefly: ignore[not-a-type]
+      audios: Mapping[str, Float["n t c"]],
       *,
       sample_rate: int,
   ) -> None:

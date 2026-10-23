@@ -175,6 +175,9 @@ def train_impl(
               log_summaries=log_summaries,
           )
 
+  # Wait for the metrics that `write_step_metrics` flushes in the background.
+  writer.flush()
+
   # run last checkpoint evals if any
   final_evals = [
       evaluator
