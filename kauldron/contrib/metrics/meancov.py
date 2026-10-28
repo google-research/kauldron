@@ -128,12 +128,12 @@ class MeanCov(kd.metrics.State):
     if self.ddof != other.ddof:
       raise ValueError("ddof must be the same for both states.")
 
-    total = self.total + other.total
+    total = self.total + other.total  # pyrefly: ignore[unsupported-operation]
     weight = self.weight + other.weight
 
     diff = other.total * self.weight - self.total * other.weight
     squares = (
-        self.squares
+        self.squares  # pyrefly: ignore[unsupported-operation]
         + other.squares
         + jnp.outer(diff, diff) / (self.weight * other.weight * weight)
     )
@@ -158,8 +158,8 @@ class MeanCov(kd.metrics.State):
       return None, None
     mean = self.total / self.weight
 
-    if self.weight >= self.ddof:
-      cov = self.squares / (self.weight - self.ddof)
+    if self.weight >= self.ddof:  # pyrefly: ignore[unsupported-operation]
+      cov = self.squares / (self.weight - self.ddof)  # pyrefly: ignore[unsupported-operation]
     else:
       cov = np.full_like(self.squares, fill_value=np.nan)
 
