@@ -27,7 +27,7 @@ with epy.lazy_imports(
         "must `pip install 'mlflow>=2.22.0'` to use MLFlowMetricWriter"
     )
 ):
-  import mlflow  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+  import mlflow  # pylint: disable=g-import-not-at-top  # pyrefly: ignore[missing-import]
 
 
 @dataclasses.dataclass(frozen=True)
