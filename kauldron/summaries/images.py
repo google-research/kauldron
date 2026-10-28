@@ -103,12 +103,12 @@ class ShowImages(metrics.Metric):
     if isinstance(images, UInt8["..."]):
       images = images.astype(np.float32) / 255.0
     check_type(images, Float["n h w #3"])
-    if self.cmap is not None and images.shape[-1] != 1:
+    if self.cmap is not None and images.shape[-1] != 1:  # pyrefly: ignore[missing-attribute]
       check_type(images, Float["n h w 1"])
       raise ValueError("Colormap is only supported for single-channel images.")
 
     # Truncate just as an optimization to avoid unnecessary computations.
-    images = images[: self.num_images]
+    images = images[: self.num_images]  # pyrefly: ignore[unsupported-operation]
 
     if self.in_vrange is not None:
       vmin, vmax = self.in_vrange
