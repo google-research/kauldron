@@ -35,3 +35,15 @@ kd.cli.data.ElementSpec(cfg).execute()
 
 * `data`
   - `element_spec`: Display the element spec of the training data pipeline.
+  - `batch`: Display the stats (shapes, dtype, min, max, mean) of an actual fetched batch.
+
+* `run`
+  - `eval_shape`: Run a train step through `jax.eval_shape` (shapes only, no compute).
+  - `train`: Run `trainer.train()` directly to test the training loop.
+  - `eval`: Run `trainer.eval()` and print the metrics output.
+
+* `inspect`
+  - `model_overview`: Display the model overview (parameters, inputs, shapes) similar to the one used in the colab environments.
+
+* `multi`
+  - `execute`: Run multiple commands sequentially. For example, use `--cmds="data batch, run eval, inspect model_overview"` for layered execution.
