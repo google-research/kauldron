@@ -37,7 +37,7 @@ class PyGrainCheckpointSave(grain.PyGrainCheckpointSave):
   pass
 
 
-@ocp.args.register_with_handler(PyGrainCheckpointHandler, for_restore=True)  # pytype:disable=wrong-arg-types
+@ocp.args.register_with_handler(PyGrainCheckpointHandler, for_restore=True)
 class PyGrainCheckpointRestore(grain.PyGrainCheckpointRestore):
   pass
 

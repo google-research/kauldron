@@ -197,7 +197,7 @@ def _palette_lch(n: int, chroma=0.3, lightness=0.8) -> Float['n 3']:
 def _palette_hsv(n: int) -> Float['n 3']:
   starting_hue = 2 / 3  # blue
   r = np.linspace(starting_hue, starting_hue + 1.0, n + 1) % 1.0
-  cmap = mpl.cm.get_cmap('hsv')
+  cmap = mpl.colormaps['hsv']
   pal = cmap(r)
   # skip last color since it is the same as first
   # only use RGB values (drop alpha value)
@@ -226,7 +226,7 @@ def _palette_mpl(
     a discrete RGB colormap with n color in the shape f32['n 3']
   """
   r = np.linspace(minv, maxv, n)
-  cmap = mpl.cm.get_cmap(name)
+  cmap = mpl.colormaps[name]
   return cmap(r)[:, :3]
 
 
