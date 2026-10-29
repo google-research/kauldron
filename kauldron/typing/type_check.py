@@ -193,7 +193,7 @@ def _check_argument_types(func, args, kwargs, bound_args, annotations):
   try:
     if hasattr(typeguard, "CallMemo"):  # old version of typeguard
       memo = typeguard.CallMemo(func, local_ns, args=args, kwargs=kwargs)
-      typeguard.check_argument_types(memo)
+      typeguard.check_argument_types(memo)  # pyrefly: ignore[bad-argument-count]
     else:
       annotated_arguments = {
           k: (v, annotations[k])
@@ -212,7 +212,7 @@ def _check_argument_types(func, args, kwargs, bound_args, annotations):
         )
       else:  # typeguard = 4.4.*
         typeguard._functions.check_argument_types(  # pylint: disable=protected-access
-            func.__name__, annotated_arguments, memo=memo
+            func.__name__, annotated_arguments, memo=memo  # pyrefly: ignore[bad-argument-count, unexpected-keyword]
         )
   except typeguard.TypeCheckError:
     raise
@@ -236,7 +236,7 @@ def _check_return_type(func, retval, bound_args, annotations, memo):
   try:
     if "return" in annotations:
       if hasattr(typeguard, "CallMemo"):  # old version of typeguard
-        typeguard.check_return_type(retval, memo)
+        typeguard.check_return_type(retval, memo)  # pyrefly: ignore[bad-argument-count]
       else:
         if _tg_functions is not None and hasattr(
             _tg_functions, "check_return_type_internal"
@@ -248,7 +248,7 @@ def _check_return_type(func, retval, bound_args, annotations, memo):
           )
         else:  # typeguard = 4.4.*
           typeguard._functions.check_return_type(  # pylint: disable=protected-access
-              func.__name__, retval, annotations["return"], memo
+              func.__name__, retval, annotations["return"], memo  # pyrefly: ignore[bad-argument-count]
           )
   except typeguard.TypeCheckError:
     raise
