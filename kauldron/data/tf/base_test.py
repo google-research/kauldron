@@ -108,13 +108,13 @@ def test_no_shuffle(
     ds_cls: _TfdsCls,
     dummy_builder: tfds.core.GeneratorBasedBuilder,
 ):  # pylint: disable=redefined-outer-name
-  ds = ds_cls(  # pytype: disable=wrong-keyword-args,missing-parameter
+  ds = ds_cls(  # pyrefly: ignore[missing-argument]
       data_dir=dummy_builder.data_dir_root,
       num_epochs=2,
       shuffle=False,
   )
   assert len(ds) == 200
-  assert list(ds.element_spec.keys()) == ['id', 'rand']  # pytype: disable=attribute-error
+  assert list(ds.element_spec.keys()) == ['id', 'rand']
   exs = list(ds)
   assert _ids(exs) == list(range(100)) + list(range(100))
   # Rng across epochs are different.
@@ -129,7 +129,7 @@ def test_shuffle(
     ds_cls: _TfdsCls,
     dummy_builder: tfds.core.GeneratorBasedBuilder,
 ):  # pylint: disable=redefined-outer-name
-  ds = ds_cls(  # pytype: disable=wrong-keyword-args,missing-parameter
+  ds = ds_cls(  # pyrefly: ignore[missing-argument]
       data_dir=dummy_builder.data_dir_root,
       num_epochs=1,
       shuffle=True,
@@ -145,7 +145,7 @@ def test_shuffle(
     ds = dataclasses.replace(ds)
   assert list(ds) == exs
 
-  ds = ds_cls(  # pytype: disable=wrong-keyword-args,missing-parameter
+  ds = ds_cls(  # pyrefly: ignore[missing-argument]
       data_dir=dummy_builder.data_dir_root,
       num_epochs=2,
       shuffle=True,
@@ -156,7 +156,7 @@ def test_shuffle(
   # The second epoch has different shuffling.
   assert _ids(exs2) != ids + ids
 
-  ds = ds_cls(  # pytype: disable=wrong-keyword-args,missing-parameter
+  ds = ds_cls(  # pyrefly: ignore[missing-argument]
       data_dir=dummy_builder.data_dir_root,
       num_epochs=1,
       shuffle=True,
@@ -177,7 +177,7 @@ def test_sharding(
   with mock.patch('jax.process_count', return_value=4):
     for process_index in range(4):
       with mock.patch('jax.process_index', return_value=process_index):
-        ds = ds_cls(  # pytype: disable=wrong-keyword-args,missing-parameter
+        ds = ds_cls(  # pyrefly: ignore[missing-argument]
             data_dir=dummy_builder.data_dir_root,
             num_epochs=1,
             shuffle=True,
@@ -203,7 +203,7 @@ def test_sample_from_datasets(dummy_builder: tfds.core.GeneratorBasedBuilder):  
           kd.contrib.data.AddConstants({'src': 0}),
       ],
   )
-  ds2 = dummy_tfds_legacy_ds(  # pytype: disable=wrong-keyword-args
+  ds2 = dummy_tfds_legacy_ds(
       data_dir=dummy_builder.data_dir_root,
       num_epochs=2,
       shuffle=False,
@@ -213,7 +213,7 @@ def test_sample_from_datasets(dummy_builder: tfds.core.GeneratorBasedBuilder):  
           kd.contrib.data.AddConstants({'src': 1}),
       ],
   )
-  dsmix = kd.data.tf.SampleFromDatasets(  # pytype: disable=wrong-keyword-args
+  dsmix = kd.data.tf.SampleFromDatasets(
       [ds1, ds2], seed=0
   )
   exs = list(dsmix)
@@ -243,12 +243,12 @@ def test_checkpoint(
   )
 
   checkpoint_kwargs = {}
-  if issubclass(ds_cls.func, kd.data.tf.TfdsLegacy):  # pytype: disable=attribute-error
+  if issubclass(ds_cls.func, kd.data.tf.TfdsLegacy):  # pyrefly: ignore[missing-attribute]
     checkpoint_kwargs['checkpoint'] = True
 
   def _make_ds_iter():
     # Load the dataset.
-    ds = ds_cls(  # pytype: disable=wrong-keyword-args,missing-parameter
+    ds = ds_cls(
         data_dir=dummy_builder.data_dir_root,
         num_epochs=2,
         shuffle=True,
@@ -263,9 +263,9 @@ def test_checkpoint(
   for ex in exs[:45]:
     assert next(ds_iter) == ex
 
-  ckpt.save(ds_iter, step=1)  # pytype: disable=wrong-arg-types
+  ckpt.save(ds_iter, step=1)
 
   ds_iter = _make_ds_iter()
-  ds_iter = ckpt.restore(ds_iter)  # pytype: disable=wrong-arg-types
+  ds_iter = ckpt.restore(ds_iter)
   for ex in exs[45:]:
     assert next(ds_iter) == ex
