@@ -74,7 +74,7 @@ class Rearrange(base.ElementWiseTransform):
   """
 
   pattern: str
-  axes_lengths: dict[str, int] = dataclasses.field(default_factory=_FrozenDict)  # pyrefly: ignore[bad-assignment]
+  axes_lengths: dict[str, int] = dataclasses.field(default_factory=_FrozenDict)
 
   @typechecked
   def map_element(self, element: Any) -> XArray:  # pyrefly: ignore[not-a-type]
