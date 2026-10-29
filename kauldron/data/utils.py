@@ -51,8 +51,8 @@ class BatchSize:
     return self.total // jax.process_count()
 
 
-def array_spec_to_jnp_empty(spec: ArraySpec, batch_dim: int = 17) -> jax.Array:  # pyrefly: ignore[not-a-type]
-  """Convert a tf.data.TensorSpec element_spec to a jnp.empty array.
+def array_spec_to_jnp_zeros(spec: ArraySpec, batch_dim: int = 17) -> jax.Array:  # pyrefly: ignore[not-a-type]
+  """Convert a tf.data.TensorSpec element_spec to a mock (zero) jnp array.
 
   Used for initializing a model.
 
@@ -62,7 +62,7 @@ def array_spec_to_jnp_empty(spec: ArraySpec, batch_dim: int = 17) -> jax.Array: 
       this.
 
   Returns:
-    An empty jnp array with the requested shape and dtype.
+    A zero jnp array with the requested shape and dtype.
   """
   # silently convert 64-bit -> 32-bit to avoid jax warning when x64 is disabled
   if spec.dtype in [jnp.int64, np.int64]:
@@ -74,20 +74,27 @@ def array_spec_to_jnp_empty(spec: ArraySpec, batch_dim: int = 17) -> jax.Array: 
 
   # Ensure spec.shape is fully concrete by replacing None with 1. This is a
   # workaround for datasets that yield variable shapes, as JAX requires concrete
-  # shapes for jnp.empty and JIT compilation. The mock batch created with these
+  # shapes for jnp.zeros and JIT compilation. The mock batch created with these
   # placeholder dimensions might not accuratelyrepresent all variable data.
   if spec.shape[0] is None:
     # First dimension is dynamic (e.g. batch size), use batch_dim. Make sure the
     # rest of the dimensions are also concrete by replacing None with 1.
     remaining_dims = _make_concrete_shape(spec.shape[1:])
     final_shape = (batch_dim,) + remaining_dims
-    return jnp.empty(final_shape, dtype)
+    # Use jnp.zeros instead of jnp.empty: since JAX v0.11.0, jnp.empty lowers
+    # to an AllocateBuffer custom call that XLA's SPMD partitioner does not
+    # shard, allocating the full global batch on every device.
+    return jnp.zeros(final_shape, dtype)
   else:
     # All dimensions defined in spec.shape, make them all concrete. This branch
     # is hit if spec.shape is e.g. (B, None, H, W) or in your case (1, None,
     # None). Replace any None with 1.
     final_shape = _make_concrete_shape(spec.shape)
-    return jnp.empty(final_shape, dtype)
+    return jnp.zeros(final_shape, dtype)
+
+
+# Backward-compatible alias for external callers.
+array_spec_to_jnp_empty = array_spec_to_jnp_zeros
 
 
 def mock_batch_from_elem_spec(
@@ -98,7 +105,7 @@ def mock_batch_from_elem_spec(
 
   @jax.jit
   def jitted_create_mock_batch():
-    mock_batch = jax.tree.map(array_spec_to_jnp_empty, elem_spec)
+    mock_batch = jax.tree.map(array_spec_to_jnp_zeros, elem_spec)
     mock_batch = sharding_utils.sharding.with_sharding_constraint(
         mock_batch, elem_sharding
     )
