@@ -25,7 +25,7 @@ from kauldron import kontext
 from kauldron.train import trainer_lib
 
 with epy.lazy_imports():
-  import graphviz  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+  import graphviz  # pylint: disable=g-import-not-at-top  # pyrefly: ignore[missing-import]
 
 
 def get_connection_graph(trainer: trainer_lib.Trainer) -> graphviz.Digraph:
@@ -38,8 +38,8 @@ def get_connection_graph(trainer: trainer_lib.Trainer) -> graphviz.Digraph:
 class _Node:
   """Graph node."""
 
-  name: str = None  # pytype: disable=annotation-type-mismatch
-  group: str = None  # pytype: disable=annotation-type-mismatch
+  name: str = None  # pyrefly: ignore[bad-assignment]
+  group: str = None  # pyrefly: ignore[bad-assignment]
   inputs: dict[str, str] = dataclasses.field(default_factory=dict)
   outputs: set[str] = dataclasses.field(default_factory=set)
 
