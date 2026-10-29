@@ -63,7 +63,7 @@ class SampleFromDatasets(base.TFDataPipeline):
     ]
 
     ds = tf.data.Dataset.sample_from_datasets(
-        datasets,  # pyrefly: ignore[bad-argument-type]
+        datasets,
         weights=self.weights,
         seed=random.random_seed(
             random.fold_in_str(rng, 'sample_from_datasets')
@@ -109,7 +109,7 @@ class ZipDatasets(base.TFDataPipeline):
         for ds_name, ds in datasets.items()
     }
 
-    ds = tf.data.Dataset.zip(datasets)  # pyrefly: ignore[bad-argument-type]
+    ds = tf.data.Dataset.zip(datasets)
     return ds
 
   @functools.cached_property
