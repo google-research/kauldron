@@ -35,9 +35,16 @@ class MockExperiment(xm_mock.MockExperiment):
     super().__init__()
     self._work_unit = MockWorkUnit()
     self._results = []
+    self.identities = []
 
   def add(self, launch_work_unit: xm.JobGeneratorType, **kwargs) -> None:  # pyrefly: ignore[bad-override]
+    self.identities.append(kwargs["identity"])
     self._results.append(launch_work_unit(self._work_unit, **kwargs))
+
+  def add_existing_work_units(self, num_work_units: int) -> None:
+    """Adds work units that the experiment has before the launch."""
+    for _ in range(num_work_units):
+      self._work_units[len(self._work_units) + 1] = MockWorkUnit()
 
   async def flatten_jobs(self) -> list[xm.Job]:
     await asyncio.gather(*self._results)
@@ -87,8 +94,7 @@ def _mock_experiment() -> Iterator[MockExperiment]:
     yield mock_exp
 
 
-@xm.run_in_asyncio_loop
-async def test_orchestrator(mock_experiment: MockExperiment):
+def _launch_sweep() -> None:
   orchestrator = orchestrator_lib.SweepOrchestrator()
   orchestrator.launch_jobs(
       resolved_jobs={
@@ -104,6 +110,37 @@ async def test_orchestrator(mock_experiment: MockExperiment):
       ),
   )
 
+
+@xm.run_in_asyncio_loop
+async def test_orchestrator(mock_experiment: MockExperiment):
+  _launch_sweep()
+
   jobs = await mock_experiment.flatten_jobs()
   jobs = [job.name for job in jobs]
   assert jobs == ["train", "train"]
+  assert mock_experiment.identities == ["sweep_0", "sweep_1"]
+
+
+@pytest.mark.parametrize(
+    "xreload_xid, expected_identities",
+    [
+        # Adding work units to an existing experiment (`kxm.Experiment.xid`).
+        (None, ["sweep_2", "sweep_3"]),
+        # XReload re-adds the experiment's own work units.
+        (12345, ["sweep_0", "sweep_1"]),
+    ],
+)
+@xm.run_in_asyncio_loop
+async def test_orchestrator_with_existing_work_units(
+    mock_experiment: MockExperiment,
+    xreload_xid: int | None,
+    expected_identities: list[str],
+):
+  mock_experiment.add_existing_work_units(2)
+  with mock.patch.object(
+      orchestrator_lib, "_is_xreload", return_value=xreload_xid is not None
+  ):
+    _launch_sweep()
+
+  await mock_experiment.flatten_jobs()
+  assert mock_experiment.identities == expected_identities
