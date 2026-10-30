@@ -120,7 +120,7 @@ class DynamicPathBuilder(_PathBuilder):
   """
 
   def __init__(self, state: Optional[_PathBuilderState] = None):
-    self._state = state or _PathBuilderState(part=_Root(type(self).__name__))  # pytype: disable=name-error
+    self._state = state or _PathBuilderState(part=_Root(type(self).__name__))
 
   def __getattr__(self, name: str) -> DynamicPathBuilder:
     return type(self)(self._state.make_child(_Attribute(name)))
@@ -162,7 +162,7 @@ class AnnotatedPathBuilder(_PathBuilder):
   def __init__(self, state: Optional[_AnnotatedPathBuilderState] = None):
     if state is None:
       state = _AnnotatedPathBuilderState(
-          cls=type(self), part=_Root(type(self).__name__)  # pytype: disable=name-error
+          cls=type(self), part=_Root(type(self).__name__)  # pyrefly: ignore[bad-argument-type]
       )
 
     self._state = state
