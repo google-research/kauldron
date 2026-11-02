@@ -170,7 +170,7 @@ class TrainStep(config_util.UpdateFromRootCfg):
     params = collections.pop("params", {})
     collections.pop("intermediates", None)  # Remove intermediates
 
-    state = TrainState(  # pytype: disable=wrong-arg-types
+    state = TrainState(
         step=jnp.asarray(0),  # pyrefly: ignore[bad-argument-type]
         params=params,
         opt_state=None,
