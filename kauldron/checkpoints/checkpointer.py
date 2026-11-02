@@ -21,6 +21,7 @@ from collections.abc import Callable, Iterator, Mapping
 import dataclasses
 import datetime
 import functools
+import math
 import time
 from typing import Any, Iterable, Optional, Self, Sequence, TypeVar
 
@@ -93,6 +94,10 @@ class BaseCheckpointer(
 
   @property
   def latest_step(self) -> Optional[int]:
+    return None
+
+  @property
+  def best_step(self) -> int | None:
     return None
 
   @property
@@ -236,9 +241,15 @@ class Checkpointer(BaseCheckpointer):
   @functools.cached_property
   def _ckpt_mgr(self) -> lazy_checkpoint_manager.LazyCheckpointManager:
     """Returns checkpoint manager instance (initialized and cached)."""
+    worst_sentinel = float("inf") if self.best_mode == "min" else float("-inf")
 
     def _best_fn(metrics):
-      return kontext.get_by_path(metrics, self.best_metric_path)  # pyrefly: ignore[bad-argument-type]
+      scalar = float(
+          kontext.get_by_path(metrics, self.best_metric_path)  # pyrefly: ignore[bad-argument-type]
+      )
+      # `NaN` compares `False` against every value, making sorted ranking order
+      # undefined. Rank non-finite values (e.g. diverged runs) last.
+      return scalar if math.isfinite(scalar) else worst_sentinel
 
     mgr_options = ocp.CheckpointManagerOptions(
         save_interval_steps=self.save_interval_steps,
@@ -341,6 +352,19 @@ class Checkpointer(BaseCheckpointer):
     if metrics is not None:
       # Convert metrics to be JSON serializable.
       metrics = _normalize_to_json(metrics)
+      if (
+          self.best_metric_path is not None
+          and kontext.get_by_path(
+              metrics, self.best_metric_path, default=None  # pyrefly: ignore[bad-argument-type]
+          )
+          is None
+      ):
+        # Preemption saves and steps where no evaluator ran do not contain the
+        # best metric. Orbax excludes checkpoints saved with `metrics=None`
+        # from best-N ranking and always keeps them
+        # (`keep_checkpoints_without_metrics=True`), so they are not
+        # garbage-collected as worst-ranked.
+        metrics = None
     with jax.transfer_guard("allow"):
       return self._ckpt_mgr.save(
           state,
@@ -365,6 +389,10 @@ class Checkpointer(BaseCheckpointer):
   @property
   def latest_step(self) -> Optional[int]:
     return self._ckpt_mgr.latest_step()
+
+  @property
+  def best_step(self) -> int | None:
+    return self._ckpt_mgr.best_step()
 
   @property
   def all_steps(self) -> Sequence[int]:

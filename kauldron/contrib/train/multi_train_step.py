@@ -83,7 +83,7 @@ def forward_with_loss(
         "Further kwargs (e.g. for the legacy API) are not supported."
     )
   if subgrad_fns is None:
-    subgrads = {k: context.params for k in losses}  # pytype: disable=attribute-error
+    subgrads = {k: context.params for k in losses}  # pyrefly: ignore[missing-attribute]
   else:
     # Call all subgrad functions to get their values with gradients. The hope
     # is that XLA compilation will optimize away the repeated forward passes.
