@@ -129,3 +129,44 @@ def test_cleanup_orphaned_snapshots(tmp_path):
   )
   assert ckpt_enabled.cleanup_orphaned_snapshots
   assert ckpt_enabled._ckpt_mgr.cleanup_orphaned_snapshots
+
+
+def test_best_step(tmp_path):
+  """Exposes best_step across NoopCheckpointer and Checkpointer modes."""
+  assert checkpoints.NoopCheckpointer().best_step is None
+
+  ckpt_no_best = checkpoints.Checkpointer(
+      workdir=tmp_path / 'no_best', save_interval_steps=1
+  )
+  assert ckpt_no_best.best_step is None
+  ckpt_no_best.save(MyState(x=jnp.ones((1, 2))), step=10)
+  ckpt_no_best.save(MyState(x=jnp.ones((1, 2))), step=20)
+  ckpt_no_best.wait_until_finished()
+  assert ckpt_no_best.best_step == 20
+  ckpt_no_best.close()
+
+  ckpt_best = checkpoints.Checkpointer(
+      workdir=tmp_path / 'with_best',
+      save_interval_steps=1,
+      best_metric_path='eval.loss',
+      best_mode='min',
+  )
+  ckpt_best.save(
+      MyState(x=jnp.full((1, 2), 10.0)),
+      step=10,
+      metrics={'eval': {'loss': 0.5}},
+  )
+  ckpt_best.save(
+      MyState(x=jnp.full((1, 2), 20.0)),
+      step=20,
+      metrics={'eval': {'loss': 0.2}},
+  )
+  ckpt_best.save(
+      MyState(x=jnp.full((1, 2), 30.0)),
+      step=30,
+      metrics={'eval': {'loss': 0.4}},
+  )
+  ckpt_best.wait_until_finished()
+  assert ckpt_best.best_step == 20
+  assert ckpt_best.latest_step == 30
+  ckpt_best.close()

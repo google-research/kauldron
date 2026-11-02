@@ -96,6 +96,10 @@ class BaseCheckpointer(
     return None
 
   @property
+  def best_step(self) -> int | None:
+    return None
+
+  @property
   def all_steps(self) -> Sequence[int]:
     return []
 
@@ -365,6 +369,10 @@ class Checkpointer(BaseCheckpointer):
   @property
   def latest_step(self) -> Optional[int]:
     return self._ckpt_mgr.latest_step()
+
+  @property
+  def best_step(self) -> int | None:
+    return self._ckpt_mgr.best_step()
 
   @property
   def all_steps(self) -> Sequence[int]:
