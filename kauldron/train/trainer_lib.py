@@ -57,7 +57,7 @@ import optax
 
 with konfig.imports(lazy=True):
   # Do not resolve job_lib to not link the full XManager API to Kauldron
-  from kauldron.xm._src import job_lib  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+  from kauldron.xm._src import job_lib  # pylint: disable=g-import-not-at-top  # pyrefly: ignore[missing-module-attribute]
 
 
 # TODO(epot): There's some strange interaction between `get_type_hints` from
