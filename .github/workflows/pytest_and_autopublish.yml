@@ -40,6 +40,7 @@ jobs:
     # * sweep_utils_test: Depends on kxm
     # * lpips_test: Missing VGG weights
     # * partial_loader_test: Orbax partial checkpoint loader not yet open-sourced  (TODO(epot): Restore)
+    # * train_test / evaluators_test: Run in dedicated 2-CPU-device step below
     - name: Run core tests
       run: |
         pytest -vv -n auto \
@@ -48,7 +49,17 @@ jobs:
           --ignore=kauldron/xm/ \
           --ignore=kauldron/metrics/lpips_test.py \
           --ignore=kauldron/checkpoints/partial_loader_test.py \
-          --ignore=kauldron/utils/sweep_utils_test.py
+          --ignore=kauldron/utils/sweep_utils_test.py \
+          --ignore=kauldron/train/train_test.py \
+          --ignore=kauldron/evals/evaluators_test.py
+
+    - name: Run 2-CPU-device core-loop and evaluator tests
+      env:
+        XLA_FLAGS: "--xla_force_host_platform_device_count=2"
+      run: |
+        pytest -vv -n auto \
+          kauldron/train/train_test.py \
+          kauldron/evals/evaluators_test.py
 
   # Auto-publish when version is increased
   publish-job:

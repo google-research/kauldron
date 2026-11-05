@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 
 with epy.lazy_imports():
-  import altair as alt  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+  import altair as alt  # pylint: disable=g-import-not-at-top  # pyrefly: ignore[missing-import]
 
 
 def plot_schedules(schedules: PyTree[Schedule], num_steps: int) -> alt.Chart:
@@ -53,6 +53,10 @@ def plot_schedules(schedules: PyTree[Schedule], num_steps: int) -> alt.Chart:
       tooltip=["Schedule", "Step", "Value"],
   )
   # construct an Altair plot
+  major_str = alt.__version__.split(".", 1)[0]
+  major_version = (
+      int(major_str) if major_str.isascii() and major_str.isdigit() else -1
+  )
   # TODO(b/406787897): Remove support for the old version once the upgrade
   # is complete.
   if alt.__version__ == "4.2.0":
@@ -67,7 +71,7 @@ def plot_schedules(schedules: PyTree[Schedule], num_steps: int) -> alt.Chart:
     lines = base.mark_line().encode(
         size=alt.condition(~highlight, alt.value(1), alt.value(3))
     )
-  elif alt.__version__ == "5.5.0":
+  elif major_version >= 5:
     highlight = alt.selection_point(
         on="mouseover", fields=["Schedule"], nearest=True
     )
@@ -77,9 +81,12 @@ def plot_schedules(schedules: PyTree[Schedule], num_steps: int) -> alt.Chart:
         .add_params(highlight)
         .properties(width=600)
     )
-    lines = base.mark_line().encode(
-        size=alt.when(~highlight).then(alt.value(1)).otherwise(alt.value(3))
+    size = (
+        alt.when(~highlight).then(alt.value(1)).otherwise(alt.value(3))
+        if hasattr(alt, "when")
+        else alt.condition(~highlight, alt.value(1), alt.value(3))
     )
+    lines = base.mark_line().encode(size=size)
   else:
     raise ValueError(f"Unsupported Altair version: {alt.__version__}")
 
