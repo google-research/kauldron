@@ -14,7 +14,7 @@
 
 """Unit tests for kxm Jobs."""
 
-from typing import Iterator
+from collections.abc import Iterator
 from unittest import mock
 
 from kauldron.xm._src import dir_utils

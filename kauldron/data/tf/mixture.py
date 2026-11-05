@@ -49,6 +49,7 @@ class SampleFromDatasets(base.TFDataPipeline):
   rerandomize_each_iteration: bool = True
 
   def __post_init__(self):
+    super().__post_init__()
     if not all(isinstance(ds, base.TFDataPipeline) for ds in self.datasets):
       raise ValueError(
           'All datasets in `SampleFromDatasets` should inherit from'
@@ -56,14 +57,19 @@ class SampleFromDatasets(base.TFDataPipeline):
       )
 
   def ds_for_current_process(self, rng: PRNGKey) -> tf.data.Dataset:
-    # We make sure each nested dataset get a different seed
-    datasets = [
-        ds.ds_with_transforms(jax.random.fold_in(rng, i))
-        for i, ds in enumerate(self.datasets)
-    ]
+    # We make sure each nested dataset get a different seed, and propagate
+    # `batch_drop_remainder` to unbatched child datasets so sharding matches
+    # the root mixture's remainder mode.
+    datasets = []
+    for i, ds in enumerate(self.datasets):
+      if ds.batch_size is None:
+        ds = dataclasses.replace(
+            ds, batch_drop_remainder=self.batch_drop_remainder
+        )
+      datasets.append(ds.ds_with_transforms(jax.random.fold_in(rng, i)))
 
     ds = tf.data.Dataset.sample_from_datasets(
-        datasets,  # pyrefly: ignore[bad-argument-type]
+        datasets,
         weights=self.weights,
         seed=random.random_seed(
             random.fold_in_str(rng, 'sample_from_datasets')
@@ -90,6 +96,7 @@ class ZipDatasets(base.TFDataPipeline):
   _: dataclasses.KW_ONLY
 
   def __post_init__(self):
+    super().__post_init__()
     if not all(
         isinstance(ds, base.TFDataPipeline) for ds in [*self.datasets.values()]
     ):
@@ -98,10 +105,13 @@ class ZipDatasets(base.TFDataPipeline):
       )
 
   def ds_for_current_process(self, rng: PRNGKey) -> tf.data.Dataset:
-    datasets = {
-        ds_name: ds.ds_with_transforms(jax.random.fold_in(rng, i))
-        for i, (ds_name, ds) in enumerate(self.datasets.items())
-    }
+    datasets = {}
+    for i, (ds_name, ds) in enumerate(self.datasets.items()):
+      if ds.batch_size is None:
+        ds = dataclasses.replace(
+            ds, batch_drop_remainder=self.batch_drop_remainder
+        )
+      datasets[ds_name] = ds.ds_with_transforms(jax.random.fold_in(rng, i))
 
     # Drop grain meta features
     datasets = {
@@ -109,7 +119,7 @@ class ZipDatasets(base.TFDataPipeline):
         for ds_name, ds in datasets.items()
     }
 
-    ds = tf.data.Dataset.zip(datasets)  # pyrefly: ignore[bad-argument-type]
+    ds = tf.data.Dataset.zip(datasets)
     return ds
 
   @functools.cached_property
