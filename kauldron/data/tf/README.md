@@ -22,8 +22,15 @@ cfg.train_ds = kd.data.tf.Tfds(
     transforms=[
         kd.data.Elements(keep=["image"]),
     ],
+    post_batch_transforms=[
+        kd.data.ValueRange(key="image", vrange=(0, 1)),
+    ],
 )
 ```
+
+`transforms` runs on individual elements before the pipeline creates batches.
+`post_batch_transforms` runs on full batches after the pipeline creates
+batches.
 
 Example of dataset mixture with nested transforms:
 

@@ -14,9 +14,10 @@
 
 """Utils for using Kauldron transforms with tfgrain."""
 
+from collections.abc import Callable, Mapping, Sequence
 import functools
 import sys
-from typing import Any, Callable, Mapping
+from typing import Any
 
 from grain._src.tensorflow import transforms as grain_transforms
 import grain.tensorflow as grain
@@ -24,6 +25,9 @@ from kauldron.data.tf import grain_utils
 from kauldron.data.transforms import abc as tr_abc
 from kauldron.data.transforms import normalize as tr_normalize
 import tensorflow as tf
+
+Transformation = grain.Transformation | tr_normalize.Transformation
+Transformations = Sequence[Transformation] | Mapping[str, Transformation]
 
 
 class TfGrainMapAdapter(tr_normalize.TransformAdapter, grain.MapTransform):
@@ -87,7 +91,7 @@ _KD_TO_TFGRAIN_ADAPTERS = {
 
 
 def _adapt_for_tfgrain(
-    transform: tr_normalize.Transformation,
+    transform: Transformation,
 ) -> grain.Transformation:
   """Adapt the transform for tfgrain."""
   py_grain = sys.modules.get('grain.python')
@@ -104,7 +108,7 @@ def _adapt_for_tfgrain(
 
 def apply_transformations(
     ds: tf.data.Dataset,
-    transforms: tr_normalize.Transformations,
+    transforms: Transformations,
 ) -> tf.data.Dataset:
   """Wrapper around grain to apply the transformations."""
   if isinstance(transforms, Mapping):
