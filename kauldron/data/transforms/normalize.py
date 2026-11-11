@@ -61,4 +61,4 @@ def adapt_transform(
         f'Unexpected Kauldron transform: {type(transform).__qualname__}. This'
         ' is likely a Kauldron bug. Please report.'
     )
-  return Adapter(transform)  # pytype: disable=missing-parameter,wrong-arg-count,not-instantiable
+  return Adapter(transform)
