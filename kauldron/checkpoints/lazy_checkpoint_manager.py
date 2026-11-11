@@ -153,6 +153,10 @@ class LazyCheckpointManager:
     """Wrapper around `ocp.CheckpointManager.latest_step`."""
     return self._get_manager().latest_step()
 
+  def best_step(self) -> int | None:
+    """Wrapper around `ocp.CheckpointManager.best_step`."""
+    return self._get_manager().best_step()
+
   def all_steps(self) -> list[int]:
     """Wrapper around `ocp.CheckpointManager.all_steps`."""
     return list(self._get_manager().all_steps())

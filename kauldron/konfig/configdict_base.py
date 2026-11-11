@@ -19,6 +19,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable, Mapping, MutableMapping
 import copy
 import dataclasses
+import enum
 import functools
 import itertools
 import json
@@ -96,6 +97,8 @@ class ConfigDict(ml_collections.ConfigDict):
   def __setitem__(self, key: str | int, value: Any) -> None:
     key = self._normalize_arg_key(key, can_append=True)
     value = _normalize_config_only_value(value, key, id_to_dict={})
+    if self.is_type_safe and key in self._fields:
+      value = _maybe_cast_enum_override(self._fields[key], value)
     return super().__setitem__(key, value)
 
   def __or__(self, other: dict[str, Any] | ml_collections.ConfigDict):
@@ -184,6 +187,28 @@ def _maybe_update_init_dict(init_dict: Mapping[str, Any]) -> Mapping[str, Any]:
   default_values = copy.deepcopy(default_values)
   default_values.update(init_dict)
   return default_values  # pyrefly: ignore[bad-return]
+
+
+def _maybe_cast_enum_override(field: Any, value: Any) -> Any:
+  """Casts compatible primitive overrides when assigning to an `Enum` field."""
+  if value is None or isinstance(value, ml_collections.FieldReference):
+    return value
+  field_type = (
+      field.get_type()
+      if isinstance(field, ml_collections.FieldReference)
+      else type(field)
+  )
+  if not (isinstance(field_type, type) and issubclass(field_type, enum.Enum)):
+    return value
+  if isinstance(value, (enum.Enum, bool)):
+    return value
+  if (
+      (issubclass(field_type, str) and isinstance(value, str))
+      or (issubclass(field_type, int) and isinstance(value, int))
+      or (issubclass(field_type, float) and isinstance(value, (int, float)))
+  ):
+    return field_type(value)
+  return value
 
 
 @dataclasses.dataclass
