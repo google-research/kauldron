@@ -175,6 +175,9 @@ def train_impl(
               log_summaries=log_summaries,
           )
 
+  # Wait for the metrics that `write_step_metrics` flushes in the background.
+  writer.wait_for_background_flush()
+
   # run last checkpoint evals if any
   final_evals = [
       evaluator
@@ -188,6 +191,11 @@ def train_impl(
     gc.collect()
     jax.clear_caches()
     evaluator.evaluate(state=state, step=trainer.num_train_steps)  # pyrefly: ignore[bad-argument-type]
+
+  # Wait for the eval metrics that `write_step_metrics` flushes in the
+  # background.
+  for evaluator in trainer.evals.values():
+    evaluator.writer.wait_for_background_flush()
 
   # Ensure all hosts exit together. See section in dm/jax-faqs.
   _sync()

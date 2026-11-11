@@ -179,7 +179,7 @@ def _animated_image(
       )
     elif img_format == "GIF":
       palette = frames[0].quantize(
-          method=pil_image.MEDIANCUT, dither=pil_image.Dither.NONE
+          method=pil_image.MEDIANCUT, dither=pil_image.Dither.NONE  # pyrefly: ignore[missing-attribute]
       )
       frames = [
           f.quantize(palette=palette, dither=pil_image.Dither.NONE)

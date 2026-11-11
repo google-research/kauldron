@@ -21,6 +21,7 @@ import dataclasses
 import functools
 from typing import Any
 
+from absl import flags
 from kauldron.xm._src import dir_utils
 from kauldron.xm._src import job_lib
 from kauldron.xm._src import sweep_utils
@@ -69,8 +70,11 @@ class SweepOrchestrator(Orchestrator):
   ) -> None:
     xp = xm_abc.get_current_experiment()
 
-    # Get existing work unit identities to prevent them from being erased.
-    num_existing_work_units = len(xp.work_units)
+    # When adding work units to an existing experiment (`kxm.Experiment.xid`),
+    # number them after the existing ones so their identities are new. XReload
+    # (`--xreload_xid`) instead re-adds the experiment's own work units, which
+    # XManager looks up by identity, so number them from 0, as when launched.
+    num_existing_work_units = 0 if _is_xreload() else len(xp.work_units)
 
     # TODO(klausg): Add a confirmation dialogue before starting lots of workers?
     for i, sweep_item in enumerate(sweep_info):  # pyrefly: ignore[not-iterable]
@@ -118,3 +122,13 @@ class SweepOrchestrator(Orchestrator):
   def _update_jobs(self, xm_jobs: xm.JobGroup) -> xm.JobGroup:
     """Subclasses can override this to add custom jobs."""
     return xm_jobs
+
+
+def _is_xreload() -> bool:
+  """Returns whether this launch reloads an existing experiment with XReload."""
+  # Same check as `xm_abc`'s `xreload_helper.is_reloading()`, which Kauldron
+  # cannot depend on. The open-source XManager does not define the flag.
+  return (
+      "xreload_xid" in flags.FLAGS
+      and flags.FLAGS["xreload_xid"].value is not None
+  )
