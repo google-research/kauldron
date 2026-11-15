@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Modified: added an opt-in `Trainer.early_stopping` configuration block.
+# The original Apache-2.0 header above is kept unchanged (see §4(b)).
+
 r"""Minimal example training a simple Autoencoder on MNIST.
 
 Run:
@@ -84,6 +87,29 @@ def get_config():
           metrics={},
       )
   }
+
+  # Early stopping (opt-in).
+  #
+  # Requires the library-side changes first:
+  #   1. `Trainer.early_stopping` field in kauldron/train/trainer_lib.py
+  #   2. `EarlyStopping` exported as `kd.train.EarlyStopping`
+  #   3. the 4 insertion patches in kauldron/train/train_loop.py
+  #
+  # `eval` is the evaluator name above; the evaluator reuses `train_losses`
+  # because `metrics={}`, so the monitored L2 reconstruction loss `recon`
+  # shows up in its metric values. On the first evaluated step the controller
+  # logs `early_stopping: available metric keys: ...` -- if the key differs
+  # there, copy that key into `monitor` verbatim.
+  #
+  # `patience` counts EVALUATION POINTS, not train steps: with
+  # EveryNSteps(100), `patience=3` means ~400 steps without improvement.
+  cfg.early_stopping = kd.train.EarlyStopping(
+      monitor="eval.recon",
+      mode="min",
+      patience=3,
+      min_delta=1e-4,
+      min_steps=200,
+  )
 
   return cfg
 

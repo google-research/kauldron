@@ -26,7 +26,7 @@ from etils import epy
 from etils.epy import _multiprocess
 import jax
 
-Force CUDA symbol resolution by jax before tensorflow gets initialized.
+# Force CUDA symbol resolution by jax before tensorflow gets initialized.
 jax.devices()
 
 import tensorflow as tf
