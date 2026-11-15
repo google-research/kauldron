@@ -42,6 +42,7 @@ from kauldron.inspect import profile_utils
 from kauldron.ktyping import PyTree  # pylint: disable=g-importing-member
 from kauldron.train import auxiliaries
 from kauldron.train import context as context_lib
+from kauldron.train import early_stopping as early_stopping_lib
 from kauldron.train import metric_writer
 from kauldron.train import rngs_lib
 from kauldron.train import setup_utils
@@ -184,6 +185,7 @@ class Trainer(config_util.BaseConfig):
   )
   num_train_steps: Optional[int] = None
   stop_after_steps: Optional[int] = None
+  early_stopping: Optional[early_stopping_lib.EarlyStopping] = None
 
   # Metrics, losses, summaries
   log_metrics_every: int = 100
