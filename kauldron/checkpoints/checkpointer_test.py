@@ -129,3 +129,159 @@ def test_cleanup_orphaned_snapshots(tmp_path):
   )
   assert ckpt_enabled.cleanup_orphaned_snapshots
   assert ckpt_enabled._ckpt_mgr.cleanup_orphaned_snapshots
+
+
+def test_best_step(tmp_path):
+  """Exposes best_step across NoopCheckpointer and Checkpointer modes."""
+  assert checkpoints.NoopCheckpointer().best_step is None
+
+  ckpt_no_best = checkpoints.Checkpointer(
+      workdir=tmp_path / 'no_best', save_interval_steps=1
+  )
+  assert ckpt_no_best.best_step is None
+  ckpt_no_best.save(MyState(x=jnp.ones((1, 2))), step=10)
+  ckpt_no_best.save(MyState(x=jnp.ones((1, 2))), step=20)
+  ckpt_no_best.wait_until_finished()
+  assert ckpt_no_best.best_step == 20
+  ckpt_no_best.close()
+
+  ckpt_best = checkpoints.Checkpointer(
+      workdir=tmp_path / 'with_best',
+      save_interval_steps=1,
+      best_metric_path='eval.loss',
+      best_mode='min',
+  )
+  ckpt_best.save(
+      MyState(x=jnp.full((1, 2), 10.0)),
+      step=10,
+      metrics={'eval': {'loss': 0.5}},
+  )
+  ckpt_best.save(
+      MyState(x=jnp.full((1, 2), 20.0)),
+      step=20,
+      metrics={'eval': {'loss': 0.2}},
+  )
+  ckpt_best.save(
+      MyState(x=jnp.full((1, 2), 30.0)),
+      step=30,
+      metrics={'eval': {'loss': 0.4}},
+  )
+  ckpt_best.wait_until_finished()
+  assert ckpt_best.best_step == 20
+  assert ckpt_best.latest_step == 30
+  ckpt_best.close()
+
+
+def test_best_metric_keeps_missing_and_evicts_non_finite(tmp_path):
+  """Keeps saves without the best metric and evicts NaN losses first."""
+  # Saves that lack `best_metric_path` (preemption saves with `{}`, or periodic
+  # saves with only `'train'` metrics) are stored with `metrics=None`, so Orbax
+  # excludes them from best-N ranking and keeps them. A `NaN` loss ranks worst
+  # and is the step evicted once more than `max_to_keep` ranked steps exist:
+  #
+  #   step | metrics          | ranked as | expected
+  #   -----+------------------+-----------+---------
+  #   100  | eval.loss = 0.3  | 0.3       | kept (top-2)
+  #   200  | eval.loss = 0.2  | 0.2       | kept (best)
+  #   250  | {}               | unranked  | kept
+  #   275  | train only       | unranked  | kept
+  #   300  | eval.loss = NaN  | +inf      | evicted
+  ckpt = checkpoints.Checkpointer(
+      workdir=tmp_path,
+      save_interval_steps=1,
+      best_metric_path='eval.loss',
+      best_mode='min',
+      max_to_keep=2,
+  )
+  # Finite losses at steps 100 (0.3) and 200 (0.2) occupy the top-2 slots.
+  ckpt.save(
+      MyState(x=jnp.full((1, 2), 1.0)),
+      step=100,
+      metrics={'eval': {'loss': 0.3}},
+  )
+  ckpt.save(
+      MyState(x=jnp.full((1, 2), 2.0)),
+      step=200,
+      metrics={'eval': {'loss': 0.2}},
+  )
+  # Preemption save with empty metrics is unranked and kept, not a KeyError.
+  ckpt.save(
+      MyState(x=jnp.full((1, 2), 2.5)),
+      step=250,
+      force=True,
+      metrics={},
+  )
+  # Periodic save where no evaluator ran: only train metrics, also unranked.
+  ckpt.save(
+      MyState(x=jnp.full((1, 2), 2.75)),
+      step=275,
+      metrics={'train': {'loss': 0.1}},
+  )
+  # Diverged step with NaN loss ranks worst and is evicted.
+  ckpt.save(
+      MyState(x=jnp.full((1, 2), 3.0)),
+      step=300,
+      metrics={'eval': {'loss': float('nan')}},
+  )
+  ckpt.wait_until_finished()
+  assert sorted(ckpt.all_steps) == [100, 200, 250, 275]
+  assert ckpt.best_step == 200
+  ckpt.close()
+
+
+def test_keep_latest_and_best_n_across_preemption_restart(tmp_path):
+  """Retains both top-N validation and latest preemption checkpoints across restarts."""
+  def _make_checkpointer():
+    return checkpoints.Checkpointer(
+        workdir=tmp_path,
+        save_interval_steps=1,
+        best_metric_path='eval.loss',
+        best_mode='min',
+        max_to_keep=2,
+        keep_latest_n=1,
+    )
+
+  ckpt = _make_checkpointer()
+  ckpt.save(
+      MyState(x=jnp.full((1, 2), 1.0)),
+      step=100,
+      metrics={'eval': {'loss': 0.3}},
+  )
+  ckpt.save(
+      MyState(x=jnp.full((1, 2), 2.0)),
+      step=200,
+      metrics={'eval': {'loss': 0.2}},
+  )
+  ckpt.save(
+      MyState(x=jnp.full((1, 2), 3.0)),
+      step=300,
+      metrics={'eval': {'loss': 0.4}},
+  )
+  # Preemption save with empty metrics must not raise KeyError.
+  ckpt.save(
+      MyState(x=jnp.full((1, 2), 3.5)),
+      step=345,
+      force=True,
+      metrics={},
+  )
+  ckpt.wait_until_finished()
+  assert sorted(ckpt.all_steps) == [100, 200, 345]
+  assert ckpt.best_step == 200
+  assert ckpt.latest_step == 345
+  ckpt.close()
+
+  # Simulate restart on the same workdir: disk metrics preserve best_step=200
+  # while NaN steps rank worst and are kept only as latest.
+  ckpt_restarted = _make_checkpointer()
+  assert sorted(ckpt_restarted.all_steps) == [100, 200, 345]
+  assert ckpt_restarted.best_step == 200
+  ckpt_restarted.save(
+      MyState(x=jnp.full((1, 2), 4.0)),
+      step=400,
+      metrics={'eval': {'loss': float('nan')}},
+  )
+  ckpt_restarted.wait_until_finished()
+  assert sorted(ckpt_restarted.all_steps) == [100, 200, 400]
+  assert ckpt_restarted.best_step == 200
+  assert ckpt_restarted.latest_step == 400
+  ckpt_restarted.close()

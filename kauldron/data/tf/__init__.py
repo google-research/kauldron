@@ -16,6 +16,7 @@
 
 # pylint: disable=g-importing-member,g-bad-import-order
 
+from kauldron.data.tf.base import DropRemainder
 from kauldron.data.tf.base import TFDataPipeline
 from kauldron.data.tf.loaders.graintfds import Tfds
 from kauldron.data.tf.loaders.seqio import SeqIOMixture
