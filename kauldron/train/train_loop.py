@@ -129,6 +129,7 @@ def train_impl(
         # Evaluation metrics are computed from the OLD model state *before*
         # backprop gradients are applied.
         eval_metrics = {}
+        es_metrics = {}
         with chrono.pause(chrono_utils.Pause.EVALS_ALONG_TRAIN):
           for evaluator in trainer.evals.values():
             # If the checkpointer is saving the best checkpoint according to
@@ -137,20 +138,32 @@ def train_impl(
             eval_aux = evaluator.maybe_eval(step=i, state=state)
             if eval_aux is not None:
               # TODO(klausg): remove once compute() is moved out of the writer.
-              eval_metrics[evaluator.name] = eval_aux.compute(
-                  flatten=False
-              ).metric_values
+              eval_out = eval_aux.compute(flatten=False)
+              # Keep the original payload for `ckpt.save(metrics=...)`.
+              eval_metrics[evaluator.name] = eval_out.metric_values
+              # Early stopping also needs `loss_values`: losses are NOT in
+              # `metric_values`, and an evaluator with `metrics={}` has an
+              # empty `metric_values` even though losses were computed.
+              # `summary_values` is intentionally excluded (images/text).
+              es_metrics[evaluator.name] = {
+                  "loss_values": getattr(eval_out, "loss_values", {}),
+                  "metric_values": eval_out.metric_values,
+              }
 
         # ----- Early stopping ----------------------------------------------
         # `eval_metrics` describes the OLD state, i.e. exactly the state that
-        # would be checkpointed below. Only steps with real eval results count
+        # would be checkpointed below. Only steps with real scalar values count
         # as evaluation points for `patience`.
         train_metrics = None
         if early_stop.needs_train_metrics and aux is not None:
-          train_metrics = aux.compute(flatten=False).metric_values
+          train_out = aux.compute(flatten=False)
+          train_metrics = {
+              "loss_values": getattr(train_out, "loss_values", {}),
+              "metric_values": train_out.metric_values,
+          }
         force_save = early_stop.update(
             step=i,
-            eval_metrics=eval_metrics,
+            eval_metrics=es_metrics,
             train_metrics=train_metrics,
         )
         if early_stop.triggered:

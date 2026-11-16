@@ -17,13 +17,18 @@
 Design notes
 ------------
 * The controller only consumes metrics that ``train_impl`` already computes
-  (evaluation metrics from the *old* model state, plus optional train
-  metrics). It never reorders the operations in the training loop.
+  (evaluation outputs from the *old* model state, plus optional train
+  outputs). It never reorders the operations in the training loop. Both
+  ``loss_values`` and ``metric_values`` of ``AuxiliariesOutput`` are exposed:
+  an evaluator configured with ``metrics={}`` has an empty ``metric_values``
+  even though its losses were computed.
 * Only steps on which at least one evaluator produced metrics count as an
   "evaluation point" for ``patience``. Steps without an eval are ignored.
-* On evaluated steps the trigger flag is all-reduced across hosts, so every
-  host leaves the loop on the same step. A mismatch here would dead-lock in
-  ``train_loop._sync()``.
+* On multi-host runs the trigger flag is all-reduced on evaluated steps, so
+  every host leaves the loop on the same step (a mismatch would dead-lock in
+  ``train_loop._sync()``). Single-process runs skip the collective entirely,
+  which also keeps the loop free of host-to-device transfers under
+  ``jax.transfer_guard('disallow')``.
 """
 
 from __future__ import annotations
@@ -44,6 +49,7 @@ EARLY_STOP_FILENAME = "early_stopping_triggered"
 STATE_FILENAME = "early_stopping_state.json"
 _MAX_HISTORY = 50
 _MAX_LOGGED_KEYS = 30
+_MAX_FLATTEN_DEPTH = 8
 
 _MAX_KEYS_FOR_BETTER = (
     "acc",
@@ -80,8 +86,9 @@ class EarlyStopping:
     check_finite: Stop immediately on NaN / inf.
     save_on_trigger: Force one checkpoint save on the triggering step. The
       saved state is the same *old* state the triggering eval metrics describe.
-    sync_across_hosts: All-reduce the trigger flag on evaluated steps. Keep it
-      on for multi-host runs; single-host runs may disable it.
+    sync_across_hosts: All-reduce the trigger flag on evaluated steps. A
+      no-op (zero JAX ops) on single-process runs; keep it on for multi-host
+      runs so every host leaves the loop on the same step.
     log_available_metrics: Log the flattened metric keys on the first eval.
   """
 
@@ -154,6 +161,7 @@ class EarlyStoppingController:
       self.workdir = epath.Path(workdir)
     self.state = _State()
     self._logged_keys = False
+    self._logged_empty = False
 
   @classmethod
   def from_config(
@@ -215,10 +223,11 @@ class EarlyStoppingController:
 
     Args:
       step: Current global step.
-      eval_metrics: ``{evaluator.name: metric_values}`` produced by the evals
-        that ran on this step. Empty when no evaluator ran.
-      train_metrics: Optional ``metric_values`` of the previous train step.
-        Only supplied when ``monitor`` points into ``train``.
+      eval_metrics: ``{evaluator.name: payload}`` for the evals that ran on
+        this step, where ``payload`` exposes ``loss_values`` and
+        ``metric_values`` of ``AuxiliariesOutput``. Empty when no evaluator ran.
+      train_metrics: Same payload shape for the previous train step. Only
+        supplied when ``monitor`` points into ``train``.
 
     Returns:
       Whether ``train_impl`` must force a checkpoint save on this step.
@@ -233,7 +242,13 @@ class EarlyStoppingController:
     if train_metrics is not None:
       metrics["train"] = train_metrics
 
-    has_eval_point = bool(metrics)
+    # An evaluator may return a non-None payload whose ``metric_values`` is
+    # empty (e.g. `metrics={}` on the evaluator, while the loss lives in
+    # `loss_values`). Only *actual scalar leaves* count as an evaluation
+    # point -- otherwise `bool(metrics)` is True but there is nothing to
+    # monitor, which used to raise and kill the whole run.
+    flat = _flatten(metrics)
+    has_eval_point = bool(flat)
     if (
         has_eval_point
         and self.cfg.log_available_metrics
@@ -242,13 +257,22 @@ class EarlyStoppingController:
       self._logged_keys = True
       status.log_status(
           "early_stopping: available metric keys: "
-          + ", ".join(sorted(_flatten(metrics))[:_MAX_LOGGED_KEYS])
+          + ", ".join(sorted(flat)[:_MAX_LOGGED_KEYS])
+      )
+    if not has_eval_point and metrics and not self._logged_empty:
+      self._logged_empty = True
+      status.log_status(
+          "early_stopping: no scalar metric values in the evaluation output "
+          f"at step {step} (got containers {list(metrics)!r}); this step is "
+          "skipped and does not consume patience. Check that the evaluator "
+          "actually produces losses/metrics, then copy a key from the "
+          "`available metric keys` log into `monitor`."
       )
 
     reason = ""
     triggered_here = False
     if has_eval_point:
-      scalar = _to_float(_resolve_metric(metrics, self.cfg.monitor))
+      scalar = _to_float(_resolve_metric(flat, self.cfg.monitor))
       self.state.num_points += 1
 
       if self.cfg.check_finite and not math.isfinite(scalar):
@@ -355,18 +379,71 @@ def _normalize(key: str) -> str:
   return key.replace("/", ".").strip(".").lower()
 
 
-def _flatten(obj: Any, prefix: str = "") -> dict[str, Any]:
-  """Flatten nested mappings / dataclasses into ``dotted.key`` -> leaf."""
+def _flatten(obj: Any, prefix: str = "", _depth: int = 0) -> dict[str, Any]:
+  """Flatten a metric payload into ``dotted.key`` -> leaf.
+
+  Empty containers produce **no** keys, and ``None`` is dropped. Arrays and
+  scalars are leaves. This matters because ``AuxiliariesOutput.metric_values``
+  can legitimately be ``{}`` while the loss lives in ``loss_values``: a step
+  with only empty containers must not be mistaken for a real evaluation point.
+  """
   out: dict[str, Any] = {}
-  if isinstance(obj, Mapping):
-    for k, v in obj.items():
+  if obj is None or _depth > _MAX_FLATTEN_DEPTH:
+    return out
+
+  # Scalars and array-like values are leaves (never descend into jax arrays).
+  if isinstance(obj, (str, bytes, bool, int, float, complex)):
+    if prefix:
+      out[prefix] = obj
+    return out
+  if hasattr(obj, "shape") and hasattr(obj, "dtype"):
+    if prefix:
+      out[prefix] = obj
+    return out
+
+  is_mapping = isinstance(obj, Mapping) or (
+      callable(getattr(obj, "items", None))
+      and not isinstance(obj, (str, bytes, list, tuple))
+  )
+  if is_mapping:
+    try:
+      items = list(obj.items())
+    except (TypeError, AttributeError, ValueError):
+      items = []
+    for k, v in items:
       key = f"{prefix}.{k}" if prefix else str(k)
-      out.update(_flatten(v, key))
-  elif dataclasses.is_dataclass(obj) and not isinstance(obj, type):
+      out.update(_flatten(v, key, _depth + 1))
+    return out
+
+  if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
     for f in dataclasses.fields(obj):
+      if f.name.startswith("_"):
+        continue
+      try:
+        v = getattr(obj, f.name)
+      except (AttributeError, ValueError, TypeError):
+        continue
       key = f"{prefix}.{f.name}" if prefix else f.name
-      out.update(_flatten(getattr(obj, f.name), key))
-  elif prefix:
+      out.update(_flatten(v, key, _depth + 1))
+    return out
+
+  if isinstance(obj, (list, tuple)) and not isinstance(obj, (str, bytes)):
+    for idx, v in enumerate(obj):
+      key = f"{prefix}.{idx}" if prefix else str(idx)
+      out.update(_flatten(v, key, _depth + 1))
+    return out
+
+  # Plain objects / flax structs (e.g. types.SimpleNamespace in tests).
+  obj_dict = getattr(obj, "__dict__", None)
+  if isinstance(obj_dict, Mapping) and not isinstance(obj, type):
+    for k, v in obj_dict.items():
+      if str(k).startswith("_"):
+        continue
+      key = f"{prefix}.{k}" if prefix else str(k)
+      out.update(_flatten(v, key, _depth + 1))
+    return out
+
+  if prefix:
     out[prefix] = obj
   return out
 
@@ -380,7 +457,21 @@ def _resolve_metric(metrics: Mapping[str, Any], key: str) -> Any:
   """
   flat = _flatten(metrics)
   if not flat:
-    raise KeyError("early_stopping: no metric values available at this step.")
+    if isinstance(metrics, Mapping):
+      shape = {
+          str(k): (
+              f"{type(v).__name__}"
+              f"(len={len(v)})" if hasattr(v, "__len__") else ""
+          )
+          for k, v in metrics.items()
+      }
+    else:
+      shape = f"<{type(metrics).__name__}>"
+    raise KeyError(
+        "early_stopping: no scalar metric values available at this step. "
+        f"Payload: {shape}. The evaluator produced an empty/aggregate-only "
+        "output; losses usually live in `loss_values`, not `metric_values`."
+    )
   target = _normalize(key)
 
   for k, v in flat.items():
@@ -417,16 +508,12 @@ def _to_float(value: Any) -> float:
     )
   return float(arr.reshape(-1)[0])
 
-
-def _any_host_triggered(triggered: bool) -> bool:
-  """All-reduce a boolean across every host/device."""
-  x = jnp.full(
-      [jax.local_device_count()], 1 if triggered else 0, dtype=jnp.int32
-  )
-
-  def _psync(t):
-    return jax.lax.psum(t, "i")
+def _any_host_triggered(triggered):
+  process_count_fn = getattr(jax, "process_count", None)
+  if process_count_fn is None or process_count_fn() <= 1:
+    return triggered
 
   with jax.transfer_guard("allow"):
-    y = jax.pmap(_psync, "i")(x)
-  return int(jax.device_get(y)[0]) > 0
+    x = jnp.full([...], 1 if triggered else 0, dtype=jnp.int32)
+    y = jax.pmap(lambda t: jax.lax.psum(t, "i"), "i")(x)
+    return int(jax.device_get(y)[0]) > 0

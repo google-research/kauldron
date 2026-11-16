@@ -22,6 +22,7 @@ machine can be exercised without a full Kauldron installation:
 
 from __future__ import annotations
 
+import dataclasses
 import importlib.util
 import json
 import os
@@ -274,6 +275,76 @@ class EarlyStoppingTest(unittest.TestCase):
       self.assertEqual(resumed.state.best_step, 2)
       self.assertFalse(resumed.triggered)  # terminal flag is cleared
       self.assertEqual(resumed.state.bad_points, 2)
+
+  def test_real_auxiliaries_output_shape(self):
+    # Regression for the real-world KeyError: the evaluator sets metrics={},
+    # so `metric_values` is empty and the L2 loss lives in `loss_values`.
+    c = _controller(
+        es.EarlyStopping(
+            monitor="eval.recon", mode="min", patience=0,
+            sync_across_hosts=False,
+        )
+    )
+    payload = {"eval": {
+        "loss_values": {"recon": 0.5},
+        "metric_values": {},
+    }}
+    self.assertFalse(c.update(step=1, eval_metrics=payload))
+    self.assertEqual(c.state.best_value, 0.5)
+    self.assertTrue(c.update(step=2, eval_metrics={"eval": {
+        "loss_values": {"recon": 0.6},
+        "metric_values": {},
+    }}))
+
+  def test_explicit_loss_values_path(self):
+    c = _controller(
+        es.EarlyStopping(
+            monitor="eval.loss_values.recon", mode="min", patience=0,
+            sync_across_hosts=False,
+        )
+    )
+    payload = {"eval": {
+        "loss_values": {"recon": 0.5},
+        "metric_values": {},
+        "summary_values": {"recon": object()},  # same leaf name
+    }}
+    c.update(step=1, eval_metrics=payload)
+    self.assertEqual(c.state.best_value, 0.5)
+
+  def test_empty_containers_are_not_an_eval_point(self):
+    c = _controller(
+        es.EarlyStopping(
+            monitor="eval.recon", patience=0, sync_across_hosts=False
+        )
+    )
+    self.assertFalse(
+        c.update(step=1, eval_metrics={"eval": {"metric_values": {}}})
+    )
+    self.assertEqual(c.state.num_points, 0)
+    self.assertEqual(c.state.bad_points, 0)
+    self.assertFalse(c.triggered)
+
+  def test_none_values_are_dropped(self):
+    c = _controller(
+        es.EarlyStopping(
+            monitor="eval.loss", patience=0, sync_across_hosts=False
+        )
+    )
+    self.assertFalse(c.update(step=1, eval_metrics={"eval": {"loss": None}}))
+    self.assertEqual(c.state.num_points, 0)
+
+  def test_flatten_supports_dataclass_outputs(self):
+    @dataclasses.dataclass
+    class AuxiliariesOutput:
+      loss_values: dict
+      metric_values: dict
+      _private: int = 0
+
+    out = AuxiliariesOutput(
+        loss_values={"recon": 0.25}, metric_values={}, _private=7
+    )
+    flat = es._flatten({"eval": out})  # pylint: disable=protected-access
+    self.assertEqual(flat, {"eval.loss_values.recon": 0.25})
 
   def test_invalid_config(self):
     with self.assertRaises(ValueError):

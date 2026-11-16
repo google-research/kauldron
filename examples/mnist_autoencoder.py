@@ -95,16 +95,18 @@ def get_config():
   #   2. `EarlyStopping` exported as `kd.train.EarlyStopping`
   #   3. the 4 insertion patches in kauldron/train/train_loop.py
   #
-  # `eval` is the evaluator name above; the evaluator reuses `train_losses`
-  # because `metrics={}`, so the monitored L2 reconstruction loss `recon`
-  # shows up in its metric values. On the first evaluated step the controller
-  # logs `early_stopping: available metric keys: ...` -- if the key differs
-  # there, copy that key into `monitor` verbatim.
+  # `eval` is the evaluator name above. `recon` is a LOSS, so it lands in
+  # `loss_values`, NOT `metric_values` (the latter is empty here because the
+  # evaluator sets `metrics={}`). `monitor` therefore points to
+  # `eval.loss_values.recon`; `eval.recon` also works via the unique-leaf
+  # fallback. On the first evaluated step the controller logs
+  # `early_stopping: available metric keys: ...` -- copy that key verbatim
+  # if it differs.
   #
   # `patience` counts EVALUATION POINTS, not train steps: with
   # EveryNSteps(100), `patience=3` means ~400 steps without improvement.
   cfg.early_stopping = kd.train.EarlyStopping(
-      monitor="eval.recon",
+      monitor="eval.loss_values.recon",
       mode="min",
       patience=3,
       min_delta=1e-4,
