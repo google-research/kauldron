@@ -59,12 +59,12 @@ def test_pygrain(tmp_path: pathlib.Path):
     next(ds_iter)
 
   ckpt = _make_ckpt(tmp_path)
-  ckpt.save(ds_iter, step=1)  # pytype: disable=wrong-arg-types
+  ckpt.save(ds_iter, step=1)
   ckpt.wait_until_finished()
 
   # Restoring the pipeline.
   ds_iter = iter(_make_pipeline())
   ckpt = _make_ckpt(tmp_path)
-  restored_iter = ckpt.restore(ds_iter)  # pytype: disable=wrong-arg-types
+  restored_iter = ckpt.restore(ds_iter)
   assert next(restored_iter) == 10
   assert next(restored_iter) == 11
