@@ -213,7 +213,12 @@ class ConfigProvider(ConfigProviderBase):
     if xp.context.annotations.title == experiment.DEFAULT_EXPERIMENT_NAME:
       xp.context.annotations.set_title(self.config_path.stem)
 
+    try:
+      file_content = inspect.getsource(self.module)
+    except OSError:
+      file_content = "# Failed to retrieve source code via inspect.getsource\n"
+
     xp.context.add_config_file(
-        file_content=inspect.getsource(self.module),
+        file_content=file_content,
         description=f"Content of {self.config_path}",
     )
