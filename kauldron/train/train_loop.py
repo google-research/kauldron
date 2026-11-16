@@ -4,7 +4,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,6 +32,7 @@ from kauldron.evals import run_strategies
 from kauldron.inspect import profile_utils
 from kauldron.train import auxiliaries
 from kauldron.train import checkpoint_state
+from kauldron.train import early_stopping as early_stopping_lib
 from kauldron.train import setup_utils
 from kauldron.train import train_step
 from kauldron.train import trainer_lib
@@ -101,6 +102,18 @@ def train_impl(
   log_metrics = None
 
   status.log_status(f"Starting training loop at step {initial_step}")
+
+  # Early stopping is opt-in: `Trainer.early_stopping = None` keeps the loop
+  # behavior identical to the original implementation. The controller is
+  # created before the loop so a resumed run can recover `best_value` /
+  # `patience` counters from the workdir.
+  early_stop = early_stopping_lib.EarlyStoppingController.from_config(
+      getattr(trainer, "early_stopping", None),
+      workdir=trainer.workdir,
+  )
+  early_stop.maybe_restore()
+  last_step = initial_step
+
   with _transfer_guard():
     # NOTE: DO *NOT* CHANGE THE ORDER OF OPERATIONS IN THE TRAINING LOOP!
     chrono.start_loop()
@@ -116,6 +129,7 @@ def train_impl(
         # Evaluation metrics are computed from the OLD model state *before*
         # backprop gradients are applied.
         eval_metrics = {}
+        es_metrics = {}
         with chrono.pause(chrono_utils.Pause.EVALS_ALONG_TRAIN):
           for evaluator in trainer.evals.values():
             # If the checkpointer is saving the best checkpoint according to
@@ -124,11 +138,40 @@ def train_impl(
             eval_aux = evaluator.maybe_eval(step=i, state=state)
             if eval_aux is not None:
               # TODO(klausg): remove once compute() is moved out of the writer.
-              eval_metrics[evaluator.name] = eval_aux.compute(
-                  flatten=False
-              ).metric_values
+              eval_out = eval_aux.compute(flatten=False)
+              # Keep the original payload for `ckpt.save(metrics=...)`.
+              eval_metrics[evaluator.name] = eval_out.metric_values
+              # Early stopping also needs `loss_values`: losses are NOT in
+              # `metric_values`, and an evaluator with `metrics={}` has an
+              # empty `metric_values` even though losses were computed.
+              # `summary_values` is intentionally excluded (images/text).
+              es_metrics[evaluator.name] = {
+                  "loss_values": getattr(eval_out, "loss_values", {}),
+                  "metric_values": eval_out.metric_values,
+              }
 
-        if ckpt.should_save(i):
+        # ----- Early stopping ----------------------------------------------
+        # `eval_metrics` describes the OLD state, i.e. exactly the state that
+        # would be checkpointed below. Only steps with real scalar values count
+        # as evaluation points for `patience`.
+        train_metrics = None
+        if early_stop.needs_train_metrics and aux is not None:
+          train_out = aux.compute(flatten=False)
+          train_metrics = {
+              "loss_values": getattr(train_out, "loss_values", {}),
+              "metric_values": train_out.metric_values,
+          }
+        force_save = early_stop.update(
+            step=i,
+            eval_metrics=es_metrics,
+            train_metrics=train_metrics,
+        )
+        if early_stop.triggered:
+          status.log_status(
+              f"Early stopping triggered at step {i}: {early_stop.reason}"
+          )
+
+        if ckpt.should_save(i) or force_save:
           # Add the train metrics to the metrics used for checkpointing.
           if log_metrics:
             eval_metrics["train"] = aux.compute(flatten=False).metric_values  # pyrefly: ignore[missing-attribute]
@@ -175,32 +218,44 @@ def train_impl(
               log_summaries=log_summaries,
           )
 
-  # run last checkpoint evals if any
-  final_evals = [
-      evaluator
-      for evaluator in trainer.evals.values()
-      if isinstance(evaluator.run, run_strategies.Final)
-  ]
-  if all(evaluator.discard_opt for evaluator in final_evals):
-    state = _discard_opt(state)
-  for evaluator in final_evals:
-    # free memory
-    gc.collect()
-    jax.clear_caches()
-    evaluator.evaluate(state=state, step=trainer.num_train_steps)  # pyrefly: ignore[bad-argument-type]
+        last_step = i
+        if early_stop.triggered:
+          # Exit *after* the current step: chrono / writer stay balanced and
+          # the documented order of operations is untouched. Step i+1 is
+          # simply never started.
+          break
 
-  # Ensure all hosts exit together. See section in dm/jax-faqs.
-  _sync()
-  # Checkpoint saving must be finalized before notifying eval jobs that training
-  # is complete. Otherwise, eval jobs may stop before the last checkpoint
-  # becomes available.
-  ckpt.wait_until_finished()
+    # run last checkpoint evals if any
+    final_evals = [
+        evaluator
+        for evaluator in trainer.evals.values()
+        if isinstance(evaluator.run, run_strategies.Final)
+    ]
+    if all(evaluator.discard_opt for evaluator in final_evals):
+      state = _discard_opt(state)
+    final_step = last_step if early_stop.triggered else trainer.num_train_steps
+    for evaluator in final_evals:
+      # free memory
+      gc.collect()
+      jax.clear_caches()
+      evaluator.evaluate(state=state, step=final_step)  # pyrefly: ignore[bad-argument-type]
 
-  # Notify the eval job training is complete
-  if trainer.workdir.exists():  # `TrainEvaluator` do not have a workdir
-    epath.Path(trainer.workdir).joinpath(
-        eval_impl.TRAIN_COMPLETE_FILENAME
-    ).touch()
+    # Ensure all hosts exit together. See section in dm/jax-faqs.
+    _sync()
+    # Checkpoint saving must be finalized before notifying eval jobs that training
+    # is complete. Otherwise, eval jobs may stop before the last checkpoint
+    # becomes available.
+    ckpt.wait_until_finished()
+
+    # Persist the early-stopping state and mark why training ended, before any
+    # eval job is notified. No-op when early stopping is disabled.
+    early_stop.finalize()
+
+    # Notify the eval job training is complete
+    if trainer.workdir.exists():  # `TrainEvaluator` do not have a workdir
+      epath.Path(trainer.workdir).joinpath(
+          eval_impl.TRAIN_COMPLETE_FILENAME
+      ).touch()
 
   # Returning the final state is convenient for interactive training in colab
   return state, aux
@@ -213,7 +268,7 @@ def _discard_opt(state: train_step.TrainState) -> train_step.TrainState:
         lambda x: x.delete() if isinstance(x, jax.Array) else None,
         state.opt_state,
     )
-  state = dataclasses.replace(state, opt_state=None)
+    state = dataclasses.replace(state, opt_state=None)
   return state
 
 
@@ -229,9 +284,9 @@ def _enum_steps_with_hooks(
 
   This function:
 
-  * Compute the total number of steps
-  * Add hooks for reporting and profiling the train step
-  * Add tdqm bar
+   * Compute the total number of steps
+   * Add hooks for reporting and profiling the train step
+   * Add tdqm bar
 
   Args:
     initial_step: Initial step (e.g. if restoring the checkpoint)

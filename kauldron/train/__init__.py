@@ -29,4 +29,5 @@ from kauldron.train.train_step import forward_with_loss
 from kauldron.train.train_step import TrainState
 from kauldron.train.train_step import TrainStep
 from kauldron.train.trainer_lib import Trainer
+from kauldron.train.early_stopping import EarlyStopping
 # pylint: enable=g-importing-member
