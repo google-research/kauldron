@@ -42,7 +42,7 @@ import numpy as np
 import pandas as pd
 
 with epy.lazy_imports():
-  from etils import ecolab  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+  from etils import ecolab  # pylint: disable=g-import-not-at-top  # pyrefly: ignore[missing-module-attribute]
 
 _Example = Any
 
@@ -75,7 +75,7 @@ def _format_module_config(cfg: Optional[Any]) -> str:
     if isinstance(c, ml_collections.ConfigDict):
       qn = getattr(c, "__qualname__", None)
       if qn is not None:
-        return konfig.ConfigDict({"__qualname__": qn, 0: ...})  # pyrefly: ignore[bad-argument-type, bad-assignment]
+        return konfig.ConfigDict({"__qualname__": qn, 0: ...})  # pyrefly: ignore[bad-assignment]
       else:
         return c
     return c
@@ -247,9 +247,9 @@ def _get_styled_df(
   for row in table:
     # TODO(epot): Once changes are stable in flax, remove this condition
     if hasattr(row, "module_type"):
-      module_type = row.module_type  # pytype: disable=attribute-error
+      module_type = row.module_type
     else:
-      module_type = type(row.module_copy)  # pytype: disable=attribute-error
+      module_type = type(row.module_copy)
     args, input_ann, return_ann = _get_args(module_type, row.method, row.inputs)
     # It's still possible that the module path conflict with an attribute, like
     # * In the config: `model = MyModel(some_value=Config())`
@@ -358,7 +358,7 @@ def json_spec_like(obj) -> Any:
       case list():
         return [_to_json(v) for v in spec]
       case tuple() if epy.is_namedtuple(spec):
-        return _to_json(spec._asdict())  # pytype: disable=attribute-error
+        return _to_json(spec._asdict())  # pyrefly: ignore[missing-attribute]
       case tuple():
         return tuple(_to_json(v) for v in spec)
       case int() | float() | bool() | None:

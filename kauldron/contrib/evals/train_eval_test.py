@@ -17,6 +17,7 @@
 import dataclasses
 import os
 
+import chex
 from etils import epath
 from flax import linen as nn
 import jax
@@ -85,3 +86,53 @@ def test_train_evaluator_overview_dashboard_build(tmp_path: epath.Path):
   dashboards = trainer.__dashboards__.normalize()
   dashboards_with_overview = dashboards.add_overview_dashboard()
   assert 'overview' in dashboards_with_overview.dashboards
+
+
+class DummyModule(nn.Module):
+
+  @nn.compact
+  def __call__(self, x):
+    _ = self.variable('dummy_collection', 'value', lambda: jnp.zeros((1,)))
+    return nn.Dense(features=2)(x)
+
+
+def test_train_eval_collections(tmp_path: epath.Path):
+  """Test that collections are correctly copied in TrainEvaluator."""
+  cfg = train_eval_config.get_config()
+  cfg.workdir = os.fspath(tmp_path)
+  cfg.stop_after_steps = 1
+
+  readout_cfg = cfg.evals['readout'].readout_config
+  readout_cfg.num_train_steps = 1
+  kd.kontext.set_by_path(readout_cfg, '**.batch_size', 1)
+  kd.kontext.set_by_path(readout_cfg, 'evals.*.num_batches', 1)
+
+  # Use DummyModule for encoder to introduce a collection
+  cfg.model.encoder = kd.konfig.ConfigDict(
+      {'__qualname__': f'{__name__}:DummyModule'}
+  )
+
+  trainer = kd.konfig.resolve(cfg)
+  with tfds.testing.mock_data(num_examples=10):
+    state_specs = trainer.state_specs
+    state = jax.tree.map(lambda x: jnp.zeros(x.shape, x.dtype), state_specs)
+
+    # Set state collections to ones
+    state = state.replace(
+        collections=jax.tree.map(jnp.ones_like, state.collections)
+    )
+
+    train_evaluator = trainer.evals['readout']
+    assert isinstance(train_evaluator, kd.contrib.evals.TrainEvaluator)
+
+    readout_trainer = train_evaluator.readout_trainer_for_step(state, 0)
+    readout_state = readout_trainer.init_state()
+
+    assert state.collections is not None
+    assert readout_state.collections is not None
+    parent_val = state.collections['dummy_collection']['encoder']['value']
+    readout_val = readout_state.collections['dummy_collection']['model'][
+        'encoder'
+    ]['value']
+
+    chex.assert_trees_all_close(readout_val, parent_val)
