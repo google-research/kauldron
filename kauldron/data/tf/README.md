@@ -22,8 +22,15 @@ cfg.train_ds = kd.data.tf.Tfds(
     transforms=[
         kd.data.Elements(keep=["image"]),
     ],
+    post_batch_transforms=[
+        kd.data.ValueRange(key="image", vrange=(0, 1)),
+    ],
 )
 ```
+
+`transforms` runs on individual elements before the pipeline creates batches.
+`post_batch_transforms` runs on full batches after the pipeline creates
+batches.
 
 Example of dataset mixture with nested transforms:
 
@@ -102,6 +109,10 @@ class TFDataPipeline(kd.data.Pipeline):
 >   making sure each epoch reshuffle the data).
 
 `transforms`, `batch_size`,... are automatically taken cared of.
+
+If `ds_for_current_process` returns batches (`batch_size=None`), set
+`is_prebatched=True` on the subclass or instance. All non-`None` tensor leaves
+must have a rank of at least 1 and equal non-zero batch dimensions.
 
 See `kd.data.tf.Tfds` for an example.
 

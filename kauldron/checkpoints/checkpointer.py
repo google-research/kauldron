@@ -21,6 +21,7 @@ from collections.abc import Callable, Iterator, Mapping
 import dataclasses
 import datetime
 import functools
+import math
 import time
 from typing import Any, Iterable, Optional, Self, Sequence, TypeVar
 
@@ -93,6 +94,10 @@ class BaseCheckpointer(
 
   @property
   def latest_step(self) -> Optional[int]:
+    return None
+
+  @property
+  def best_step(self) -> int | None:
     return None
 
   @property
@@ -223,6 +228,7 @@ class Checkpointer(BaseCheckpointer):
       None
   )
   best_mode: str = "max"
+  keep_latest_n: int | None = None
   multiprocessing_options: ocp.options.MultiprocessingOptions = (
       dataclasses.field(default_factory=ocp.options.MultiprocessingOptions)
   )
@@ -236,16 +242,40 @@ class Checkpointer(BaseCheckpointer):
   @functools.cached_property
   def _ckpt_mgr(self) -> lazy_checkpoint_manager.LazyCheckpointManager:
     """Returns checkpoint manager instance (initialized and cached)."""
+    worst_sentinel = float("inf") if self.best_mode == "min" else float("-inf")
 
     def _best_fn(metrics):
-      return kontext.get_by_path(metrics, self.best_metric_path)  # pyrefly: ignore[bad-argument-type]
+      scalar = float(
+          kontext.get_by_path(metrics, self.best_metric_path)  # pyrefly: ignore[bad-argument-type]
+      )
+      # `NaN` compares `False` against every value, making sorted ranking order
+      # undefined. Rank non-finite values (e.g. diverged runs) last.
+      return scalar if math.isfinite(scalar) else worst_sentinel
+
+    preservation_policy = self.preservation_policy
+    if self.keep_latest_n is not None:
+      if preservation_policy is not None:
+        raise ValueError(
+            "Cannot set both `keep_latest_n` and `preservation_policy`."
+        )
+      if self.best_metric_path is None:
+        raise ValueError(
+            "`keep_latest_n` requires `best_metric_path` to be set."
+        )
+      preservation_policy = ocp.checkpoint_managers.AnyPreservationPolicy([
+          ocp.checkpoint_managers.LatestN(n=self.keep_latest_n),
+          ocp.checkpoint_managers.BestN(
+              get_metric_fn=_best_fn,
+              n=self.max_to_keep,
+              reverse=(self.best_mode == "min"),
+              keep_checkpoints_without_metrics=False,
+          ),
+      ])
 
     mgr_options = ocp.CheckpointManagerOptions(
         save_interval_steps=self.save_interval_steps,
         lightweight_initialize=self.lightweight_initialize,
-        max_to_keep=(
-            self.max_to_keep if self.preservation_policy is None else None
-        ),
+        max_to_keep=(self.max_to_keep if preservation_policy is None else None),
         keep_time_interval=self.keep_time_interval,
         keep_period=self.keep_period,
         save_on_steps=self.save_on_steps,
@@ -259,7 +289,7 @@ class Checkpointer(BaseCheckpointer):
             timeout_secs=60 * 30,  # 30 minutes
         ),
         multiprocessing_options=self.multiprocessing_options,
-        preservation_policy=self.preservation_policy,
+        preservation_policy=preservation_policy,
         # Ensure that checkpoints are not world-readable.
         # This file mode removes permission bits for OTHER in the POSIX format.
         # See
@@ -341,6 +371,19 @@ class Checkpointer(BaseCheckpointer):
     if metrics is not None:
       # Convert metrics to be JSON serializable.
       metrics = _normalize_to_json(metrics)
+      if (
+          self.best_metric_path is not None
+          and kontext.get_by_path(
+              metrics, self.best_metric_path, default=None  # pyrefly: ignore[bad-argument-type]
+          )
+          is None
+      ):
+        # Preemption saves and steps where no evaluator ran do not contain the
+        # best metric. Orbax excludes checkpoints saved with `metrics=None`
+        # from best-N ranking and always keeps them
+        # (`keep_checkpoints_without_metrics=True`), so they are not
+        # garbage-collected as worst-ranked.
+        metrics = None
     with jax.transfer_guard("allow"):
       return self._ckpt_mgr.save(
           state,
@@ -365,6 +408,10 @@ class Checkpointer(BaseCheckpointer):
   @property
   def latest_step(self) -> Optional[int]:
     return self._ckpt_mgr.latest_step()
+
+  @property
+  def best_step(self) -> int | None:
+    return self._ckpt_mgr.best_step()
 
   @property
   def all_steps(self) -> Sequence[int]:
