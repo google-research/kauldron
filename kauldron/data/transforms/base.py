@@ -35,6 +35,7 @@ class Elements(tr_abc.MapTransform):
   drop: Iterable[str] = ()
   rename: Mapping[str, str] = _FrozenDict()
   copy: Mapping[str, str] = _FrozenDict()
+  skip_missing: bool = False
 
   def __post_init__(self):
     if self.keep and self.drop:
@@ -83,7 +84,7 @@ class Elements(tr_abc.MapTransform):
     if bool(self.copy):
       copy_keys = set(self.copy.keys())
       missing_copy_keys = copy_keys - feature_keys
-      if missing_copy_keys:
+      if missing_copy_keys and not self.skip_missing:
         raise KeyError(
             f"copy-key(s) {missing_copy_keys} not found in batch. "
             f"Available keys are {sorted(feature_keys)!r}."
@@ -95,13 +96,16 @@ class Elements(tr_abc.MapTransform):
             f"copy-value(s) {overlap_keys} will overwrite existing values in "
             f"batch. Existing keys are {sorted(feature_keys)!r}."
         )
-      copy_output = {v: features[k] for k, v in self.copy.items()}
+      copy_output = {}
+      for k, v in self.copy.items():
+        if k in features:
+          copy_output[v] = features[k]
 
     # resolve keep or drop
     if self.keep:
       keep_keys = set(self.keep)
       missing_keep_keys = keep_keys - feature_keys
-      if missing_keep_keys:
+      if missing_keep_keys and not self.skip_missing:
         raise KeyError(
             f"keep-key(s) {missing_keep_keys} not found in batch. "
             f"Available keys are {sorted(feature_keys)!r}."
@@ -110,7 +114,7 @@ class Elements(tr_abc.MapTransform):
     elif self.drop:
       drop_keys = set(self.drop)
       missing_drop_keys = drop_keys - feature_keys
-      if missing_drop_keys:
+      if missing_drop_keys and not self.skip_missing:
         raise KeyError(
             f"drop-key(s) {missing_drop_keys} not found in batch. "
             f"Available keys are {sorted(feature_keys)!r}."
@@ -127,7 +131,7 @@ class Elements(tr_abc.MapTransform):
     # resolve renaming
     rename_keys = set(self.rename.keys())
     missing_rename_keys = rename_keys - feature_keys
-    if missing_rename_keys:
+    if missing_rename_keys and not self.skip_missing:
       raise KeyError(
           f"rename-key(s) {missing_rename_keys} not found in batch. "
           f"Available keys are {sorted(feature_keys)!r}."
