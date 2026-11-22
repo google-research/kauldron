@@ -28,6 +28,7 @@ from typing import Any, TypeVar
 
 from absl import logging
 from etils import epy
+from kauldron.konfig import allowlist_utils
 from kauldron.konfig import configdict_base
 from kauldron.konfig import fake_import_utils
 from kauldron.konfig import utils
@@ -115,22 +116,39 @@ class ConfigDictProxyObject(fake_import_utils.ProxyObject, dict):
 
 
 @typing.overload
-def resolve(cfg: ml_collections.ConfigDict, *, freeze: bool = ...) -> Any:
+def resolve(
+    cfg: ml_collections.ConfigDict,
+    *,
+    freeze: bool = ...,
+    allowlist: allowlist_utils.AllowlistArg | None = ...,
+) -> Any:
   ...
 
 
 @typing.overload
-def resolve(cfg: _T, *, freeze: bool = ...) -> _T:
+def resolve(
+    cfg: _T,
+    *,
+    freeze: bool = ...,
+    allowlist: allowlist_utils.AllowlistArg | None = ...,
+) -> _T:
   ...
 
 
-def resolve(cfg, *, freeze=True):
+def resolve(cfg, *, freeze=True, allowlist=None):
   """Recursively parses a nested ConfigDict and resolves module constructors.
 
   Args:
     cfg: The config to resolved
     freeze: If `True` (default), `list` are converted to `tuple`,
       `dict`/`ConfigDict` are converted to `immutabledict`.
+    allowlist: If set, restrict which symbols the config is allowed to import
+      and call (see `konfig.Allowlist`). Entries can be modules, classes,
+      functions, `konfig.imports()` symbols or dotted `str` prefixes. This
+      should be set when resolving a config coming from an untrusted source
+      (e.g. a `config.json` loaded from a directory writable by a large group),
+      as resolving a config otherwise allows arbitrary code execution. By
+      default (`None`), any symbol can be imported.
 
   Returns:
     The resolved config.
@@ -145,12 +163,45 @@ def resolve(cfg, *, freeze=True):
     cfg = copy.copy(cfg)
     del cfg['_konfig_experimental_nofreeze']
 
+  if allowlist is not None:
+    allowlist = allowlist_utils.Allowlist.from_arg(allowlist)
+    # Validate the whole config upfront, so that a rejected config never
+    # executes any of its symbols (importing a module already runs code).
+    allowlist.assert_allowed(get_qualnames(cfg))
+
   try:
-    return _ConstructorResolver(freeze=freeze)._resolve_value(cfg)  # pylint: disable=protected-access
+    return _ConstructorResolver(  # pylint: disable=protected-access
+        freeze=freeze, allowlist=allowlist
+    )._resolve_value(cfg)
   except Exception as e:  # pylint: disable=broad-exception-caught
     logging.info(f'Full config (failing): {cfg}')  # pylint: disable=logging-fstring-interpolation
     utils.filter_traceback(e.__traceback__)  # pyrefly: ignore[bad-argument-type]
     epy.reraise(e, 'Error resolving the config:\n')
+
+
+def get_qualnames(cfg) -> frozenset[str]:
+  """Returns the qualnames the config would import when resolved.
+
+  Contrary to `konfig.resolve`, this does not import, instantiate nor execute
+  anything, so can be used to inspect a config before resolving it:
+
+  ```python
+  assert konfig.get_qualnames(cfg) == {'kauldron.data.tf:Tfds'}
+  ```
+
+  Note: This is a conservative over-approximation. Sub-configs excluded through
+  `__konfig_resolve_exclude_fields__` are reported too, as detecting them would
+  require importing the (not yet trusted) parent symbol.
+
+  Args:
+    cfg: The config to inspect.
+
+  Returns:
+    All the `__qualname__` / `__const__` values found in the config.
+  """
+  collector = _QualnameCollector()
+  collector._resolve_value(cfg)  # pylint: disable=protected-access
+  return frozenset(collector.qualnames)
 
 
 class _ConfigDictVisitor:
@@ -217,11 +268,60 @@ class _ConfigDictVisitor:
     return value
 
 
-class _ConstructorResolver(_ConfigDictVisitor):
-  """Instanciate all `ConfigDict` proxy object."""
+class _QualnameCollector(_ConfigDictVisitor):
+  """Statically collects the qualnames, without importing/calling anything."""
 
-  def __init__(self, freeze=True):
+  def __init__(self):
+    super().__init__(freeze=False)
+    self.qualnames: set[str] = set()
+    # Configs can contain cycles and shared objects.
+    self._visited_ids: set[int] = set()
+
+  def _resolve_sequence(self, value):
+    for v in value:
+      self._resolve_value(v)
+
+  def _resolve_dict(self, value):
+    if id(value) in self._visited_ids:
+      return
+    self._visited_ids.add(id(value))
+
+    for key in (QUALNAME_KEY, CONST_KEY):
+      qualname = value[key] if key in value else None
+      if isinstance(qualname, str):
+        self.qualnames.add(qualname)
+
+    for k in list(value.keys()):
+      try:
+        v = value[k]
+      except Exception:  # pylint: disable=broad-exception-caught
+        # Field which cannot be accessed (e.g. unset `konfig.required()`).
+        # `konfig.resolve` would fail on it too, so nothing is executed.
+        continue
+      self._resolve_value(v)
+
+  def _resolve_reference(self, value: ml_collections.FieldReference):
+    try:
+      inner = value.get()
+    except Exception:  # pylint: disable=broad-exception-caught
+      return
+    self._resolve_value(inner)
+
+  def _resolve_union(self, value: fake_import_utils.ProxyUnionObject):
+    self._resolve_value(value.left)
+    self._resolve_value(value.right)
+
+
+class _ConstructorResolver(_ConfigDictVisitor):
+  """Instanciate all `ConfigDict` proxy object.
+
+  Attributes:
+    allowlist: If set, restrict which symbols can be imported/called.
+  """
+
+  def __init__(self, freeze=True, allowlist=None):
     super().__init__(freeze=freeze)
+    self._allowlist = allowlist
     # Keep track of the constructed object, to allow the same object to be
     # defined twice.
     self._id_to_obj: dict[int, utils.CachedObj[Any]] = {}
@@ -246,7 +346,9 @@ class _ConstructorResolver(_ConfigDictVisitor):
 
     kwargs = _as_dict(value)
 
-    constructor = import_qualname(kwargs.pop(qualname_key))
+    constructor = import_qualname(
+        kwargs.pop(qualname_key), allowlist=self._allowlist
+    )
     if hasattr(constructor, '__konfig_resolve_exclude_fields__'):
       exclude_fields = constructor.__konfig_resolve_exclude_fields__
     else:
@@ -282,8 +384,25 @@ class _ConstructorResolver(_ConfigDictVisitor):
     return obj
 
 
-def import_qualname(qualname_str: str) -> Callable[..., Any]:
-  """Fix the import constructors."""
+def import_qualname(
+    qualname_str: str,
+    *,
+    allowlist: allowlist_utils.Allowlist | None = None,
+) -> Callable[..., Any]:
+  """Fix the import constructors.
+
+  Args:
+    qualname_str: The `module.path:Symbol` to import.
+    allowlist: If set, raise `konfig.NotAllowedError` when the symbol is not
+      allowlisted. Checked before the module is imported, as importing a module
+      already executes its top-level code.
+
+  Returns:
+    The imported symbol.
+  """
+  if allowlist is not None:
+    allowlist.assert_allowed([qualname_str])
+
   match qualname_str.split(':'):
     case [import_str, attributes]:
       pass
