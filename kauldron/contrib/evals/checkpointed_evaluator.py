@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import dataclasses
+import functools
 import logging
 import typing
 from typing import TypeVar
@@ -25,6 +26,7 @@ from etils import epath
 import flax
 import jax
 from jax.experimental import checkify
+import jax.numpy as jnp
 from kauldron import checkpoints
 # from kauldron import data
 from kauldron.evals import evaluators
@@ -92,11 +94,26 @@ class CheckpointedEvaluator(evaluators.Evaluator):
   def _get_init_aux_state(
       self, state: train_step.TrainState
   ) -> auxiliaries.AuxiliariesState:
-    """Get the initial aux state from the first batch."""
+    """Get the initial aux state structure from the first batch."""
     batch = next(iter(self.ds))
     batch = sharding_lib.device_put(batch, self.base_cfg.sharding.batch)
     step_nr_jax = sharding_lib.device_put(0, sharding_lib.REPLICATED)
-    return self.step(step_nr=step_nr_jax, state=state, batch=batch).finalize()
+    abstract_aux = jax.eval_shape(
+        functools.partial(self.step, step_nr=step_nr_jax),
+        state=state,
+        batch=batch,
+    )
+    # Materialize cheap zero arrays for the aux leaves (preserving shardings)
+    # so host-side `.finalize()` (e.g. AutoState np.asarray/np.concatenate or
+    # custom State cleanup that replaces array fields with None) produces the
+    # exact PyTree structure and metadata saved by `merged_aux.finalize()`.
+    dummy_aux = jax.tree.map(
+        lambda x: jnp.zeros(x.shape, dtype=x.dtype, device=x.sharding)
+        if isinstance(x, jax.ShapeDtypeStruct)
+        else x,
+        abstract_aux,
+    )
+    return dummy_aux.finalize()
 
   def _eval_done_path(self, step: int) -> epath.Path:
     """Return the path to the marker file indicating eval is done."""
@@ -144,25 +161,29 @@ class CheckpointedEvaluator(evaluators.Evaluator):
     ckptr = self._step_checkpointer(step)
 
     # MARK: Load state
-    step_nr = 0
-    aux_state = self._get_init_aux_state(state)
     ds_iter = iter(self.ds)
-
-    initial_eval_state = EvalCheckpointerState(
-        eval_state=EvalState(merged_aux=aux_state, step_nr=step_nr),
-        ds_iter=ds_iter,
-    )
-
-    eval_state, ds_iter = ckptr.restore(
-        initial_eval_state,
-        noop_if_missing=True,
-    )
-
-    latest_eval_step = eval_state.step_nr
-    merged_aux = eval_state.merged_aux
-
-    if latest_eval_step == 0:
+    if ckptr.latest_step is None:
+      latest_eval_step = 0
       merged_aux = None
+    else:
+      step_nr = 0
+      aux_state = self._get_init_aux_state(state)
+
+      initial_eval_state = EvalCheckpointerState(
+          eval_state=EvalState(merged_aux=aux_state, step_nr=step_nr),
+          ds_iter=ds_iter,
+      )
+
+      eval_state, ds_iter = ckptr.restore(
+          initial_eval_state,
+          noop_if_missing=True,
+      )
+
+      latest_eval_step = eval_state.step_nr
+      merged_aux = eval_state.merged_aux
+
+      if latest_eval_step == 0:
+        merged_aux = None
 
     # steps are 1-indexed.
     try:
