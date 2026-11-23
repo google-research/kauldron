@@ -16,7 +16,10 @@
 
 from kauldron import konfig
 from kauldron import kxm
+from kauldron.evals import run_strategies
 from kauldron.xm.configs import kd_base
+import pytest
+from xmanager import xm_abc
 
 # Register XM mocking
 pytest_plugins = ('kauldron.xm._src.mock_xm',)
@@ -54,3 +57,63 @@ def test_launch_with_evals():
   with konfig.set_lazy_imported_modules():
     xp = konfig.resolve(xp_cfg)
   xp.launch()
+
+
+def test_last_checkpoint_eval_job_starts_after_train():
+  xp_cfg = kd_base.get_config()
+  xp_cfg.cell = 'xx'  # Auto-cell selection not activated in tests
+  with konfig.mock_modules():
+    xp_cfg.cfg_provider = kxm.ConfigProvider.from_module(
+        module='kauldron.examples.mnist_standalone_eval',
+        overrides={
+            'xm_job.target': '//third_party/py/kauldron/examples:trainer',
+        },
+    )
+
+  with konfig.set_lazy_imported_modules():
+    xp = konfig.resolve(xp_cfg)
+  with konfig.mock_modules():
+    xp.cfg_provider.config.evals.isolated_eval.run = (
+        run_strategies.StandaloneLastCheckpoint()
+    )
+
+  jobs = xp.resolved_jobs
+  # `StandaloneLastCheckpoint` only evaluates once train has completed, so its
+  # job waits for train instead of holding accelerators during training.
+  assert jobs['isolated_eval'].executor.dependencies.after_names == ['train']
+  # `StandaloneEveryCheckpoint` evaluates checkpoints during training.
+  assert jobs['grouped_evals'].executor.dependencies is None
+  assert jobs['train'].executor.dependencies is None
+  xp.launch()
+
+
+def test_last_checkpoint_eval_job_xp_jobs_dependencies_conflict():
+  xp_cfg = kd_base.get_config()
+  xp_cfg.cell = 'xx'  # Auto-cell selection not activated in tests
+  with konfig.mock_modules():
+    xp_cfg.cfg_provider = kxm.ConfigProvider.from_module(
+        module='kauldron.examples.mnist_standalone_eval',
+        overrides={
+            'xm_job.target': '//third_party/py/kauldron/examples:trainer',
+        },
+    )
+    xp_cfg.jobs = {
+        'isolated_eval': kxm.Job(
+            executor=xm_abc.Borg(
+                dependencies=xm_abc.BorgJobDependencies(after=['grouped_evals'])
+            )
+        ),
+    }
+
+  with konfig.set_lazy_imported_modules():
+    xp = konfig.resolve(xp_cfg)
+  with konfig.mock_modules():
+    xp.cfg_provider.config.evals.isolated_eval.run = (
+        run_strategies.StandaloneLastCheckpoint()
+    )
+
+  # TODO(sharathrp): `_start_after_train` runs before `Experiment.resolved_jobs`
+  # merges `xp.jobs`, so setting `dependencies` there currently conflicts. Flip
+  # this once the dependency is applied after the merges.
+  with pytest.raises(ValueError, match=r'executor\.dependencies'):
+    _ = xp.resolved_jobs

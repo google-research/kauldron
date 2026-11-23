@@ -27,6 +27,7 @@ from absl import logging
 from etils import epath
 from etils import epy
 import flax
+import jax
 from kauldron import kontext
 from kauldron.checkpoints import checkpoint_items
 from kauldron.checkpoints import checkpointer
@@ -208,6 +209,7 @@ class PartialKauldronLoader(epy.ContextManager, InitTransform):
             new_to_old=new_to_old,
             ignore_model_keys=self.ignore_model_keys,
             ignore_restored_keys=self.ignore_restored_keys,
+            use_placeholders=True,
         ),
         step=self.step,
     )
@@ -241,6 +243,13 @@ class _PartialRestoreCheckpointItem(checkpoint_items.CheckpointItem):
   new_to_old: _StrDict
   ignore_model_keys: tuple[str, ...] = ()
   ignore_restored_keys: tuple[str, ...] = ()
+  use_placeholders: bool = False
+
+  @property
+  def _should_use_placeholders(self) -> bool:
+    return self.use_placeholders and bool(
+        self.ignore_model_keys or self.ignore_restored_keys
+    )
 
   def __kd_ocp_handlers__(self) -> ocp.CheckpointHandler:
     return standard_checkpoint_handler.StandardCheckpointHandler()
@@ -254,11 +263,24 @@ class _PartialRestoreCheckpointItem(checkpoint_items.CheckpointItem):
     for new_path, _ in self.new_to_old.items():
       sub_state[new_path] = kontext.get_by_path(self.state, new_path)
     return standard_checkpoint_handler.StandardRestoreArgs(
-        sub_state, transform_fn=self._transform_fn
+        sub_state,
+        transform_fn=self._transform_fn,
+        allow_placeholders=self._should_use_placeholders,
     )
 
   def __kd_ocp_restore_post__(self, partial_restore: Any):
     """Post-processing after `ocp.CheckpointManager.restore(args=)`."""
+    if isinstance(partial_restore, standard_checkpoint_handler.PartsOf):
+      orig_sub_state = {
+          new_path: kontext.get_by_path(self.state, new_path)
+          for new_path in self.new_to_old
+      }
+      partial_restore = (
+          standard_checkpoint_handler.PartsOf.from_structure(orig_sub_state)
+          .overlay(partial_restore)
+          .full_structure
+      )
+
     # Mutate the state to overwrite the sub-tree with the partially restored
     # checkpoint.
 
@@ -281,9 +303,16 @@ class _PartialRestoreCheckpointItem(checkpoint_items.CheckpointItem):
     sub_state = {}
 
     for new_path, old_path in self.new_to_old.items():
+      target = kontext.get_by_path(self.state, new_path)
+      if self._should_use_placeholders:
+        # Use placeholders so eval_fragments skips live FSDP arrays;
+        # __kd_ocp_restore_post__ overlays original `state` leaves for ignored keys.
+        target = jax.tree.map(
+            lambda _: standard_checkpoint_handler.PLACEHOLDER, target
+        )
       # Reconcile structure: handle extra/missing keys within the sub-tree
       sub_state[new_path] = _reconcile_sub_state(
-          target=kontext.get_by_path(self.state, new_path),
+          target=target,
           restored_val=kontext.get_by_path(restored, old_path),
           new_path=new_path,
           ignore_restored_keys=self.ignore_restored_keys,

@@ -167,6 +167,8 @@ class StandaloneLastCheckpoint(Standalone):
   """Run eval only after the last checkpoint, after train has completed.
 
   Run as a separate XM job. All `kxm.Job` parameters are optionally supported.
+  When launched with a `train` job, the eval job only starts once `train` has
+  completed successfully, so it does not hold accelerators during training.
 
   Example:
 
