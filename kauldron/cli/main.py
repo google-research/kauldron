@@ -124,6 +124,8 @@ def main(args: Args) -> None:
   # Get relevant info from commandline arguments
   patcher: patch_config.PatchConfig = args.patch
   cfg = _CONFIG.value
+  if cfg is None:
+    raise ValueError("Missing required flag: --cfg.")
   filename = FLAGS["cfg"].config_filename  # pyrefly: ignore[missing-attribute]
   overrides = FLAGS["cfg"].override_values  # pyrefly: ignore[missing-attribute]
 

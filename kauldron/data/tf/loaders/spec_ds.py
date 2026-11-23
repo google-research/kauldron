@@ -21,6 +21,7 @@ from etils import enp
 from etils.etree import jax as etree  # pylint: disable=g-importing-member
 import jax
 from kauldron.data.tf import base
+from kauldron.data.tf import grain_utils
 from kauldron.ktyping import PRNGKey
 from kauldron.typing import PyTree  # pylint: disable=g-importing-member
 from kauldron.utils.immutabledict import immutabledict_lib
@@ -67,3 +68,6 @@ class ElementSpecDataset(base.TFDataPipeline):
         element_spec,
     )
     return tf.data.Dataset.from_tensors(batch)
+
+  def _is_prebatched_source(self, ds: tf.data.Dataset) -> bool:
+    return grain_utils.has_prebatched_spec(ds.element_spec)

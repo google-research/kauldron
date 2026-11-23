@@ -17,11 +17,16 @@
 # pylint: disable=g-multiple-import
 # pylint: disable=protected-access
 
+import sys
 import warnings
 from absl import flags
 from kauldron.konfig import configdict_base
 from kauldron.konfig import module_configdict
 from ml_collections.config_flags import config_flags
+
+# Attribute flags defined via `DEFINE_config_file` to the caller module rather
+# than `kauldron.konfig.flags_utils` so `--help` / `--helpshort` display them.
+flags.disclaim_key_flags()
 
 
 def DEFINE_config_file(  # pylint: disable=invalid-name
@@ -96,8 +101,13 @@ class _RecordConfigFileFlagParser(flags.ArgumentParser):
     else:
       module_path, cli_str_arg = path, ""
 
+    config_module_name = f"{self.name}_config"
+    # Clear any previously loaded module with the same synthetic name so
+    # `SourceFileLoader.load_module()` does not inherit stale globals (e.g.
+    # `ConfigArgs`) from an earlier config parse in the same process.
+    sys.modules.pop(config_module_name, None)
     config_module = config_flags._LoadConfigModule(  # pylint: disable=protected-access
-        "{}_config".format(self.name), module_path
+        config_module_name, module_path
     )
     modulecfg = module_configdict.ModuleConfigDict(
         module=config_module, cli_str_arg=cli_str_arg
@@ -119,7 +129,8 @@ class _LazyConfigFlag(config_flags._ConfigFlag):
     # because of some absl behavior that copies .value into ._value for testing,
     # we need to be flexible here and just trigger a warning.
     _value = self._value  # pylint: disable=invalid-name
-    assert _value is not None, "None for _value is not supported."
+    if _value is None:
+      return None
     if isinstance(_value, module_configdict.ModuleConfigDict):
       return _value.get_module_config()
     else:
