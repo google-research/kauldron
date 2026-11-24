@@ -251,7 +251,7 @@ def _render_image_grid(
   total_width = (m + 1) * b + m * w
 
   # Create a blank image with the correct size and background color
-  img = PIL.Image.new("RGB", (total_width, total_height), bg_color)
+  img = PIL.Image.new("RGB", (total_width, total_height), bg_color)  # pyrefly: ignore[bad-argument-type]
   draw = PIL.ImageDraw.Draw(img)
   # Render column names
   for i, col_name in enumerate(images):

@@ -27,7 +27,7 @@ def test_end2end(tmp_path: epath.Path):
   # Load config and reduce size
   cfg = mnist_autoencoder.get_config()
   cfg.train_ds.batch_size = 2
-  cfg.evals.eval.ds.batch_size = 1  # pytype: disable=attribute-error
+  cfg.evals.eval.ds.batch_size = 1
   with kd.konfig.mock_modules():
     cfg.model.encoder = nn.Sequential([
         nn.Dense(features=3),
