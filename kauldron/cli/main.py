@@ -31,6 +31,8 @@ from kauldron import konfig
 from kauldron.cli import cmd_utils as cu
 from kauldron.cli import config
 from kauldron.cli import data
+from kauldron.cli import inspect_cli
+from kauldron.cli import multi
 from kauldron.cli import patch_config
 from kauldron.cli import run
 import simple_parsing
@@ -48,7 +50,9 @@ _CONFIG = konfig.DEFINE_config_file(
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class Args:
 
-  command: config.Config | data.Data | run.Run
+  command: (
+      config.Config | data.Data | run.Run | inspect_cli.Inspect | multi.Multi
+  )
 
   patch: patch_config.PatchConfig = dataclasses.field(
       default_factory=patch_config.PatchConfig,
@@ -124,6 +128,8 @@ def main(args: Args) -> None:
   # Get relevant info from commandline arguments
   patcher: patch_config.PatchConfig = args.patch
   cfg = _CONFIG.value
+  if cfg is None:
+    raise ValueError("Missing required flag: --cfg.")
   filename = FLAGS["cfg"].config_filename  # pyrefly: ignore[missing-attribute]
   overrides = FLAGS["cfg"].override_values  # pyrefly: ignore[missing-attribute]
 

@@ -19,6 +19,7 @@ from __future__ import annotations
 import dataclasses
 from typing import Union
 
+from kauldron import inspect as kd_inspect
 from kauldron import kontext
 from kauldron.cli import cmd_utils as cu
 import tensorflow_datasets as tfds
@@ -49,7 +50,39 @@ class ElementSpec(cu.SubCommand):
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
+class Batch(cu.SubCommand):
+  """Display the batch statistics (shapes, dtype, min, max, mean)."""
+
+  ds_path: str = "train_ds"
+
+  def __call__(self):
+    self.print_config_origin()
+    trainer = self.trainer  # trigger config resolution
+    ds = kontext.get_by_path(trainer, self.ds_path)
+
+    with cu.timed("Getting real batch"):
+      batch = next(iter(ds))
+
+    print("")
+    print(f"Dataset: {self.ds_path}")
+    # NOTE: kd_inspect is a konfig.import
+    stats_df = kd_inspect.get_batch_stats(batch)
+    if hasattr(stats_df, "to_markdown"):
+      print(stats_df.to_markdown())
+    else:
+      print(stats_df.to_string(max_rows=None, max_cols=None))
+
+
+_SUBCOMMANDS = {
+    "element_spec": ElementSpec,
+    "batch": Batch,
+}
+
+
+@dataclasses.dataclass(frozen=True, kw_only=True)
 class Data(cu.CommandGroup):
   """Data commands."""
 
-  sub_command: Union[ElementSpec]  # Union required for simple_parsing
+  sub_command: Union[ElementSpec, Batch] = dataclasses.field(
+      metadata={"subparsers": _SUBCOMMANDS}
+  )

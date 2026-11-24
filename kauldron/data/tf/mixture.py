@@ -14,8 +14,10 @@
 
 """Dataset mixtures."""
 
+from collections.abc import Mapping
 import dataclasses
 import functools
+from typing import Any
 
 import jax
 from kauldron import random
@@ -49,6 +51,7 @@ class SampleFromDatasets(base.TFDataPipeline):
   rerandomize_each_iteration: bool = True
 
   def __post_init__(self):
+    super().__post_init__()
     if not all(isinstance(ds, base.TFDataPipeline) for ds in self.datasets):
       raise ValueError(
           'All datasets in `SampleFromDatasets` should inherit from'
@@ -56,14 +59,20 @@ class SampleFromDatasets(base.TFDataPipeline):
       )
 
   def ds_for_current_process(self, rng: PRNGKey) -> tf.data.Dataset:
-    # We make sure each nested dataset get a different seed
-    datasets = [
-        ds.ds_with_transforms(jax.random.fold_in(rng, i))
-        for i, ds in enumerate(self.datasets)
-    ]
+    # We make sure each nested dataset get a different seed, and propagate
+    # `batch_drop_remainder` to unbatched child datasets when the mixture
+    # itself performs batching so sharding matches the mixture's remainder mode.
+    datasets = []
+    for i, ds in enumerate(self.datasets):
+      if self.batch_size and ds.batch_size is None:
+        ds = dataclasses.replace(
+            ds, batch_drop_remainder=self.batch_drop_remainder
+        )
+      child_ds = ds.ds_with_transforms(jax.random.fold_in(rng, i))
+      datasets.append(child_ds)
 
     ds = tf.data.Dataset.sample_from_datasets(
-        datasets,  # pyrefly: ignore[bad-argument-type]
+        datasets,
         weights=self.weights,
         seed=random.random_seed(
             random.fold_in_str(rng, 'sample_from_datasets')
@@ -78,6 +87,112 @@ class SampleFromDatasets(base.TFDataPipeline):
     return all(ds._supports_symbolic_checkpoint for ds in self.datasets)  # pylint: disable=protected-access
 
 
+def _maybe_hoist_child_padding_masks(ds: tf.data.Dataset) -> tf.data.Dataset:
+  """Pops child `__is_padding__` masks and hoists their OR to the top level."""
+  spec = ds.element_spec
+  if not isinstance(spec, Mapping):
+    return ds
+
+  child_mask_specs: dict[str, Any] = {}
+  for ds_name, child_spec in spec.items():
+    if isinstance(child_spec, Mapping) and base.PADDING_MASK_KEY in child_spec:
+      child_mask_specs[ds_name] = child_spec[base.PADDING_MASK_KEY]
+
+  if not child_mask_specs:
+    return ds
+
+  if base.PADDING_MASK_KEY in spec:
+    raise ValueError(
+        f'Cannot hoist child {base.PADDING_MASK_KEY!r} masks because'
+        f' ZipDatasets already has a dataset key {base.PADDING_MASK_KEY!r}.'
+    )
+
+  static_mask_dim: int | None = None
+  for ds_name, mask_spec in child_mask_specs.items():
+    if not isinstance(mask_spec, tf.TensorSpec) or mask_spec.dtype != tf.bool:
+      raise ValueError(
+          f'Child dataset {ds_name!r} has invalid {base.PADDING_MASK_KEY!r}'
+          f' spec {mask_spec!r}; expected 1D tf.bool TensorSpec.'
+      )
+    if mask_spec.shape.rank is not None:
+      if mask_spec.shape.rank != 1:
+        raise ValueError(
+            f'Child dataset {ds_name!r} {base.PADDING_MASK_KEY!r} must have'
+            f' rank 1, got {mask_spec!r}.'
+        )
+      dim0 = tf.compat.dimension_value(mask_spec.shape[0])
+      if dim0 is not None:
+        if dim0 <= 0:
+          raise ValueError(
+              f'Child dataset {ds_name!r} {base.PADDING_MASK_KEY!r} must have'
+              f' positive batch size, got {mask_spec!r}.'
+          )
+        if static_mask_dim is None:
+          static_mask_dim = dim0
+        elif dim0 != static_mask_dim:
+          raise ValueError(
+              'Child datasets in pre-batched `ZipDatasets` have mismatched'
+              f' {base.PADDING_MASK_KEY!r} batch sizes: {static_mask_dim} vs'
+              f' {dim0}.'
+          )
+
+  def _hoist_masks(element: dict[str, Any]) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    masks: list[tf.Tensor] = []
+    assert_ops: list[tf.Operation] = []
+    for ds_name, child_ex in element.items():
+      if isinstance(child_ex, Mapping) and base.PADDING_MASK_KEY in child_ex:
+        child_copy = dict(child_ex)
+        mask = tf.convert_to_tensor(child_copy.pop(base.PADDING_MASK_KEY))
+        if mask.shape.rank is None:
+          assert_ops.append(
+              tf.debugging.assert_rank(
+                  mask,
+                  1,
+                  message=(
+                      f'Child dataset {ds_name!r} {base.PADDING_MASK_KEY!r}'
+                      ' must have rank 1.'
+                  ),
+              )
+          )
+        masks.append(mask)
+        out[ds_name] = child_copy
+      else:
+        out[ds_name] = child_ex
+
+    with tf.control_dependencies(assert_ops):
+      combined = masks[0]
+      first_len = tf.shape(combined, out_type=tf.int32)[0]
+      len_asserts: list[tf.Operation] = []
+      for other_mask in masks[1:]:
+        if (
+            tf.compat.dimension_value(combined.shape[0]) is None
+            or tf.compat.dimension_value(other_mask.shape[0]) is None
+        ):
+          len_asserts.append(
+              tf.debugging.assert_equal(
+                  tf.shape(other_mask, out_type=tf.int32)[0],
+                  first_len,
+                  message=(
+                      'Child datasets in pre-batched `ZipDatasets` must have'
+                      f' matching {base.PADDING_MASK_KEY!r} batch sizes.'
+                  ),
+              )
+          )
+      with tf.control_dependencies(len_asserts):
+        for other_mask in masks[1:]:
+          combined = tf.math.logical_or(combined, other_mask)
+        if static_mask_dim is not None:
+          combined.set_shape((static_mask_dim,))
+        out[base.PADDING_MASK_KEY] = combined
+
+    return grain_utils.attach_control_dependencies(
+        out, [*assert_ops, *len_asserts]
+    )
+
+  return ds.map(_hoist_masks)
+
+
 @dataclasses.dataclass(frozen=True)
 class ZipDatasets(base.TFDataPipeline):
   """Creates a Dataset by zipping together the given datasets.
@@ -90,6 +205,7 @@ class ZipDatasets(base.TFDataPipeline):
   _: dataclasses.KW_ONLY
 
   def __post_init__(self):
+    super().__post_init__()
     if not all(
         isinstance(ds, base.TFDataPipeline) for ds in [*self.datasets.values()]
     ):
@@ -98,10 +214,20 @@ class ZipDatasets(base.TFDataPipeline):
       )
 
   def ds_for_current_process(self, rng: PRNGKey) -> tf.data.Dataset:
-    datasets = {
-        ds_name: ds.ds_with_transforms(jax.random.fold_in(rng, i))
-        for i, (ds_name, ds) in enumerate(self.datasets.items())
-    }
+    datasets = {}
+    children_are_batched = bool(self.datasets)
+    for i, (ds_name, ds) in enumerate(self.datasets.items()):
+      if self.batch_size and ds.batch_size is None:
+        ds = dataclasses.replace(
+            ds, batch_drop_remainder=self.batch_drop_remainder
+        )
+      child_ds = ds.ds_with_transforms(jax.random.fold_in(rng, i))
+      children_are_batched = (
+          children_are_batched
+          and ds._is_batched_ds(child_ds)  # pylint: disable=protected-access
+      )
+      datasets[ds_name] = child_ds
+    object.__setattr__(self, '_children_are_batched', children_are_batched)
 
     # Drop grain meta features
     datasets = {
@@ -109,8 +235,19 @@ class ZipDatasets(base.TFDataPipeline):
         for ds_name, ds in datasets.items()
     }
 
-    ds = tf.data.Dataset.zip(datasets)  # pyrefly: ignore[bad-argument-type]
+    ds = tf.data.Dataset.zip(datasets)
+    if children_are_batched and not self.batch_size:
+      ds = _maybe_hoist_child_padding_masks(ds)
     return ds
+
+  def _is_prebatched_source(self, ds: tf.data.Dataset) -> bool:
+    return (
+        not self.batch_size
+        and getattr(self, '_children_are_batched', False)
+        and grain_utils.has_prebatched_spec(
+            ds.element_spec, allow_unknown_rank=True
+        )
+    )
 
   @functools.cached_property
   def _supports_symbolic_checkpoint(self) -> bool:
