@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import enum
 import json
 import pathlib
 import pickle
@@ -202,3 +203,68 @@ def test_is_pickable(pickler):
   pickled = pickler.dumps(cfg)
   unpickled = pickler.loads(pickled)
   assert unpickled == cfg
+
+
+class _Mode(enum.StrEnum):
+  FOO = 'foo'
+  BAR = 'bar'
+
+
+class _Level(enum.IntEnum):
+  LOW = 1
+  HIGH = 2
+
+
+def test_enum_overrides():
+  cfg = konfig.ConfigDict({
+      'mode': _Mode.FOO,
+      'level': _Level.LOW,
+      'nested': {'mode': _Mode.FOO},
+  })
+  cfg.mode_ref = cfg.get_ref('mode')
+
+  cfg.mode = 'bar'
+  assert cfg.mode is _Mode.BAR
+  assert cfg.mode_ref == _Mode.BAR
+
+  cfg.level = 2
+  assert cfg.level is _Level.HIGH
+
+  konfig.module_configdict._apply_overrides(cfg, {'nested.mode': 'bar'})
+  assert cfg.nested.mode is _Mode.BAR
+
+  cfg.update({'mode': 'foo'})
+  assert cfg.mode is _Mode.FOO
+
+  with cfg.ignore_type():
+    cfg.mode = 'arbitrary_non_member'
+  assert cfg.mode == 'arbitrary_non_member'
+
+  cfg = konfig.ConfigDict({'mode': _Mode.FOO})
+  cfg.mode = None
+  assert cfg.mode is None
+
+
+def test_enum_overrides_invalid():
+  class _OtherMode(enum.StrEnum):
+    FOO = 'foo'
+
+  class _OtherLevel(enum.IntEnum):
+    LOW = 1
+
+  cfg = konfig.ConfigDict({'mode': _Mode.FOO, 'level': _Level.LOW})
+
+  with pytest.raises(ValueError, match="'invalid' is not a valid _Mode"):
+    cfg.mode = 'invalid'
+
+  with pytest.raises(TypeError, match='cannot be casted to type'):
+    cfg.mode = 123
+
+  with pytest.raises(TypeError, match='cannot be casted to type'):
+    cfg.level = True
+
+  with pytest.raises(TypeError, match='cannot be casted to type'):
+    cfg.mode = _OtherMode.FOO
+
+  with pytest.raises(TypeError, match='cannot be casted to type'):
+    cfg.level = _OtherLevel.LOW

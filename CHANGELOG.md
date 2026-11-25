@@ -8,6 +8,10 @@ Changelog follow the https://keepachangelog.com/ standard (at least the headers)
 
 ## [Unreleased]
 
+* `kd.ckpts`:
+  * [Fix] Fix `PartialKauldronLoader` crashing on multi-host FSDP arrays when
+    `ignore_model_keys` or `ignore_restored_keys` is set.
+
 ## [1.4.4] - 2026-06-10
 
 * hotfix for cuda compatibility issue
