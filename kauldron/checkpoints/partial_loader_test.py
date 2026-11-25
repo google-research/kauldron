@@ -14,12 +14,15 @@
 
 """Test."""
 
+import contextlib
 import pathlib
 
 import chex
+import jax
 from kauldron import kd
 from examples import mnist_autoencoder
 from kauldron.testing import assert_utils
+import numpy as np
 import pytest
 import tensorflow_datasets as tfds
 
@@ -129,6 +132,181 @@ def test_loader(new_trainer: kd.train.Trainer, old_trainer: kd.train.Trainer):  
   chex.assert_trees_all_close(
       new_state.params['encoder'],
       old_state.params['encoder'],  # pyrefly: ignore[unsupported-operation]
+  )
+
+
+def _make_trainer(
+    tmp_path: pathlib.Path,
+    name: str,
+    decoder,
+    seed: int,
+) -> kd.train.Trainer:
+  cfg = mnist_autoencoder.get_config()
+  cfg.workdir = str(tmp_path / name)
+  cfg.model = kd_cfg.nn.FlatAutoencoder(
+      inputs='batch.image',
+      encoder=nn.Dense(features=_NUM_FEATURES),
+      decoder=decoder,
+  )
+  cfg.train_ds.batch_size = 1
+  cfg.seed = seed
+  trainer = kd.konfig.resolve(cfg)
+  with tfds.testing.mock_data():
+    _ = trainer.train_ds.element_spec
+  return trainer
+
+
+@contextlib.contextmanager
+def _forbid_host_transfers(monkeypatch: pytest.MonkeyPatch):
+  """Simulates multi-host FSDP arrays by forbidding jax.Array -> np.asarray.
+
+  Models `eval_fragments._coerce_literal` calling `np.asarray` on live
+  `jax.Array` constants captured in `transform_fn` jaxprs.
+  """
+  orig_asarray = np.asarray
+
+  def _forbid_jax_array_to_numpy(arr, *args, **kwargs):
+    if isinstance(arr, jax.Array):
+      raise RuntimeError(
+          'Fetching value for jax.Array that spans non-addressable devices'
+      )
+    return orig_asarray(arr, *args, **kwargs)
+
+  with monkeypatch.context() as m:
+    m.setattr(np, 'asarray', _forbid_jax_array_to_numpy)
+    yield
+
+
+def _assert_trees_all_identical(tree_a, tree_b):
+  leaves_a, treedef_a = jax.tree_util.tree_flatten(tree_a)
+  leaves_b, treedef_b = jax.tree_util.tree_flatten(tree_b)
+  assert treedef_a == treedef_b
+  for leaf_a, leaf_b in zip(leaves_a, leaves_b, strict=True):
+    assert leaf_a is leaf_b
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=RuntimeError,
+    reason=(
+        'PartialKauldronLoader captures live jax.Arrays in eval_fragments'
+        ' jaxpr when ignore_model_keys is used.'
+    ),
+)
+def test_loader_ignore_model_keys_avoids_host_transfer(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+  """ignore_model_keys must not pass live jax.Arrays into eval_fragments."""
+  old_trainer_inst = _make_trainer(
+      tmp_path,
+      'old_workdir',
+      nn.Sequential([nn.Dense(features=28 * 28)]),
+      seed=1,
+  )
+  new_trainer_inst = _make_trainer(
+      tmp_path,
+      'new_workdir',
+      nn.Sequential([
+          nn.Dense(features=28 * 28),
+          nn.Dense(features=28 * 28),
+      ]),
+      seed=0,
+  )
+
+  old_state = old_trainer_inst.init_state()
+  old_trainer_inst.checkpointer.save(old_state, step=0)
+  old_trainer_inst.checkpointer.wait_until_finished()
+  init_state = new_trainer_inst.init_state()
+
+  with _forbid_host_transfers(monkeypatch):
+    loader = kd.ckpts.PartialKauldronLoader(
+        workdir=old_trainer_inst.workdir,  # pylint: disable=missing-kwoa
+        new_to_old={'params.decoder': 'params.decoder'},
+        # Include both a present key (layers_0) and a missing key (layers_1) to
+        # verify present keys are still restored while missing ones are kept.
+        ignore_model_keys=('**.layers_0.**', '**.layers_1.**'),
+    )
+    new_state = loader.transform(init_state)
+
+  assert_utils.assert_trees_all_same_type(init_state, new_state)
+  assert old_state.params is not None
+  assert init_state.params is not None
+  assert new_state.params is not None
+  chex.assert_trees_all_close(
+      new_state.params['decoder']['layers_0'],
+      old_state.params['decoder']['layers_0'],
+  )
+  chex.assert_trees_all_close(
+      new_state.params['decoder']['layers_1'],
+      init_state.params['decoder']['layers_1'],
+  )
+  _assert_trees_all_identical(
+      new_state.params['decoder']['layers_1'],
+      init_state.params['decoder']['layers_1'],
+  )
+  _assert_not_all_close(
+      init_state.params['decoder']['layers_0'],
+      new_state.params['decoder']['layers_0'],
+  )
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=RuntimeError,
+    reason=(
+        'PartialKauldronLoader captures live jax.Arrays in eval_fragments'
+        ' jaxpr when ignore_restored_keys skips a key present in the model.'
+    ),
+)
+def test_loader_ignore_restored_keys_avoids_host_transfer(
+    tmp_path: pathlib.Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+  """ignore_restored_keys must not pass live jax.Arrays into eval_fragments."""
+  decoder = nn.Sequential([
+      nn.Dense(features=28 * 28),
+      nn.Dense(features=28 * 28),
+  ])
+  old_trainer_inst = _make_trainer(tmp_path, 'old_workdir', decoder, seed=1)
+  new_trainer_inst = _make_trainer(tmp_path, 'new_workdir', decoder, seed=0)
+
+  old_state = old_trainer_inst.init_state()
+  old_trainer_inst.checkpointer.save(old_state, step=0)
+  old_trainer_inst.checkpointer.wait_until_finished()
+  init_state = new_trainer_inst.init_state()
+
+  with _forbid_host_transfers(monkeypatch):
+    loader = kd.ckpts.PartialKauldronLoader(
+        workdir=old_trainer_inst.workdir,  # pylint: disable=missing-kwoa
+        new_to_old={'params.decoder': 'params.decoder'},
+        ignore_restored_keys=('**.layers_1.**',),
+    )
+    new_state = loader.transform(init_state)
+
+  assert_utils.assert_trees_all_same_type(init_state, new_state)
+  assert old_state.params is not None
+  assert init_state.params is not None
+  assert new_state.params is not None
+  chex.assert_trees_all_close(
+      new_state.params['decoder']['layers_0'],
+      old_state.params['decoder']['layers_0'],
+  )
+  chex.assert_trees_all_close(
+      new_state.params['decoder']['layers_1'],
+      init_state.params['decoder']['layers_1'],
+  )
+  _assert_trees_all_identical(
+      new_state.params['decoder']['layers_1'],
+      init_state.params['decoder']['layers_1'],
+  )
+  _assert_not_all_close(
+      init_state.params['decoder']['layers_0'],
+      new_state.params['decoder']['layers_0'],
+  )
+  _assert_not_all_close(
+      old_state.params['decoder']['layers_1'],
+      new_state.params['decoder']['layers_1'],
   )
 
 

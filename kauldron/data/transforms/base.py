@@ -208,9 +208,10 @@ class ElementWise:
         yield k, v, False
     if is_noop:
       raise KeyError(
-          f"{sorted(self.key.keys())} "  # pytype: disable=attribute-error
+          # pyrefly: ignore[missing-attribute]
+          f"{sorted(self.key.keys())} "
           "did not match any keys. Available keys: "
-          f"{sorted(features.keys())}"  # pytype: disable=attribute-error
+          f"{sorted(features.keys())}"
       )
 
 
