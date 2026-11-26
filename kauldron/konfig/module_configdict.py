@@ -140,6 +140,12 @@ class ModuleConfigDict(AutoNestedConfigDict):
       msg += ".\n\n"
       epy.reraise(e, prefix=msg)
 
+    if config is None:
+      raise ValueError(
+          f"{self.module.__name__}.get_config() returned None; did you forget"
+          " a `return` statement?"
+      )
+
     # merge with cfg overrides which are stored in root of self.
     _apply_overrides(config, overrides=self.as_flat_dict())
 

@@ -23,10 +23,10 @@ from kauldron.inspect import plotting
 from kauldron.train import trainer_lib
 
 with epy.lazy_imports():
-  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
-  from etils import ecolab
+  # pylint: disable=g-import-not-at-top
+  from etils import ecolab  # pyrefly: ignore[missing-module-attribute]
   import IPython.display
-  # pylint: enable=g-import-not-at-top  # pytype: enable=import-error
+  # pylint: enable=g-import-not-at-top
 
 
 def show_trainer_info(
