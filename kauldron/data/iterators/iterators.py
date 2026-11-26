@@ -30,7 +30,7 @@ _FnT = TypeVar('_FnT')
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
-class Iterator(checkpoints.items.CheckpointItem):  # pytype: disable=ignored-abstractmethod
+class Iterator(checkpoints.items.CheckpointItem):
   """Wrapper around a dataset iterator.
 
   Adds:

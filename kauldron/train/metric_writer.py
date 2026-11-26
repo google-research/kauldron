@@ -21,6 +21,7 @@ import dataclasses
 import functools
 import json
 import sys
+import threading
 from typing import Any, Mapping, Optional, TYPE_CHECKING
 
 from absl import logging
@@ -82,7 +83,7 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
   def write_images(
       self,
       step: int,
-      images: Mapping[str, Array["n h w c"]],  # pyrefly: ignore[not-a-type]
+      images: Mapping[str, Array["n h w c"]],
   ) -> None:
     """Write images for the step."""
 
@@ -111,7 +112,7 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
   def write_videos(
       self,
       step: int,
-      videos: Mapping[str, Array["n t h w c"]],  # pyrefly: ignore[not-a-type]
+      videos: Mapping[str, Array["n t h w c"]],
   ) -> None:
     """Write videos for the step."""
     raise NotImplementedError()
@@ -120,7 +121,7 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
   def write_audios(
       self,
       step: int,
-      audios: Mapping[str, Float["n t c"]],  # pyrefly: ignore[not-a-type]
+      audios: Mapping[str, Float["n t c"]],
       *,
       sample_rate: int,
   ) -> None:
@@ -265,12 +266,24 @@ class WriterBase(abc.ABC, config_util.UpdateFromRootCfg):
           texts={k: text for k, text in text_summaries.items()},
       )
 
-    # TODO(epot): This is blocking and slow. Is it really required ?
-    # Should likely be only called once at the end of the training / eval.
     if flush:
-      self.flush()
+      # Writers with a background thread can flush there (e.g.
+      # `KDMetricWriter(blocking_flush=False)`), so the train loop does not
+      # wait for the metrics to be written.
+      self.flush_in_background()
 
   def flush(self) -> None:
+    pass
+
+  def flush_in_background(self) -> None:
+    """Starts flushing pending writes without waiting for them to finish.
+
+    Writers without a background thread flush synchronously.
+    """
+    self.flush()
+
+  def wait_for_background_flush(self) -> None:
+    """Blocks until the flushes started by `flush_in_background` are done."""
     pass
 
   def close(self) -> None:
@@ -361,6 +374,35 @@ class NoopMetadataWriter(WriterBase):
     pass
 
 
+class _BackgroundFlushAsyncWriter(metric_writers.AsyncWriter):
+  """`AsyncWriter` that can also flush on its writer thread.
+
+  `flush()` blocks until all pending writes are persisted.
+  `flush_in_background()` queues a flush of the wrapped writer behind the
+  pending writes and returns immediately. A queued flush is skipped when a
+  newer one is queued behind it, so flushes do not pile up when writing is
+  slower than logging, and the last write is always followed by a flush.
+  """
+
+  def __init__(self, writer: metric_writers.MetricWriter):
+    # A single writer thread runs the writes and flushes in order.
+    super().__init__(writer, num_workers=1)
+    self._lock = threading.Lock()
+    self._num_queued_flushes = 0
+
+  def flush_in_background(self) -> None:
+    with self._lock:
+      self._num_queued_flushes += 1
+      self._pool(self._flush_wrapped_writer)()
+
+  def _flush_wrapped_writer(self) -> None:
+    with self._lock:
+      self._num_queued_flushes -= 1
+      if self._num_queued_flushes > 0:
+        return  # A newer flush is queued behind the newer writes.
+    self._writer.flush()
+
+
 @dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
 class KDMetricWriter(MetadataWriter):
   """Writes summaries to logs, tf_summaries and datatables.
@@ -374,6 +416,14 @@ class KDMetricWriter(MetadataWriter):
   """
 
   add_artifacts: bool = True
+  # If True, `write_step_metrics` waits for each flush to finish. By default,
+  # the Datatable writers flush on their writer threads, so the train loop does
+  # not wait for the Datatable round trip. TensorBoard always flushes in place.
+  blocking_flush: bool = False
+  # If True, Datatable RPC and permission errors during write, flush, or close
+  # are logged as warnings instead of raising, so transient Datatable errors do
+  # not crash training or eval jobs. TensorBoard writes are unaffected.
+  ignore_datatable_errors: bool = False
 
   @functools.cached_property
   def _collection_path_prefix(self) -> str:
@@ -435,17 +485,23 @@ class KDMetricWriter(MetadataWriter):
       values: Mapping[str, Array],  # pyrefly: ignore[not-a-type]
       metadata: Mapping[str, Any] | None = None,
   ) -> None:
+    if not values:
+      return
     self._array_writer.write_summaries(step, values, metadata)
     self._tf_summary_writer.write_summaries(step, values, metadata)
 
   def write_scalars(self, step: int, scalars: Mapping[str, Scalar]) -> None:  # pyrefly: ignore[not-a-type]
+    if not scalars:
+      return
     self._log_writer.write_scalars(step, scalars)
     self._scalar_writer.write_scalars(step, scalars)
     self._tf_summary_writer.write_scalars(step, scalars)
 
   def write_images(
-      self, step: int, images: Mapping[str, Array["n h w c"]]  # pyrefly: ignore[not-a-type]
+      self, step: int, images: Mapping[str, Array["n h w c"]]
   ) -> None:
+    if not images:
+      return
     images_uint8 = {}
     for key, image in images.items():
       if isinstance(image, Float["n h w c"]):
@@ -462,23 +518,31 @@ class KDMetricWriter(MetadataWriter):
       arrays: Mapping[str, Array],  # pyrefly: ignore[not-a-type]
       num_buckets: Mapping[str, int] | None = None,
   ) -> None:
+    if not arrays:
+      return
     self._tf_summary_writer.write_histograms(step, arrays, num_buckets)
 
   def write_videos(
-      self, step: int, videos: Mapping[str, Array["n t h w c"]]  # pyrefly: ignore[not-a-type]
+      self, step: int, videos: Mapping[str, Array["n t h w c"]]
   ) -> None:
+    if not videos:
+      return
     self._tf_summary_writer.write_videos(step, videos)
 
   def write_audios(
       self,
       step: int,
-      audios: Mapping[str, Float["n t c"]],  # pyrefly: ignore[not-a-type]
+      audios: Mapping[str, Float["n t c"]],
       *,
       sample_rate: int,
   ) -> None:
+    if not audios:
+      return
     self._tf_summary_writer.write_audios(step, audios, sample_rate=sample_rate)
 
   def write_texts(self, step: int, texts: Mapping[str, str]) -> None:
+    if not texts:
+      return
     # log_writer.write_texts does not display new lines, making it hard to
     # parse the text.
     logging.info("Writing texts:")
@@ -490,9 +554,9 @@ class KDMetricWriter(MetadataWriter):
   def write_pointcloud(
       self,
       step: int,
-      point_clouds: Mapping[str, Array["n 3"]],  # pyrefly: ignore[not-a-type]
+      point_clouds: Mapping[str, Array["n 3"]],
       *,
-      point_colors: Mapping[str, Array["n 3"]] | None = None,  # pyrefly: ignore[not-a-type]
+      point_colors: Mapping[str, Array["n 3"]] | None = None,
       configs: Mapping[str, str | float | bool | None] | None = None,
   ) -> None:
     if not point_clouds:
@@ -500,6 +564,8 @@ class KDMetricWriter(MetadataWriter):
     logging.info("Pointcloud summary not supported.")
 
   def write_hparams(self, hparams: Mapping[str, Any]) -> None:
+    if not hparams:
+      return
     self._log_writer.write_hparams(hparams)
     self._tf_summary_writer.write_hparams(hparams)
 
@@ -523,17 +589,52 @@ class KDMetricWriter(MetadataWriter):
     )
     # export pandas dataframe as markdown text
     markdown_table = ctx_df.to_markdown(index=False, tablefmt="github")
-    self.write_texts(step, {"context_spec": markdown_table})  # pyrefly: ignore[bad-argument-type, bad-assignment]
+    self.write_texts(step, {"context_spec": markdown_table})  # pyrefly: ignore[bad-assignment]
+
+  def _created_writers(
+      self, names: tuple[str, ...]
+  ) -> tuple[metric_writers.MetricWriter, ...]:
+    """Returns cached writers that have already been instantiated."""
+    # Only look at writers that were created (`functools.cached_property`
+    # stores them in `__dict__`), so a writer that never wrote (e.g.
+    # `_array_writer` when no arrays or images are logged, or the outer writer
+    # of a `TrainEvaluator`) does not create empty tables.
+    return tuple(
+        writer
+        for name in names
+        if (writer := self.__dict__.get(name)) is not None
+    )
 
   def flush(self) -> None:
-    self._scalar_writer.flush()
-    self._array_writer.flush()
-    self._tf_summary_writer.flush()
+    for writer in self._created_writers(
+        ("_scalar_writer", "_array_writer", "_tf_summary_writer")
+    ):
+      writer.flush()
+
+  def flush_in_background(self) -> None:
+    if self.blocking_flush:
+      self.flush()
+      return
+    for writer in self._created_writers(
+        ("_scalar_writer", "_array_writer", "_tf_summary_writer")
+    ):
+      if isinstance(writer, _BackgroundFlushAsyncWriter):
+        writer.flush_in_background()
+      else:
+        writer.flush()
+
+  def wait_for_background_flush(self) -> None:
+    if self.blocking_flush:
+      return
+    for writer in self._created_writers(("_scalar_writer", "_array_writer")):
+      if isinstance(writer, _BackgroundFlushAsyncWriter):
+        writer.flush()
 
   def close(self) -> None:
-    self._scalar_writer.close()
-    self._array_writer.close()
-    self._tf_summary_writer.close()
+    for writer in self._created_writers(
+        ("_scalar_writer", "_array_writer", "_tf_summary_writer")
+    ):
+      writer.close()
 
 
 @dataclasses.dataclass(frozen=True, eq=True, kw_only=True)
@@ -552,7 +653,7 @@ class NoopWriter(NoopMetadataWriter):
     pass
 
   def write_images(
-      self, step: int, images: Mapping[str, Array["n h w c"]]  # pyrefly: ignore[not-a-type]
+      self, step: int, images: Mapping[str, Array["n h w c"]]
   ) -> None:
     pass
 
@@ -567,7 +668,7 @@ class NoopWriter(NoopMetadataWriter):
   def write_pointcloud(
       self,
       step: int,
-      point_clouds: Array["n 3"],  # pyrefly: ignore[not-a-type]
+      point_clouds: Array["n 3"],
       *,
       point_colors: Array["n 3"] | None = None,
       configs: Mapping[str, str | float | bool | None] | None = None,
@@ -575,14 +676,14 @@ class NoopWriter(NoopMetadataWriter):
     pass
 
   def write_videos(
-      self, step: int, videos: Mapping[str, Array["n t h w c"]]  # pyrefly: ignore[not-a-type]
+      self, step: int, videos: Mapping[str, Array["n t h w c"]]
   ) -> None:
     pass
 
   def write_audios(
       self,
       step: int,
-      audios: Mapping[str, Float["n t c"]],  # pyrefly: ignore[not-a-type]
+      audios: Mapping[str, Float["n t c"]],
       *,
       sample_rate: int,
   ) -> None:
